@@ -25,7 +25,9 @@ library_name: ggml
 
 # CielVox 0.6B CustomVoice — GGUF
 
-GGUF / ggml conversion of the fixed-speaker model for the `cielvox2-tts-customvoice` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
+GGUF / ggml port of [`Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice`](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice), rebranded for the `cielvox2-tts-customvoice` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
+
+Same model under a new name for the Stelnet stack.
 
 The CustomVoice variant is the **fixed-speaker** sibling of `Qwen3-TTS-12Hz-0.6B-Base`: instead of cloning a voice from a 3 s reference WAV (the Base path), it ships **9 baked speaker tokens** picked via a `--voice <name>` flag. No ECAPA forward, no codec encoder, no reference audio required. Two of the speakers (`dylan`, `eric`) carry Chinese-dialect overrides (Beijing / Sichuan) that re-route `language_id` when synthesising Chinese-or-auto.
 

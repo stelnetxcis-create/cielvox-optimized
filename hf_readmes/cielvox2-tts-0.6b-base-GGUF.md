@@ -26,7 +26,9 @@ base_model: Qwen/Qwen3-TTS-12Hz-0.6B-Base
 
 # CielVox 0.6B Base — GGUF
 
-GGUF / ggml conversion of the base voice-cloning model for the `cielvox2-tts` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
+GGUF / ggml port of [`Qwen/Qwen3-TTS-12Hz-0.6B-Base`](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base), rebranded for the `cielvox2-tts` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
+
+This is the same model under a new name for the Stelnet stack — architecture, weights, and behaviour are unchanged from upstream.
 
 Qwen3-TTS 12Hz 0.6B Base is Qwen's multilingual **voice-cloning** TTS model:
 
