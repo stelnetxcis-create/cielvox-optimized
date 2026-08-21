@@ -23,9 +23,9 @@ tags:
 library_name: ggml
 ---
 
-# Qwen3-TTS-12Hz-0.6B-CustomVoice — GGUF (ggml-quantised)
+# CielVox 0.6B CustomVoice — GGUF
 
-GGUF / ggml conversion of [`Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice`](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
+GGUF / ggml conversion of the fixed-speaker model for the `cielvox2-tts-customvoice` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
 
 The CustomVoice variant is the **fixed-speaker** sibling of `Qwen3-TTS-12Hz-0.6B-Base`: instead of cloning a voice from a 3 s reference WAV (the Base path), it ships **9 baked speaker tokens** picked via a `--voice <name>` flag. No ECAPA forward, no codec encoder, no reference audio required. Two of the speakers (`dylan`, `eric`) carry Chinese-dialect overrides (Beijing / Sichuan) that re-route `language_id` when synthesising Chinese-or-auto.
 
@@ -41,7 +41,7 @@ The CustomVoice variant is the **fixed-speaker** sibling of `Qwen3-TTS-12Hz-0.6B
 | `uncle_fu` | English (M, older) |
 | `vivian` | English (F) |
 
-Pair this with the codec at [`Xenna/cielvox2-tts-tokenizer-12hz-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-tokenizer-12hz-GGUF) — the talker emits 16-codebook RVQ codes that the codec decoder renders to 24 kHz PCM.
+Pair this with the codec at [`Xenna/cielvox2-tokenizer-12hz`](https://huggingface.co/Xenna/cielvox2-tokenizer-12hz) — the talker emits 16-codebook RVQ codes that the codec decoder renders to 24 kHz PCM.
 
 ## Files
 
@@ -55,14 +55,15 @@ The 1.7B-CustomVoice variant ships at [`Xenna/cielvox2-tts-1.7b-customvoice-GGUF
 
 ```bash
 # 1. Build StelnetTTS
-git clone https://github.com/Cyna/StelnetTTS
-cd StelnetTTS
+git clone https://github.com/stelnetxcis-create/cielvox2
+cd cielvox2
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j --target stelnettts-lib
 
 # 2. Pull the talker + the codec
 huggingface-cli download Xenna/cielvox2-tts-0.6b-customvoice-GGUF cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf --local-dir .
-huggingface-cli download Xenna/cielvox2-tts-tokenizer-12hz-GGUF cielvox2-tts-tokenizer-12hz.gguf --local-dir .
+huggingface-cli download Xenna/cielvox2-tokenizer-12hz \
+    cielvox-tokenizer-12hz.gguf --local-dir .
 
 # 3. Synthesise — pick a speaker by name
 ./build/bin/stelnettts --backend cielvox2-tts-customvoice \

@@ -24,9 +24,9 @@ library_name: ggml
 base_model: Qwen/Qwen3-TTS-12Hz-0.6B-Base
 ---
 
-# Qwen3-TTS 12Hz 0.6B Base — GGUF (StelnetTTS)
+# CielVox 0.6B Base — GGUF
 
-GGUF / ggml conversions of [`Qwen/Qwen3-TTS-12Hz-0.6B-Base`](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base) for use with the `cielvox2-tts` backend in **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
+GGUF / ggml conversion of the base voice-cloning model for the `cielvox2-tts` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
 
 Qwen3-TTS 12Hz 0.6B Base is Qwen's multilingual **voice-cloning** TTS model:
 
@@ -35,7 +35,7 @@ Qwen3-TTS 12Hz 0.6B Base is Qwen's multilingual **voice-cloning** TTS model:
 - runtime voice cloning from `(ref_audio, ref_text)` or pre-baked voice-pack GGUFs
 - Apache-2.0 licence
 
-This repo contains the **talker / code-predictor / speaker-encoder** model. It must be used together with the separate tokenizer / codec GGUF from [`Xenna/cielvox2-tts-tokenizer-12hz-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-tokenizer-12hz-GGUF).
+This repo contains the **talker / code-predictor / speaker-encoder** model. It must be used together with the separate tokenizer / codec GGUF from [`Xenna/cielvox2-tokenizer-12hz`](https://huggingface.co/Xenna/cielvox2-tokenizer-12hz).
 
 ## Files
 
@@ -62,8 +62,8 @@ Download the talker + tokenizer:
 huggingface-cli download Xenna/cielvox2-tts-0.6b-base-GGUF \
     cielvox2-tts-12hz-0.6b-base-q8_0.gguf --local-dir .
 
-huggingface-cli download Xenna/cielvox2-tts-tokenizer-12hz-GGUF \
-    cielvox2-tts-tokenizer-12hz.gguf --local-dir .
+huggingface-cli download Xenna/cielvox2-tokenizer-12hz \
+    cielvox-tokenizer-12hz.gguf --local-dir .
 ```
 
 Voice clone from a reference WAV:

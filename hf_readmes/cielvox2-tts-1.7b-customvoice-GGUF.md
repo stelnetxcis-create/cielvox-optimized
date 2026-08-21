@@ -23,9 +23,9 @@ tags:
 library_name: ggml
 ---
 
-# Qwen3-TTS-12Hz-1.7B-CustomVoice — GGUF (ggml-quantised)
+# CielVox 1.7B CustomVoice — GGUF
 
-GGUF / ggml conversion of [`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
+GGUF / ggml conversion of the fixed-speaker model for the `cielvox2-tts-1.7b-customvoice` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
 
 The 1.7B sibling of [`Xenna/cielvox2-tts-0.6b-customvoice-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-0.6b-customvoice-GGUF). Same fixed-speaker pattern (9 baked speakers, no ECAPA, no reference WAV), but on the 1.7B talker — `hidden=2048`, `head_dim=128`, with a `small_to_mtp_projection` MLP that maps the 2048-d talker hidden state down to the 1024-d code predictor input space.
 
@@ -56,8 +56,8 @@ The 0.6B-CustomVoice variant ships at [`Xenna/cielvox2-tts-0.6b-customvoice-GGUF
 
 ```bash
 # 1. Build StelnetTTS
-git clone https://github.com/Cyna/StelnetTTS
-cd StelnetTTS
+git clone https://github.com/stelnetxcis-create/cielvox2
+cd cielvox2
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j --target stelnettts-lib
 
