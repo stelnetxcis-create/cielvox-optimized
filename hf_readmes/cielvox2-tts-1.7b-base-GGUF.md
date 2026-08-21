@@ -23,9 +23,9 @@ tags:
 library_name: ggml
 ---
 
-# CielVox 0.6B Base — GGUF
+# CielVox 1.7B Base — GGUF
 
-Local-first multilingual voice-cloning TTS model for the `cielvox2-tts` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
+Local-first multilingual voice-cloning TTS model for the `cielvox2-tts-1.7b-base` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
 
 - 10 supported languages: `zh en ja ko de fr ru pt es it`
 - discrete multi-codebook LM architecture with a separate 12 Hz tokenizer / codec
@@ -38,8 +38,7 @@ This repo contains the **talker / code-predictor / speaker-encoder** model. It m
 
 File | Size | Notes
 --- | --- | ---
-`cielvox2-tts-12hz-0.6b-base-q8_0.gguf` | 940 MB | Q8_0, recommended quantised talker
-`cielvox2-tts-12hz-0.6b-base-q4_k.gguf` | 508 MB | Q4_K, smaller — quality regression on short utterances
+`cielvox2-tts-12hz-1.7b-base-q8_0.gguf` | 2.0 GB | Q8_0, recommended quantised talker
 
 ## Quick Start
 
@@ -55,8 +54,8 @@ cmake --build build -j$(nproc) --target stelnettts-lib
 Download the talker + tokenizer:
 
 ```bash
-huggingface-cli download Xenna/cielvox2-tts-0.6b-base-GGUF \
-    cielvox2-tts-12hz-0.6b-base-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/cielvox2-tts-1.7b-base-GGUF \
+    cielvox2-tts-12hz-1.7b-base-q8_0.gguf --local-dir .
 
 huggingface-cli download Xenna/cielvox2-tokenizer-12hz \
     cielvox-tokenizer-12hz.gguf --local-dir .
@@ -66,8 +65,8 @@ Voice clone from a reference WAV:
 
 ```bash
 ./build/bin/stelnettts \
-    --backend cielvox2-tts \
-    -m cielvox2-tts-12hz-0.6b-base-q8_0.gguf \
+    --backend cielvox2-tts-1.7b-base \
+    -m cielvox2-tts-12hz-1.7b-base-q8_0.gguf \
     --codec-model cielvox-tokenizer-12hz.gguf \
     --voice clone.wav \
     --ref-text "Exact transcript of clone.wav" \
@@ -79,8 +78,8 @@ Use a baked voice-pack GGUF:
 
 ```bash
 ./build/bin/stelnettts \
-    --backend cielvox2-tts \
-    -m cielvox2-tts-12hz-0.6b-base-q8_0.gguf \
+    --backend cielvox2-tts-1.7b-base \
+    -m cielvox2-tts-12hz-1.7b-base-q8_0.gguf \
     --codec-model cielvox-tokenizer-12hz.gguf \
     --voice my-voice-pack.gguf \
     --tts "Hello there" \
@@ -91,15 +90,14 @@ When `--voice` points to a `.wav`, `--ref-text` is required. When `--voice` poin
 
 ## Quantisation Notes
 
-- `cielvox2-tts-12hz-0.6b-base-q8_0.gguf` — recommended quantised deployment
-- `cielvox2-tts-12hz-0.6b-base-q4_k.gguf` — smaller variant; quality regression on short utterances
+- `cielvox2-tts-12hz-1.7b-base-q8_0.gguf` — recommended quantised deployment
 
 ## Architecture
 
 | Component | Details |
 |---|---|
-| Talker LM | 28 layers, 1024 hidden, 16 heads, 8 KV heads, head_dim=64 |
-| Output head | 16 codebooks × 1024 (RVQ) |
+| Talker LM | 28 layers, 2048 hidden, 16 heads, 8 KV heads, head_dim=128 |
+| Output head | 16 codebooks × 2048 (RVQ) |
 | Code predictor | 5L + 15 separate codec embedding/lm_head pairs |
 | Codec | CielVox-Tokenizer-12Hz (separate GGUF, 12.5 fps RVQ) |
 | Audio | 24 kHz mono float32 PCM |
