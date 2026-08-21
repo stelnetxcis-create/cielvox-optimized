@@ -20,10 +20,10 @@ COPY . .
 # ggml sets INS_ENB=ON in that case, so BMI2/SSE42/AVX default ON anyway. The
 # real baseline is Haswell-class (AVX2+FMA+F16C+BMI2); spelled out explicitly
 # so it's visible. See .devops/main-cuda.Dockerfile for the full explanation.
-RUN cmake -B build -DCRISPASR_BUILD_TESTS=OFF -DGGML_MUSA=1 \
+RUN cmake -B build -DSTELNET_ASR_BUILD_TESTS=OFF -DGGML_MUSA=1 \
     -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
     -DGGML_BMI2=ON -DGGML_SSE42=ON -DGGML_AVX=ON -DGGML_AVX512=OFF && \
-    cmake --build build -j"$(nproc)" --target crispasr-cli
+    cmake --build build -j"$(nproc)" --target stelnet_asr-cli
 
 RUN find /app/build -name "*.o" -delete && \
     find /app/build -name "*.a" -delete && \
@@ -44,12 +44,12 @@ COPY --from=build /app/samples /app/samples
 # /models is a volume mount point — actual models (and the convert-*.py
 # tools) are excluded by .dockerignore. Don't COPY them from the build
 # stage; the user mounts their model directory at /models at runtime.
-RUN (id -u crispasr 2>/dev/null || \
-     useradd -m -u 1000 crispasr 2>/dev/null || \
-     useradd -m crispasr) && \
+RUN (id -u stelnet_asr 2>/dev/null || \
+     useradd -m -u 1000 stelnet_asr 2>/dev/null || \
+     useradd -m stelnet_asr) && \
     mkdir -p /cache /models && \
-    chown -R crispasr:crispasr /app /cache /models
+    chown -R stelnet_asr:stelnet_asr /app /cache /models
 
 ENV PATH=/app/build/bin:$PATH
-USER crispasr
+USER stelnet_asr
 ENTRYPOINT [ "tini", "--", "bash", "/app/.devops/run-server.sh" ]

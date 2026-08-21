@@ -25,11 +25,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts build/bin/Release/stelnettts.exe; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
@@ -79,7 +79,7 @@ trap 'rm -rf "$OUT_DIR"' EXIT
 TEXT="Determinism gate. The quick brown fox jumps over the lazy dog."
 
 synth() { # <env-O15> <out.wav>
-    CIELVOX2_TTS_O15="$1" "$CRISPASR" -m "$MODEL" --backend "$BACKEND" "${CODEC_ARG[@]}" \
+    CIELVOX2_TTS_O15="$1" "$STELNET_ASR" -m "$MODEL" --backend "$BACKEND" "${CODEC_ARG[@]}" \
         --tts "$TEXT" --tts-output "$2" --no-prints > "$OUT_DIR/log" 2>&1
 }
 hash_file() { shasum -a 256 "$1" | awk '{print $1}'; }

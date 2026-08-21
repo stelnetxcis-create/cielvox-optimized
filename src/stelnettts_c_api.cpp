@@ -7293,7 +7293,7 @@ struct stelnettts_diarize_opts_abi {
     // hand, so new fields go at the END and EVERY hand-written layout is
     // updated in the same commit:
     //   - bindings/go/stelnettts_session.go (cgo preamble)
-    //   - stelnettts-sys/src/lib.rs (CrispasrDiarizeOptsAbi + layout test)
+    //   - stelnettts-sys/src/lib.rs (StelnetAsrDiarizeOptsAbi + layout test)
     //   - flutter/stelnettts/lib/src/stelnettts.dart (diarizeSegments 48-byte buf)
     // (#332: the Rust and Dart mirrors were missed when #324 appended the
     // FoxNose fields — the C side reads every field unconditionally, so a
@@ -7334,8 +7334,8 @@ CA_EXPORT int stelnettts_diarize_segments_abi(const float* left_pcm, const float
     if (opts->method < 0 || opts->method > 4)
         return -1;
 
-    CrispasrDiarizeOptions lib_opts;
-    lib_opts.method = static_cast<CrispasrDiarizeMethod>(opts->method);
+    StelnetAsrDiarizeOptions lib_opts;
+    lib_opts.method = static_cast<StelnetAsrDiarizeMethod>(opts->method);
     lib_opts.n_threads = opts->n_threads > 0 ? opts->n_threads : 4;
     lib_opts.slice_t0_cs = opts->slice_t0_cs;
     if (opts->pyannote_model_path)
@@ -7346,7 +7346,7 @@ CA_EXPORT int stelnettts_diarize_segments_abi(const float* left_pcm, const float
     lib_opts.max_speakers = opts->max_speakers > 0 ? opts->max_speakers : 8;
     lib_opts.num_speakers = opts->num_speakers;
 
-    std::vector<CrispasrDiarizeSegment> lib_segs;
+    std::vector<StelnetAsrDiarizeSegment> lib_segs;
     lib_segs.reserve(n_segs);
     for (int i = 0; i < n_segs; i++)
         lib_segs.push_back({segs[i].t0_cs, segs[i].t1_cs, segs[i].speaker});
@@ -7393,8 +7393,8 @@ CA_EXPORT int stelnettts_detect_language_pcm(const float* samples, int32_t n_sam
     if (method < 0 || method > 3)
         return -1;
 
-    CrispasrLidOptions opts;
-    opts.method = static_cast<CrispasrLidMethod>(method);
+    StelnetAsrLidOptions opts;
+    opts.method = static_cast<StelnetAsrLidMethod>(method);
     opts.model_path = model_path;
     opts.n_threads = n_threads > 0 ? n_threads : 4;
     opts.use_gpu = use_gpu != 0;
@@ -7402,7 +7402,7 @@ CA_EXPORT int stelnettts_detect_language_pcm(const float* samples, int32_t n_sam
     opts.flash_attn = flash_attn != 0;
     opts.verbose = false;
 
-    CrispasrLidResult r;
+    StelnetAsrLidResult r;
     if (!stelnettts_detect_language(samples, n_samples, opts, r)) {
         stelnettts_lid_free_cache(); // free GPU memory even on failure
         return 1;
@@ -7439,8 +7439,8 @@ CA_EXPORT int stelnettts_enhance_audio_rnnoise(const float* in_pcm, int32_t n_sa
     if (!in_pcm || !out_pcm || n_samples <= 0 || out_cap < n_samples)
         return -1;
 
-    CrispasrEnhanceOptions opts;
-    opts.method = CrispasrEnhanceMethod::Rnnoise;
+    StelnetAsrEnhanceOptions opts;
+    opts.method = StelnetAsrEnhanceMethod::Rnnoise;
     opts.verbose = false;
 
     if (!stelnettts_enhance_audio(in_pcm, n_samples, out_pcm, opts))
@@ -7531,7 +7531,7 @@ CA_EXPORT int stelnettts_text_detect_language(const char* text, const char* mode
 // session-result accessor pattern.
 // ---------------------------------------------------------------------------
 struct stelnettts_align_result {
-    std::vector<CrispasrAlignedWord> words;
+    std::vector<StelnetAsrAlignedWord> words;
 };
 
 CA_EXPORT stelnettts_align_result* stelnettts_align_words_abi(const char* aligner_model, const char* transcript,
@@ -7618,7 +7618,7 @@ CA_EXPORT int stelnettts_cache_dir_abi(const char* cache_dir_override, char* out
 // into caller-provided buffers. Returns 0 on hit, 1 on miss, -1 on
 // invalid args, 2 when any of the output buffers is too small.
 // ---------------------------------------------------------------------------
-static int write_entry(const CrispasrRegistryEntry& e, char* out_filename, int32_t filename_cap, char* out_url,
+static int write_entry(const StelnetAsrRegistryEntry& e, char* out_filename, int32_t filename_cap, char* out_url,
                        int32_t url_cap, char* out_size, int32_t size_cap) {
     if ((int)e.filename.size() + 1 > filename_cap || (int)e.url.size() + 1 > url_cap ||
         (int)e.approx_size.size() + 1 > size_cap)
@@ -7636,7 +7636,7 @@ CA_EXPORT int stelnettts_registry_lookup_abi(const char* backend, char* out_file
                                            int32_t url_cap, char* out_size, int32_t size_cap) {
     if (!backend || !out_filename || !out_url || !out_size || filename_cap <= 0 || url_cap <= 0 || size_cap <= 0)
         return -1;
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     if (!stelnettts_registry_lookup(backend, e))
         return 1;
     return write_entry(e, out_filename, filename_cap, out_url, url_cap, out_size, size_cap);
@@ -7647,7 +7647,7 @@ CA_EXPORT int stelnettts_registry_lookup_by_filename_abi(const char* filename, c
                                                        int32_t size_cap) {
     if (!filename || !out_filename || !out_url || !out_size || filename_cap <= 0 || url_cap <= 0 || size_cap <= 0)
         return -1;
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     if (!stelnettts_registry_lookup_by_filename(filename, e))
         return 1;
     return write_entry(e, out_filename, filename_cap, out_url, url_cap, out_size, size_cap);
@@ -7664,7 +7664,7 @@ CA_EXPORT int stelnettts_registry_list_backends_abi(char* out_csv, int32_t out_c
     std::string acc;
     const int n = stelnettts_registry_count();
     for (int i = 0; i < n; i++) {
-        CrispasrRegistryEntry e;
+        StelnetAsrRegistryEntry e;
         if (!stelnettts_registry_get_at(i, e))
             continue;
         if (!acc.empty())
@@ -7683,7 +7683,7 @@ CA_EXPORT int stelnettts_registry_default_bundle_info_abi(const char* backend, c
                                                         int32_t* out_requires_acceptance) {
     if (!backend || !out_backend || backend_cap <= 0 || !out_license || license_cap <= 0 || !out_requires_acceptance)
         return -1;
-    CrispasrRegistryBundle bundle;
+    StelnetAsrRegistryBundle bundle;
     if (!stelnettts_registry_default_bundle(backend, bundle))
         return 0;
     if ((int)bundle.backend.size() + 1 > backend_cap || (int)bundle.license.size() + 1 > license_cap)
@@ -7702,10 +7702,10 @@ CA_EXPORT int stelnettts_registry_default_bundle_artifact_abi(const char* backen
     if (!backend || index < 0 || !out_kind || !out_filename || filename_cap <= 0 || !out_url || url_cap <= 0 ||
         !out_size || size_cap <= 0)
         return -1;
-    CrispasrRegistryBundle bundle;
+    StelnetAsrRegistryBundle bundle;
     if (!stelnettts_registry_default_bundle(backend, bundle) || index >= (int32_t)bundle.artifacts.size())
         return 1;
-    const CrispasrRegistryArtifact& artifact = bundle.artifacts[index];
+    const StelnetAsrRegistryArtifact& artifact = bundle.artifacts[index];
     if ((int)artifact.filename.size() + 1 > filename_cap || (int)artifact.url.size() + 1 > url_cap ||
         (int)artifact.approx_size.size() + 1 > size_cap)
         return 2;
@@ -8056,7 +8056,7 @@ CA_EXPORT int stelnettts_session_set_voice(stelnettts_session* s, const char* pa
             // omitted and caches the result beside the WAV. That cache is
             // library-side (core/tts_ref_cache.h) and mtime-validated against
             // the clip, so the session can reuse it even though it cannot run
-            // ASR itself — the CLI helper builds a second CrispasrBackend,
+            // ASR itself — the CLI helper builds a second StelnetAsrBackend,
             // which this layer has no access to.
             //
             // So: a clip already prepared through the CLI now clones through
@@ -11748,11 +11748,11 @@ CA_EXPORT int stelnettts_session_detect_language(stelnettts_session* s, const fl
                                                float* out_prob) {
     if (!s || !pcm || n_samples <= 0 || !lid_model_path || !out_lang || out_lang_cap < 8)
         return -1;
-    CrispasrLidOptions opts;
+    StelnetAsrLidOptions opts;
     opts.n_threads = s->n_threads;
     opts.model_path = lid_model_path;
-    opts.method = (CrispasrLidMethod)method;
-    CrispasrLidResult lid_out;
+    opts.method = (StelnetAsrLidMethod)method;
+    StelnetAsrLidResult lid_out;
     if (!::stelnettts_detect_language(pcm, n_samples, opts, lid_out) || lid_out.lang_code.empty())
         return -2;
     if ((int)lid_out.lang_code.size() + 1 > out_lang_cap)
@@ -11893,13 +11893,13 @@ CA_EXPORT void* stelnettts_speaker_embedder_make_abi(const char* model_spec, int
 
 CA_EXPORT void stelnettts_speaker_embedder_free_abi(void* embedder) {
     if (embedder)
-        delete static_cast<CrispasrSpeakerEmbedder*>(embedder);
+        delete static_cast<StelnetAsrSpeakerEmbedder*>(embedder);
 }
 
 CA_EXPORT int32_t stelnettts_speaker_embedder_dim_abi(const void* embedder) {
     if (!embedder)
         return 0;
-    return static_cast<const CrispasrSpeakerEmbedder*>(embedder)->dim();
+    return static_cast<const StelnetAsrSpeakerEmbedder*>(embedder)->dim();
 }
 
 // Embed one mono 16 kHz PCM range. `out` must hold at least dim() floats.
@@ -11908,13 +11908,13 @@ CA_EXPORT int32_t stelnettts_speaker_embedder_embed_abi(void* embedder, const fl
                                                       float* out) {
     if (!embedder || !pcm_16k || n_samples <= 0 || !out)
         return 0;
-    return static_cast<CrispasrSpeakerEmbedder*>(embedder)->embed(pcm_16k, n_samples, out) ? 1 : 0;
+    return static_cast<StelnetAsrSpeakerEmbedder*>(embedder)->embed(pcm_16k, n_samples, out) ? 1 : 0;
 }
 
 CA_EXPORT const char* stelnettts_speaker_embedder_name_abi(const void* embedder) {
     if (!embedder)
         return "";
-    return static_cast<const CrispasrSpeakerEmbedder*>(embedder)->name();
+    return static_cast<const StelnetAsrSpeakerEmbedder*>(embedder)->name();
 }
 
 // ---- agglomerative cosine clustering ----
@@ -11988,7 +11988,7 @@ CA_EXPORT int32_t stelnettts_pyannote_cache_apply_abi(const void* cache, int64_t
     if (!cache || !segs || n_segs <= 0)
         return -1;
     const auto* c = static_cast<const stelnettts_pyannote_cache_abi*>(cache);
-    std::vector<CrispasrDiarizeSegment> lib_segs;
+    std::vector<StelnetAsrDiarizeSegment> lib_segs;
     lib_segs.reserve(n_segs);
     for (int i = 0; i < n_segs; i++)
         lib_segs.push_back({segs[i].t0_cs, segs[i].t1_cs, segs[i].speaker});

@@ -125,7 +125,7 @@ TEST_CASE("the ABI disclosure text matches the CLI's", "[unit][compliance][marki
     // or the same product discloses two different things on two surfaces.
     //
     // Compared at the SOURCE level — including the CLI header here would drag in
-    // CrispasrBackend and whisper_params, and asserting a literal against itself
+    // StelnetAsrBackend and whisper_params, and asserting a literal against itself
     // would be a test that cannot fail.
     auto disclaimer_literal_in = [](const std::string& rel) -> std::string {
         const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/" + rel;

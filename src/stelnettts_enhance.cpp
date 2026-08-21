@@ -124,9 +124,9 @@ bool enhance_rnnoise(const float* in_samples, int n_samples, float* out_samples,
 } // namespace
 
 bool stelnettts_enhance_audio(const float* in_samples, int n_samples, float* out_samples,
-                            const CrispasrEnhanceOptions& opts) {
+                            const StelnetAsrEnhanceOptions& opts) {
     switch (opts.method) {
-    case CrispasrEnhanceMethod::Rnnoise:
+    case StelnetAsrEnhanceMethod::Rnnoise:
         return enhance_rnnoise(in_samples, n_samples, out_samples, opts.verbose);
     }
     return false;

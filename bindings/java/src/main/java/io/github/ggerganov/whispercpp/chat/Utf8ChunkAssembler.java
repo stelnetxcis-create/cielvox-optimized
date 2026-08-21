@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
- * Reassembles the byte chunks {@code crispasr_chat_on_token} delivers into
+ * Reassembles the byte chunks {@code stelnet_asr_chat_on_token} delivers into
  * whole characters.
  *
  * <p>The C side hands the callback the raw bytes of the detokenized piece. A
@@ -64,7 +64,7 @@ final class Utf8ChunkAssembler {
         if (r.isOverflow()) {
             // Cannot happen: the output buffer holds one char per input byte
             // plus one, and no decoded form of n bytes exceeds n chars.
-            throw new IllegalStateException("crispasr_chat: UTF-8 decode overflowed its buffer");
+            throw new IllegalStateException("stelnet_asr_chat: UTF-8 decode overflowed its buffer");
         }
         pending = in.hasRemaining() ? remaining(in) : NO_BYTES;
         out.flip();

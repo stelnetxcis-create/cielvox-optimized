@@ -14,10 +14,10 @@
 # Usage: test-speaker-db-gates.sh <path-to-stelnettts-binary> [repo-source-dir]
 set -uo pipefail
 
-CRISPASR="${1:-}"
+STELNET_ASR="${1:-}"
 SRC_DIR="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
 
-if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ] || [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found (pass as \$1)"; exit 0
 fi
 
@@ -38,7 +38,7 @@ unset STELNETTTS_MODELS_DIR STELNETTTS_MODEL_WHISPER
 
 # ── (a) streaming + speaker-db -> exit 26 ──────────────────────────────────
 OUT_A="$TMP/a.stderr"
-HOME="$TMP/home-a" "$CRISPASR" --backend parakeet --stream \
+HOME="$TMP/home-a" "$STELNET_ASR" --backend parakeet --stream \
     --speaker-db "$TMP/db" --speaker-db-consent --expect-speakers A \
     --cache-dir "$TMP/cache-a" \
     >/dev/null 2>"$OUT_A"
@@ -50,7 +50,7 @@ echo "OK: (a) streaming refusal -> exit 26"
 
 # ── (b) consent given, no --expect-speakers -> exit 27 ─────────────────────
 OUT_B="$TMP/b.stderr"
-HOME="$TMP/home-b" "$CRISPASR" -f "$JFK" --backend parakeet \
+HOME="$TMP/home-b" "$STELNET_ASR" -f "$JFK" --backend parakeet \
     --speaker-db "$TMP/db" --speaker-db-consent \
     --cache-dir "$TMP/cache-b" \
     >/dev/null 2>"$OUT_B"
@@ -66,7 +66,7 @@ echo "OK: (b) missing --expect-speakers -> exit 27"
 # run is expected to fail later (bogus model path) but the gate warning
 # must still appear before that failure. Exit code is unconstrained.
 OUT_C="$TMP/c.stderr"
-HOME="$TMP/home-c" "$CRISPASR" -f "$JFK" --backend parakeet \
+HOME="$TMP/home-c" "$STELNET_ASR" -f "$JFK" --backend parakeet \
     -m "$TMP/nonexistent-model.gguf" \
     --speaker-db "$TMP/db" \
     --cache-dir "$TMP/cache-c" \

@@ -1,4 +1,4 @@
-# CrispasrC2pa.cmake — shared C2PA (Content Credentials) enablement.
+# StelnetAsrC2pa.cmake — shared C2PA (Content Credentials) enablement.
 #
 # Include once from the top-level CMakeLists; then call stelnettts_enable_c2pa(<tgt>)
 # for every target that includes core/stelnettts_c2pa.h (the core lib + the CLI, so

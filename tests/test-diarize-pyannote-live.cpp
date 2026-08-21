@@ -157,14 +157,14 @@ TEST_CASE("apply_pyannote live: multi-speaker WAV yields ≥2 distinct speaker l
 
     // Build coarse 1-second ASR-segment stand-ins covering the file.
     const int64_t dur_cs = (int64_t)(mono.size() * 100 / 16000);
-    std::vector<CrispasrDiarizeSegment> segs;
+    std::vector<StelnetAsrDiarizeSegment> segs;
     constexpr int64_t kSegCs = 100; // 1 second per segment
     for (int64_t t = 0; t + kSegCs <= dur_cs; t += kSegCs)
         segs.push_back({t, t + kSegCs, -1});
     REQUIRE(segs.size() >= 5);
 
-    CrispasrDiarizeOptions opts;
-    opts.method = CrispasrDiarizeMethod::Pyannote;
+    StelnetAsrDiarizeOptions opts;
+    opts.method = StelnetAsrDiarizeMethod::Pyannote;
     opts.pyannote_model_path = model_path;
     opts.n_threads = 4;
     opts.slice_t0_cs = 0;

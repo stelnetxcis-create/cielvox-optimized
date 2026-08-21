@@ -10,8 +10,8 @@ import com.sun.jna.Structure;
 import java.nio.charset.Charset;
 
 /**
- * Raw JNA declarations for the {@code crispasr_chat_*} C ABI declared in
- * {@code include/crispasr_chat.h} — text in, text out, separate from the ASR
+ * Raw JNA declarations for the {@code stelnet_asr_chat_*} C ABI declared in
+ * {@code include/stelnet_asr_chat.h} — text in, text out, separate from the ASR
  * session surface and usable on its own.
  *
  * <p>This is the unwrapped edge: every entry point takes and returns the C
@@ -26,16 +26,16 @@ import java.nio.charset.Charset;
  */
 public interface ChatLib extends Library {
 
-    /** The loaded {@code crispasr} shared library. */
-    ChatLib INSTANCE = Native.load("crispasr", ChatLib.class);
+    /** The loaded {@code stelnet_asr} shared library. */
+    ChatLib INSTANCE = Native.load("stelnet_asr", ChatLib.class);
 
     /**
-     * The one error code {@code crispasr_chat.h} promises as a contract: a
+     * The one error code {@code stelnet_asr_chat.h} promises as a contract: a
      * registered abort predicate stopped the run rather than the model
      * faulting. Every other non-zero value is a diagnostic aid — read the
      * message, do not switch on the number.
      */
-    int CRISPASR_CHAT_ERR_ABORTED = 40;
+    int STELNET_ASR_CHAT_ERR_ABORTED = 40;
 
     /**
      * C {@code size_t}. JNA's {@code NativeLong} is C {@code long}, which is
@@ -57,7 +57,7 @@ public interface ChatLib extends Library {
     }
 
     /**
-     * {@code crispasr_chat_error}. Left untouched on success; on failure
+     * {@code stelnet_asr_chat_error}. Left untouched on success; on failure
      * {@code code} is non-zero and {@code message} carries a short
      * NUL-terminated diagnostic.
      */
@@ -79,7 +79,7 @@ public interface ChatLib extends Library {
     }
 
     /**
-     * {@code crispasr_chat_message}. The two fields are borrowed
+     * {@code stelnet_asr_chat_message}. The two fields are borrowed
      * NUL-terminated UTF-8 pointers the ABI reads during the call.
      */
     @Structure.FieldOrder({ "role", "content" })
@@ -91,7 +91,7 @@ public interface ChatLib extends Library {
     }
 
     /**
-     * {@code crispasr_chat_open_params}. The three {@code bool} fields are
+     * {@code stelnet_asr_chat_open_params}. The three {@code bool} fields are
      * declared as {@code byte} because C {@code bool} is one byte while JNA
      * maps a Java {@code boolean} to a four-byte int.
      *
@@ -124,7 +124,7 @@ public interface ChatLib extends Library {
         public Pointer chat_template;
     }
 
-    /** {@code crispasr_chat_generate_params}. */
+    /** {@code stelnet_asr_chat_generate_params}. */
     @Structure.FieldOrder({ "max_tokens", "temperature", "top_k", "top_p", "min_p",
             "repeat_penalty", "repeat_last_n", "seed", "stop", "n_stop", "prefill_only" })
     class CGenerateParams extends Structure {
@@ -153,7 +153,7 @@ public interface ChatLib extends Library {
     }
 
     /**
-     * {@code crispasr_chat_on_token}. Fired once per detokenised chunk; the
+     * {@code stelnet_asr_chat_on_token}. Fired once per detokenised chunk; the
      * pointer is valid only for the length of the callback.
      *
      * <p>The chunk is the raw byte output of the detokenizer, so a byte-fallback
@@ -169,7 +169,7 @@ public interface ChatLib extends Library {
     }
 
     /**
-     * {@code crispasr_chat_abort_callback}. Return 1 to LET THE GENERATION
+     * {@code stelnet_asr_chat_abort_callback}. Return 1 to LET THE GENERATION
      * CONTINUE and 0 to abort it — the header's polarity, forwarded unchanged.
      *
      * <p>Declared as {@code byte} rather than {@code boolean} to match the
@@ -177,17 +177,17 @@ public interface ChatLib extends Library {
      */
     interface AbortCallback extends Callback {
         /**
-         * @param user the word handed to {@code crispasr_chat_set_abort_callback}
+         * @param user the word handed to {@code stelnet_asr_chat_set_abort_callback}
          * @return 1 to continue, 0 to abort
          */
         byte invoke(Pointer user);
     }
 
     /** Fill {@code out} with the ABI's own open defaults. */
-    void crispasr_chat_open_params_default(COpenParams out);
+    void stelnet_asr_chat_open_params_default(COpenParams out);
 
     /** Fill {@code out} with the ABI's own generate defaults. */
-    void crispasr_chat_generate_params_default(CGenerateParams out);
+    void stelnet_asr_chat_generate_params_default(CGenerateParams out);
 
     /**
      * Open a session over a GGUF chat model; NULL on failure.
@@ -198,46 +198,46 @@ public interface ChatLib extends Library {
      * side reads the path as UTF-8, so it is marshalled with
      * {@link ChatNative#cstring} like every other string here.
      */
-    Pointer crispasr_chat_open(Pointer modelPath, COpenParams params, ChatError err);
+    Pointer stelnet_asr_chat_open(Pointer modelPath, COpenParams params, ChatError err);
 
     /** Free the session and its KV cache. */
-    void crispasr_chat_close(Pointer session);
+    void stelnet_asr_chat_close(Pointer session);
 
     /** Clear the KV cache so the next generate re-prefills from scratch. */
-    int crispasr_chat_reset(Pointer session, ChatError err);
+    int stelnet_asr_chat_reset(Pointer session, ChatError err);
 
     /** One-shot generate; returns a malloc'd UTF-8 string, or NULL on failure. */
-    Pointer crispasr_chat_generate(Pointer session, CMessage[] messages, SizeT nMessages,
+    Pointer stelnet_asr_chat_generate(Pointer session, CMessage[] messages, SizeT nMessages,
             CGenerateParams params, ChatError err);
 
     /** Streaming generate; 0 on clean completion. */
-    int crispasr_chat_generate_stream(Pointer session, CMessage[] messages, SizeT nMessages,
+    int stelnet_asr_chat_generate_stream(Pointer session, CMessage[] messages, SizeT nMessages,
             CGenerateParams params, OnTokenCallback onToken, Pointer user, ChatError err);
 
     /** Register (or, with a NULL callback, clear) the abort predicate. */
-    void crispasr_chat_set_abort_callback(Pointer session, AbortCallback cb, Pointer user);
+    void stelnet_asr_chat_set_abort_callback(Pointer session, AbortCallback cb, Pointer user);
 
     /** Name of the chat template the session resolved against. */
-    String crispasr_chat_template_name(Pointer session);
+    String stelnet_asr_chat_template_name(Pointer session);
 
     /** The context window in tokens. */
-    int crispasr_chat_n_ctx(Pointer session);
+    int stelnet_asr_chat_n_ctx(Pointer session);
 
     /** Prompt length in tokens for {@code messages}; negative on failure. */
-    int crispasr_chat_count_tokens(Pointer session, CMessage[] messages, SizeT nMessages,
+    int stelnet_asr_chat_count_tokens(Pointer session, CMessage[] messages, SizeT nMessages,
             ChatError err);
 
     /**
      * Pre-flight working-set estimate in bytes; 0 with {@code err} filled on
      * failure. Deliberately conservative — see
      * {@link ChatSession#memoryEstimate(String, ChatOpenParams)}. The path is
-     * a {@code Pointer} for the reason given on {@link #crispasr_chat_open}.
+     * a {@code Pointer} for the reason given on {@link #stelnet_asr_chat_open}.
      */
-    SizeT crispasr_chat_memory_estimate(Pointer modelPath, COpenParams params, ChatError err);
+    SizeT stelnet_asr_chat_memory_estimate(Pointer modelPath, COpenParams params, ChatError err);
 
-    /** Free a string returned by {@link #crispasr_chat_generate}. */
-    void crispasr_chat_string_free(Pointer s);
+    /** Free a string returned by {@link #stelnet_asr_chat_generate}. */
+    void stelnet_asr_chat_string_free(Pointer s);
 
     /** The canonical "you are talking to an AI" wording (EU AI Act Art. 50(1)). */
-    String crispasr_chat_ai_disclosure_text();
+    String stelnet_asr_chat_ai_disclosure_text();
 }

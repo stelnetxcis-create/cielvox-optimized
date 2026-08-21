@@ -1,4 +1,4 @@
-// stelnettts_backend_stelnettts — CrispasrBackend wrapper around stelnettts.
+// stelnettts_backend_stelnettts — StelnetAsrBackend wrapper around stelnettts.
 //
 // This adapter exists so `--backend whisper` (and --list-backends) can run
 // whisper through the same dispatch layer as every other stelnettts backend.
@@ -36,7 +36,7 @@
 
 namespace {
 
-class WhisperBackend : public CrispasrBackend {
+class WhisperBackend : public StelnetAsrBackend {
 public:
     WhisperBackend() = default;
     ~WhisperBackend() override { WhisperBackend::shutdown(); }
@@ -259,6 +259,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_whisper_backend() {
-    return std::unique_ptr<CrispasrBackend>(new WhisperBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_whisper_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new WhisperBackend());
 }

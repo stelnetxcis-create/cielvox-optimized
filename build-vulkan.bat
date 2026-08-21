@@ -50,17 +50,17 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: Build
-echo [INFO] Building crispasr...
-cmake --build build-vulkan --target crispasr-cli
+echo [INFO] Building stelnet_asr...
+cmake --build build-vulkan --target stelnet_asr-cli
 
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Build failed.
     exit /b 1
 )
 
-if not exist "build-vulkan\bin\crispasr.exe" (
-    echo [ERROR] Build succeeded but build-vulkan\bin\crispasr.exe not found.
+if not exist "build-vulkan\bin\stelnet_asr.exe" (
+    echo [ERROR] Build succeeded but build-vulkan\bin\stelnet_asr.exe not found.
     exit /b 1
 )
 
-echo [SUCCESS] Build complete. Binary is at build-vulkan\bin\crispasr.exe
+echo [SUCCESS] Build complete. Binary is at build-vulkan\bin\stelnet_asr.exe

@@ -24,7 +24,7 @@
 
 namespace {
 
-class HtdemucsBackend : public CrispasrBackend {
+class HtdemucsBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "htdemucs"; }
 
@@ -44,6 +44,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_htdemucs_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_htdemucs_backend() {
     return std::make_unique<HtdemucsBackend>();
 }

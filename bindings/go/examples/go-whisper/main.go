@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	// Packages
-	whisper "github.com/CrispStrobe/CrispASR/bindings/go/pkg/whisper"
+	whisper "github.com/CrispStrobe/StelnetASR/bindings/go/pkg/whisper"
 )
 
 func main() {

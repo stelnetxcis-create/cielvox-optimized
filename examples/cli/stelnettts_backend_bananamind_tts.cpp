@@ -16,7 +16,7 @@
 
 namespace {
 
-class BananaMindTTSBackend : public CrispasrBackend {
+class BananaMindTTSBackend : public StelnetAsrBackend {
 public:
     ~BananaMindTTSBackend() override { BananaMindTTSBackend::shutdown(); }
 
@@ -74,6 +74,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_bananamind_tts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_bananamind_tts_backend() {
     return std::make_unique<BananaMindTTSBackend>();
 }

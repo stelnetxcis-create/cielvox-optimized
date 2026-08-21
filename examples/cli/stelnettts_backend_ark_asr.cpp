@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-class ArkAsrBackend : public CrispasrBackend {
+class ArkAsrBackend : public StelnetAsrBackend {
 public:
     ArkAsrBackend() = default;
     ~ArkAsrBackend() override { ArkAsrBackend::shutdown(); }
@@ -86,6 +86,6 @@ private:
     ark_asr_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_ark_asr_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_ark_asr_backend() {
     return std::make_unique<ArkAsrBackend>();
 }

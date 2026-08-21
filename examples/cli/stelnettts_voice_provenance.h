@@ -67,7 +67,7 @@ inline bool pack_declares_clone(const std::string& path) {
 // A bank is a single GGUF holding many voices, selected by name (cosyvoice3's
 // voices.gguf). The gate never sees its path — the backend discovers it as a
 // sibling of the model or from an env var — so it has to be handed in; see
-// CrispasrBackend::voice_bank_path().
+// StelnetAsrBackend::voice_bank_path().
 //
 // Precedence: the per-voice stamp, then the bank-wide one. `has_stamps` reports
 // whether the bundle carries provenance metadata at all, which is what
@@ -196,7 +196,7 @@ inline std::string resolve_voice_path(const std::string& voice, const std::strin
 // says, and is the reason the TADA inline clone is gated at all.
 //
 // `bank_path` is the multi-voice bundle the backend will select from, when it
-// has one (CrispasrBackend::voice_bank_path()). Without it a bank entry is a
+// has one (StelnetAsrBackend::voice_bank_path()). Without it a bank entry is a
 // bare name that names no file, and the whole gate silently returns "preset" —
 // which is how cosyvoice3's voice-clone bundles went ungated on every surface.
 inline CloneDecision classify_voice(const std::string& voice, const std::string& voice_dir,

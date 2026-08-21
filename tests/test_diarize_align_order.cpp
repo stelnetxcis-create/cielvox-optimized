@@ -8,7 +8,7 @@
 //   - handles edge cases: ties, short words, multiple turns, empty input.
 //
 // Pure CPU, no model load, no subprocess — all inputs are synthetic.
-// Uses a pre-built CrispasrSherpaCache to exercise the global-sherpa
+// Uses a pre-built StelnetAsrSherpaCache to exercise the global-sherpa
 // diarize path without spawning the sherpa subprocess.
 //
 // Run: ctest -R test-diarize-align-order --output-on-failure
@@ -57,8 +57,8 @@ static stelnettts_segment make_seg(int64_t t0, int64_t t1, const std::string& te
     return s;
 }
 
-static CrispasrSherpaCache make_sherpa_cache(const std::vector<std::tuple<double, double, int>>& regions) {
-    CrispasrSherpaCache cache;
+static StelnetAsrSherpaCache make_sherpa_cache(const std::vector<std::tuple<double, double, int>>& regions) {
+    StelnetAsrSherpaCache cache;
     for (auto& [t0, t1, spk] : regions)
         cache.segments.push_back({t0, t1, spk});
     return cache;

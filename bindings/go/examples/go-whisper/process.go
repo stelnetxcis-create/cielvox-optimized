@@ -7,7 +7,7 @@ import (
 	"time"
 
 	// Package imports
-	whisper "github.com/CrispStrobe/CrispASR/bindings/go/pkg/whisper"
+	whisper "github.com/CrispStrobe/StelnetASR/bindings/go/pkg/whisper"
 	wav "github.com/go-audio/wav"
 )
 

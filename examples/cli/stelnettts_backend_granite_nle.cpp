@@ -17,7 +17,7 @@
 #include <vector>
 #include "core/stelnettts_env.h"
 
-class GraniteNleBackend : public CrispasrBackend {
+class GraniteNleBackend : public StelnetAsrBackend {
 public:
     GraniteNleBackend() = default;
 
@@ -89,6 +89,6 @@ private:
     granite_nle_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_granite_nle_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_granite_nle_backend() {
     return std::make_unique<GraniteNleBackend>();
 }

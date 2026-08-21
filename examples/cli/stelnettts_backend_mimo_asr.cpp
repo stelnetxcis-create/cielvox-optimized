@@ -51,7 +51,7 @@ std::string discover_audio_tokenizer(const std::string& model_path) {
     return "";
 }
 
-class MimoAsrBackend : public CrispasrBackend {
+class MimoAsrBackend : public StelnetAsrBackend {
 public:
     MimoAsrBackend() = default;
     ~MimoAsrBackend() override { MimoAsrBackend::shutdown(); }
@@ -140,7 +140,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
         if (!params.ask.empty()) {
@@ -189,6 +189,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_mimo_asr_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_mimo_asr_backend() {
     return std::make_unique<MimoAsrBackend>();
 }

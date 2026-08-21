@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-enum class CrispasrDiarizeMethod {
+enum class StelnetAsrDiarizeMethod {
     Energy,
     Xcorr,
     VadTurns,
@@ -51,14 +51,14 @@ enum class CrispasrDiarizeMethod {
 // One ASR segment, in / out. Caller fills the centisecond range;
 // diarization fills `speaker` with a zero-based index (-1 means
 // "method couldn't decide — leave unlabelled").
-struct CrispasrDiarizeSegment {
+struct StelnetAsrDiarizeSegment {
     int64_t t0_cs = 0; // in
     int64_t t1_cs = 0; // in
     int speaker = -1;  // out
 };
 
-struct CrispasrDiarizeOptions {
-    CrispasrDiarizeMethod method = CrispasrDiarizeMethod::VadTurns;
+struct StelnetAsrDiarizeOptions {
+    StelnetAsrDiarizeMethod method = StelnetAsrDiarizeMethod::VadTurns;
     /// GGUF path for the Pyannote segmentation net. Ignored unless
     /// `method == Pyannote`. Must be a concrete file path — auto-
     /// download / cache is the caller's responsibility.
@@ -84,7 +84,7 @@ struct CrispasrDiarizeOptions {
 /// A speaker turn derived from the audio, independent of the caller's
 /// segmentation. Only the FoxNose method produces these; the others label
 /// caller segments directly and leave the vector empty.
-struct CrispasrDiarizeTurn {
+struct StelnetAsrDiarizeTurn {
     double start_s = 0.0; ///< relative to the sample buffer, not absolute
     double end_s = 0.0;
     int speaker = 0;
@@ -103,8 +103,8 @@ struct CrispasrDiarizeTurn {
 /// split a segment that spans several speakers — labelling alone is limited to
 /// the caller's own segment granularity.
 bool stelnettts_diarize_segments(const float* left, const float* right, int n_samples, bool is_stereo,
-                               std::vector<CrispasrDiarizeSegment>& segs, const CrispasrDiarizeOptions& opts,
-                               std::vector<CrispasrDiarizeTurn>* out_turns = nullptr);
+                               std::vector<StelnetAsrDiarizeSegment>& segs, const StelnetAsrDiarizeOptions& opts,
+                               std::vector<StelnetAsrDiarizeTurn>* out_turns = nullptr);
 
 /// Free the cached pyannote segmentation context (§176e). Call at shutdown
 /// or when the model is no longer needed.

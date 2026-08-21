@@ -449,7 +449,7 @@ else()
     message(STATUS "Opus output disabled (libopus-dev not found)")
 endif()
 
-# C2PA (Content Credentials) signing — shared logic in cmake/CrispasrC2pa.cmake.
+# C2PA (Content Credentials) signing — shared logic in cmake/StelnetAsrC2pa.cmake.
 stelnettts_enable_c2pa(${TARGET})
 
 install(TARGETS ${TARGET} RUNTIME BUNDLE DESTINATION bin)

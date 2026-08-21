@@ -11,14 +11,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
-if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="./build-ninja-compile/bin/stelnettts"
+STELNET_ASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
+if [ ! -x "$STELNET_ASR" ]; then
+    STELNET_ASR="./build-ninja-compile/bin/stelnettts"
 fi
-if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="/tmp/build-issue89/bin/stelnettts"
+if [ ! -x "$STELNET_ASR" ]; then
+    STELNET_ASR="/tmp/build-issue89/bin/stelnettts"
 fi
-if [ ! -x "$CRISPASR" ]; then
+if [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found"
     exit 2
 fi
@@ -47,12 +47,12 @@ if [ ! -f "$AUDIO" ]; then
 fi
 
 echo "=== Benchmark smoke test ==="
-echo "Binary: $CRISPASR"
+echo "Binary: $STELNET_ASR"
 echo "Model:  $MODEL"
 echo "Audio:  $AUDIO"
 
 # Run the benchmark driver
-export STELNETTTS_BIN="$CRISPASR"
+export STELNETTTS_BIN="$STELNET_ASR"
 python3 tests/benchmark_asr.py \
     --audio "$AUDIO" \
     --model "$MODEL" \

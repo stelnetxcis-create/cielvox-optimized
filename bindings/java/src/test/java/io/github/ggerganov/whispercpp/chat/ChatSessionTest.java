@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * End-to-end cases for the chat binding, gated on {@code CRISPASR_CHAT_TEST_MODEL}
+ * End-to-end cases for the chat binding, gated on {@code STELNET_ASR_CHAT_TEST_MODEL}
  * — an absolute path to a GGUF chat model — the same house convention the other
  * bindings' chat suites use. The whole class self-skips when it is unset, so a
  * fresh checkout has nothing to download.
@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the model's own metadata; its failure path, which needs no model, is covered
  * in {@link ChatParamsTest} instead.
  */
-@EnabledIfEnvironmentVariable(named = "CRISPASR_CHAT_TEST_MODEL", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "STELNET_ASR_CHAT_TEST_MODEL", matches = ".+")
 class ChatSessionTest {
 
     /** Three rare code points Gemma 3 has no whole token for. */
@@ -97,7 +97,7 @@ class ChatSessionTest {
 
     @BeforeAll
     static void openSession() {
-        modelPath = System.getenv("CRISPASR_CHAT_TEST_MODEL");
+        modelPath = System.getenv("STELNET_ASR_CHAT_TEST_MODEL");
         session = ChatSession.open(modelPath, new ChatOpenParams().nCtx(1024).nThreads(4));
         countingSession = ChatSession.open(modelPath,
                 new ChatOpenParams().nCtx(2048).nBatch(256).nUbatch(256));
@@ -162,7 +162,7 @@ class ChatSessionTest {
      */
     @Test
     void aModelUnderANonAsciiPathOpensAndEstimates() throws Exception {
-        Path dir = Files.createTempDirectory("crispasr-chat-ümläut-日本語-");
+        Path dir = Files.createTempDirectory("stelnet_asr-chat-ümläut-日本語-");
         Path link = dir.resolve("modèle-模型.gguf");
         try {
             Files.createSymbolicLink(link, new File(modelPath).toPath().toAbsolutePath());
@@ -271,7 +271,7 @@ class ChatSessionTest {
         session.setAbortCallback(() -> false);
         ChatAbortedException e = assertThrows(ChatAbortedException.class,
                 () -> session.generate(TURNS, greedy(16)));
-        assertEquals(ChatLib.CRISPASR_CHAT_ERR_ABORTED, e.code());
+        assertEquals(ChatLib.STELNET_ASR_CHAT_ERR_ABORTED, e.code());
     }
 
     /**
@@ -566,7 +566,7 @@ class ChatSessionTest {
 
     /**
      * Run one generation straight against the C ABI, recording the exact bytes
-     * of every {@code crispasr_chat_on_token} callback. The wrapper is
+     * of every {@code stelnet_asr_chat_on_token} callback. The wrapper is
      * deliberately bypassed: the point is to see what C actually delivers.
      */
     private static List<byte[]> rawChunkBytes(List<ChatMessage> messages, int maxTokens) {
@@ -575,11 +575,11 @@ class ChatSessionTest {
         ChatLib.ChatError err = new ChatLib.ChatError();
 
         ChatLib.COpenParams open = new ChatLib.COpenParams();
-        ChatLib.INSTANCE.crispasr_chat_open_params_default(open);
+        ChatLib.INSTANCE.stelnet_asr_chat_open_params_default(open);
         open.n_ctx = 1024;
-        Pointer handle = ChatLib.INSTANCE.crispasr_chat_open(
+        Pointer handle = ChatLib.INSTANCE.stelnet_asr_chat_open(
                 ChatNative.cstring(modelPath, "modelPath", owned), open, err);
-        assertNotNull(handle, "raw crispasr_chat_open failed: " + err.messageString());
+        assertNotNull(handle, "raw stelnet_asr_chat_open failed: " + err.messageString());
         try {
             ChatLib.CMessage[] cmsgs =
                     (ChatLib.CMessage[]) new ChatLib.CMessage().toArray(messages.size());
@@ -588,7 +588,7 @@ class ChatSessionTest {
                 cmsgs[i].content = ChatNative.cstring(messages.get(i).content(), "content", owned);
             }
             ChatLib.CGenerateParams gp = new ChatLib.CGenerateParams();
-            ChatLib.INSTANCE.crispasr_chat_generate_params_default(gp);
+            ChatLib.INSTANCE.stelnet_asr_chat_generate_params_default(gp);
             gp.max_tokens = maxTokens;
             gp.temperature = 0f;
 
@@ -598,12 +598,12 @@ class ChatSessionTest {
                     chunks.add(ChatNative.readBytes(utf8Chunk));
                 }
             };
-            int rc = ChatLib.INSTANCE.crispasr_chat_generate_stream(handle, cmsgs,
+            int rc = ChatLib.INSTANCE.stelnet_asr_chat_generate_stream(handle, cmsgs,
                     new ChatLib.SizeT(messages.size()), gp, cb, Pointer.NULL, err);
-            assertEquals(0, rc, "raw crispasr_chat_generate_stream: " + err.messageString());
+            assertEquals(0, rc, "raw stelnet_asr_chat_generate_stream: " + err.messageString());
             owned.clear();
         } finally {
-            ChatLib.INSTANCE.crispasr_chat_close(handle);
+            ChatLib.INSTANCE.stelnet_asr_chat_close(handle);
         }
         return chunks;
     }

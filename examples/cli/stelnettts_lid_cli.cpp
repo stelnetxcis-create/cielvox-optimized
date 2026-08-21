@@ -233,7 +233,7 @@ bool detect_with_sherpa(const float* samples, int n_samples, const whisper_param
 
 } // namespace
 
-bool stelnettts_backend_probe_language(CrispasrBackend& backend, const float* samples, int n_samples,
+bool stelnettts_backend_probe_language(StelnetAsrBackend& backend, const float* samples, int n_samples,
                                      const whisper_params& params, stelnettts_lid_result& out) {
     out = {};
     if (!samples || n_samples <= 0)
@@ -275,15 +275,15 @@ bool stelnettts_detect_language_cli(const float* samples, int n_samples, const w
     }
 
     if (be == "whisper" || be == "whisper-tiny") {
-        CrispasrLidOptions opts;
-        opts.method = CrispasrLidMethod::Whisper;
+        StelnetAsrLidOptions opts;
+        opts.method = StelnetAsrLidMethod::Whisper;
         opts.model_path = resolve_whisper_lid_model(params);
         opts.n_threads = params.n_threads;
         opts.use_gpu = params.use_gpu;
         opts.gpu_device = params.gpu_device;
         opts.flash_attn = params.flash_attn;
         opts.verbose = !params.no_prints;
-        CrispasrLidResult r;
+        StelnetAsrLidResult r;
         if (!stelnettts_detect_language(samples, n_samples, opts, r))
             return false;
         out.lang_code = r.lang_code;
@@ -297,12 +297,12 @@ bool stelnettts_detect_language_cli(const float* samples, int n_samples, const w
         // Native GGUF path first (faster, smaller, no extra runtime).
         if (!model_path.empty() && model_path.size() >= 5 &&
             model_path.compare(model_path.size() - 5, 5, ".gguf") == 0) {
-            CrispasrLidOptions opts;
-            opts.method = CrispasrLidMethod::Silero;
+            StelnetAsrLidOptions opts;
+            opts.method = StelnetAsrLidMethod::Silero;
             opts.model_path = model_path;
             opts.n_threads = params.n_threads;
             opts.verbose = !params.no_prints;
-            CrispasrLidResult r;
+            StelnetAsrLidResult r;
             if (stelnettts_detect_language(samples, n_samples, opts, r)) {
                 out.lang_code = r.lang_code;
                 out.confidence = r.confidence;
@@ -319,12 +319,12 @@ bool stelnettts_detect_language_cli(const float* samples, int n_samples, const w
     if (be == "firered") {
         const std::string model_path = resolve_firered_lid_model(params);
         if (!model_path.empty()) {
-            CrispasrLidOptions opts;
-            opts.method = CrispasrLidMethod::Firered;
+            StelnetAsrLidOptions opts;
+            opts.method = StelnetAsrLidMethod::Firered;
             opts.model_path = model_path;
             opts.n_threads = params.n_threads;
             opts.verbose = !params.no_prints;
-            CrispasrLidResult r;
+            StelnetAsrLidResult r;
             if (stelnettts_detect_language(samples, n_samples, opts, r)) {
                 out.lang_code = r.lang_code;
                 out.confidence = r.confidence;
@@ -339,12 +339,12 @@ bool stelnettts_detect_language_cli(const float* samples, int n_samples, const w
     if (be == "ecapa") {
         const std::string model_path = resolve_ecapa_lid_model(params);
         if (!model_path.empty()) {
-            CrispasrLidOptions opts;
-            opts.method = CrispasrLidMethod::Ecapa;
+            StelnetAsrLidOptions opts;
+            opts.method = StelnetAsrLidMethod::Ecapa;
             opts.model_path = model_path;
             opts.n_threads = params.n_threads;
             opts.verbose = !params.no_prints;
-            CrispasrLidResult r;
+            StelnetAsrLidResult r;
             if (stelnettts_detect_language(samples, n_samples, opts, r)) {
                 out.lang_code = r.lang_code;
                 out.confidence = r.confidence;

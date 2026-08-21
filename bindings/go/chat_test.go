@@ -9,14 +9,14 @@ import (
 	"unicode/utf8"
 
 	// Packages
-	whisper "github.com/CrispStrobe/CrispASR/bindings/go"
+	whisper "github.com/CrispStrobe/StelnetASR/bindings/go"
 	assert "github.com/stretchr/testify/assert"
 )
 
-// The chat cases are gated on CRISPASR_CHAT_TEST_MODEL — a path to a small
+// The chat cases are gated on STELNET_ASR_CHAT_TEST_MODEL — a path to a small
 // GGUF chat model — the same env var the Catch2 chat suite uses. Without it
 // they skip, so a checkout with no model on disk stays green.
-const chatModelEnv = "CRISPASR_CHAT_TEST_MODEL"
+const chatModelEnv = "STELNET_ASR_CHAT_TEST_MODEL"
 
 // chatSmokeMessages is the prompt every generating case runs. Terse on
 // purpose: the cases assert on lengths and reproducibility, not on content.
@@ -96,7 +96,7 @@ func Test_Chat_DisclosureText(t *testing.T) {
 
 // Test_Chat_ParamsKeepABIDefaults is the regression guard on a partial fill:
 // setting one option must leave every other one at the value
-// crispasr_chat_open_params_default / crispasr_chat_generate_params_default
+// stelnet_asr_chat_open_params_default / stelnet_asr_chat_generate_params_default
 // wrote, not at Go's zero value. The accessors read the very C struct that
 // crosses into C, so the check is exact and needs no model.
 //
@@ -257,7 +257,7 @@ func Test_Chat_MemoryEstimate(t *testing.T) {
 // estimate of nothing.
 func Test_Chat_MemoryEstimateRejectsAnUnreadableModel(t *testing.T) {
 	assert := assert.New(t)
-	n, err := whisper.ChatMemoryEstimate("/nonexistent/crispasr-memory-estimate.gguf", nil)
+	n, err := whisper.ChatMemoryEstimate("/nonexistent/stelnet_asr-memory-estimate.gguf", nil)
 	assert.Error(err)
 	assert.Equal(uint64(0), n)
 }

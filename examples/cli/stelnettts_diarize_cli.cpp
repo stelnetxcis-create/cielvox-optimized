@@ -74,7 +74,7 @@ std::string scratch_dir() {
 // Map the library's integer speaker index to the `"(speaker N) "` string
 // shape CLI consumers have relied on since the original stelnettts
 // `--diarize` flag. -1 (method had no info) leaves the field empty.
-void apply_int_speakers_to_stelnettts_segments(const std::vector<CrispasrDiarizeSegment>& in,
+void apply_int_speakers_to_stelnettts_segments(const std::vector<StelnetAsrDiarizeSegment>& in,
                                              std::vector<stelnettts_segment>& out) {
     const size_t n = std::min(in.size(), out.size());
     for (size_t i = 0; i < n; i++) {
@@ -84,8 +84,8 @@ void apply_int_speakers_to_stelnettts_segments(const std::vector<CrispasrDiarize
 }
 
 // Build a lib-style view over the CLI segments (just t0/t1 copied).
-std::vector<CrispasrDiarizeSegment> lib_view(const std::vector<stelnettts_segment>& cli) {
-    std::vector<CrispasrDiarizeSegment> v;
+std::vector<StelnetAsrDiarizeSegment> lib_view(const std::vector<stelnettts_segment>& cli) {
+    std::vector<StelnetAsrDiarizeSegment> v;
     v.reserve(cli.size());
     for (const auto& s : cli)
         v.push_back({s.t0, s.t1, -1});
@@ -331,7 +331,7 @@ std::string resolve_pyannote_model(const whisper_params& params) {
 std::string resolve_foxnose_embedder(const whisper_params& params) {
     std::string mp = params.diarize_embedder;
     if (mp.empty() || mp == "auto") {
-        CrispasrRegistryEntry entry;
+        StelnetAsrRegistryEntry entry;
         if (stelnettts_registry_lookup("wespeaker", entry)) {
             if (stelnettts_license_requires_acceptance(entry.license) &&
                 !stelnettts_license_accepted(entry.license, params.accept_license)) {
@@ -354,7 +354,7 @@ std::string resolve_foxnose_embedder(const whisper_params& params) {
 // Assign speakers from a pre-computed global sherpa timeline.
 // Same logic as assign_speakers_from_sherpa but also splits segments
 // at speaker-turn boundaries when word timestamps are available.
-void assign_speakers_from_global_sherpa(std::vector<stelnettts_segment>& segs, const CrispasrSherpaCache& cache) {
+void assign_speakers_from_global_sherpa(std::vector<stelnettts_segment>& segs, const StelnetAsrSherpaCache& cache) {
     if (!cache.valid() || segs.empty())
         return;
 
@@ -485,7 +485,7 @@ namespace {
 //   3. Each emitted sub-segment carries the contiguous word run, a
 //      rebuilt `text` (joined on space), and inherits other fields
 //      from the original.
-void split_segments_on_pyannote_turns(std::vector<stelnettts_segment>& segs, const CrispasrPyannoteCache& cache) {
+void split_segments_on_pyannote_turns(std::vector<stelnettts_segment>& segs, const StelnetAsrPyannoteCache& cache) {
     if (!cache.valid() || segs.empty())
         return;
 
@@ -611,7 +611,7 @@ void split_segments_on_pyannote_turns(std::vector<stelnettts_segment>& segs, con
 // Without this, labels attach at the caller's segment granularity: an ASR
 // emitting one 26 s segment across several speakers gets ONE label, however
 // good the turns are.
-void split_segments_on_foxnose_turns(std::vector<stelnettts_segment>& segs, const std::vector<CrispasrDiarizeTurn>& turns,
+void split_segments_on_foxnose_turns(std::vector<stelnettts_segment>& segs, const std::vector<StelnetAsrDiarizeTurn>& turns,
                                      int64_t slice_t0_cs) {
     if (turns.empty() || segs.empty())
         return;
@@ -700,7 +700,7 @@ void split_segments_on_foxnose_turns(std::vector<stelnettts_segment>& segs, cons
 } // namespace
 
 bool stelnettts_compute_pyannote_cache(const float* full_audio, int n_samples, const whisper_params& params,
-                                     CrispasrPyannoteCache& out) {
+                                     StelnetAsrPyannoteCache& out) {
     out = {};
     if (!full_audio || n_samples <= 0)
         return false;
@@ -729,7 +729,7 @@ bool stelnettts_compute_pyannote_cache(const float* full_audio, int n_samples, c
 }
 
 bool stelnettts_compute_sherpa_cache(const float* full_audio, int n_samples, const whisper_params& params,
-                                   CrispasrSherpaCache& out) {
+                                   StelnetAsrSherpaCache& out) {
     out = {};
     if (!full_audio || n_samples <= 0)
         return false;
@@ -844,8 +844,8 @@ bool stelnettts_apply_foxnose_global(std::vector<stelnettts_segment>& all_segs, 
         return false;
     }
 
-    CrispasrDiarizeOptions opts;
-    opts.method = CrispasrDiarizeMethod::FoxNose;
+    StelnetAsrDiarizeOptions opts;
+    opts.method = StelnetAsrDiarizeMethod::FoxNose;
     opts.n_threads = params.n_threads;
     opts.slice_t0_cs = 0; // all_segs timestamps are absolute
     opts.foxnose_embedder_path = resolve_foxnose_embedder(params);
@@ -853,7 +853,7 @@ bool stelnettts_apply_foxnose_global(std::vector<stelnettts_segment>& all_segs, 
     opts.num_speakers = params.diarize_num_speakers;
 
     auto lib_segs = lib_view(all_segs);
-    std::vector<CrispasrDiarizeTurn> turns;
+    std::vector<StelnetAsrDiarizeTurn> turns;
     const float* pcm = samples.data();
     if (!stelnettts_diarize_segments(pcm, pcm, (int)samples.size(), /*is_stereo=*/false, lib_segs, opts, &turns))
         return false;
@@ -867,7 +867,7 @@ bool stelnettts_apply_foxnose_global(std::vector<stelnettts_segment>& all_segs, 
 
 bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<float>& right, bool is_stereo,
                             int64_t slice_t0_cs, std::vector<stelnettts_segment>& segs, const whisper_params& params,
-                            const CrispasrPyannoteCache* pyannote_cache, const CrispasrSherpaCache* sherpa_cache) {
+                            const StelnetAsrPyannoteCache* pyannote_cache, const StelnetAsrSherpaCache* sherpa_cache) {
     if (segs.empty())
         return true;
 
@@ -878,16 +878,16 @@ bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<
     }
 
     // Shared in-process methods go through the library.
-    CrispasrDiarizeMethod lib_method;
+    StelnetAsrDiarizeMethod lib_method;
     bool use_lib = true;
     if (method == "energy") {
-        lib_method = CrispasrDiarizeMethod::Energy;
+        lib_method = StelnetAsrDiarizeMethod::Energy;
     } else if (method == "xcorr" || method == "cross-correlation") {
-        lib_method = CrispasrDiarizeMethod::Xcorr;
+        lib_method = StelnetAsrDiarizeMethod::Xcorr;
     } else if (method == "vad-turns" || method == "turns") {
-        lib_method = CrispasrDiarizeMethod::VadTurns;
+        lib_method = StelnetAsrDiarizeMethod::VadTurns;
     } else if (method == "pyannote") {
-        lib_method = CrispasrDiarizeMethod::Pyannote;
+        lib_method = StelnetAsrDiarizeMethod::Pyannote;
     } else if (method == "foxnose" || method == "foxnose-diarize") {
         // The unified runner diarizes foxnose GLOBALLY after transcription
         // (stelnettts_apply_foxnose_global) so speaker identities are consistent
@@ -895,7 +895,7 @@ bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<
         // for every slice and produce labels the global pass then overwrites.
         if (params.diarize_foxnose_global)
             return true;
-        lib_method = CrispasrDiarizeMethod::FoxNose;
+        lib_method = StelnetAsrDiarizeMethod::FoxNose;
     } else {
         use_lib = false;
     }
@@ -909,7 +909,7 @@ bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<
     // segs[i].t0/.t1 are already absolute, so we pass slice_t0_cs=0
     // into assign_speakers_from_log_posteriors (the cache buffer's
     // origin), independent of the per-slice slice_t0_cs.
-    if (use_lib && lib_method == CrispasrDiarizeMethod::Pyannote && pyannote_cache && pyannote_cache->valid()) {
+    if (use_lib && lib_method == StelnetAsrDiarizeMethod::Pyannote && pyannote_cache && pyannote_cache->valid()) {
         // Phase 1 first: assign each ASR segment its dominant speaker
         // (and crucially DO leave seg.speaker populated for segments
         // that get further split by the next step, since the splitter
@@ -938,13 +938,13 @@ bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<
     }
 
     if (use_lib) {
-        CrispasrDiarizeOptions opts;
+        StelnetAsrDiarizeOptions opts;
         opts.method = lib_method;
         opts.n_threads = params.n_threads;
         opts.slice_t0_cs = slice_t0_cs;
-        if (lib_method == CrispasrDiarizeMethod::Pyannote)
+        if (lib_method == StelnetAsrDiarizeMethod::Pyannote)
             opts.pyannote_model_path = resolve_pyannote_model(params);
-        if (lib_method == CrispasrDiarizeMethod::FoxNose) {
+        if (lib_method == StelnetAsrDiarizeMethod::FoxNose) {
             // Reuses the existing --diarize-embedder / --diarize-max-speakers
             // knobs rather than inventing parallel ones.
             opts.foxnose_embedder_path = resolve_foxnose_embedder(params);
@@ -964,11 +964,11 @@ bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<
         const int n = (int)left.size();
         const float* l = left.data();
         const float* r = (is_stereo && !right.empty()) ? right.data() : l;
-        std::vector<CrispasrDiarizeTurn> foxnose_turns;
+        std::vector<StelnetAsrDiarizeTurn> foxnose_turns;
         if (!stelnettts_diarize_segments(l, r, n, is_stereo, lib_segs, opts, &foxnose_turns)) {
             // pyannote model load failed — try sherpa subprocess fallback
             // when we can (mono input is what sherpa is best at).
-            if (lib_method == CrispasrDiarizeMethod::Pyannote) {
+            if (lib_method == StelnetAsrDiarizeMethod::Pyannote) {
                 std::vector<float> mono = is_stereo ? std::vector<float>(left) : left;
                 if (is_stereo) {
                     for (size_t j = 0; j < mono.size() && j < right.size(); j++)
@@ -983,7 +983,7 @@ bool stelnettts_apply_diarize(const std::vector<float>& left, const std::vector<
         // a caller segment spanning several speakers can be split at word-
         // aligned boundaries instead of collapsing to one label. Segments
         // without word timestamps keep their segment-level label.
-        if (lib_method == CrispasrDiarizeMethod::FoxNose)
+        if (lib_method == StelnetAsrDiarizeMethod::FoxNose)
             split_segments_on_foxnose_turns(segs, foxnose_turns, slice_t0_cs);
         return true;
     }
@@ -1046,7 +1046,7 @@ static int stelnettts_embed_workers(size_t n_candidates) {
 }
 
 static void stelnettts_embed_segments(const std::vector<stelnettts_segment>& segs, const float* full_audio, int n_samples,
-                                    CrispasrSpeakerEmbedder* embedder, int d, std::vector<size_t>& embed_idx,
+                                    StelnetAsrSpeakerEmbedder* embedder, int d, std::vector<size_t>& embed_idx,
                                     std::vector<float>& embeddings) {
     constexpr int64_t MIN_EMBED_CS = 25; // 0.25 s
     // This stage is the dominant diarization cost on files with many segments
@@ -1081,8 +1081,8 @@ static void stelnettts_embed_segments(const std::vector<stelnettts_segment>& seg
 
     // One embedder per worker; worker 0 reuses the caller's. If cloning is not
     // supported, or only one worker is wanted, this stays exactly the old loop.
-    std::vector<std::unique_ptr<CrispasrSpeakerEmbedder>> owned;
-    std::vector<CrispasrSpeakerEmbedder*> workers{embedder};
+    std::vector<std::unique_ptr<StelnetAsrSpeakerEmbedder>> owned;
+    std::vector<StelnetAsrSpeakerEmbedder*> workers{embedder};
     const int want = stelnettts_embed_workers(jobs.size());
     for (int k = 1; k < want; k++) {
         auto c = embedder->clone();
@@ -1096,7 +1096,7 @@ static void stelnettts_embed_segments(const std::vector<stelnettts_segment>& seg
     // whatever order the workers finish in.
     std::vector<std::vector<float>> out(jobs.size());
     std::atomic<size_t> next{0};
-    auto run = [&](CrispasrSpeakerEmbedder* emb) {
+    auto run = [&](StelnetAsrSpeakerEmbedder* emb) {
         std::vector<float> tmp(d);
         for (;;) {
             const size_t j = next.fetch_add(1);
@@ -1138,8 +1138,8 @@ static void stelnettts_embed_segments(const std::vector<stelnettts_segment>& seg
 }
 
 void stelnettts_remap_speakers_via_embeddings(std::vector<stelnettts_segment>& segs, const float* full_audio, int n_samples,
-                                            CrispasrSpeakerEmbedder* embedder, const whisper_params& params,
-                                            CrispasrClusterEmbeddings* out_clusters) {
+                                            StelnetAsrSpeakerEmbedder* embedder, const whisper_params& params,
+                                            StelnetAsrClusterEmbeddings* out_clusters) {
     if (!embedder || segs.empty() || !full_audio || n_samples <= 0)
         return;
 
@@ -1243,7 +1243,7 @@ void stelnettts_remap_speakers_via_embeddings(std::vector<stelnettts_segment>& s
     }
 }
 
-int stelnettts_identify_speaker_clusters(std::vector<stelnettts_segment>& segs, const CrispasrClusterEmbeddings& ce,
+int stelnettts_identify_speaker_clusters(std::vector<stelnettts_segment>& segs, const StelnetAsrClusterEmbeddings& ce,
                                        const struct speaker_db* db, float threshold, bool no_prints) {
     if (!ce.valid() || !db || speaker_db_count(db) <= 0)
         return 0;
@@ -1275,7 +1275,7 @@ int stelnettts_identify_speaker_clusters(std::vector<stelnettts_segment>& segs, 
 }
 
 bool stelnettts_identify_single_speaker(std::vector<stelnettts_segment>& segs, const float* full_audio, int n_samples,
-                                      CrispasrSpeakerEmbedder* embedder, const struct speaker_db* db, float threshold,
+                                      StelnetAsrSpeakerEmbedder* embedder, const struct speaker_db* db, float threshold,
                                       bool no_prints) {
     if (!embedder || segs.empty() || !full_audio || n_samples <= 0 || !db || speaker_db_count(db) <= 0)
         return false;

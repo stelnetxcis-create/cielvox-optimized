@@ -814,7 +814,7 @@ Four asks came back from the CometBeat agent. Answers, with the facts checked
 against `origin/main` rather than assumed:
 
 **1. `separate()` Dart binding — DONE, stop shelling out to the CLI.**
-Landed on main (`05ee77b17`). `CrispasrSession.separate(Float32List pcmStereo)
+Landed on main (`05ee77b17`). `StelnetAsrSession.separate(Float32List pcmStereo)
 -> List<Stem>` where `Stem = ({String name, Float32List pcm})`, plus a
 `separateSampleRate` probe. Verified end-to-end through the real FFI against
 `Xenna/htdemucs-GGUF` q4_k: 4 stems (drums/bass/other/vocals), interleaved
@@ -831,7 +831,7 @@ backend: "piano-transcription")`; it is in the C ABI backend list). There is
 **no dedicated note-event C ABI**. The CLI adapter converts each detected note
 into one `stelnettts_segment`: `t0`/`t1` are onset/offset, and `text` is the note
 name plus velocity (e.g. `"C4 v=80"`), with `CAP_TIMESTAMPS_NATIVE`.
-So `loadCrispasrPiano` can be un-stubbed immediately by opening that backend and
+So `loadStelnetAsrPiano` can be un-stubbed immediately by opening that backend and
 parsing segments — but string-parsing `"C4 v=80"` back into a `NoteEvent` is
 lossy and ugly. **A proper `stelnettts_session_piano_notes*` C ABI returning
 `{midi, onMs, offMs, velocity}` is the right fix and is now a §251 item.** Say if
@@ -840,7 +840,7 @@ and a real seam.
 
 **3. The dylib — correcting an assumption: the pub package does NOT ship or
 download one.** `stelnettts` is a pure Dart FFI package; it opens whatever native
-library the host app provides. `CrispasrSession.open` probes, in order:
+library the host app provides. `StelnetAsrSession.open` probes, in order:
 `libstelnettts.dylib`, `stelnettts.framework/stelnettts`, `libwhisper.dylib`,
 `whisper.framework/whisper` on macOS/iOS (`libstelnettts.so` on Linux/Android), or
 you pass `libPath:` explicitly. **Canonical filename: `libstelnettts.dylib`.**
@@ -869,7 +869,7 @@ and not a bug in either.
   Dart `pianoNotes()`). Return structured note events
   (`{midi, onMs, offMs, velocity}`) instead of forcing consumers to parse
   `"C4 v=80"` out of segment text. Then bind it in Dart mirroring `pitch()`.
-  Blocks CometBeat's `loadCrispasrPiano` from being a clean seam.
+  Blocks CometBeat's `loadStelnetAsrPiano` from being a clean seam.
 
 ---
 

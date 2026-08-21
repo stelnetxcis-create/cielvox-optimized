@@ -11,11 +11,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build/bin/Release/stelnettts.exe build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
@@ -52,7 +52,7 @@ echo "model:   $MODEL"
 echo "backend: $BACKEND"
 
 # Start the server with the throw injection ARMED.
-STELNETTTS_TEST_STREAM_THROW=1 "$CRISPASR" --server --backend "$BACKEND" -m "$MODEL" \
+STELNETTTS_TEST_STREAM_THROW=1 "$STELNET_ASR" --server --backend "$BACKEND" -m "$MODEL" \
     --cache-dir "$CACHE_DIR" --host 127.0.0.1 --port "$PORT" --no-prints > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 

@@ -53,17 +53,17 @@ static stelnettts_segment make_seg(int64_t t0, int64_t t1, const std::string& te
     return s;
 }
 
-static CrispasrSherpaCache make_sherpa_cache(const std::vector<std::tuple<double, double, int>>& regions) {
-    CrispasrSherpaCache cache;
+static StelnetAsrSherpaCache make_sherpa_cache(const std::vector<std::tuple<double, double, int>>& regions) {
+    StelnetAsrSherpaCache cache;
     for (auto& [t0, t1, spk] : regions)
         cache.segments.push_back({t0, t1, spk});
     return cache;
 }
 
-// ── Test: CrispasrSherpaCache validity ──────────────────────────────
+// ── Test: StelnetAsrSherpaCache validity ──────────────────────────────
 
 TEST_CASE("sherpa cache: empty is invalid", "[diarize][unit]") {
-    CrispasrSherpaCache cache;
+    StelnetAsrSherpaCache cache;
     REQUIRE_FALSE(cache.valid());
 }
 

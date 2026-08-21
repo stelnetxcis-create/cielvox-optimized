@@ -9,7 +9,7 @@
 // does with ECAPA + agglomerative clustering.
 //
 // It REUSES the existing StelnetTTS speaker stack rather than reinventing it:
-//   * CrispasrSpeakerEmbedder  (src/stelnettts_speaker_embedder.h) — TitaNet /
+//   * StelnetAsrSpeakerEmbedder  (src/stelnettts_speaker_embedder.h) — TitaNet /
 //     ECAPA embedding of a PCM range, L2-normalized.
 //   * stelnettts_agglomerative_cluster / _cluster_centroids
 //     (src/stelnettts_speaker_cluster.h) — single-linkage cosine clustering.
@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-class CrispasrSpeakerEmbedder;
+class StelnetAsrSpeakerEmbedder;
 
 // One decoded turn to be linked. The linker never reads the transcript text —
 // the caller keeps it and applies the returned global speaker id.
@@ -97,4 +97,4 @@ int stelnettts_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, cons
 // Deterministic: global ids are assigned in first-appearance order of the
 // grouping keys, so the output is stable across runs on the same input.
 TironLinkResult stelnettts_tiron_link_speakers(const std::vector<TironTurn>& turns, const float* pcm_16k, int n_samples,
-                                             CrispasrSpeakerEmbedder* embedder, const TironLinkOptions& opts = {});
+                                             StelnetAsrSpeakerEmbedder* embedder, const TironLinkOptions& opts = {});

@@ -12,11 +12,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found (build first)"; exit 0
 fi
 
@@ -30,7 +30,7 @@ parakeet-tdt-1.1b|parakeet-tdt-1.1b-q4_k.gguf
 "
 while IFS='|' read -r arg expected; do
     [ -z "$arg" ] && continue
-    got=$("$CRISPASR" -m "$arg" --backend parakeet --auto-download --dry-run-resolve 2>&1 \
+    got=$("$STELNET_ASR" -m "$arg" --backend parakeet --auto-download --dry-run-resolve 2>&1 \
         | sed -n 's/^  registry:[[:space:]]*//p' | head -1)
     if [ "$got" = "$expected" ]; then
         echo "  ✓ -m $arg → $got"; PASS=$((PASS+1))

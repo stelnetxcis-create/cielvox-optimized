@@ -13,7 +13,7 @@
 #include <cstring>
 #include <vector>
 
-class SenseVoiceBackend : public CrispasrBackend {
+class SenseVoiceBackend : public StelnetAsrBackend {
 public:
     SenseVoiceBackend() = default;
 
@@ -99,6 +99,6 @@ private:
     sensevoice_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_sensevoice_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_sensevoice_backend() {
     return std::make_unique<SenseVoiceBackend>();
 }

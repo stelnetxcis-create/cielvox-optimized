@@ -405,7 +405,7 @@ static void apply_truecase_lstm_model(truecaser_lstm_context* tc_lstm_ctx, std::
 // Capability-vs-request check. For each requested feature, warn on stderr
 // when the backend doesn't support it. Not fatal — the feature is silently
 // ignored. Returns the number of warnings emitted.
-int warn_unsupported(const CrispasrBackend& backend, const whisper_params& p) {
+int warn_unsupported(const StelnetAsrBackend& backend, const whisper_params& p) {
     const uint32_t caps = backend.capabilities();
     int warns = 0;
 
@@ -642,7 +642,7 @@ static void stelnettts_apply_global_speaker_stages(std::vector<stelnettts_segmen
     if (!embedder)
         return;
 
-    CrispasrClusterEmbeddings clusters;
+    StelnetAsrClusterEmbeddings clusters;
     if (want_cluster)
         stelnettts_remap_speakers_via_embeddings(all_segs, samples.data(), (int)samples.size(), embedder.get(), params,
                                                want_ident ? &clusters : nullptr);
@@ -716,7 +716,7 @@ static int stelnettts_strict_check_words(const std::vector<stelnettts_segment>& 
 // state, so multiple workers can run concurrently against pre-loaded
 // per-thread backend instances. Returns 0 on success, non-zero on
 // failure.
-int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, const std::string& fname_out,
+int process_one_input(StelnetAsrBackend& backend, const std::string& fname_inp, const std::string& fname_out,
                       whisper_params params, fireredpunc_context* punc_ctx = nullptr,
                       truecaser_context* tc_ctx = nullptr, pcs_context* pcs_ctx = nullptr,
                       truecaser_crf_context* tc_crf_ctx = nullptr, truecaser_lstm_context* tc_lstm_ctx = nullptr) {
@@ -1290,7 +1290,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
             // Build caches over the full original audio (same logic as
             // the per-slice path below, but scoped to the stitched block
             // since it returns before the per-slice declarations).
-            CrispasrSherpaCache stitch_sherpa_cache;
+            StelnetAsrSherpaCache stitch_sherpa_cache;
             if (params.diarize_method == "sherpa" || params.diarize_method == "sherpa-onnx" ||
                 params.diarize_method == "ecapa") {
                 const float* full = samples.data();
@@ -1305,7 +1305,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
                 if (!stelnettts_compute_sherpa_cache(full, (int)samples.size(), params, stitch_sherpa_cache))
                     stitch_sherpa_cache = {};
             }
-            CrispasrPyannoteCache stitch_pyannote_cache;
+            StelnetAsrPyannoteCache stitch_pyannote_cache;
             if (params.diarize_method == "pyannote") {
                 const float* full = samples.data();
                 std::vector<float> mono_buf;
@@ -1319,8 +1319,8 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
                 if (!stelnettts_compute_pyannote_cache(full, (int)samples.size(), params, stitch_pyannote_cache))
                     stitch_pyannote_cache = {};
             }
-            const CrispasrPyannoteCache* pya_ptr = stitch_pyannote_cache.valid() ? &stitch_pyannote_cache : nullptr;
-            const CrispasrSherpaCache* shp_ptr = stitch_sherpa_cache.valid() ? &stitch_sherpa_cache : nullptr;
+            const StelnetAsrPyannoteCache* pya_ptr = stitch_pyannote_cache.valid() ? &stitch_pyannote_cache : nullptr;
+            const StelnetAsrSherpaCache* shp_ptr = stitch_sherpa_cache.valid() ? &stitch_sherpa_cache : nullptr;
             if (have_stereo) {
                 stelnettts_apply_diarize(stereo[0], stereo[1], /*is_stereo=*/true, 0, segs, params, pya_ptr, shp_ptr);
             } else {
@@ -1413,7 +1413,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
     // when called per-slice today).
     // Issue #110: global sherpa pre-compute. Run sherpa once over the
     // full audio (instead of per-slice) so speaker IDs are globally stable.
-    CrispasrSherpaCache sherpa_cache;
+    StelnetAsrSherpaCache sherpa_cache;
     if (params.diarize &&
         (params.diarize_method == "sherpa" || params.diarize_method == "sherpa-onnx" ||
          params.diarize_method == "ecapa") &&
@@ -1439,7 +1439,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
     if (params.diarize && params.diarize_embedder_is_foxnose())
         const_cast<whisper_params&>(params).diarize_foxnose_global = true;
 
-    CrispasrPyannoteCache pyannote_cache;
+    StelnetAsrPyannoteCache pyannote_cache;
     if (params.diarize && params.diarize_method == "pyannote" && !samples.empty()) {
         const float* full = samples.data();
         std::vector<float> mono_buf;
@@ -1519,7 +1519,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
         }
     };
 
-    auto finish_slice = [&](size_t i, std::vector<stelnettts_segment> segs, CrispasrBackend& be,
+    auto finish_slice = [&](size_t i, std::vector<stelnettts_segment> segs, StelnetAsrBackend& be,
                             bool report_progress = true) {
         const auto& sl = slices[i];
         if (params.return_logits) {
@@ -1638,8 +1638,8 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
         // the diarize code falls back to segment-level dominant-speaker
         // assignment — the same behaviour as before.
         if (params.diarize && !segs.empty()) {
-            const CrispasrPyannoteCache* pya_ptr = pyannote_cache.valid() ? &pyannote_cache : nullptr;
-            const CrispasrSherpaCache* shp_ptr = sherpa_cache.valid() ? &sherpa_cache : nullptr;
+            const StelnetAsrPyannoteCache* pya_ptr = pyannote_cache.valid() ? &pyannote_cache : nullptr;
+            const StelnetAsrSherpaCache* shp_ptr = sherpa_cache.valid() ? &sherpa_cache : nullptr;
             if (have_stereo) {
                 std::vector<float> sl_l(stereo[0].begin() + sl.start, stereo[0].begin() + sl.end);
                 std::vector<float> sl_r(stereo[1].begin() + sl.start, stereo[1].begin() + sl.end);
@@ -1698,7 +1698,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
             tick_slice_progress();
     };
 
-    auto process_slice = [&](size_t i, CrispasrBackend& be) {
+    auto process_slice = [&](size_t i, StelnetAsrBackend& be) {
         int ext_start = 0, ext_end = 0;
         int64_t ext_t0_cs = 0;
         slice_ext_range(i, ext_start, ext_end, ext_t0_cs);
@@ -1764,7 +1764,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
     // Run slices [lo, hi) through the encode ∥ decode pipeline.
     auto pipeline_run = [&](size_t lo, size_t hi) {
         struct pending {
-            CrispasrBackend::encoded_slice enc;
+            StelnetAsrBackend::encoded_slice enc;
             int64_t t0_cs = 0;
             bool ok = false;
         };
@@ -1886,7 +1886,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
         }
 
         // Create extra backend instances for worker threads
-        std::vector<std::unique_ptr<CrispasrBackend>> workers;
+        std::vector<std::unique_ptr<StelnetAsrBackend>> workers;
         workers.reserve(n_workers - 1);
         bool pool_ok = true;
         for (int w = 1; w < n_workers; w++) {
@@ -1905,7 +1905,7 @@ int process_one_input(CrispasrBackend& backend, const std::string& fname_inp, co
             std::vector<std::thread> threads;
             std::atomic<size_t> next_slice{0};
 
-            auto worker_fn = [&](CrispasrBackend& be) {
+            auto worker_fn = [&](StelnetAsrBackend& be) {
                 while (true) {
                     size_t idx = next_slice.fetch_add(1);
                     if (idx >= slices.size())
@@ -2695,7 +2695,7 @@ int stelnettts_run_backend(const whisper_params& params_in) {
         }
 
         // Group words back into the input segments when requested.
-        std::vector<CrispasrAlignedSegment> segments;
+        std::vector<StelnetAsrAlignedSegment> segments;
         if (segment_mode) {
             segments = stelnettts_group_aligned_segments(segment_texts, aligned);
             if (segments.empty()) {
@@ -2832,7 +2832,7 @@ int stelnettts_run_backend(const whisper_params& params_in) {
             // registered model (whisper > parakeet > canary > …). Users
             // who already have, say, a parakeet GGUF from a previous
             // session shouldn't trigger a fresh 147 MB whisper download.
-            CrispasrRegistryEntry cached;
+            StelnetAsrRegistryEntry cached;
             if (stelnettts_find_cached_model(cached, params.cache_dir, params.model_quant)) {
                 backend_name = cached.backend;
                 params.model = stelnettts_cache::dir(params.cache_dir) + "/" + cached.filename;
@@ -3016,7 +3016,7 @@ int stelnettts_run_backend(const whisper_params& params_in) {
     // companion already sits next to the model file or in the cache dir
     // (the backend's discover_* will find it without a download prompt).
     if (!backend_name.empty() && params.tts_codec_model.empty()) {
-        CrispasrRegistryEntry entry;
+        StelnetAsrRegistryEntry entry;
         if (stelnettts_registry_lookup(backend_name, entry, params.model_quant) && !entry.companion_filename.empty()) {
             // Check whether the companion already exists locally before
             // triggering the resolve → download-prompt path:
@@ -3180,7 +3180,7 @@ int stelnettts_run_backend(const whisper_params& params_in) {
     }
 
     // Create and init the backend.
-    std::unique_ptr<CrispasrBackend> backend = stelnettts_create_backend(backend_name);
+    std::unique_ptr<StelnetAsrBackend> backend = stelnettts_create_backend(backend_name);
     if (!backend) {
         fprintf(stderr, "stelnettts: error: backend '%s' is not available in this build\n", backend_name.c_str());
         return 12;
@@ -4638,7 +4638,7 @@ int stelnettts_run_backend(const whisper_params& params_in) {
         // Failure to load any worker is fatal — better to bail than to
         // silently fall back to single-thread, which would surprise
         // batch users with much slower runs.
-        std::vector<std::unique_ptr<CrispasrBackend>> pool;
+        std::vector<std::unique_ptr<StelnetAsrBackend>> pool;
         pool.reserve(nproc);
         pool.emplace_back(std::move(backend));
         for (int i = 1; i < nproc; i++) {
@@ -4667,7 +4667,7 @@ int stelnettts_run_backend(const whisper_params& params_in) {
         workers.reserve((size_t)nproc);
         for (int w = 0; w < nproc; w++) {
             workers.emplace_back([&, w]() {
-                CrispasrBackend& be = *pool[w];
+                StelnetAsrBackend& be = *pool[w];
                 while (true) {
                     const int idx = next_idx.fetch_add(1);
                     if (idx >= n_files)

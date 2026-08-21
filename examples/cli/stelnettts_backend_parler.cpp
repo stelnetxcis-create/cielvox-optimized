@@ -31,7 +31,7 @@ namespace {
 static const char* DEFAULT_DESCRIPTION = "A female speaker delivers her words at a moderate pace with a clear "
                                          "and natural tone in a quiet environment.";
 
-class ParlerTTSBackend : public CrispasrBackend {
+class ParlerTTSBackend : public StelnetAsrBackend {
 public:
     ParlerTTSBackend() = default;
     ~ParlerTTSBackend() override { ParlerTTSBackend::shutdown(); }
@@ -120,6 +120,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_parler_tts_backend() {
-    return std::unique_ptr<CrispasrBackend>(new ParlerTTSBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_parler_tts_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new ParlerTTSBackend());
 }

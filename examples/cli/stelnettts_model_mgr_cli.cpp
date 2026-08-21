@@ -36,7 +36,7 @@ static bool parse_auto_quant_spec(const std::string& spec, std::string& base, st
     return true;
 }
 
-static CrispasrResolvePreview build_preview(const std::string& model_arg, const std::string& backend_name,
+static StelnetAsrResolvePreview build_preview(const std::string& model_arg, const std::string& backend_name,
                                             const std::string& cache_dir_override, const std::string& preferred_quant,
                                             bool ignore_cache) {
     std::string effective_model_arg = model_arg;
@@ -48,7 +48,7 @@ static CrispasrResolvePreview build_preview(const std::string& model_arg, const 
         effective_quant = auto_quant;
     }
 
-    CrispasrResolvePreview out;
+    StelnetAsrResolvePreview out;
     out.requested = model_arg;
     out.backend = backend_name;
 
@@ -67,7 +67,7 @@ static CrispasrResolvePreview build_preview(const std::string& model_arg, const 
         }
     }
 
-    CrispasrRegistryEntry match;
+    StelnetAsrRegistryEntry match;
     bool have_match = false;
     if (effective_model_arg == "auto" || effective_model_arg == "default") {
         have_match = stelnettts_registry_lookup(backend_name, match, effective_quant);
@@ -108,7 +108,7 @@ static CrispasrResolvePreview build_preview(const std::string& model_arg, const 
     return out;
 }
 
-CrispasrResolvePreview stelnettts_preview_model_cli(const std::string& model_arg, const std::string& backend_name,
+StelnetAsrResolvePreview stelnettts_preview_model_cli(const std::string& model_arg, const std::string& backend_name,
                                                   const std::string& cache_dir_override,
                                                   const std::string& preferred_quant, bool ignore_cache) {
     return build_preview(model_arg, backend_name, cache_dir_override, preferred_quant, ignore_cache);
@@ -175,7 +175,7 @@ std::string stelnettts_resolve_model_cli(const std::string& model_arg, const std
     // Step 2 must precede step 3, otherwise the CLI's filename-inferred
     // backend (always "parakeet" for any "parakeet*" arg) would shadow
     // sub-variant keys like "parakeet-v2" / "parakeet-tdt-1.1b" / etc.
-    CrispasrRegistryEntry match;
+    StelnetAsrRegistryEntry match;
     bool have_match = stelnettts_registry_lookup_by_filename(effective_model_arg, match, effective_quant);
     if (!have_match)
         have_match = stelnettts_registry_lookup(effective_model_arg, match, effective_quant);

@@ -31,11 +31,11 @@ done
 # Locate the binary. Prefer build/ (the canonical CMake out tree) so a
 # stale build-ninja-compile/ tree doesn't mask the freshly built binary
 # during local iteration.
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
@@ -65,7 +65,7 @@ echo "This is a reference transcription for the cloned voice." > "$VOICE_DIR/clo
 # Boot the server.
 SERVER_LOG=$(mktemp -t stelnettts-server.XXXXXX)
 echo "Starting stelnettts-server on :$PORT (talker=cielvox2-tts-customvoice 0.6B)…"
-"$CRISPASR" --server --backend cielvox2-tts-customvoice \
+"$STELNET_ASR" --server --backend cielvox2-tts-customvoice \
     -m "$TALKER" --codec-model "$CODEC" \
     --voice-dir "$VOICE_DIR" \
     --cors-origin '*' \
@@ -480,8 +480,8 @@ fi
 # Headers only exist on a 200 (synthesis may 500 on CustomVoice, which
 # cannot clone from a .wav) — the audit log below is the load-bearing check.
 if [ "$code" = "200" ]; then
-    assert_contains "attested opt-out → X-Crispasr-Spoken-Disclaimer: skipped" \
-        "X-Crispasr-Spoken-Disclaimer: skipped" "$hdrs"
+    assert_contains "attested opt-out → X-StelnetAsr-Spoken-Disclaimer: skipped" \
+        "X-StelnetAsr-Spoken-Disclaimer: skipped" "$hdrs"
 fi
 
 # Verify the audit log records the honoured opt-out
@@ -511,10 +511,10 @@ else
     FAILED_NAMES="$FAILED_NAMES\n    - #312 unattested opt-out refused"
 fi
 if [ "$code" = "200" ]; then
-    assert_contains "unattested opt-out → X-Crispasr-Spoken-Disclaimer: applied" \
-        "X-Crispasr-Spoken-Disclaimer: applied" "$hdrs"
-    assert_contains "unattested opt-out → X-Crispasr-Marking-Warning" \
-        "X-Crispasr-Marking-Warning" "$hdrs"
+    assert_contains "unattested opt-out → X-StelnetAsr-Spoken-Disclaimer: applied" \
+        "X-StelnetAsr-Spoken-Disclaimer: applied" "$hdrs"
+    assert_contains "unattested opt-out → X-StelnetAsr-Marking-Warning" \
+        "X-StelnetAsr-Marking-Warning" "$hdrs"
 fi
 
 # The denial must be in the audit log, and the CONSENT line must record the

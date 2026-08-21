@@ -14,7 +14,7 @@
 
 namespace {
 
-class GigaamBackend : public CrispasrBackend {
+class GigaamBackend : public StelnetAsrBackend {
 public:
     GigaamBackend() = default;
     ~GigaamBackend() override { GigaamBackend::shutdown(); }
@@ -138,6 +138,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_gigaam_backend() {
-    return std::unique_ptr<CrispasrBackend>(new GigaamBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_gigaam_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new GigaamBackend());
 }

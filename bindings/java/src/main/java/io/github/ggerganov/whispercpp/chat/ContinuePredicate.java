@@ -5,7 +5,7 @@ package io.github.ggerganov.whispercpp.chat;
  *
  * <p>Polarity: return {@code true} to LET THE GENERATION CONTINUE and
  * {@code false} to abort it. That is the polarity of the C callback it is
- * handed to, {@code crispasr_chat_abort_callback}, and of the ASR side's
+ * handed to, {@code stelnet_asr_chat_abort_callback}, and of the ASR side's
  * encoder-begin callback; this binding forwards the answer unchanged.
  *
  * <p>Called on the generating thread: once before each prompt batch during

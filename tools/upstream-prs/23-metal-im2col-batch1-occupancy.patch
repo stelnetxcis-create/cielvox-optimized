@@ -26,14 +26,14 @@ decomposed a fully flat index with int64 divmods — Apple GPUs emulate
 int64 division and that cost more than the copy).
 
 Selection is a shared predicate (ggml_metal_im2col_use_flat) used by both
-the pipeline getter and the encoder; CRISPASR_METAL_IM2COL_FLAT=0 restores
+the pipeline getter and the encoder; STELNET_ASR_METAL_IM2COL_FLAT=0 restores
 the standard kernel (regression-bisection lever).
 
 Measured (M1, PP-OCRv6 medium rec, 38-crop page, interleaved pairs,
 outputs byte-identical): recognize 13.4-14.0 s -> 5.8-6.2 s (2.3x); the
 fused batch-8 width-group graphs 2.6-3.1 s -> 0.7-1.2 s. layout_detect
 (RT-DETR, N=1 convs) 1.56-1.62 s -> 0.95-0.99 s (1.6x), regions
-byte-identical. Successor to the pre-v0.17 CRISPASR_METAL_IM2COL_OCC
+byte-identical. Successor to the pre-v0.17 STELNET_ASR_METAL_IM2COL_OCC
 variant, re-derived against the current dispatch as its drop note asked.
 ---
  src/ggml-metal/ggml-metal-device.cpp | 40 ++++++++++++++++++-
@@ -51,17 +51,17 @@ index 8ce1773d..27c17537 100644
      return res;
  }
  
-+// CrispASR patch (CrispEmbed ppocr rec): the standard im2col kernel launches
++// StelnetASR patch (CrispEmbed ppocr rec): the standard im2col kernel launches
 +// (N, KH, KW)-thread threadgroups across an IC x OH x OW grid, so a 1x1
 +// convolution over a small batch (PP-OCR rec: N=8, KH=KW=1) runs 8-thread
 +// threadgroups — a quarter of one simdgroup each; measured 70% of the whole
 +// recognizer graph on M1 (~30 ms per ~11 MB materialization). For such shapes
 +// use kernel_im2col_flat (one thread per dst element, 256-thread groups).
 +// Predicate shared by the pipeline getter and the encoder so they cannot
-+// disagree. CRISPASR_METAL_IM2COL_FLAT: unset/1 = auto, 0 = legacy kernel.
++// disagree. STELNET_ASR_METAL_IM2COL_FLAT: unset/1 = auto, 0 = legacy kernel.
 +bool ggml_metal_im2col_use_flat(const struct ggml_tensor * op) {
 +    static const int flat_env = [] {
-+        const char * e = getenv("CRISPASR_METAL_IM2COL_FLAT");
++        const char * e = getenv("STELNET_ASR_METAL_IM2COL_FLAT");
 +        return (e && e[0] == '0' && e[1] == '\0') ? 0 : 1;
 +    }();
 +    if (flat_env == 0) {
@@ -109,12 +109,12 @@ index 943ec07d..d74b74a8 100644
  struct ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_group_norm        (ggml_metal_library_t lib, const struct ggml_tensor * op);
  struct ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_norm              (ggml_metal_library_t lib, const struct ggml_tensor * op, int32_t n_fuse);
  struct ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_rope              (ggml_metal_library_t lib, const struct ggml_tensor * op);
-+// CrispASR patch (CrispEmbed ppocr rec): shared predicate — true when the op
++// StelnetASR patch (CrispEmbed ppocr rec): shared predicate — true when the op
 +// should use kernel_im2col_flat (see ggml-metal-device.cpp).
 +bool ggml_metal_im2col_use_flat(const struct ggml_tensor * op);
  struct ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_im2col            (ggml_metal_library_t lib, const struct ggml_tensor * op);
  struct ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_conv_transpose_1d (ggml_metal_library_t lib, const struct ggml_tensor * op);
- // CrispASR patch (PR #160 col2im_1d) — MUST RE-APPLY after ggml bump.
+ // StelnetASR patch (PR #160 col2im_1d) — MUST RE-APPLY after ggml bump.
 diff --git a/src/ggml-metal/ggml-metal-impl.h b/src/ggml-metal/ggml-metal-impl.h
 index 8bcffe1f..dcf86df9 100644
 --- a/src/ggml-metal/ggml-metal-impl.h
@@ -123,7 +123,7 @@ index 8bcffe1f..dcf86df9 100644
      int32_t  KH;
      int32_t  KW;
      int32_t  KHW; // KH * KW, pre-computed on CPU to save GPU resources
-+    // CrispASR patch (CrispEmbed ppocr rec): OW/OH for kernel_im2col_flat,
++    // StelnetASR patch (CrispEmbed ppocr rec): OW/OH for kernel_im2col_flat,
 +    // whose flat dispatch no longer encodes them in the threadgroup grid.
 +    int32_t  OW;
 +    int32_t  OH;
@@ -145,7 +145,7 @@ index 0dde096a..fefe9c3e 100644
      auto pipeline = ggml_metal_library_get_pipeline_im2col(lib, op);
  
 -    if (KH*KW <= ggml_metal_pipeline_max_theads_per_threadgroup(pipeline)) {
-+    // CrispASR patch (CrispEmbed ppocr rec): flat one-thread-per-element
++    // StelnetASR patch (CrispEmbed ppocr rec): flat one-thread-per-element
 +    // dispatch for shapes whose standard (N, KH, KW) threadgroup is tiny —
 +    // the getter returned kernel_im2col_flat for exactly these ops.
 +    if (ggml_metal_im2col_use_flat(op)) {
@@ -170,8 +170,8 @@ index f2ba6d2b..52611a5b 100644
  template [[host_name("kernel_im2col_f32")]] kernel im2col_t kernel_im2col<float>;
  template [[host_name("kernel_im2col_f16")]] kernel im2col_t kernel_im2col<half>;
  
-+// CrispASR patch (CrispEmbed ppocr rec, successor to the pre-v0.17
-+// CRISPASR_METAL_IM2COL_OCC variant noted above — re-derived against the new
++// StelnetASR patch (CrispEmbed ppocr rec, successor to the pre-v0.17
++// STELNET_ASR_METAL_IM2COL_OCC variant noted above — re-derived against the new
 +// dispatch): the standard kernel launches (N, KH, KW)-thread threadgroups, so a
 +// 1x1 convolution over a small batch (PP-OCR rec: N=8, KH=KW=1) runs 8-thread
 +// threadgroups across IC*OH*OW groups — a quarter of one simdgroup each, and

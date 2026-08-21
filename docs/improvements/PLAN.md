@@ -287,7 +287,7 @@ clip and a `--chunk-seconds 7` clip; unit test green.
 ## Phase 1 — collapse the dual dispatch
 
 **Why:** `stelnettts_session_transcribe*` reimplements each backend's transcribe
-inline (dev-guide HARD RULE #6) instead of calling the `CrispasrBackend` adapter
+inline (dev-guide HARD RULE #6) instead of calling the `StelnetAsrBackend` adapter
 the CLI/server use. Every fix/feature/default risks landing in one path but not
 the other (JA-detection was patched in ~5 places; #257 segmentation in 3).
 

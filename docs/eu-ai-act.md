@@ -350,7 +350,7 @@ same backend *was* gated, which is exactly why this looked covered. The
 backend's own source header calls the bundle "baked voice-clone bundles".
 
 Only the backend knows which bundle it resolved, so it hands the path over:
-`CrispasrBackend::voice_bank_path()`. **Any future backend that selects voices
+`StelnetAsrBackend::voice_bank_path()`. **Any future backend that selects voices
 by name from a container must override it**, or its clones ship unattested and
 undisclosed. cosyvoice3 is the only one today (`rg '_n_voices\(|init_voices'`).
 
@@ -420,7 +420,7 @@ bakers had no gate at all.
 
 Note the deliberate `#312` design: an unattested opt-out is **denied, not
 refused**. You still get your audio — with the default disclaimer — plus
-`X-Crispasr-*` response headers and an audit-log line saying so. Serving the
+`X-StelnetAsr-*` response headers and an audit-log line saying so. Serving the
 stronger default can never emit weaker-than-default output, while a hard 400
 would only break clients one field out of date.
 
@@ -686,10 +686,10 @@ summary of the previous audit:
 
 | Surface | Art. 50(2) marking | Art. 50(1) disclosure |
 |---|---|---|
-| `POST /v1/chat/completions` (`--chat-model`) | `X-Crispasr-Ai-Generated: true` + `X-Crispasr-Ai-Disclosure` response headers, on both the buffered and SSE branches | header carries the text; showing it is the client's job |
+| `POST /v1/chat/completions` (`--chat-model`) | `X-StelnetAsr-Ai-Generated: true` + `X-StelnetAsr-Ai-Disclosure` response headers, on both the buffered and SSE branches | header carries the text; showing it is the client's job |
 | `stelnettts-chat` (installed binary, interactive REPL + one-shot) | not marked — plain text on stdout | prints the disclosure to stderr at startup, both modes |
 | `stelnettts_chat_*` C ABI (`include/stelnettts_chat.h`) | **yours** | `stelnettts_chat_ai_disclosure_text()` |
-| `CrispasrChatSession` (Flutter, `chat.dart`) | **yours** | `CrispasrChatSession.aiDisclosureText()` |
+| `StelnetAsrChatSession` (Flutter, `chat.dart`) | **yours** | `StelnetAsrChatSession.aiDisclosureText()` |
 
 The chat capability is opt-in everywhere — the endpoint exists only with
 `--chat-model`, the binary only if you run it — and it serves whatever
@@ -745,7 +745,7 @@ a legacy pack with no provenance stamp, classified by architecture):
 
 Both hashes reproduce an independent `shasum -a 256`, and the shared `run_id`
 is what joins them. On the server a per-request `req` id does the same job across
-concurrent requests, and is returned to the client as `X-Crispasr-Request-Id`.
+concurrent requests, and is returned to the client as `X-StelnetAsr-Request-Id`.
 So a disputed clip can be walked back to the attestation that authorised it.
 
 **It is the operator's artefact, not ours.** StelnetTTS is a tool; the operator is
@@ -925,8 +925,8 @@ original providers, not with a downstream requantizer. Model cards in
 Things StelnetTTS cannot do for you:
 
 - [ ] **Art. 50(4)** — show or speak an AI-generated label for any synthetic voice you publish. Default-on at the CLI and server; **your job** on the C ABI, WASM and bindings, using `stelnettts_session_disclaimer_text()` / `stelnettts_session_get_disclaimer_pcm()` (§6.2).
-- [ ] **Art. 50(1)** — disclose AI interaction in conversational products. All four chat surfaces are ones (§6.6). Use `stelnettts_chat_ai_disclosure_text()` / `CrispasrChatSession.aiDisclosureText()` and render it **visibly**; the ABI and Flutter cannot show it for you.
-- [ ] **Art. 50(2) for text** — the chat endpoint sends `X-Crispasr-Ai-Generated`, but a client that drops the header publishes unmarked text, and the C ABI and Flutter mark nothing. Marking what you publish is yours (§6.6).
+- [ ] **Art. 50(1)** — disclose AI interaction in conversational products. All four chat surfaces are ones (§6.6). Use `stelnettts_chat_ai_disclosure_text()` / `StelnetAsrChatSession.aiDisclosureText()` and render it **visibly**; the ABI and Flutter cannot show it for you.
+- [ ] **Art. 50(2) for text** — the chat endpoint sends `X-StelnetAsr-Ai-Generated`, but a client that drops the header publishes unmarked text, and the C ABI and Flutter mark nothing. Marking what you publish is yours (§6.6).
 - [ ] **Re-bake cosyvoice3 voice banks** — a bundle baked before `stelnettts.voice.bank_stamped` gates every entry by producer architecture, which is conservative but blunt. Re-bake with the current script for per-entry accuracy (§6.2).
 - [ ] **`POST /v1/voices` now requires `consent_attestation`** — a breaking API change. Clients that enroll voices need the extra form field.
 - [ ] **Answer the `speaker_identity` question for the presets you ship** (§6.2a). `piper` and `kartoffel-orpheus-de-natural` now disclose by default; anything StelnetTTS has not researched warns once per model. If the preset voice you use is an identifiable person, pass `--speaker-identity real_person` (or `"speaker_identity"` / `stelnettts_session_set_speaker_identity()`). Do not silence the warning with `synthetic` unless you have read the model card — every model CrispTTS resolved away from `unknown` turned out to be a real person.
@@ -956,8 +956,8 @@ rots:
 | **Whose voice a PRESET voice is** | `examples/cli/stelnettts_speaker_identity.h` (mechanism, pure) (+ `tests/test-speaker-identity.cpp`) |
 | **Which model is whose voice** | `examples/cli/stelnettts_speaker_identity_models.h` — the researched verdicts, with evidence and an OPEN QUESTIONS backlog. Pinned by `test-speaker-identity.cpp`, so flipping one is a failing test |
 | **Are the gates actually wired up?** | `tests/test-compliance-wiring.cpp` — source-level, guards the *joins*: every surface's `classify_voice` call, every baker's gate + stamp, the upload gate, binding watermark strength, the chat disclosures |
-| **Multi-voice banks** | `CrispasrBackend::voice_bank_path()` (`stelnettts_backend.h`), overridden by `stelnettts_backend_cosyvoice3.cpp`; read by `stelnettts_voice::read_bank_provenance()`; `s->cosyvoice3_voices_path` on the ABI |
-| Chat / synthetic-text disclosure | `stelnettts_chat_ai_disclosure_text()` in `src/chat.cpp`; call sites in `stelnettts_chat_main.cpp`, `stelnettts_server.cpp` (`X-Crispasr-Ai-*`), `flutter/stelnettts/lib/src/chat.dart` |
+| **Multi-voice banks** | `StelnetAsrBackend::voice_bank_path()` (`stelnettts_backend.h`), overridden by `stelnettts_backend_cosyvoice3.cpp`; read by `stelnettts_voice::read_bank_provenance()`; `s->cosyvoice3_voices_path` on the ABI |
+| Chat / synthetic-text disclosure | `stelnettts_chat_ai_disclosure_text()` in `src/chat.cpp`; call sites in `stelnettts_chat_main.cpp`, `stelnettts_server.cpp` (`X-StelnetAsr-Ai-*`), `flutter/stelnettts/lib/src/chat.dart` |
 | Voice upload consent gate | `POST /v1/voices` in `stelnettts_server.cpp` (`consent_attestation`, `[CONSENT] scope=voice-upload`) |
 | Which containers carry a manifest | `stelnettts_marking::container_marking_for_format()` in `stelnettts_marking_policy.h` |
 | Voice-pack clone provenance stamp | written by `tada_encoder_write_ref_gguf()` + all 3 `models/*` voice bakers; read by `stelnettts_voice::read_pack_provenance()` |
@@ -1030,4 +1030,4 @@ Two rules learned the hard way, both worth keeping:
 - [Commission FAQ on Art. 50](https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act)
 - [`diarization-speakers.md`](diarization-speakers.md) — speaker labels, GDPR Art. 9, the RBI boundary
 - [`tts.md`](tts.md) — synthesis, cloning, `--i-have-rights`
-- [`server.md`](server.md) — `consent_attestation`, `marking_attestation`, `X-Crispasr-*` headers
+- [`server.md`](server.md) — `consent_attestation`, `marking_attestation`, `X-StelnetAsr-*` headers

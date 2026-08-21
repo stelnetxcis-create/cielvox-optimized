@@ -1469,7 +1469,7 @@ std::string replace_tail_filename(const std::string& url, const std::string& old
 
 static std::string effective_license(const Entry& e);
 
-void fill(CrispasrRegistryEntry& out, const Entry& e, const std::string& preferred_quant) {
+void fill(StelnetAsrRegistryEntry& out, const Entry& e, const std::string& preferred_quant) {
     const std::string filename = apply_quant_to_filename(e.filename, preferred_quant);
     out.backend = e.backend;
     out.filename = filename;
@@ -1616,7 +1616,7 @@ static bool license_accepted(const std::string& lic, const std::string& accepted
 // Gate a restricted model BEFORE any bytes are fetched. Returns true to
 // proceed. On a TTY the user is shown the licence and prompted; otherwise the
 // download is refused with instructions. `allow_download` alone is NOT enough.
-static bool license_gate_allows_download(const CrispasrRegistryEntry& e, const std::string& accepted_license) {
+static bool license_gate_allows_download(const StelnetAsrRegistryEntry& e, const std::string& accepted_license) {
     if (e.license.empty() || !license_is_nc(e.license))
         return true;
     if (license_accepted(e.license, accepted_license))
@@ -1638,7 +1638,7 @@ static bool license_gate_allows_download(const CrispasrRegistryEntry& e, const s
     return false;
 }
 
-void print_license_note(const CrispasrRegistryEntry& e, bool quiet) {
+void print_license_note(const StelnetAsrRegistryEntry& e, bool quiet) {
     if (!quiet && !e.license.empty()) {
         if (license_tag(e.license).rfind("cc-by-nc", 0) == 0) {
             fprintf(stderr,
@@ -1671,7 +1671,7 @@ bool stelnettts_license_accepted(const std::string& license, const std::string& 
 std::string stelnettts_managed_download(const std::string& filename, const std::string& url, const std::string& license,
                                       bool quiet, const char* label, const std::string& cache_dir_override,
                                       const std::string& accepted_license) {
-    CrispasrRegistryEntry artifact;
+    StelnetAsrRegistryEntry artifact;
     artifact.filename = filename;
     artifact.url = url;
     artifact.license = license;
@@ -1681,7 +1681,7 @@ std::string stelnettts_managed_download(const std::string& filename, const std::
     return stelnettts_cache::ensure_cached_file(filename, url, quiet, label, cache_dir_override);
 }
 
-bool stelnettts_registry_lookup(const std::string& backend, CrispasrRegistryEntry& out,
+bool stelnettts_registry_lookup(const std::string& backend, StelnetAsrRegistryEntry& out,
                               const std::string& preferred_quant) {
     const Entry* e = find_by_backend(backend);
     if (!e)
@@ -1690,7 +1690,7 @@ bool stelnettts_registry_lookup(const std::string& backend, CrispasrRegistryEntr
     return true;
 }
 
-bool stelnettts_registry_default_bundle(const std::string& backend, CrispasrRegistryBundle& out) {
+bool stelnettts_registry_default_bundle(const std::string& backend, StelnetAsrRegistryBundle& out) {
     const Entry* e = find_by_backend(backend);
     if (!e)
         return false;
@@ -1700,21 +1700,21 @@ bool stelnettts_registry_default_bundle(const std::string& backend, CrispasrRegi
     out.license = effective_license(*e);
     out.requires_license_acceptance = stelnettts_license_requires_acceptance(out.license);
     out.artifacts.push_back(
-        {CrispasrRegistryArtifactKind::Primary, e->filename, e->url, e->approx_size ? e->approx_size : ""});
+        {StelnetAsrRegistryArtifactKind::Primary, e->filename, e->url, e->approx_size ? e->approx_size : ""});
 
     if (e->companion_file && e->companion_url) {
-        out.artifacts.push_back({CrispasrRegistryArtifactKind::Companion, e->companion_file, e->companion_url,
+        out.artifacts.push_back({StelnetAsrRegistryArtifactKind::Companion, e->companion_file, e->companion_url,
                                  e->companion_size ? e->companion_size : (e->approx_size ? e->approx_size : "")});
     }
 
     if (const ExtraCompanion* extras = find_extras(e->backend)) {
         for (const ExtraCompanion* it = extras; it->file && it->url; ++it)
-            out.artifacts.push_back({CrispasrRegistryArtifactKind::Extra, it->file, it->url, ""});
+            out.artifacts.push_back({StelnetAsrRegistryArtifactKind::Extra, it->file, it->url, ""});
     }
     return true;
 }
 
-bool stelnettts_registry_lookup_by_filename(const std::string& filename, CrispasrRegistryEntry& out,
+bool stelnettts_registry_lookup_by_filename(const std::string& filename, StelnetAsrRegistryEntry& out,
                                           const std::string& preferred_quant) {
     const Entry* e = find_by_filename(filename);
     if (e) {
@@ -1747,14 +1747,14 @@ int stelnettts_registry_count() {
     return (int)(sizeof(k_registry) / sizeof(k_registry[0]));
 }
 
-bool stelnettts_registry_get_at(int i, CrispasrRegistryEntry& out, const std::string& preferred_quant) {
+bool stelnettts_registry_get_at(int i, StelnetAsrRegistryEntry& out, const std::string& preferred_quant) {
     if (i < 0 || i >= stelnettts_registry_count())
         return false;
     fill(out, k_registry[i], preferred_quant);
     return true;
 }
 
-bool stelnettts_find_cached_model(CrispasrRegistryEntry& out, const std::string& cache_dir_override,
+bool stelnettts_find_cached_model(StelnetAsrRegistryEntry& out, const std::string& cache_dir_override,
                                 const std::string& preferred_quant) {
     // k_registry is already ordered whisper > parakeet > canary > ... —
     // first entry wins, which matches the documented preference.
@@ -1788,7 +1788,7 @@ std::string stelnettts_resolve_model(const std::string& model_arg, const std::st
         // Step 2 must precede step 3, otherwise the CLI's filename-inferred
         // backend (always "parakeet" for any "parakeet*" arg) would shadow
         // sub-variant keys like "parakeet-v2" / "parakeet-tdt-1.1b" / etc.
-        CrispasrRegistryEntry match;
+        StelnetAsrRegistryEntry match;
         bool have_match = stelnettts_registry_lookup_by_filename(model_arg, match, preferred_quant);
         if (!have_match)
             have_match = stelnettts_registry_lookup(model_arg, match, preferred_quant);
@@ -1833,7 +1833,7 @@ std::string stelnettts_resolve_model(const std::string& model_arg, const std::st
         return model_arg;
     }
 
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     if (!stelnettts_registry_lookup(backend_name, e, preferred_quant)) {
         fprintf(stderr, "stelnettts: -m auto not supported for backend '%s' (no default model registered)\n",
                 backend_name.c_str());

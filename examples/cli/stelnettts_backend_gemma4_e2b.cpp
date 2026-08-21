@@ -11,7 +11,7 @@
 #include <vector>
 #include "core/stelnettts_env.h"
 
-class Gemma4E2BBackend : public CrispasrBackend {
+class Gemma4E2BBackend : public StelnetAsrBackend {
 public:
     Gemma4E2BBackend() = default;
 
@@ -155,7 +155,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
         std::string accumulated;
@@ -203,6 +203,6 @@ private:
     gemma4_e2b_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_gemma4_e2b_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_gemma4_e2b_backend() {
     return std::make_unique<Gemma4E2BBackend>();
 }

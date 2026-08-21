@@ -28,18 +28,18 @@ RUN apt-get update && \
 ENV LIBRARY_PATH=/usr/local/cuda-12.4/lib64/stubs:/usr/local/cuda-12.4/compat:$LIBRARY_PATH
 
 COPY . .
-ARG CRISPASR_BUILD_JOBS
+ARG STELNET_ASR_BUILD_JOBS
 # NOTE (#261): GGML_NATIVE=OFF does NOT restrict the ISA to the flags listed —
 # ggml sets INS_ENB=ON in that case, so BMI2/SSE42/AVX default ON anyway. The
 # real baseline is Haswell-class (AVX2+FMA+F16C+BMI2); spelled out explicitly
 # so it's visible. See .devops/main-cuda.Dockerfile for the full explanation.
-RUN jobs="${CRISPASR_BUILD_JOBS:-$(nproc)}" && \
-    cmake -S . -B build -G Ninja -DCRISPASR_BUILD_TESTS=OFF -DGGML_CUDA=1 \
+RUN jobs="${STELNET_ASR_BUILD_JOBS:-$(nproc)}" && \
+    cmake -S . -B build -G Ninja -DSTELNET_ASR_BUILD_TESTS=OFF -DGGML_CUDA=1 \
         -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
     -DGGML_BMI2=ON -DGGML_SSE42=ON -DGGML_AVX=ON -DGGML_AVX512=OFF \
         -DCMAKE_CUDA_ARCHITECTURES="60-real;61-real;70-real;75-real;80-real;86-real;89-real;90-real;90-virtual" \
         -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
-    cmake --build build -j"${jobs}" --target crispasr-cli
+    cmake --build build -j"${jobs}" --target stelnet_asr-cli
 # --allow-shlib-undefined: see main-cuda.Dockerfile for rationale —
 # libggml-cuda.so wants libcuda.so.1 at link time but the stubs dir
 # only ships libcuda.so. Driver is mounted in by host's nvidia runtime
@@ -62,28 +62,28 @@ RUN apt-get update && \
 
 # Strip the cuda-compat ld.so.conf entry — same rationale as in
 # main-cuda.Dockerfile (see that file for the full #31 incident notes).
-# Compat libs stay on disk; opt back in via CRISPASR_USE_CUDA_COMPAT=1.
+# Compat libs stay on disk; opt back in via STELNET_ASR_USE_CUDA_COMPAT=1.
 RUN rm -f /etc/ld.so.conf.d/000_cuda_compat.conf /etc/ld.so.conf.d/cuda-compat.conf && ldconfig
 
 ARG GIT_SHA=unknown
 ARG GIT_REF=unknown
 ARG BUILD_DATE=unknown
-LABEL org.opencontainers.image.title="crispasr"
-LABEL org.opencontainers.image.source="https://github.com/CrispStrobe/CrispASR"
+LABEL org.opencontainers.image.title="stelnet_asr"
+LABEL org.opencontainers.image.source="https://github.com/CrispStrobe/StelnetASR"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.ref.name="${GIT_REF}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
-LABEL org.opencontainers.image.description="crispasr unified ASR — CUDA 12.4 build (driver R510+; sm_60-90)"
+LABEL org.opencontainers.image.description="stelnet_asr unified ASR — CUDA 12.4 build (driver R510+; sm_60-90)"
 
 COPY --from=build /app /app
 RUN printf 'image=main-cuda-12\ncuda_version=12.4\ngit_sha=%s\ngit_ref=%s\nbuild_date=%s\n' \
         "${GIT_SHA}" "${GIT_REF}" "${BUILD_DATE}" > /app/build-info.txt
-RUN (id -u crispasr 2>/dev/null || \
-     useradd -m -u 1000 crispasr 2>/dev/null || \
-     useradd -m crispasr) && \
+RUN (id -u stelnet_asr 2>/dev/null || \
+     useradd -m -u 1000 stelnet_asr 2>/dev/null || \
+     useradd -m stelnet_asr) && \
     mkdir -p /cache /models && \
-    chown -R crispasr:crispasr /app /cache /models
+    chown -R stelnet_asr:stelnet_asr /app /cache /models
 ENV PATH=/app/build/bin:$PATH
-ENV CRISPASR_CACHE_DIR=/cache
-USER crispasr
+ENV STELNET_ASR_CACHE_DIR=/cache
+USER stelnet_asr
 ENTRYPOINT [ "tini", "--", "bash", "/app/.devops/run-server.sh" ]

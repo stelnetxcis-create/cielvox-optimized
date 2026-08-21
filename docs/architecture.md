@@ -63,7 +63,7 @@ all consume the same symbols.
 | `stelnettts_c_api.cpp` | The C-ABI. Exports session open/close/transcribe, VAD, diarize, LID, alignment, cache, registry — everything a wrapper needs. |
 | `stelnettts_vad.{h,cpp}` | Silero VAD slicing + whisper-style stitching with timestamp remapping. Used by `stelnettts_session_transcribe_vad`. |
 | `stelnettts_diarize.{h,cpp}` | Four diarizers: energy (stereo), xcorr (stereo, TDOA), vad-turns (mono, timing), pyannote (mono, GGUF; #107 added cross-slice cache + segment splitting + overlap-aware scoring). Both pyannote and sherpa/ecapa now run once globally on the full audio (#110), producing consistent speaker IDs across VAD slices. |
-| `stelnettts_speaker_embedder.{h,cpp}` | Pluggable speaker-embedding interface (`CrispasrSpeakerEmbedder` base class + factory). Concrete adapters: TitaNet-Large (192-d, 16 kHz) and IndexTTS-BigVGAN ECAPA-TDNN (512-d, internally resamples 16→24 kHz). Add a third by subclassing and extending the factory dispatch. |
+| `stelnettts_speaker_embedder.{h,cpp}` | Pluggable speaker-embedding interface (`StelnetAsrSpeakerEmbedder` base class + factory). Concrete adapters: TitaNet-Large (192-d, 16 kHz) and IndexTTS-BigVGAN ECAPA-TDNN (512-d, internally resamples 16→24 kHz). Add a third by subclassing and extending the factory dispatch. |
 | `stelnettts_speaker_cluster.{h,cpp}` | Agglomerative single-linkage cosine clustering on speaker embeddings, with both a similarity-threshold stop and a hard `max_speakers` cap. Drives `--diarize-embedder`'s remap of pyannote-local track IDs into globally stable speaker IDs. |
 | `stelnettts_lid.{h,cpp}` | whisper-tiny + silero-native **audio**-LID with process-wide whisper-context cache. |
 | `lid_fasttext.{h,cpp}` | Text-LID runtime for fastText supervised models — GlotLID-V3 (flat softmax, 2102 ISO 639-3 + script labels) and Facebook LID-176 (hierarchical softmax, 176 ISO 639-1 codes). Pure manual F32/F16 + on-the-fly dequant; no ggml graph. |
@@ -79,14 +79,14 @@ all consume the same symbols.
 | File | Role |
 |---|---|
 | `cli.cpp` | stelnettts entry point, extended with `--backend` dispatch branch. |
-| `stelnettts_backend.{h,cpp}` | `CrispasrBackend` abstract class, capability bitmask, factory, GGUF auto-detect. |
+| `stelnettts_backend.{h,cpp}` | `StelnetAsrBackend` abstract class, capability bitmask, factory, GGUF auto-detect. |
 | `stelnettts_backend_{parakeet,canary,cohere,granite,granite_nle,voxtral,voxtral4b,qwen3,fastconformer_ctc,wav2vec2,glm_asr,kyutai_stt,firered_asr,moonshine,moonshine_streaming,omniasr,gemma4_e2b,mimo_asr,vibevoice,cielvox2_tts,orpheus,kokoro,chatterbox,paraformer,sensevoice,funasr,m2m100,t5}.cpp` | Per-backend thin wrapper over each model's C API. ASR backends emit `stelnettts_segment`s; TTS backends (`vibevoice`, `cielvox2_tts`, `orpheus`, `kokoro`, `chatterbox`) implement `synthesize(text)` instead and write 24 kHz mono WAV via `--tts-output`; the translation backends (`m2m100` for facebook m2m100 + WMT21, `t5` for MADLAD-400 / future T5 translation) implement `translate_text(text, src, tgt)` and write UTF-8 to stdout. |
 | `stelnettts_output.{h,cpp}` | TXT / SRT / VTT / CSV / JSON / LRC writers on `stelnettts_segment`. |
 | `stelnettts_vad_cli.{h,cpp}` | Delegates to `src/stelnettts_vad`; adds auto-download for the Silero GGUF. |
 | `stelnettts_lid_cli.{h,cpp}` | Delegates to `src/stelnettts_lid`; adds auto-download + sherpa-ONNX subprocess fallback. |
-| `stelnettts_diarize_cli.{h,cpp}` | Delegates to `src/stelnettts_diarize`; adds sherpa subprocess fallback + pyannote GGUF auto-download. `CrispasrSherpaCache` (#110) pre-computes the global sherpa timeline; `assign_speakers_from_global_sherpa()` assigns + splits segments at speaker turns. Diarization runs **after** external CTC alignment (#267) so word timestamps are available for speaker-turn splitting; without words it falls back to segment-level dominant-speaker assignment. |
+| `stelnettts_diarize_cli.{h,cpp}` | Delegates to `src/stelnettts_diarize`; adds sherpa subprocess fallback + pyannote GGUF auto-download. `StelnetAsrSherpaCache` (#110) pre-computes the global sherpa timeline; `assign_speakers_from_global_sherpa()` assigns + splits segments at speaker turns. Diarization runs **after** external CTC alignment (#267) so word timestamps are available for speaker-turn splitting; without words it falls back to segment-level dominant-speaker assignment. |
 | `stelnettts_model_mgr_cli.{h,cpp}` | Delegates to `src/stelnettts_model_registry`; adds "Download now? [Y/n]" prompt on TTY. |
-| `stelnettts_aligner_cli.{h,cpp}` | Adapter converting `CrispasrAlignedWord` → the CLI's `stelnettts_word` shape. |
+| `stelnettts_aligner_cli.{h,cpp}` | Adapter converting `StelnetAsrAlignedWord` → the CLI's `stelnettts_word` shape. |
 | `stelnettts_server.cpp` | HTTP server for the persistent-model mode + OpenAI-compatible endpoints. |
 | `stelnettts_llm_pipeline.h` | Templated audio-LLM pipeline (mel → encoder → prompt → KV decode). |
 | `stelnettts_run.cpp` | Top-level pipeline dispatch: resolve → detect → load → slice → transcribe → align → diarize → merge → cluster → Speaker DB → write (#267: align before diarize). |

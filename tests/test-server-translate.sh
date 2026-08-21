@@ -21,11 +21,11 @@ done
 CACHE_ARG=()
 [ -n "$CACHE_DIR" ] && CACHE_ARG=(--cache-dir "$CACHE_DIR")
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-[ -n "$CRISPASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
+[ -n "$STELNET_ASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 # Locate an m2m100 GGUF.
 MODEL="${M2M100_MODEL:-}"
@@ -43,7 +43,7 @@ fi
 echo "Model: $MODEL"
 LOG=$(mktemp -t stelnettts-translate.XXXXXX)
 trap 'kill "$SV" 2>/dev/null; rm -f "$LOG"' EXIT
-"$CRISPASR" --server -m "$MODEL" --backend m2m100 --host 127.0.0.1 --port "$PORT" \
+"$STELNET_ASR" --server -m "$MODEL" --backend m2m100 --host 127.0.0.1 --port "$PORT" \
     --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} > "$LOG" 2>&1 &
 SV=$!
 ready=0

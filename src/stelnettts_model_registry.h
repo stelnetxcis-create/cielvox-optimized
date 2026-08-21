@@ -17,27 +17,27 @@
 #include <string>
 #include <vector>
 
-enum class CrispasrRegistryArtifactKind {
+enum class StelnetAsrRegistryArtifactKind {
     Primary = 0,
     Companion = 1,
     Extra = 2,
 };
 
-struct CrispasrRegistryArtifact {
-    CrispasrRegistryArtifactKind kind;
+struct StelnetAsrRegistryArtifact {
+    StelnetAsrRegistryArtifactKind kind;
     std::string filename;
     std::string url;
     std::string approx_size; // empty when the registry does not record one
 };
 
-struct CrispasrRegistryBundle {
+struct StelnetAsrRegistryBundle {
     std::string backend; // canonical registry key (aliases are resolved)
     std::string license;
     bool requires_license_acceptance = false;
-    std::vector<CrispasrRegistryArtifact> artifacts;
+    std::vector<StelnetAsrRegistryArtifact> artifacts;
 };
 
-struct CrispasrRegistryEntry {
+struct StelnetAsrRegistryEntry {
     std::string backend;
     std::string filename;
     std::string url;         // direct HuggingFace resolve URL
@@ -70,7 +70,7 @@ std::string stelnettts_managed_download(const std::string& filename, const std::
                                       const std::string& accepted_license = "");
 
 /// Look up a registry entry by backend name. Returns true on hit.
-bool stelnettts_registry_lookup(const std::string& backend, CrispasrRegistryEntry& out,
+bool stelnettts_registry_lookup(const std::string& backend, StelnetAsrRegistryEntry& out,
                               const std::string& preferred_quant = "");
 
 /// Return the default artifact bundle for a backend: primary model, inline
@@ -85,19 +85,19 @@ bool stelnettts_registry_lookup(const std::string& backend, CrispasrRegistryEntr
 /// would be wrong for them.
 ///
 /// Returns false when the backend has no registry entry.
-bool stelnettts_registry_default_bundle(const std::string& backend, CrispasrRegistryBundle& out);
+bool stelnettts_registry_default_bundle(const std::string& backend, StelnetAsrRegistryBundle& out);
 
 /// Number of entries in the static registry.
 int stelnettts_registry_count();
 
 /// Get the i-th entry (0..count-1). Returns false on out-of-range.
 /// Iterating from 0 to count-1 visits every entry in declaration order.
-bool stelnettts_registry_get_at(int i, CrispasrRegistryEntry& out, const std::string& preferred_quant = "");
+bool stelnettts_registry_get_at(int i, StelnetAsrRegistryEntry& out, const std::string& preferred_quant = "");
 
 /// Look up by filename. Exact match first, then fuzzy (substring) match.
 /// Used by the file-not-found path to suggest the canonical URL for a
 /// user-supplied filename.
-bool stelnettts_registry_lookup_by_filename(const std::string& filename, CrispasrRegistryEntry& out,
+bool stelnettts_registry_lookup_by_filename(const std::string& filename, StelnetAsrRegistryEntry& out,
                                           const std::string& preferred_quant = "");
 
 /// Scan the cache directory for any already-downloaded model from the
@@ -107,7 +107,7 @@ bool stelnettts_registry_lookup_by_filename(const std::string& filename, Crispas
 /// cached model was found, false if the cache is empty. Intended for the
 /// `-m auto` path so a user who already has *any* model doesn't trigger
 /// a fresh download of whisper-base.
-bool stelnettts_find_cached_model(CrispasrRegistryEntry& out, const std::string& cache_dir_override = "",
+bool stelnettts_find_cached_model(StelnetAsrRegistryEntry& out, const std::string& cache_dir_override = "",
                                 const std::string& preferred_quant = "");
 
 /// Non-interactive resolve. If `model_arg` is a concrete file path that

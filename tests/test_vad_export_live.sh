@@ -30,7 +30,7 @@
 
 set -e
 
-CRISPASR="${1:-${STELNETTTS_BIN:-build/bin/stelnettts}}"
+STELNET_ASR="${1:-${STELNETTTS_BIN:-build/bin/stelnettts}}"
 SRC_DIR="${2:-.}"
 TIER="${3:-all}"
 case "$TIER" in
@@ -65,8 +65,8 @@ skip() {
 }
 
 # Prerequisite checks
-if [ ! -f "$CRISPASR" ]; then
-    echo "SKIP: stelnettts binary not found at $CRISPASR"
+if [ ! -f "$STELNET_ASR" ]; then
+    echo "SKIP: stelnettts binary not found at $STELNET_ASR"
     exit 0
 fi
 if [ ! -f "$JFK_WAV" ]; then
@@ -84,7 +84,7 @@ echo "--- Test 1: --vad-export works without ASR model ---"
 EXPORT_FILE="$TMPDIR/vad1.json"
 # Use a non-existent model path — the export should succeed before
 # model loading is attempted.
-$CRISPASR --backend paraformer -m /nonexistent/model.gguf \
+$STELNET_ASR --backend paraformer -m /nonexistent/model.gguf \
     -f "$JFK_WAV" --vad-export "$EXPORT_FILE" --no-prints 2>/dev/null || true
 
 if [ -f "$EXPORT_FILE" ]; then
@@ -101,7 +101,7 @@ fi
 echo ""
 echo "--- Test 2: --vad-export implies --vad ---"
 EXPORT_FILE2="$TMPDIR/vad2.json"
-$CRISPASR --backend paraformer -m /nonexistent/model.gguf \
+$STELNET_ASR --backend paraformer -m /nonexistent/model.gguf \
     -f "$JFK_WAV" --vad-export "$EXPORT_FILE2" --no-prints 2>/dev/null || true
 
 if [ -f "$EXPORT_FILE2" ]; then
@@ -130,7 +130,7 @@ echo "--- Test 3: --vad-import reads exported file ---"
 if [ -f "$EXPORT_FILE" ]; then
     # Import the exported file. This needs a real model to transcribe,
     # but we can at least verify the import doesn't crash even without one.
-    IMPORT_LOG=$($CRISPASR --backend paraformer -m /nonexistent/model.gguf \
+    IMPORT_LOG=$($STELNET_ASR --backend paraformer -m /nonexistent/model.gguf \
         -f "$JFK_WAV" --vad-import "$EXPORT_FILE" --no-prints 2>&1) || true
 
     # The import should succeed (the error will be about the model, not the import)
@@ -152,7 +152,7 @@ echo ""
 echo "--- Test 4: --vad-export runs without loading the ASR model ---"
 EXPORT_FILE4="$TMPDIR/vad4.json"
 START_TIME=$(date +%s%N)
-$CRISPASR --backend paraformer -m /nonexistent/model.gguf \
+$STELNET_ASR --backend paraformer -m /nonexistent/model.gguf \
     -f "$JFK_WAV" --vad-export "$EXPORT_FILE4" --no-prints 2>/dev/null || true
 END_TIME=$(date +%s%N)
 ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
@@ -208,7 +208,7 @@ if [ -z "$MODEL" ]; then
 else
     # A nonexistent import file MUST make the run fail. If it exits 0 and
     # transcribes, --vad-import was ignored -- the original bug.
-    if $CRISPASR --vad --vad-import /nonexistent-227.json -f "$JFK_WAV" -m "$MODEL" >/dev/null 2>&1; then
+    if $STELNET_ASR --vad --vad-import /nonexistent-227.json -f "$JFK_WAV" -m "$MODEL" >/dev/null 2>&1; then
         echo "[FAIL] --vad-import /nonexistent silently ignored (returned 0)"
         FAIL=$((FAIL + 1))
     else
@@ -218,8 +218,8 @@ else
 
     # Round trip: export at 30, import at 30 -> must succeed and say "imported".
     RT="$TMPDIR/rt30.json"
-    $CRISPASR --vad --vad-export "$RT" -f "$JFK_WAV" --chunk-seconds 30 >/dev/null 2>&1
-    OUT="$($CRISPASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 30 -m "$MODEL" 2>&1)"
+    $STELNET_ASR --vad --vad-export "$RT" -f "$JFK_WAV" --chunk-seconds 30 >/dev/null 2>&1
+    OUT="$($STELNET_ASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 30 -m "$MODEL" 2>&1)"
     check "matched --vad-import round-trips" bash -c "echo \"$OUT\" | grep -qi 'imported'"
 
     # ─── Test 7: chunk-length gate policy ───────────────────────────
@@ -228,11 +228,11 @@ else
     echo ""
     echo "--- Test 7: chunk mismatch warns by default, refuses under --vad-import-strict ---"
     set +e
-    WARN="$($CRISPASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 5 -m "$MODEL" 2>&1)"; RC_WARN=$?
-    $CRISPASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 5 --vad-import-strict -m "$MODEL" >/dev/null 2>&1; RC_STRICT=$?
+    WARN="$($STELNET_ASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 5 -m "$MODEL" 2>&1)"; RC_WARN=$?
+    $STELNET_ASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 5 --vad-import-strict -m "$MODEL" >/dev/null 2>&1; RC_STRICT=$?
     LEGACY="$TMPDIR/legacy.json"
     printf '{"stelnettts_vad":{"version":1,"sample_rate":16000,"slices":[{"start":5120,"end":169920,"t0_cs":32,"t1_cs":1062}]}}' > "$LEGACY"
-    $CRISPASR --vad --vad-import "$LEGACY" -f "$JFK_WAV" --chunk-seconds 5 --vad-import-strict -m "$MODEL" >/dev/null 2>&1; RC_LEGACY=$?
+    $STELNET_ASR --vad --vad-import "$LEGACY" -f "$JFK_WAV" --chunk-seconds 5 --vad-import-strict -m "$MODEL" >/dev/null 2>&1; RC_LEGACY=$?
     set -e
 
     check "mismatch default: exit 0 (used anyway)" test "$RC_WARN" -eq 0
@@ -247,18 +247,18 @@ else
     echo ""
     echo "--- Test 8: --vad-export-raw reuse across chunk lengths ---"
     RAW="$TMPDIR/raw.json"
-    $CRISPASR --vad-export-raw "$RAW" -f "$JFK_WAV" >/dev/null 2>&1
+    $STELNET_ASR --vad-export-raw "$RAW" -f "$JFK_WAV" >/dev/null 2>&1
     check "raw export tagged kind=vad_segments" grep -q '"kind": "vad_segments"' "$RAW"
     check "raw export omits chunk_cs" bash -c "! grep -q chunk_cs '$RAW'"
 
     set +e
     # Import at two DIFFERENT chunk lengths; neither may warn (raw carries no
     # chunk length to mismatch), and the re-chunk must match a fresh run.
-    OUT5="$($CRISPASR --vad --vad-import "$RAW" -f "$JFK_WAV" --chunk-seconds 5 -m "$MODEL" 2>&1)"; RC5=$?
-    OUT2="$($CRISPASR --vad --vad-import "$RAW" -f "$JFK_WAV" --chunk-seconds 2 -m "$MODEL" 2>&1)"; RC2=$?
+    OUT5="$($STELNET_ASR --vad --vad-import "$RAW" -f "$JFK_WAV" --chunk-seconds 5 -m "$MODEL" 2>&1)"; RC5=$?
+    OUT2="$($STELNET_ASR --vad --vad-import "$RAW" -f "$JFK_WAV" --chunk-seconds 2 -m "$MODEL" 2>&1)"; RC2=$?
     # A fresh chunk export at 5 s, to compare slice counts.
     FRESH5="$TMPDIR/fresh5.json"
-    $CRISPASR --vad --vad-export "$FRESH5" -f "$JFK_WAV" --chunk-seconds 5 >/dev/null 2>&1
+    $STELNET_ASR --vad --vad-export "$FRESH5" -f "$JFK_WAV" --chunk-seconds 5 >/dev/null 2>&1
     set -e
 
     check "raw import @5 succeeds" test "$RC5" -eq 0

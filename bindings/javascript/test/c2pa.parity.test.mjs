@@ -18,7 +18,7 @@ import { c2paSignWav } from '../c2pa.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const asset = (p) => path.join(here, '..', '..', '..', 'assets', 'c2pa', p);
-const haveCert = fs.existsSync(asset('crispasr-default-c2pa.crt')) && fs.existsSync(asset('crispasr-default-c2pa.key'));
+const haveCert = fs.existsSync(asset('stelnet_asr-default-c2pa.crt')) && fs.existsSync(asset('stelnet_asr-default-c2pa.key'));
 
 // Locate a python with the c2pa package importable.
 function findC2paPython() {
@@ -57,11 +57,11 @@ function readWithReference(pyBin, wavPath) {
 const skip = !haveCert ? 'bundled cert missing' : !py ? 'c2pa python reader unavailable (set C2PA_PY)' : false;
 
 test('parity: JS-signed WAV validates in the c2pa-rs reference reader', { skip }, async () => {
-  const cert = fs.readFileSync(asset('crispasr-default-c2pa.crt'), 'utf8');
-  const key = fs.readFileSync(asset('crispasr-default-c2pa.key'), 'utf8');
+  const cert = fs.readFileSync(asset('stelnet_asr-default-c2pa.crt'), 'utf8');
+  const key = fs.readFileSync(asset('stelnet_asr-default-c2pa.key'), 'utf8');
   const signed = await c2paSignWav(makeWav(), cert, key);
 
-  const tmp = path.join(os.tmpdir(), `crispasr-c2pa-parity-${process.pid}.wav`);
+  const tmp = path.join(os.tmpdir(), `stelnet_asr-c2pa-parity-${process.pid}.wav`);
   fs.writeFileSync(tmp, Buffer.from(signed));
   try {
     const m = readWithReference(py, tmp);
@@ -72,7 +72,7 @@ test('parity: JS-signed WAV validates in the c2pa-rs reference reader', { skip }
 
     // Content parity: generator, assertion, action, digital source type.
     const am = m.manifests[m.active_manifest];
-    assert.equal(am.claim_generator_info[0].name, 'CrispASR');
+    assert.equal(am.claim_generator_info[0].name, 'StelnetASR');
     const actions = am.assertions.find((a) => a.label === 'c2pa.actions.v2');
     assert.ok(actions, 'c2pa.actions.v2 assertion present');
     assert.equal(actions.data.actions[0].action, 'c2pa.created');
@@ -84,13 +84,13 @@ test('parity: JS-signed WAV validates in the c2pa-rs reference reader', { skip }
 });
 
 test('parity: tampering the audio makes the reference reader report dataHash.mismatch', { skip }, async () => {
-  const cert = fs.readFileSync(asset('crispasr-default-c2pa.crt'), 'utf8');
-  const key = fs.readFileSync(asset('crispasr-default-c2pa.key'), 'utf8');
+  const cert = fs.readFileSync(asset('stelnet_asr-default-c2pa.crt'), 'utf8');
+  const key = fs.readFileSync(asset('stelnet_asr-default-c2pa.key'), 'utf8');
   const signed = await c2paSignWav(makeWav(), cert, key);
   const tampered = Uint8Array.from(signed);
   tampered[60] ^= 0xff; // flip a byte in the audio payload
 
-  const tmp = path.join(os.tmpdir(), `crispasr-c2pa-tamper-${process.pid}.wav`);
+  const tmp = path.join(os.tmpdir(), `stelnet_asr-c2pa-tamper-${process.pid}.wav`);
   fs.writeFileSync(tmp, Buffer.from(tampered));
   try {
     const m = readWithReference(py, tmp);

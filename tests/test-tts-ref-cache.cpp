@@ -8,7 +8,7 @@
 // result beside the clip.
 //
 // The session C ABI cannot transcribe — the CLI helper constructs a second
-// CrispasrBackend, a layer the ABI has no access to — but it CAN read that
+// StelnetAsrBackend, a layer the ABI has no access to — but it CAN read that
 // cache, so a clip prepared once through the CLI now clones through the session
 // API too instead of failing with -2.
 //

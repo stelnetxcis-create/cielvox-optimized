@@ -226,7 +226,7 @@ std::string text_lid_resolve_path(const std::string& arg, const std::string& cac
                     arg.c_str());
             return "";
         }
-        CrispasrRegistryEntry entry;
+        StelnetAsrRegistryEntry entry;
         if (!stelnettts_registry_lookup(backend, entry)) {
             fprintf(stderr, "text_lid: backend '%s' not in registry\n", backend);
             return "";
@@ -246,7 +246,7 @@ std::string text_lid_resolve_path(const std::string& arg, const std::string& cac
     // 3. Try registry lookup by basename — handy when the user pasted a
     //    canonical filename (`cld3-f16.gguf`, `lid-glotlid-f16.gguf`, …)
     //    without first downloading. Same fallback the main `-m` path uses.
-    CrispasrRegistryEntry entry;
+    StelnetAsrRegistryEntry entry;
     if (stelnettts_registry_lookup_by_filename(basename_of(arg), entry)) {
         if (stelnettts_license_requires_acceptance(entry.license) && !stelnettts_license_accepted(entry.license, "")) {
             fprintf(stderr, "text_lid: refusing restricted model '%s' without --accept-license %s\n",

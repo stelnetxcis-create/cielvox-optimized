@@ -9,19 +9,19 @@
 #
 # Usage:
 #   ./tests/test-companion-skip.sh
-#   CRISPASR=./build/bin/stelnettts ./tests/test-companion-skip.sh
+#   STELNET_ASR=./build/bin/stelnettts ./tests/test-companion-skip.sh
 #
 # Exit code: 0 if all pass, 1 if any fail.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR:-./build/bin/stelnettts}"
+STELNET_ASR="${STELNET_ASR:-./build/bin/stelnettts}"
 PASS=0
 FAIL=0
 
-if [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: $CRISPASR not found or not executable"
+if [ ! -x "$STELNET_ASR" ]; then
+    echo "SKIP: $STELNET_ASR not found or not executable"
     exit 0
 fi
 
@@ -52,7 +52,7 @@ echo "=== test-companion-skip ==="
 
 # ─── Test 1: --codec-model set → no download prompt ──────────────────
 check_pass "--codec-model suppresses companion prompt" bash -c "
-    STDERR=\$(echo 'n' | \"$CRISPASR\" \\
+    STDERR=\$(echo 'n' | \"$STELNET_ASR\" \\
         --backend mimo-asr \\
         -m \"$TMPDIR/mimo-asr-q4_k.gguf\" \\
         --codec-model \"$TMPDIR/mimo-tokenizer-q4_k.gguf\" \\
@@ -66,7 +66,7 @@ check_pass "--codec-model suppresses companion prompt" bash -c "
 
 # ─── Test 2: sibling file present → no download prompt ───────────────
 check_pass "sibling companion suppresses download prompt" bash -c "
-    STDERR=\$(echo 'n' | \"$CRISPASR\" \\
+    STDERR=\$(echo 'n' | \"$STELNET_ASR\" \\
         --backend mimo-asr \\
         -m \"$TMPDIR/mimo-asr-q4_k.gguf\" \\
         -f /dev/null 2>&1 >/dev/null || true)
@@ -82,7 +82,7 @@ check_pass "missing companion triggers download prompt" bash -c "
     # Remove the sibling companion
     ISOLATED=\$(mktemp -d)
     echo 'x' > \"\$ISOLATED/mimo-asr-q4_k.gguf\"
-    STDERR=\$(echo 'n' | \"$CRISPASR\" \\
+    STDERR=\$(echo 'n' | \"$STELNET_ASR\" \\
         --backend mimo-asr \\
         -m \"\$ISOLATED/mimo-asr-q4_k.gguf\" \\
         -f /dev/null 2>&1 >/dev/null || true)
@@ -97,7 +97,7 @@ check_pass "missing companion triggers download prompt" bash -c "
 
 # ─── Test 4: cielvox2-tts --codec-model → no prompt (#146) ──────────────
 check_pass "cielvox2-tts --codec-model suppresses prompt (#146)" bash -c "
-    STDERR=\$(echo 'n' | \"$CRISPASR\" \\
+    STDERR=\$(echo 'n' | \"$STELNET_ASR\" \\
         --backend cielvox2-tts \\
         -m \"$TMPDIR/cielvox2-tts-12hz-0.6b-base-q8_0.gguf\" \\
         --codec-model \"$TMPDIR/cielvox2-tts-tokenizer-12hz.gguf\" \\
@@ -114,7 +114,7 @@ check_pass "cielvox2-tts --codec-model suppresses prompt (#146)" bash -c "
 check_pass "companion size shows ~395 MB, not ~4.2 GB (#148)" bash -c "
     ISOLATED=\$(mktemp -d)
     echo 'x' > \"\$ISOLATED/mimo-asr-q4_k.gguf\"
-    STDERR=\$(echo 'n' | \"$CRISPASR\" \\
+    STDERR=\$(echo 'n' | \"$STELNET_ASR\" \\
         --backend mimo-asr \\
         -m \"\$ISOLATED/mimo-asr-q4_k.gguf\" \\
         -f /dev/null 2>&1 >/dev/null || true)

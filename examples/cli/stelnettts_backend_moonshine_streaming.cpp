@@ -10,7 +10,7 @@
 #include <vector>
 #include "core/stelnettts_env.h"
 
-class MoonshineStreamingBackend : public CrispasrBackend {
+class MoonshineStreamingBackend : public StelnetAsrBackend {
 public:
     MoonshineStreamingBackend() = default;
 
@@ -96,7 +96,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
         std::string accumulated;
@@ -141,6 +141,6 @@ private:
     moonshine_streaming_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_moonshine_streaming_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_moonshine_streaming_backend() {
     return std::make_unique<MoonshineStreamingBackend>();
 }

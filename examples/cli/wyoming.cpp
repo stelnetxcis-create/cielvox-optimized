@@ -271,7 +271,7 @@ static std::vector<float> s16_to_f32(const int16_t* src, int n) {
 static std::atomic<bool> g_running{false};
 static std::thread g_listener_thread;
 static socket_t g_listen_fd = INVALID_SOCKET_VAL;
-static CrispasrBackend* g_backend = nullptr;
+static StelnetAsrBackend* g_backend = nullptr;
 static std::mutex* g_mutex = nullptr;
 static whisper_params g_params;
 
@@ -676,7 +676,7 @@ static void wyoming_listener() {
 // Public API
 // ---------------------------------------------------------------------------
 
-int wyoming_start(CrispasrBackend* backend, std::mutex& model_mutex, const whisper_params& params, int port) {
+int wyoming_start(StelnetAsrBackend* backend, std::mutex& model_mutex, const whisper_params& params, int port) {
     if (g_running.load())
         return 0;
 

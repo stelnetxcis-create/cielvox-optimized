@@ -14,7 +14,7 @@
 
 #include "cielvox2_asr.h"
 #include "core/stelnettts_env.h"
-#include "../crisp_audio/include/crisp_audio.h"
+#include "../stelnet_audio/include/stelnet_audio.h"
 #include "stelnettts_imatrix.h"
 
 #ifndef M_PI
@@ -213,8 +213,8 @@ struct cielvox2_asr_vocab {
     std::unordered_map<std::string, int32_t> merge_rank; // "left right" → rank
 };
 
-// Forward decl from crisp_audio — full type lives in crisp_audio/include/crisp_audio.h
-struct crisp_audio_context;
+// Forward decl from stelnet_audio — full type lives in stelnet_audio/include/stelnet_audio.h
+struct stelnet_audio_context;
 
 struct cielvox2_asr_context {
     cielvox2_asr_context_params params;
@@ -247,8 +247,8 @@ struct cielvox2_asr_context {
     // cielvox2_asr_audio_tower struct above is kept around so existing in-tree
     // tests / fallbacks compile; it is no longer the path used by
     // cielvox2_asr_compute_mel / cielvox2_asr_run_encoder once `audio_ca` is open.
-    crisp_audio_context* audio_ca = nullptr;
-    std::string model_path; // remembered for lazy crisp_audio init
+    stelnet_audio_context* audio_ca = nullptr;
+    std::string model_path; // remembered for lazy stelnet_audio init
 
     // §176s: cached encoder graph — reused when (T_chunk, num_chunks, T_chunk_out) match.
     ggml_cgraph* cached_enc_gf = nullptr;
@@ -600,34 +600,34 @@ static void cielvox2_asr_fft_wrapper(const float* in, int N, float* out) {
     std::memcpy(out, scratch_out.data(), (size_t)(2 * N) * sizeof(float));
 }
 
-// Lazily open a crisp_audio context for the audio path. The cielvox2-asr GGUF
-// uses tensor names under "audio." (the crisp_audio default) and metadata
-// under "cielvox2asr.audio." (handled by crisp_audio's prefix fallback), so
+// Lazily open a stelnet_audio context for the audio path. The cielvox2-asr GGUF
+// uses tensor names under "audio." (the stelnet_audio default) and metadata
+// under "cielvox2asr.audio." (handled by stelnet_audio's prefix fallback), so
 // passing the defaults here is correct.
-static crisp_audio_context* cielvox2_asr_get_audio(cielvox2_asr_context* ctx) {
+static stelnet_audio_context* cielvox2_asr_get_audio(cielvox2_asr_context* ctx) {
     if (!ctx)
         return nullptr;
     if (ctx->audio_ca)
         return ctx->audio_ca;
     if (ctx->model_path.empty())
         return nullptr;
-    crisp_audio_params p = crisp_audio_params_default();
+    stelnet_audio_params p = stelnet_audio_params_default();
     p.n_threads = ctx->n_threads;
     p.verbosity = ctx->params.verbosity;
     p.use_gpu = ctx->params.use_gpu;
     p.tensor_prefix = "audio.";
     p.meta_prefix = "cielvox2asr.audio."; // cielvox2-asr's hparam namespace
-    ctx->audio_ca = crisp_audio_init_from_file(ctx->model_path.c_str(), &p);
+    ctx->audio_ca = stelnet_audio_init_from_file(ctx->model_path.c_str(), &p);
     return ctx->audio_ca;
 }
 
 extern "C" float* cielvox2_asr_compute_mel(cielvox2_asr_context* ctx, const float* samples, int n_samples, int* out_n_mels,
                                         int* out_T_mel) {
-    crisp_audio_context* ca = cielvox2_asr_get_audio(ctx);
+    stelnet_audio_context* ca = cielvox2_asr_get_audio(ctx);
     if (ca) {
-        return crisp_audio_compute_mel(ca, samples, n_samples, out_n_mels, out_T_mel);
+        return stelnet_audio_compute_mel(ca, samples, n_samples, out_n_mels, out_T_mel);
     }
-    // Fall through to the in-tree implementation below if crisp_audio failed
+    // Fall through to the in-tree implementation below if stelnet_audio failed
     // to load (defensive — should not happen on a well-formed cielvox2-asr GGUF).
     if (!ctx || !samples || n_samples <= 0)
         return nullptr;
@@ -1596,7 +1596,7 @@ extern "C" void cielvox2_asr_free(cielvox2_asr_context* ctx) {
     if (!ctx)
         return;
     if (ctx->audio_ca) {
-        crisp_audio_free(ctx->audio_ca);
+        stelnet_audio_free(ctx->audio_ca);
         ctx->audio_ca = nullptr;
     }
     if (ctx->sched)
@@ -1706,11 +1706,11 @@ extern "C" float* cielvox2_asr_run_encoder(cielvox2_asr_context* ctx, const floa
                                         int* out_N_total, int* out_proj_dim) {
     if (!ctx || !mel_features)
         return nullptr;
-    crisp_audio_context* ca = cielvox2_asr_get_audio(ctx);
+    stelnet_audio_context* ca = cielvox2_asr_get_audio(ctx);
     if (ca) {
-        return crisp_audio_encode(ca, mel_features, n_mels, T_mel, out_N_total, out_proj_dim);
+        return stelnet_audio_encode(ca, mel_features, n_mels, T_mel, out_N_total, out_proj_dim);
     }
-    // Fall through to the in-tree implementation below if crisp_audio failed.
+    // Fall through to the in-tree implementation below if stelnet_audio failed.
     const auto& hp = ctx->model.hparams;
     if (n_mels != (int)hp.n_mels) {
         fprintf(stderr, "cielvox2_asr: mel feature mismatch (%d vs %d)\n", n_mels, (int)hp.n_mels);

@@ -18,7 +18,7 @@
 
 namespace {
 
-class RvcBackend : public CrispasrBackend {
+class RvcBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "rvc-svc"; }
 
@@ -40,6 +40,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_rvc_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_rvc_backend() {
     return std::make_unique<RvcBackend>();
 }

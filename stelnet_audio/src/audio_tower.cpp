@@ -1,4 +1,4 @@
-// audio_tower.cpp — crisp_audio implementation.
+// audio_tower.cpp — stelnet_audio implementation.
 //
 // Dialect dispatcher + first concrete implementation (qwen_omni).
 //
@@ -17,7 +17,7 @@
 // (Stage 1 + Stage 2). Numerical equivalence is locked in by
 // tests/test_qwen3_audio_tower.cpp.
 
-#include "crisp_audio.h"
+#include "stelnet_audio.h"
 
 #include "core/gguf_loader.h"
 #include "core/mel.h"
@@ -131,8 +131,8 @@ constexpr float kLayerNormEps = 1e-5f;
 // Public context — opaque to the C ABI
 // ---------------------------------------------------------------------------
 
-struct crisp_audio_context {
-    crisp_audio_dialect dialect = CRISP_AUDIO_DIALECT_AUTO;
+struct stelnet_audio_context {
+    stelnet_audio_dialect dialect = CRISP_AUDIO_DIALECT_AUTO;
 
     hparams hp;
     tower w;
@@ -159,7 +159,7 @@ struct crisp_audio_context {
 
 namespace {
 
-void crisp_audio_dft(const float* in, int N, float* out) {
+void stelnet_audio_dft(const float* in, int N, float* out) {
     for (int k = 0; k < N; k++) {
         float re = 0.0f, im = 0.0f;
         for (int n = 0; n < N; n++) {
@@ -172,7 +172,7 @@ void crisp_audio_dft(const float* in, int N, float* out) {
     }
 }
 
-void crisp_audio_fft_recursive(float* in, int N, float* out) {
+void stelnet_audio_fft_recursive(float* in, int N, float* out) {
     if (N == 1) {
         out[0] = in[0];
         out[1] = 0.0f;
@@ -180,19 +180,19 @@ void crisp_audio_fft_recursive(float* in, int N, float* out) {
     }
     int half_N = N / 2;
     if (N - half_N * 2 == 1) {
-        crisp_audio_dft(in, N, out);
+        stelnet_audio_dft(in, N, out);
         return;
     }
     float* even = in + N;
     for (int i = 0; i < half_N; i++)
         even[i] = in[2 * i];
     float* even_fft = out + 2 * N;
-    crisp_audio_fft_recursive(even, half_N, even_fft);
+    stelnet_audio_fft_recursive(even, half_N, even_fft);
     float* odd = even;
     for (int i = 0; i < half_N; i++)
         odd[i] = in[2 * i + 1];
     float* odd_fft = even_fft + N;
-    crisp_audio_fft_recursive(odd, half_N, odd_fft);
+    stelnet_audio_fft_recursive(odd, half_N, odd_fft);
     for (int k = 0; k < half_N; k++) {
         float ang = -2.0f * (float)M_PI * (float)k / (float)N;
         float re = std::cos(ang);
@@ -206,7 +206,7 @@ void crisp_audio_fft_recursive(float* in, int N, float* out) {
     }
 }
 
-void crisp_audio_fft_wrapper(const float* in, int N, float* out) {
+void stelnet_audio_fft_wrapper(const float* in, int N, float* out) {
     static thread_local std::vector<float> scratch_in;
     static thread_local std::vector<float> scratch_out;
     if ((int)scratch_in.size() < 4 * N)
@@ -214,7 +214,7 @@ void crisp_audio_fft_wrapper(const float* in, int N, float* out) {
     if ((int)scratch_out.size() < 8 * N)
         scratch_out.assign((size_t)8 * N, 0.0f);
     std::memcpy(scratch_in.data(), in, (size_t)N * sizeof(float));
-    crisp_audio_fft_recursive(scratch_in.data(), N, scratch_out.data());
+    stelnet_audio_fft_recursive(scratch_in.data(), N, scratch_out.data());
     std::memcpy(out, scratch_out.data(), (size_t)(2 * N) * sizeof(float));
 }
 
@@ -226,15 +226,15 @@ const char* default_or(const char* p, const char* d) {
 // Model loading — pull weights + hparams from the GGUF.
 // ---------------------------------------------------------------------------
 
-bool load_model(crisp_audio_context& ctx, const char* path, const crisp_audio_params& params) {
+bool load_model(stelnet_audio_context& ctx, const char* path, const stelnet_audio_params& params) {
     const std::string tprefix = default_or(params.tensor_prefix, "audio.");
-    const std::string mprefix = default_or(params.meta_prefix, "crisp_audio.");
+    const std::string mprefix = default_or(params.meta_prefix, "stelnet_audio.");
 
     // ---- pass 1: hparams via metadata-only context ----
     {
         gguf_context* gctx = core_gguf::open_metadata(path);
         if (!gctx) {
-            fprintf(stderr, "crisp_audio: cannot open %s\n", path);
+            fprintf(stderr, "stelnet_audio: cannot open %s\n", path);
             return false;
         }
         auto& hp = ctx.hp;
@@ -275,7 +275,7 @@ bool load_model(crisp_audio_context& ctx, const char* path, const crisp_audio_pa
         hp.ff_dim = ua("ff_dim", hp.ff_dim);
         hp.conv_ch = ua("conv_channels", hp.conv_ch);
         hp.max_source_pos = ua("max_source_pos", hp.max_source_pos);
-        // cielvox2-asr converter wrote `proj_dim`; BidirLM/crisp_audio writes
+        // cielvox2-asr converter wrote `proj_dim`; BidirLM/stelnet_audio writes
         // `output_dim`. Try both so the same loader works on both GGUF
         // dialects without forcing the user to re-run the converter.
         hp.output_dim = ua("output_dim", ua("proj_dim", hp.output_dim));
@@ -284,7 +284,7 @@ bool load_model(crisp_audio_context& ctx, const char* path, const crisp_audio_pa
 
     // ---- pass 2: weights via shared loader ----
     core_gguf::WeightLoad wl;
-    if (!core_gguf::load_weights(path, ctx.backend, "crisp_audio", wl)) {
+    if (!core_gguf::load_weights(path, ctx.backend, "stelnet_audio", wl)) {
         return false;
     }
     ctx.model_ctx = wl.ctx;
@@ -298,7 +298,7 @@ bool load_model(crisp_audio_context& ctx, const char* path, const crisp_audio_pa
     auto require = [&](const std::string& name) -> ggml_tensor* {
         auto t = get(name);
         if (!t) {
-            fprintf(stderr, "crisp_audio: required tensor '%s' missing\n", name.c_str());
+            fprintf(stderr, "stelnet_audio: required tensor '%s' missing\n", name.c_str());
         }
         return t;
     };
@@ -437,7 +437,7 @@ static ggml_tensor* windowed_self_attn(ggml_context* g, ggml_tensor* Q, ggml_ten
     return body ? body : tail;
 }
 
-ggml_cgraph* build_graph_qwen_omni(crisp_audio_context& ctx, int T_chunk, int num_chunks, int T_chunk_out_expected,
+ggml_cgraph* build_graph_qwen_omni(stelnet_audio_context& ctx, int T_chunk, int num_chunks, int T_chunk_out_expected,
                                    int N_keep, int window_frames = 0) {
     const auto& hp = ctx.hp;
     const auto& w = ctx.w;
@@ -605,8 +605,8 @@ ggml_cgraph* build_graph_qwen_omni(crisp_audio_context& ctx, int T_chunk, int nu
 
 extern "C" {
 
-struct crisp_audio_params crisp_audio_params_default(void) {
-    struct crisp_audio_params p {};
+struct stelnet_audio_params stelnet_audio_params_default(void) {
+    struct stelnet_audio_params p {};
     p.n_threads = 4;
     p.verbosity = 1;
     p.use_gpu = true;
@@ -616,12 +616,12 @@ struct crisp_audio_params crisp_audio_params_default(void) {
     return p;
 }
 
-struct crisp_audio_context* crisp_audio_init_from_file(const char* gguf_path, const struct crisp_audio_params* params) {
+struct stelnet_audio_context* stelnet_audio_init_from_file(const char* gguf_path, const struct stelnet_audio_params* params) {
     if (!gguf_path)
         return nullptr;
-    crisp_audio_params eff = params ? *params : crisp_audio_params_default();
+    stelnet_audio_params eff = params ? *params : stelnet_audio_params_default();
 
-    auto* ctx = new crisp_audio_context();
+    auto* ctx = new stelnet_audio_context();
     ctx->n_threads = eff.n_threads;
     ctx->verbosity = eff.verbosity;
     ctx->dialect = (eff.dialect == CRISP_AUDIO_DIALECT_AUTO) ? CRISP_AUDIO_DIALECT_QWEN_OMNI : eff.dialect;
@@ -644,7 +644,7 @@ struct crisp_audio_context* crisp_audio_init_from_file(const char* gguf_path, co
     }
 
     if (!load_model(*ctx, gguf_path, eff)) {
-        crisp_audio_free(ctx);
+        stelnet_audio_free(ctx);
         return nullptr;
     }
 
@@ -669,7 +669,7 @@ struct crisp_audio_context* crisp_audio_init_from_file(const char* gguf_path, co
 
     if (ctx->verbosity >= 1) {
         fprintf(stderr,
-                "crisp_audio: loaded dialect=qwen_omni d_model=%u layers=%u "
+                "stelnet_audio: loaded dialect=qwen_omni d_model=%u layers=%u "
                 "heads=%u head_dim=%u output_dim=%u n_mels=%u n_window=%u\n",
                 ctx->hp.d_model, ctx->hp.n_layers, ctx->hp.n_heads, ctx->hp.head_dim, ctx->hp.output_dim,
                 ctx->hp.n_mels, ctx->hp.n_window);
@@ -677,7 +677,7 @@ struct crisp_audio_context* crisp_audio_init_from_file(const char* gguf_path, co
     return ctx;
 }
 
-void crisp_audio_free(struct crisp_audio_context* ctx) {
+void stelnet_audio_free(struct stelnet_audio_context* ctx) {
     if (!ctx)
         return;
 #ifdef CRISP_AUDIO_HAS_IMATRIX
@@ -721,13 +721,13 @@ static void mel_read_f32(ggml_tensor* t, std::vector<float>& out) {
     }
 }
 
-float* crisp_audio_compute_mel(struct crisp_audio_context* ctx, const float* samples, int n_samples, int* out_n_mels,
+float* stelnet_audio_compute_mel(struct stelnet_audio_context* ctx, const float* samples, int n_samples, int* out_n_mels,
                                int* out_T_mel) {
     if (!ctx || !samples || n_samples <= 0)
         return nullptr;
     const auto& hp = ctx->hp;
     if (!ctx->w.mel_filters || !ctx->w.mel_window) {
-        fprintf(stderr, "crisp_audio: GGUF missing mel_filters / mel_window — "
+        fprintf(stderr, "stelnet_audio: GGUF missing mel_filters / mel_window — "
                         "regenerate the GGUF with the converter that bakes them in\n");
         return nullptr;
     }
@@ -757,7 +757,7 @@ float* crisp_audio_compute_mel(struct crisp_audio_context* ctx, const float* sam
     p.drop_last_frame = true;
 
     int T_ret = 0;
-    auto mel = core_mel::compute(samples, n_samples, hann.data(), n_fft, filt.data(), n_freqs, crisp_audio_fft_wrapper,
+    auto mel = core_mel::compute(samples, n_samples, hann.data(), n_fft, filt.data(), n_freqs, stelnet_audio_fft_wrapper,
                                  p, T_ret);
     if (mel.empty())
         return nullptr;
@@ -771,13 +771,13 @@ float* crisp_audio_compute_mel(struct crisp_audio_context* ctx, const float* sam
     return result;
 }
 
-float* crisp_audio_encode(struct crisp_audio_context* ctx, const float* mel_features, int n_mels, int T_mel,
+float* stelnet_audio_encode(struct stelnet_audio_context* ctx, const float* mel_features, int n_mels, int T_mel,
                           int* out_n_frames, int* out_dim) {
     if (!ctx || !mel_features)
         return nullptr;
     const auto& hp = ctx->hp;
     if (n_mels != (int)hp.n_mels) {
-        fprintf(stderr, "crisp_audio: mel mismatch (%d vs %d)\n", n_mels, (int)hp.n_mels);
+        fprintf(stderr, "stelnet_audio: mel mismatch (%d vs %d)\n", n_mels, (int)hp.n_mels);
         return nullptr;
     }
 
@@ -869,7 +869,7 @@ float* crisp_audio_encode(struct crisp_audio_context* ctx, const float* mel_feat
     ggml_cgraph* gf = build_graph_qwen_omni(*ctx, chunk_T, num_chunks, T_chunk_out, N_seq, window_frames);
     ggml_backend_sched_reset(ctx->sched);
     if (!ggml_backend_sched_alloc_graph(ctx->sched, gf)) {
-        fprintf(stderr, "crisp_audio: failed to alloc encoder graph\n");
+        fprintf(stderr, "stelnet_audio: failed to alloc encoder graph\n");
         return nullptr;
     }
 
@@ -892,7 +892,7 @@ float* crisp_audio_encode(struct crisp_audio_context* ctx, const float* mel_feat
         ggml_backend_tensor_set(ggml_graph_get_tensor(gf, "attn_mask"), mask.data(), 0, mask.size() * sizeof(float));
 
     if (ggml_backend_sched_graph_compute(ctx->sched, gf) != GGML_STATUS_SUCCESS) {
-        fprintf(stderr, "crisp_audio: graph compute failed\n");
+        fprintf(stderr, "stelnet_audio: graph compute failed\n");
         return nullptr;
     }
 
@@ -935,19 +935,19 @@ float* crisp_audio_encode(struct crisp_audio_context* ctx, const float* mel_feat
     return result;
 }
 
-int crisp_audio_d_model(struct crisp_audio_context* ctx) {
+int stelnet_audio_d_model(struct stelnet_audio_context* ctx) {
     return ctx ? (int)ctx->hp.d_model : 0;
 }
-int crisp_audio_output_dim(struct crisp_audio_context* ctx) {
+int stelnet_audio_output_dim(struct stelnet_audio_context* ctx) {
     return ctx ? (int)ctx->hp.output_dim : 0;
 }
-int crisp_audio_n_layers(struct crisp_audio_context* ctx) {
+int stelnet_audio_n_layers(struct stelnet_audio_context* ctx) {
     return ctx ? (int)ctx->hp.n_layers : 0;
 }
-int crisp_audio_n_window(struct crisp_audio_context* ctx) {
+int stelnet_audio_n_window(struct stelnet_audio_context* ctx) {
     return ctx ? (int)ctx->hp.n_window : 0;
 }
-enum crisp_audio_dialect crisp_audio_dialect_of(struct crisp_audio_context* ctx) {
+enum stelnet_audio_dialect stelnet_audio_dialect_of(struct stelnet_audio_context* ctx) {
     return ctx ? ctx->dialect : CRISP_AUDIO_DIALECT_AUTO;
 }
 

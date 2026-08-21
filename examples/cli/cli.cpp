@@ -171,7 +171,7 @@ static bool is_auto_model_arg(const std::string& model) {
     return model == "auto" || model == "default";
 }
 
-static void print_resolve_preview(const char* label, const CrispasrResolvePreview& preview) {
+static void print_resolve_preview(const char* label, const StelnetAsrResolvePreview& preview) {
     fprintf(stderr, "%s:\n", label);
     fprintf(stderr, "  requested: %s\n", preview.requested.c_str());
     if (!preview.backend.empty())
@@ -2458,18 +2458,18 @@ int main(int argc, char** argv) {
             backend_name = stelnettts_detect_backend_from_gguf(params.model);
         }
 
-        const CrispasrResolvePreview model_preview = stelnettts_preview_model_cli(
+        const StelnetAsrResolvePreview model_preview = stelnettts_preview_model_cli(
             params.model, backend_name, params.cache_dir, params.model_quant, params.dry_run_ignore_cache);
         print_resolve_preview("model", model_preview);
 
         bool ok = !model_preview.unresolved;
         if (!backend_name.empty()) {
-            CrispasrRegistryEntry entry;
+            StelnetAsrRegistryEntry entry;
             if (stelnettts_registry_lookup(backend_name, entry, params.tts_codec_quant) &&
                 !entry.companion_filename.empty()) {
                 const std::string codec_arg =
                     params.tts_codec_model.empty() ? entry.companion_filename : params.tts_codec_model;
-                const CrispasrResolvePreview companion_preview = stelnettts_preview_model_cli(
+                const StelnetAsrResolvePreview companion_preview = stelnettts_preview_model_cli(
                     codec_arg, backend_name, params.cache_dir, params.tts_codec_quant, params.dry_run_ignore_cache);
                 print_resolve_preview("companion", companion_preview);
                 ok = ok && !companion_preview.unresolved;
@@ -2997,7 +2997,7 @@ int main(int argc, char** argv) {
             // an explicit method — otherwise the existing whisper.cpp
             // (speaker N) string is left in place unchanged.
             if (params.diarize && !params.diarize_method.empty() && !segs.empty()) {
-                CrispasrPyannoteCache pyannote_cache;
+                StelnetAsrPyannoteCache pyannote_cache;
                 if (params.diarize_method == "pyannote" && !pcmf32.empty()) {
                     if (!stelnettts_compute_pyannote_cache(pcmf32.data(), (int)pcmf32.size(), params, pyannote_cache)) {
                         pyannote_cache = {};

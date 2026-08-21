@@ -395,7 +395,7 @@ Lessons from the systematic head-to-head benchmark against
 38. **A fix to a backend must land in THREE places, not one — the CLI adapter,
     the HTTP server, AND the session C-ABI (`stelnettts_c_api.cpp`).** The session
     reimplements each backend's transcribe inline; it does NOT call the CLI
-    `CrispasrBackend` adapter (dev-guide HARD RULE #6). Issue #257's segmentation
+    `StelnetAsrBackend` adapter (dev-guide HARD RULE #6). Issue #257's segmentation
     fix had to be applied in all three; the JA-by-vocab-size misdetection was
     patched in ~5 spots. The server is a fourth wrinkle: it uses the *adapter*
     (`backend->transcribe`) but had its own slicing that ignored

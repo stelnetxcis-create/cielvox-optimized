@@ -20,34 +20,34 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 PORT=${PORT:-11461}
-CRISPASR=""
+STELNET_ASR=""
 # Optional model cache dir (env STELNETTTS_TEST_CACHE or --cache-dir=). Useful when
 # the default cache (~/.cache/stelnettts) is unwritable; the model is fetched here.
 CACHE_DIR="${STELNETTTS_TEST_CACHE:-}"
 for arg in "$@"; do
     case "$arg" in
         --port=*) PORT="${arg#--port=}" ;;
-        --binary=*) CRISPASR="${arg#--binary=}" ;;
+        --binary=*) STELNET_ASR="${arg#--binary=}" ;;
         --cache-dir=*) CACHE_DIR="${arg#--cache-dir=}" ;;
     esac
 done
 CACHE_ARG=()
 [ -n "$CACHE_DIR" ] && CACHE_ARG=(--cache-dir "$CACHE_DIR")
 
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-        if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+        if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
     done
 fi
-if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ] || [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found (build first)"; exit 0
 fi
 
 SAMPLE="samples/jfk.wav"
 [ -f "$SAMPLE" ] || { echo "SKIP: $SAMPLE not found"; exit 0; }
 
-echo "Binary: $CRISPASR"
-echo "Backends: $("$CRISPASR" --version 2>&1 | tr '\n' ' ')"
+echo "Binary: $STELNET_ASR"
+echo "Backends: $("$STELNET_ASR" --version 2>&1 | tr '\n' ' ')"
 
 PASS=0; FAIL=0
 SERVER_PID=""
@@ -63,7 +63,7 @@ trap cleanup EXIT
 boot_server() {
     cleanup; SERVER_PID=""
     SERVER_LOG=$(mktemp -t stelnettts-warmup.XXXXXX)
-    "$CRISPASR" --server -m moonshine --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} \
+    "$STELNET_ASR" --server -m moonshine --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} \
         --host 127.0.0.1 --port "$PORT" "$@" \
         > "$SERVER_LOG" 2>&1 &
     SERVER_PID=$!

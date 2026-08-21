@@ -8,7 +8,7 @@
 //                          internally so callers stay 16 kHz only)
 //
 // Adding a third is intentionally cheap: subclass
-// CrispasrSpeakerEmbedder, implement embed(), and add a dispatch
+// StelnetAsrSpeakerEmbedder, implement embed(), and add a dispatch
 // branch in stelnettts_make_speaker_embedder() that maps model_spec
 // strings or resolved paths to it.
 
@@ -42,7 +42,7 @@ bool contains_ci(const std::string& haystack, const char* needle) {
     return h.find(n) != std::string::npos;
 }
 
-class TitaNetEmbedder : public CrispasrSpeakerEmbedder {
+class TitaNetEmbedder : public StelnetAsrSpeakerEmbedder {
 public:
     TitaNetEmbedder(titanet_context* ctx, std::string path, int n_threads)
         : ctx_(ctx), path_(std::move(path)), n_threads_(n_threads) {}
@@ -61,7 +61,7 @@ public:
         return n == 192;
     }
 
-    std::unique_ptr<CrispasrSpeakerEmbedder> clone() const override {
+    std::unique_ptr<StelnetAsrSpeakerEmbedder> clone() const override {
         if (path_.empty())
             return nullptr;
         titanet_context* c = titanet_init(path_.c_str(), n_threads_);
@@ -82,7 +82,7 @@ private:
 // as TitaNet. Linear is fine for speaker-embedding purposes — the
 // network operates on mel features and is insensitive to mild
 // resampling artifacts at the highest frequencies.
-class IndexTtsEcapaEmbedder : public CrispasrSpeakerEmbedder {
+class IndexTtsEcapaEmbedder : public StelnetAsrSpeakerEmbedder {
 public:
     IndexTtsEcapaEmbedder(indextts_voc_context* ctx, std::string path, int n_threads)
         : ctx_(ctx), path_(std::move(path)), n_threads_(n_threads) {}
@@ -123,7 +123,7 @@ public:
         return true;
     }
 
-    std::unique_ptr<CrispasrSpeakerEmbedder> clone() const override {
+    std::unique_ptr<StelnetAsrSpeakerEmbedder> clone() const override {
         if (path_.empty())
             return nullptr;
         indextts_voc_context* c = indextts_voc_init(path_.c_str(), n_threads_, /*use_gpu=*/false);
@@ -155,7 +155,7 @@ std::string resolve_indextts_bigvgan(const std::string& model_spec, const std::s
 
 } // namespace
 
-std::unique_ptr<CrispasrSpeakerEmbedder> stelnettts_make_speaker_embedder(const std::string& model_spec, int n_threads,
+std::unique_ptr<StelnetAsrSpeakerEmbedder> stelnettts_make_speaker_embedder(const std::string& model_spec, int n_threads,
                                                                         const std::string& cache_dir) {
     if (model_spec.empty())
         return nullptr;

@@ -23,11 +23,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
-if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="./build-ninja-compile/bin/stelnettts"
+STELNET_ASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
+if [ ! -x "$STELNET_ASR" ]; then
+    STELNET_ASR="./build-ninja-compile/bin/stelnettts"
 fi
-if [ ! -x "$CRISPASR" ]; then
+if [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found" >&2
     exit 2
 fi
@@ -38,7 +38,7 @@ if ! command -v ffmpeg &>/dev/null; then
 fi
 
 # Quick probe: does parakeet work at all?
-if ! "$CRISPASR" --backend parakeet -m auto -f samples/jfk.wav \
+if ! "$STELNET_ASR" --backend parakeet -m auto -f samples/jfk.wav \
     --no-prints 2>&1 | grep -qi "fellow"; then
     echo "SKIP: parakeet backend not functional or model unavailable" >&2
     exit 2
@@ -88,7 +88,7 @@ run_test() {
 
     echo -n "  [$test_name] ... "
 
-    if ! "$CRISPASR" --backend parakeet -m auto -f "$audio_file" \
+    if ! "$STELNET_ASR" --backend parakeet -m auto -f "$audio_file" \
         --output-srt -of "$out_base" \
         "$@" > "$out_file" 2>&1; then
         echo "FAIL (crashed)"

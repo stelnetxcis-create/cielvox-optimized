@@ -1,11 +1,11 @@
 package io.github.ggerganov.whispercpp.chat;
 
 /**
- * A {@code crispasr_chat_*} entry point failed. {@link #code()} carries what
+ * A {@code stelnet_asr_chat_*} entry point failed. {@link #code()} carries what
  * the C side reported.
  *
  * <p>Only {@link ChatAbortedException} may be identified by its code: the
- * header promises {@code CRISPASR_CHAT_ERR_ABORTED} as a stable contract and
+ * header promises {@code STELNET_ASR_CHAT_ERR_ABORTED} as a stable contract and
  * says every other value is a diagnostic aid. Read {@link #getMessage()} for
  * those, do not switch on the number.
  */

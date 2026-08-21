@@ -1,4 +1,4 @@
-# CrispASR .clang-format
+# StelnetASR .clang-format
 # Based on the existing code style: 4-space indent, 120-col limit,
 # references attached to type ("const std::string & s" style).
 ---

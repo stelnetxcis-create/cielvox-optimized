@@ -30,7 +30,7 @@
 
 // Start the Wyoming listener thread on `port`. Returns 0 on success.
 // `backend` and `model_mutex` must remain valid for the server lifetime.
-int wyoming_start(CrispasrBackend* backend, std::mutex& model_mutex, const whisper_params& params, int port);
+int wyoming_start(StelnetAsrBackend* backend, std::mutex& model_mutex, const whisper_params& params, int port);
 
 // Stop the listener and join the thread. Safe to call multiple times.
 void wyoming_stop();

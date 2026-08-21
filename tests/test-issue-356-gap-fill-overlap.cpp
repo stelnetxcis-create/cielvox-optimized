@@ -45,7 +45,7 @@ stelnettts_segment make_segment(std::vector<stelnettts_word> words) {
 // transcribe() call returns every scripted word that falls inside the
 // requested window. This is exactly the contract gap-fill relies on when it
 // re-transcribes a hole in isolation.
-class ScriptedBackend : public CrispasrBackend {
+class ScriptedBackend : public StelnetAsrBackend {
 public:
     explicit ScriptedBackend(std::vector<stelnettts_word> script) : script_(std::move(script)) {}
 

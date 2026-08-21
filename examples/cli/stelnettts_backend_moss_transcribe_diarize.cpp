@@ -19,7 +19,7 @@
 
 namespace {
 
-class MossTranscribeDiarizeBackend : public CrispasrBackend {
+class MossTranscribeDiarizeBackend : public StelnetAsrBackend {
 public:
     MossTranscribeDiarizeBackend() = default;
     ~MossTranscribeDiarizeBackend() override { MossTranscribeDiarizeBackend::shutdown(); }
@@ -108,6 +108,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_moss_transcribe_diarize_backend() {
-    return std::unique_ptr<CrispasrBackend>(new MossTranscribeDiarizeBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_moss_transcribe_diarize_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new MossTranscribeDiarizeBackend());
 }

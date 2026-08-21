@@ -5,7 +5,7 @@ import com.sun.jna.Pointer;
 
 /**
  * Library-level microphone capture handle (PLAN #62d). Wraps the C-ABI
- * {@code crispasr_mic_*} functions which delegate to miniaudio's
+ * {@code stelnet_asr_mic_*} functions which delegate to miniaudio's
  * {@code ma_device} (Core Audio on macOS, ALSA/PulseAudio on Linux,
  * WASAPI on Windows).
  *
@@ -16,7 +16,7 @@ import com.sun.jna.Pointer;
  *
  * <p>Threading: keep work in the user callback short and non-blocking.
  * For streaming ASR, push samples into a ring buffer and drain on a
- * dedicated worker thread; if you call into a {@link CrispasrSession.Stream}
+ * dedicated worker thread; if you call into a {@link StelnetAsrSession.Stream}
  * directly from the callback, decode latency will block the audio
  * thread and the driver will eventually drop frames.
  *
@@ -40,10 +40,10 @@ public final class Mic implements AutoCloseable {
     // Strong reference to the JNA Callback so it isn't GC'd while the
     // C side is calling it. The C audio thread holds no Java reference.
     @SuppressWarnings("unused")
-    private final CrispasrSession.MicCallback nativeCallback;
+    private final StelnetAsrSession.MicCallback nativeCallback;
     private boolean started;
 
-    private Mic(Pointer handle, CrispasrSession.MicCallback nativeCallback) {
+    private Mic(Pointer handle, StelnetAsrSession.MicCallback nativeCallback) {
         this.handle = handle;
         this.nativeCallback = nativeCallback;
     }
@@ -59,7 +59,7 @@ public final class Mic implements AutoCloseable {
     public static Mic open(int sampleRate, int channels, final Listener listener) {
         if (listener == null) throw new IllegalArgumentException("listener is required");
 
-        CrispasrSession.MicCallback cb = new CrispasrSession.MicCallback() {
+        StelnetAsrSession.MicCallback cb = new StelnetAsrSession.MicCallback() {
             @Override
             public void invoke(Pointer pcm, int nSamples, Pointer userdata) {
                 try {
@@ -81,23 +81,23 @@ public final class Mic implements AutoCloseable {
             }
         };
 
-        Pointer p = CrispasrSession.Lib.INSTANCE.crispasr_mic_open(sampleRate, channels, cb, null);
-        if (p == null) throw new IllegalStateException("crispasr_mic_open failed");
+        Pointer p = StelnetAsrSession.Lib.INSTANCE.stelnet_asr_mic_open(sampleRate, channels, cb, null);
+        if (p == null) throw new IllegalStateException("stelnet_asr_mic_open failed");
         return new Mic(p, cb);
     }
 
     /** Begin capture. Throws on driver error. */
     public void start() {
         if (handle == null) throw new IllegalStateException("mic is closed");
-        int rc = CrispasrSession.Lib.INSTANCE.crispasr_mic_start(handle);
-        if (rc != 0) throw new IllegalStateException("crispasr_mic_start failed (rc=" + rc + ")");
+        int rc = StelnetAsrSession.Lib.INSTANCE.stelnet_asr_mic_start(handle);
+        if (rc != 0) throw new IllegalStateException("stelnet_asr_mic_start failed (rc=" + rc + ")");
         started = true;
     }
 
     /** Stop capture. Idempotent. The callback may still fire briefly while the driver drains. */
     public void stop() {
         if (handle == null || !started) return;
-        CrispasrSession.Lib.INSTANCE.crispasr_mic_stop(handle);
+        StelnetAsrSession.Lib.INSTANCE.stelnet_asr_mic_stop(handle);
         started = false;
     }
 
@@ -106,13 +106,13 @@ public final class Mic implements AutoCloseable {
     public void close() {
         if (handle == null) return;
         stop();
-        CrispasrSession.Lib.INSTANCE.crispasr_mic_close(handle);
+        StelnetAsrSession.Lib.INSTANCE.stelnet_asr_mic_close(handle);
         handle = null;
     }
 
     /** Default capture-device name, or empty string if no input device is available. */
     public static String defaultDeviceName() {
-        String s = CrispasrSession.Lib.INSTANCE.crispasr_mic_default_device_name();
+        String s = StelnetAsrSession.Lib.INSTANCE.stelnet_asr_mic_default_device_name();
         return s == null ? "" : s;
     }
 }

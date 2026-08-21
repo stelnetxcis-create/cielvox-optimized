@@ -96,7 +96,7 @@ static std::string tada_lang_ref_url(const std::string& backend, const std::stri
     return base + "tada-ref-" + lang + ".gguf";
 }
 
-class TadaBackend : public CrispasrBackend {
+class TadaBackend : public StelnetAsrBackend {
 public:
     TadaBackend() = default;
     ~TadaBackend() override { TadaBackend::shutdown(); }
@@ -193,7 +193,7 @@ public:
         if (codec_path.empty())
             codec_path = discover_codec(p.model);
         if (codec_path.empty()) {
-            CrispasrRegistryEntry entry;
+            StelnetAsrRegistryEntry entry;
             if (stelnettts_registry_lookup(p.backend, entry, p.tts_codec_quant) && !entry.companion_filename.empty()) {
                 codec_path = stelnettts_resolve_model_cli(entry.companion_filename, p.backend, p.no_prints, p.cache_dir,
                                                         p.auto_download, p.tts_codec_quant);
@@ -484,6 +484,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_tada_backend() {
-    return std::unique_ptr<CrispasrBackend>(new TadaBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_tada_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new TadaBackend());
 }

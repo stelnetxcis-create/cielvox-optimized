@@ -64,7 +64,7 @@ int score_speaker_for_range(const float* log_probs, int T, double frame_dur_s, i
 //     to have been active. Callers wanting "no speaker" semantics on
 //     silence should pre-filter with VAD.
 void assign_speakers_from_log_posteriors(const float* log_probs, int T, double frame_dur_s, int64_t slice_t0_cs,
-                                         std::vector<CrispasrDiarizeSegment>& segs);
+                                         std::vector<StelnetAsrDiarizeSegment>& segs);
 
 // A maximal run of consecutive words assigned to one speaker. Half-open
 // word-index range [start, end); `speaker` is the run's speaker id (>=0),

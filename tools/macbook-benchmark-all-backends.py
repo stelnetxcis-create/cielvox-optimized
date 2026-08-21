@@ -39,7 +39,7 @@ from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRISPASR = REPO_ROOT / "build" / "bin" / "stelnettts"
+STELNET_ASR = REPO_ROOT / "build" / "bin" / "stelnettts"
 JFK_WAV = REPO_ROOT / "samples" / "jfk.wav"
 
 JFK_REF = (
@@ -244,14 +244,14 @@ def benchmark_backend(backend: str, display: str, timeout: int, notes: str,
     # Metal run (optional warmup first to prime kernel cache + page cache)
     if warmup:
         print("  → Metal warmup…", flush=True)
-        w0 = run_one(CRISPASR, model, backend, audio, use_gpu=True,
+        w0 = run_one(STELNET_ASR, model, backend, audio, use_gpu=True,
                      timeout=timeout, audio_duration=audio_duration, verbose=verbose)
         if w0["status"] == "OK":
             print(f"    cold: {w0.get('realtime_factor', '?')}x RT  ({w0.get('wall_s', '?')}s wall)")
         result["metal_cold"] = w0
 
     print("  → Metal…", flush=True)
-    metal = run_one(CRISPASR, model, backend, audio, use_gpu=True,
+    metal = run_one(STELNET_ASR, model, backend, audio, use_gpu=True,
                     timeout=timeout, audio_duration=audio_duration, verbose=verbose)
     if metal.get("transcript"):
         w = calc_wer(JFK_REF, metal["transcript"])
@@ -269,10 +269,10 @@ def benchmark_backend(backend: str, display: str, timeout: int, notes: str,
     if run_cpu:
         if warmup:
             print("  → CPU warmup…", flush=True)
-            run_one(CRISPASR, model, backend, audio, use_gpu=False,
+            run_one(STELNET_ASR, model, backend, audio, use_gpu=False,
                     timeout=timeout, audio_duration=audio_duration, verbose=verbose)
         print("  → CPU (-ng)…", flush=True)
-        cpu = run_one(CRISPASR, model, backend, audio, use_gpu=False,
+        cpu = run_one(STELNET_ASR, model, backend, audio, use_gpu=False,
                       timeout=timeout, audio_duration=audio_duration, verbose=verbose)
         if cpu.get("transcript"):
             w = calc_wer(JFK_REF, cpu["transcript"])
@@ -397,8 +397,8 @@ def main():
                     help="Don't pass -v to stelnettts (default: verbose ON)")
     args = ap.parse_args()
 
-    if not CRISPASR.is_file():
-        print(f"ERROR: {CRISPASR} not built. Run scripts/dev-build.sh first.")
+    if not STELNET_ASR.is_file():
+        print(f"ERROR: {STELNET_ASR} not built. Run scripts/dev-build.sh first.")
         sys.exit(1)
     if not Path(args.audio).is_file():
         print(f"ERROR: audio file not found: {args.audio}")

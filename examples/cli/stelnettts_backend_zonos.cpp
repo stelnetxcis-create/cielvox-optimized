@@ -55,7 +55,7 @@ static std::string discover_codec(const std::string& model_path) {
     return "";
 }
 
-class ZonosBackend : public CrispasrBackend {
+class ZonosBackend : public StelnetAsrBackend {
 public:
     ZonosBackend() = default;
     ~ZonosBackend() override { ZonosBackend::shutdown(); }
@@ -104,7 +104,7 @@ public:
             codec_path = discover_codec(p.model);
         }
         if (codec_path.empty()) {
-            CrispasrRegistryEntry entry;
+            StelnetAsrRegistryEntry entry;
             if (stelnettts_registry_lookup(p.backend, entry, p.tts_codec_quant) && !entry.companion_filename.empty()) {
                 codec_path = stelnettts_resolve_model_cli(entry.companion_filename, p.backend, p.no_prints, p.cache_dir,
                                                         p.auto_download, p.tts_codec_quant);
@@ -173,6 +173,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_zonos_backend() {
-    return std::unique_ptr<CrispasrBackend>(new ZonosBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_zonos_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new ZonosBackend());
 }

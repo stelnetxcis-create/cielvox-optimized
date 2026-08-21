@@ -6,7 +6,7 @@ the resolutions are recorded inline as **[AGREED]**. Two API additions they
 asked for are in §10.
 
 CometBeat asked StelnetTTS to port the real-time-critical vocoders (RVC
-NSF-HiFi-GAN, Beatrice v2) behind a `CrispasrSession.convert(...)` seam, with
+NSF-HiFi-GAN, Beatrice v2) behind a `StelnetAsrSession.convert(...)` seam, with
 CometBeat supplying ContentVec features + F0 + speaker id. They keep the
 HuBERT/ContentVec encoder, Harvest F0, and the DDSP-SVC fallback in pure Dart.
 

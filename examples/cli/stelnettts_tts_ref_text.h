@@ -14,7 +14,7 @@
 // auto-downloaded). The result is stable per clip, so it is cached beside the
 // voice file and later runs skip ASR entirely.
 //
-// Header-only, CLI-side: it constructs another CrispasrBackend, which the
+// Header-only, CLI-side: it constructs another StelnetAsrBackend, which the
 // session C-ABI cannot do. That matches where F5-TTS already did this, so both
 // the CLI and the server (which drives the same adapters) get it, while the
 // session ABI keeps requiring an explicit transcript.

@@ -18,9 +18,9 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
-[ -x "$CRISPASR" ] || CRISPASR="./build-ninja-compile/bin/stelnettts"
-if [ ! -x "$CRISPASR" ]; then
+STELNET_ASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
+[ -x "$STELNET_ASR" ] || STELNET_ASR="./build-ninja-compile/bin/stelnettts"
+if [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found (set STELNETTTS_BIN)"; exit 2
 fi
 
@@ -82,7 +82,7 @@ BACKEND="${STELNETTTS_PARITY_BACKEND:-parakeet}"
 BFLAG=""
 [ -n "$BACKEND" ] && BFLAG="--backend $BACKEND"
 # shellcheck disable=SC2086
-"$CRISPASR" -m "$MODEL" $BFLAG --no-punctuation --threads 4 --language en \
+"$STELNET_ASR" -m "$MODEL" $BFLAG --no-punctuation --threads 4 --language en \
     -ojf -f "$CLIP" -of "$TMP/cli" >/dev/null 2>&1 || { echo "FAIL: CLI transcribe errored"; exit 1; }
 
 # --- Surface B: session C-ABI (python binding) + compare (canonical rule) ---

@@ -14,7 +14,7 @@ public final class ChatAbortedException extends ChatException {
 
     /**
      * @param message the C diagnostic
-     * @param code    always {@code CRISPASR_CHAT_ERR_ABORTED}
+     * @param code    always {@code STELNET_ASR_CHAT_ERR_ABORTED}
      */
     public ChatAbortedException(String message, int code) {
         super(message, code);

@@ -91,7 +91,7 @@ gaps, delegated to agents with verification by the main session:
 - [x] **F4** Binding wrappers never compiled/executed beyond Go + Ruby CI:
   - Python `SpeakerDB` (consent-raise ctor, open/enroll2 wiring) — needs a
     runtime run against a freshly built shared lib;
-  - Flutter/Dart `CrispasrSpeakerDB` — `dart analyze`;
+  - Flutter/Dart `StelnetAsrSpeakerDB` — `dart analyze`;
   - Java JNA interface decls — compile check;
   - C# `SpeakerDb.Open/Enroll` — **no dotnet on this box and no C# CI
     workflow exists (pre-existing)** — signature cross-check vs the C-ABI

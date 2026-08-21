@@ -146,7 +146,7 @@ exposes them as struct/class members on its segment type.
 > `chunk_seconds <= 0` keeps the single-merged-segment #208 contract.
 >
 > Binding names:
-> `Session.transcribe_chunked` (Python), `CrispasrSession.TranscribeChunked`
+> `Session.transcribe_chunked` (Python), `StelnetAsrSession.TranscribeChunked`
 > (Go), `.transcribeChunked` (Java/Dart), `Session.transcribe_chunked` (Ruby),
 > `asrTranscribeChunked` (WASM), `transcribeSession({chunk_seconds,…})` (Node
 > addon), and Rust `Session::transcribe_chunked[_with_language]`. Two ways to
@@ -250,7 +250,7 @@ sources, so consume via a **git dependency** to build from source
 ```dart
 import 'package:stelnettts/stelnettts.dart' as stelnettts;
 
-final sess = stelnettts.CrispasrSession.open(modelPath, backend: 'parakeet');
+final sess = stelnettts.StelnetAsrSession.open(modelPath, backend: 'parakeet');
 final segs = sess.transcribeVad(pcm, vadModelPath);
 
 final lang = stelnettts.detectLanguagePcm(

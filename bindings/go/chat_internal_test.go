@@ -13,7 +13,7 @@ import (
 )
 
 // Test_chatErrorFrom_FallsBackToTheReturnedCode pins the defence in
-// chatErrorFrom: a C path that returned CRISPASR_CHAT_ERR_ABORTED without
+// chatErrorFrom: a C path that returned STELNET_ASR_CHAT_ERR_ABORTED without
 // filling err must still be reported as a cancel, the way the Rust and Python
 // bindings report it.
 func Test_chatErrorFrom_FallsBackToTheReturnedCode(t *testing.T) {

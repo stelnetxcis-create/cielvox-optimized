@@ -33,7 +33,7 @@
 
 namespace {
 
-class Voxtral4bBackend : public CrispasrBackend {
+class Voxtral4bBackend : public StelnetAsrBackend {
 public:
     Voxtral4bBackend() = default;
     ~Voxtral4bBackend() override { Voxtral4bBackend::shutdown(); }
@@ -310,7 +310,7 @@ public:
 
         // Beam and best-of-N require the full token list before scoring — fall back.
         if (params.beam_size > 1 || (params.temperature > 0.0f && params.best_of > 1)) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
 
@@ -434,6 +434,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_voxtral4b_backend() {
-    return std::unique_ptr<CrispasrBackend>(new Voxtral4bBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_voxtral4b_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new Voxtral4bBackend());
 }

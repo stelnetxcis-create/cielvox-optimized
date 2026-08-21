@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-class VoxtralTtsBackend : public CrispasrBackend {
+class VoxtralTtsBackend : public StelnetAsrBackend {
 public:
     VoxtralTtsBackend() = default;
 
@@ -66,6 +66,6 @@ private:
     voxtral_tts_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_voxtral_tts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_voxtral_tts_backend() {
     return std::make_unique<VoxtralTtsBackend>();
 }

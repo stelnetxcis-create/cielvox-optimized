@@ -170,7 +170,7 @@ def test_cloud_backup_requires_env_for_large_blob_and_lance_roots():
 def test_crisplens_v4_stelnettts_wrapper_and_transcript_search_are_wired():
     v4 = CRISPLENS / "electron-app-v4"
     renderer = v4 / "renderer"
-    wrapper = (v4 / "renderer" / "src" / "lib" / "CrispAsrWrapper.js").read_text(errors="ignore")
+    wrapper = (v4 / "renderer" / "src" / "lib" / "StelnetAsrWrapper.js").read_text(errors="ignore")
     preload = (v4 / "preload.js").read_text(errors="ignore")
     main = (v4 / "electron-main.js").read_text(errors="ignore")
     process_view = (v4 / "renderer" / "src" / "lib" / "ProcessView.svelte").read_text(errors="ignore")
@@ -204,7 +204,7 @@ def test_crisplens_v4_stelnettts_wrapper_and_transcript_search_are_wired():
     assert "process.env.CRISPLENS_SCRATCH_DIR" in server_cloud_drives
     assert "os.tmpdir()" not in server_cloud_drives
     assert "stelnettts_video_transcripts" in settings_view
-    assert "hasCrispAsrWrapper" in settings_view
+    assert "hasStelnetAsrWrapper" in settings_view
     assert "crisplens.stelnettts.model" in settings_view
     assert "crisplens.stelnettts.extraArgs" in settings_view
     assert "StelnetTTS Video Transcripts" in (renderer / "src" / "stores.js").read_text(errors="ignore")
@@ -215,7 +215,7 @@ def test_crisplens_v4_stelnettts_wrapper_and_transcript_search_are_wired():
     assert package_json["devDependencies"]["vite"].startswith("^8.")
 
     plugin = renderer / "plugins" / "stelnettts-capacitor"
-    podspec = (plugin / "CrisplensCrispasrCapacitor.podspec").read_text(errors="ignore")
+    podspec = (plugin / "CrisplensStelnetAsrCapacitor.podspec").read_text(errors="ignore")
     swift = (plugin / "ios" / "Sources" / "StelnetTTSPlugin" / "StelnetTTSPlugin.swift").read_text(errors="ignore")
     android = (plugin / "android" / "src" / "main" / "java" / "com" / "crisplens" / "stelnettts" / "StelnetTTSPlugin.kt")
     assert android.is_file()

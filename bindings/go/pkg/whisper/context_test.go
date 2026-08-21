@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/CrispStrobe/CrispASR/bindings/go/pkg/whisper"
+	"github.com/CrispStrobe/StelnetASR/bindings/go/pkg/whisper"
 	"github.com/go-audio/wav"
 	assert "github.com/stretchr/testify/assert"
 )

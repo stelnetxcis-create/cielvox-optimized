@@ -18,7 +18,7 @@
 
 namespace {
 
-class HiggsSttBackend : public CrispasrBackend {
+class HiggsSttBackend : public StelnetAsrBackend {
 public:
     HiggsSttBackend() = default;
     ~HiggsSttBackend() override { HiggsSttBackend::shutdown(); }
@@ -94,6 +94,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_higgs_stt_backend() {
-    return std::unique_ptr<CrispasrBackend>(new HiggsSttBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_higgs_stt_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new HiggsSttBackend());
 }

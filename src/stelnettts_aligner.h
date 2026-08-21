@@ -33,7 +33,7 @@
 #include <string>
 #include <vector>
 
-struct CrispasrAlignedWord {
+struct StelnetAsrAlignedWord {
     std::string text;
     int64_t t0_cs = 0; // centiseconds, absolute (includes t_offset_cs)
     int64_t t1_cs = 0;
@@ -41,7 +41,7 @@ struct CrispasrAlignedWord {
 
 /// A re-timed segment: one input SRT cue (or one text line) with timings
 /// derived from the word alignment that covers it.
-struct CrispasrAlignedSegment {
+struct StelnetAsrAlignedSegment {
     std::string text;
     int64_t t0_cs = 0;
     int64_t t1_cs = 0;
@@ -66,8 +66,8 @@ std::vector<std::string> stelnettts_parse_srt_cues(const std::string& raw);
 /// (per stelnettts_tokenise_align_words). Segment timings are the first
 /// word's t0 and the last word's t1; leftover words extend the last
 /// segment; segments left without words (alignment ended early) are dropped.
-std::vector<CrispasrAlignedSegment> stelnettts_group_aligned_segments(const std::vector<std::string>& segment_texts,
-                                                                    const std::vector<CrispasrAlignedWord>& words);
+std::vector<StelnetAsrAlignedSegment> stelnettts_group_aligned_segments(const std::vector<std::string>& segment_texts,
+                                                                    const std::vector<StelnetAsrAlignedWord>& words);
 
 /// Run CTC forced alignment.
 ///
@@ -86,7 +86,7 @@ std::vector<CrispasrAlignedSegment> stelnettts_group_aligned_segments(const std:
 /// ran. Best-effort: covers the canary-CTC path (and any unrecognized/corrupt
 /// GGUF, which routes there); it stays `false` otherwise and never
 /// false-positives.
-std::vector<CrispasrAlignedWord> stelnettts_align_words(const std::string& aligner_model, const std::string& transcript,
+std::vector<StelnetAsrAlignedWord> stelnettts_align_words(const std::string& aligner_model, const std::string& transcript,
                                                       const float* samples, int n_samples, int64_t t_offset_cs,
                                                       int n_threads, bool* out_load_failed = nullptr);
 

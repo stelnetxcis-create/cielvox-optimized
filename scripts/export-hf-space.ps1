@@ -26,7 +26,7 @@ Copy-Item -LiteralPath (Join-Path $sourceDir "start.sh") -Destination (Join-Path
 
 $dockerfilePath = Join-Path $destDir "Dockerfile"
 $dockerfile = Get-Content -LiteralPath $dockerfilePath -Raw
-$dockerfile = $dockerfile -replace 'COPY \. \.', 'COPY . /src/CrispASR'
+$dockerfile = $dockerfile -replace 'COPY \. \.', 'COPY . /src/StelnetASR'
 $dockerfile = $dockerfile -replace 'COPY hf-space/requirements\.txt /space/requirements\.txt', 'COPY requirements.txt /space/requirements.txt'
 $dockerfile = $dockerfile -replace 'COPY hf-space/app\.py hf-space/start\.sh /space/', 'COPY app.py start.sh /space/'
 Set-Content -LiteralPath $dockerfilePath -Value $dockerfile -NoNewline

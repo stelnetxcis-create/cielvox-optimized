@@ -12,7 +12,7 @@
 #include "core/stelnettts_env.h"
 #include "core/ngram_loop_fix.h" // core_ngram::fix_loops (PLAN.md §W1b)
 
-class FireredAsrBackend : public CrispasrBackend {
+class FireredAsrBackend : public StelnetAsrBackend {
 public:
     FireredAsrBackend() = default;
 
@@ -168,6 +168,6 @@ private:
     firered_asr_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_firered_asr_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_firered_asr_backend() {
     return std::make_unique<FireredAsrBackend>();
 }

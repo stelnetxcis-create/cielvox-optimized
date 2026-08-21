@@ -138,8 +138,8 @@ TEST_CASE("align-only: tokenise_align_words", "[unit][align]") {
 }
 
 // Build a synthetic word alignment: word i spans [i*100, i*100+80) cs.
-static std::vector<CrispasrAlignedWord> make_words(const std::vector<std::string>& texts) {
-    std::vector<CrispasrAlignedWord> out;
+static std::vector<StelnetAsrAlignedWord> make_words(const std::vector<std::string>& texts) {
+    std::vector<StelnetAsrAlignedWord> out;
     for (size_t i = 0; i < texts.size(); i++)
         out.push_back({texts[i], (int64_t)(i * 100), (int64_t)(i * 100 + 80)});
     return out;

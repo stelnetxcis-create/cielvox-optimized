@@ -29,74 +29,74 @@
 
 // Forward-declare the C ABI exported by libstelnettts. Full prototypes
 // live in src/stelnettts_c_api.cpp and src/kokoro.h.
-struct CrispasrSession;
-extern struct CrispasrSession* stelnettts_session_open(const char* model_path, int n_threads);
-extern void stelnettts_session_close(struct CrispasrSession* s);
-extern int stelnettts_session_set_codec_path(struct CrispasrSession* s, const char* path);
-extern int stelnettts_session_set_voice(struct CrispasrSession* s, const char* path, const char* ref_text_or_null);
-extern int stelnettts_session_set_speaker_name(struct CrispasrSession* s, const char* name);
-extern int stelnettts_session_set_speaker_id(struct CrispasrSession* s, int id);
-extern int stelnettts_session_set_punc_model(struct CrispasrSession* s, const char* punc_model);
-extern int stelnettts_session_set_hotwords(struct CrispasrSession* s, const char* hotwords, float boost);
-extern int stelnettts_session_set_sensitivity(struct CrispasrSession* s, const char* preset);
-extern int stelnettts_session_set_g2p_dict(struct CrispasrSession* s, const char* source);
-extern int stelnettts_session_n_speakers(struct CrispasrSession* s);
-extern const char* stelnettts_session_get_speaker_name(struct CrispasrSession* s, int i);
-extern int stelnettts_session_set_instruct(struct CrispasrSession* s, const char* instruct);
+struct StelnetAsrSession;
+extern struct StelnetAsrSession* stelnettts_session_open(const char* model_path, int n_threads);
+extern void stelnettts_session_close(struct StelnetAsrSession* s);
+extern int stelnettts_session_set_codec_path(struct StelnetAsrSession* s, const char* path);
+extern int stelnettts_session_set_voice(struct StelnetAsrSession* s, const char* path, const char* ref_text_or_null);
+extern int stelnettts_session_set_speaker_name(struct StelnetAsrSession* s, const char* name);
+extern int stelnettts_session_set_speaker_id(struct StelnetAsrSession* s, int id);
+extern int stelnettts_session_set_punc_model(struct StelnetAsrSession* s, const char* punc_model);
+extern int stelnettts_session_set_hotwords(struct StelnetAsrSession* s, const char* hotwords, float boost);
+extern int stelnettts_session_set_sensitivity(struct StelnetAsrSession* s, const char* preset);
+extern int stelnettts_session_set_g2p_dict(struct StelnetAsrSession* s, const char* source);
+extern int stelnettts_session_n_speakers(struct StelnetAsrSession* s);
+extern const char* stelnettts_session_get_speaker_name(struct StelnetAsrSession* s, int i);
+extern int stelnettts_session_set_instruct(struct StelnetAsrSession* s, const char* instruct);
 /* #316: synthesize these phonemes verbatim, skipping the G2P. Empty clears. kokoro and piper only (rc=-2 otherwise). */
-extern int stelnettts_session_set_tts_phonemes(struct CrispasrSession* s, const char* phonemes);
-extern int stelnettts_session_is_custom_voice(struct CrispasrSession* s);
-extern int stelnettts_session_is_voice_design(struct CrispasrSession* s);
-extern float* stelnettts_session_synthesize(struct CrispasrSession* s, const char* text, int* out_n_samples);
-extern float* stelnettts_session_synthesize_raw(struct CrispasrSession* s, const char* text, int* out_n_samples);
-extern int stelnettts_session_accept_marking_responsibility(struct CrispasrSession* s, const char* attestation);
-extern int stelnettts_session_set_speaker_identity(struct CrispasrSession* s, const char* identity);
-extern float* stelnettts_session_speech_to_speech(struct CrispasrSession* s, const float* in_samples, int n_in_samples,
+extern int stelnettts_session_set_tts_phonemes(struct StelnetAsrSession* s, const char* phonemes);
+extern int stelnettts_session_is_custom_voice(struct StelnetAsrSession* s);
+extern int stelnettts_session_is_voice_design(struct StelnetAsrSession* s);
+extern float* stelnettts_session_synthesize(struct StelnetAsrSession* s, const char* text, int* out_n_samples);
+extern float* stelnettts_session_synthesize_raw(struct StelnetAsrSession* s, const char* text, int* out_n_samples);
+extern int stelnettts_session_accept_marking_responsibility(struct StelnetAsrSession* s, const char* attestation);
+extern int stelnettts_session_set_speaker_identity(struct StelnetAsrSession* s, const char* identity);
+extern float* stelnettts_session_speech_to_speech(struct StelnetAsrSession* s, const float* in_samples, int n_in_samples,
                                                 char** out_text, int* out_n_samples);
-extern int stelnettts_session_input_sample_rate(struct CrispasrSession* s);
+extern int stelnettts_session_input_sample_rate(struct StelnetAsrSession* s);
 /* #332: output-side counterparts (rate of synthesize/s2s PCM; mono channels). */
-extern int stelnettts_session_output_sample_rate(struct CrispasrSession* s);
-extern int stelnettts_session_input_channels(struct CrispasrSession* s);
-extern int stelnettts_session_output_channels(struct CrispasrSession* s);
+extern int stelnettts_session_output_sample_rate(struct StelnetAsrSession* s);
+extern int stelnettts_session_input_channels(struct StelnetAsrSession* s);
+extern int stelnettts_session_output_channels(struct StelnetAsrSession* s);
 extern void stelnettts_pcm_free(float* pcm);
 /* AI-content marking (EU AI Act Art. 50(2)) — the other half of synthesize_raw. */
 extern void stelnettts_watermark_embed(float* pcm, int n_samples, float alpha);
 extern float stelnettts_watermark_detect(const float* pcm, int n_samples);
-extern int stelnettts_session_kokoro_clear_phoneme_cache(struct CrispasrSession* s);
-extern int stelnettts_session_set_source_language(struct CrispasrSession* s, const char* lang);
-extern int stelnettts_session_set_target_language(struct CrispasrSession* s, const char* lang);
-extern int stelnettts_session_set_tts_reference_language(struct CrispasrSession* s, const char* lang);
-extern int stelnettts_session_set_punctuation(struct CrispasrSession* s, int enable);
-extern int stelnettts_session_set_translate(struct CrispasrSession* s, int enable);
-extern int stelnettts_session_set_temperature(struct CrispasrSession* s, float temperature, unsigned long long seed);
-extern int stelnettts_session_set_tts_seed(struct CrispasrSession* s, unsigned long long seed);
-extern int stelnettts_session_set_max_new_tokens(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_frequency_penalty(struct CrispasrSession* s, float penalty);
-extern int stelnettts_session_set_tts_steps(struct CrispasrSession* s, int steps);
-extern int stelnettts_session_set_tts_num_candidates(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_top_p(struct CrispasrSession* s, float top_p);
-extern int stelnettts_session_set_top_k(struct CrispasrSession* s, int top_k);
-extern int stelnettts_session_set_do_sample(struct CrispasrSession* s, int enable);
-extern int stelnettts_session_set_min_p(struct CrispasrSession* s, float min_p);
-extern int stelnettts_session_set_repetition_penalty(struct CrispasrSession* s, float r);
-extern int stelnettts_session_set_cfg_weight(struct CrispasrSession* s, float cfg_weight);
-extern int stelnettts_session_set_tts_noise_temp(struct CrispasrSession* s, float noise_temp);
-extern int stelnettts_session_set_exaggeration(struct CrispasrSession* s, float exaggeration);
-extern int stelnettts_session_set_max_speech_tokens(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_min_speech_tokens(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_length_scale(struct CrispasrSession* s, float scale);
-extern int stelnettts_session_set_best_of(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_beam_size(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_return_logits(struct CrispasrSession* s, int enable);
-extern int stelnettts_session_set_grammar_text(struct CrispasrSession* s, const char* gbnf_text, const char* root_rule,
+extern int stelnettts_session_kokoro_clear_phoneme_cache(struct StelnetAsrSession* s);
+extern int stelnettts_session_set_source_language(struct StelnetAsrSession* s, const char* lang);
+extern int stelnettts_session_set_target_language(struct StelnetAsrSession* s, const char* lang);
+extern int stelnettts_session_set_tts_reference_language(struct StelnetAsrSession* s, const char* lang);
+extern int stelnettts_session_set_punctuation(struct StelnetAsrSession* s, int enable);
+extern int stelnettts_session_set_translate(struct StelnetAsrSession* s, int enable);
+extern int stelnettts_session_set_temperature(struct StelnetAsrSession* s, float temperature, unsigned long long seed);
+extern int stelnettts_session_set_tts_seed(struct StelnetAsrSession* s, unsigned long long seed);
+extern int stelnettts_session_set_max_new_tokens(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_frequency_penalty(struct StelnetAsrSession* s, float penalty);
+extern int stelnettts_session_set_tts_steps(struct StelnetAsrSession* s, int steps);
+extern int stelnettts_session_set_tts_num_candidates(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_top_p(struct StelnetAsrSession* s, float top_p);
+extern int stelnettts_session_set_top_k(struct StelnetAsrSession* s, int top_k);
+extern int stelnettts_session_set_do_sample(struct StelnetAsrSession* s, int enable);
+extern int stelnettts_session_set_min_p(struct StelnetAsrSession* s, float min_p);
+extern int stelnettts_session_set_repetition_penalty(struct StelnetAsrSession* s, float r);
+extern int stelnettts_session_set_cfg_weight(struct StelnetAsrSession* s, float cfg_weight);
+extern int stelnettts_session_set_tts_noise_temp(struct StelnetAsrSession* s, float noise_temp);
+extern int stelnettts_session_set_exaggeration(struct StelnetAsrSession* s, float exaggeration);
+extern int stelnettts_session_set_max_speech_tokens(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_min_speech_tokens(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_length_scale(struct StelnetAsrSession* s, float scale);
+extern int stelnettts_session_set_best_of(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_beam_size(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_return_logits(struct StelnetAsrSession* s, int enable);
+extern int stelnettts_session_set_grammar_text(struct StelnetAsrSession* s, const char* gbnf_text, const char* root_rule,
                                              float penalty);
-extern int stelnettts_session_set_fallback_thresholds(struct CrispasrSession* s, float entropy_thold, float logprob_thold,
+extern int stelnettts_session_set_fallback_thresholds(struct StelnetAsrSession* s, float entropy_thold, float logprob_thold,
                                                     float no_speech_thold, float temperature_inc);
-extern int stelnettts_session_set_alt_n(struct CrispasrSession* s, int n);
-extern int stelnettts_session_set_whisper_decode_extras(struct CrispasrSession* s, int suppress_nst,
+extern int stelnettts_session_set_alt_n(struct StelnetAsrSession* s, int n);
+extern int stelnettts_session_set_whisper_decode_extras(struct StelnetAsrSession* s, int suppress_nst,
                                                       const char* suppress_regex, int carry_initial_prompt);
-extern int stelnettts_session_set_ask(struct CrispasrSession* s, const char* prompt);
-extern int stelnettts_session_detect_language(struct CrispasrSession* s, const float* pcm, int n_samples,
+extern int stelnettts_session_set_ask(struct StelnetAsrSession* s, const char* prompt);
+extern int stelnettts_session_detect_language(struct StelnetAsrSession* s, const float* pcm, int n_samples,
                                             const char* lid_model_path, int method, char* out_lang, int out_lang_cap,
                                             float* out_prob);
 extern int stelnettts_kokoro_resolve_model_for_lang_abi(const char* model_path, const char* lang, char* out_path,
@@ -106,9 +106,9 @@ extern int stelnettts_kokoro_resolve_fallback_voice_abi(const char* model_path, 
 
 // --- ASR transcription (PLAN #59) ---
 struct stelnettts_session_result;
-extern struct stelnettts_session_result* stelnettts_session_transcribe(struct CrispasrSession* s, const float* pcm,
+extern struct stelnettts_session_result* stelnettts_session_transcribe(struct StelnetAsrSession* s, const float* pcm,
                                                                    int n_samples);
-extern struct stelnettts_session_result* stelnettts_session_transcribe_lang(struct CrispasrSession* s, const float* pcm,
+extern struct stelnettts_session_result* stelnettts_session_transcribe_lang(struct StelnetAsrSession* s, const float* pcm,
                                                                         int n_samples, const char* language);
 extern int stelnettts_session_result_n_segments(struct stelnettts_session_result* r);
 extern const char* stelnettts_session_result_segment_text(struct stelnettts_session_result* r, int i);
@@ -133,7 +133,7 @@ extern int stelnettts_session_result_n_logit_vocab(struct stelnettts_session_res
 extern const float* stelnettts_session_result_logits(struct stelnettts_session_result* r);
 extern void stelnettts_session_result_free(struct stelnettts_session_result* r);
 // issue #208: chunked-encode transcribe + long-form progress poll.
-extern struct stelnettts_session_result* stelnettts_session_transcribe_chunked_lang(struct CrispasrSession* s,
+extern struct stelnettts_session_result* stelnettts_session_transcribe_chunked_lang(struct StelnetAsrSession* s,
                                                                                 const float* pcm, int n_samples,
                                                                                 int chunk_seconds, int overlap_seconds,
                                                                                 const char* language);
@@ -163,15 +163,15 @@ extern int64_t stelnettts_align_result_word_t1(struct stelnettts_align_result* r
 extern void stelnettts_align_result_free(struct stelnettts_align_result* r);
 
 // --- Streaming (PLAN #62b): rolling-window decoder. Whisper-only at the C-ABI today.
-struct CrispasrStream;
-extern struct CrispasrStream* stelnettts_session_stream_open(struct CrispasrSession* s, int n_threads, int step_ms,
+struct StelnetAsrStream;
+extern struct StelnetAsrStream* stelnettts_session_stream_open(struct StelnetAsrSession* s, int n_threads, int step_ms,
                                                            int length_ms, int keep_ms, const char* language,
                                                            int translate);
-extern int stelnettts_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
-extern int stelnettts_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap, double* out_t0_s,
+extern int stelnettts_stream_feed(struct StelnetAsrStream* s, const float* pcm, int n_samples);
+extern int stelnettts_stream_get_text(struct StelnetAsrStream* s, char* out_text, int out_cap, double* out_t0_s,
                                     double* out_t1_s, long long* out_counter);
-extern int stelnettts_stream_flush(struct CrispasrStream* s);
-extern void stelnettts_stream_close(struct CrispasrStream* s);
+extern int stelnettts_stream_flush(struct StelnetAsrStream* s);
+extern void stelnettts_stream_close(struct StelnetAsrStream* s);
 
 // --- Microphone capture (PLAN #62d): miniaudio-backed cross-platform.
 struct stelnettts_mic;
@@ -183,7 +183,7 @@ extern void stelnettts_mic_close(struct stelnettts_mic* m);
 extern const char* stelnettts_mic_default_device_name(void);
 
 // --- Full C-ABI parity additions ---
-extern void stelnettts_stream_set_live_decode(struct CrispasrStream* s, int enabled);
+extern void stelnettts_stream_set_live_decode(struct StelnetAsrStream* s, int enabled);
 
 // params_set_* on whisper_full_params
 extern void stelnettts_params_set_language(void* p, const char* lang);
@@ -313,24 +313,24 @@ extern int stelnettts_cache_dir_abi(const char* cache_dir_override, char* out_bu
 
 // Session extras
 extern int stelnettts_session_available_backends(char* out_csv, int out_cap);
-extern int stelnettts_session_detected_language(struct CrispasrSession* s, char* out_buf, int out_cap);
+extern int stelnettts_session_detected_language(struct StelnetAsrSession* s, char* out_buf, int out_cap);
 // CTC vocabulary access (Omni CTC backend): n_vocab piece count, token_text
 // maps an id to its model-owned raw piece (do not free) or "" when out of
 // range / unsupported.
-extern int stelnettts_session_n_vocab(struct CrispasrSession* s);
-extern const char* stelnettts_session_token_text(struct CrispasrSession* s, int id);
-extern struct CrispasrSession* stelnettts_session_open_explicit(const char* model_path, const char* backend_name,
+extern int stelnettts_session_n_vocab(struct StelnetAsrSession* s);
+extern const char* stelnettts_session_token_text(struct StelnetAsrSession* s, int id);
+extern struct StelnetAsrSession* stelnettts_session_open_explicit(const char* model_path, const char* backend_name,
                                                               int n_threads);
-extern struct CrispasrSession* stelnettts_session_open_with_params(const char* model_path, const char* backend_name,
+extern struct StelnetAsrSession* stelnettts_session_open_with_params(const char* model_path, const char* backend_name,
                                                                  const void* params);
-extern struct stelnettts_session_result* stelnettts_session_transcribe_vad(struct CrispasrSession* s, const float* pcm,
+extern struct stelnettts_session_result* stelnettts_session_transcribe_vad(struct StelnetAsrSession* s, const float* pcm,
                                                                        int n_samples, int sample_rate,
                                                                        const char* vad_model_path, void* opts);
-extern struct stelnettts_session_result* stelnettts_session_transcribe_vad_lang(struct CrispasrSession* s, const float* pcm,
+extern struct stelnettts_session_result* stelnettts_session_transcribe_vad_lang(struct StelnetAsrSession* s, const float* pcm,
                                                                             int n_samples, int sample_rate,
                                                                             const char* vad_model_path, void* opts,
                                                                             const char* language);
-extern char* stelnettts_session_translate_text(struct CrispasrSession* s, const char* text, const char* src_lang,
+extern char* stelnettts_session_translate_text(struct StelnetAsrSession* s, const char* text, const char* src_lang,
                                              const char* tgt_lang, int max_tokens);
 extern void stelnettts_session_translate_text_free(char* text);
 extern int stelnettts_session_result_word_n_alts(struct stelnettts_session_result* r, int i_seg, int i_word);
@@ -339,7 +339,7 @@ extern const char* stelnettts_session_result_word_alt_text(struct stelnettts_ses
 extern float stelnettts_session_result_word_alt_p(struct stelnettts_session_result* r, int i_seg, int i_word, int i_alt);
 
 // Streaming (whisper context)
-extern struct CrispasrStream* stelnettts_stream_open(void* ctx, int n_threads, int step_ms, int length_ms, int keep_ms,
+extern struct StelnetAsrStream* stelnettts_stream_open(void* ctx, int n_threads, int step_ms, int length_ms, int keep_ms,
                                                    const char* language, int translate);
 
 // Diarization
@@ -352,21 +352,21 @@ static VALUE mStream;
 static VALUE mMic;
 
 static VALUE rb_session_open(VALUE self, VALUE model_path, VALUE n_threads) {
-    struct CrispasrSession* s = stelnettts_session_open(StringValueCStr(model_path), NUM2INT(n_threads));
+    struct StelnetAsrSession* s = stelnettts_session_open(StringValueCStr(model_path), NUM2INT(n_threads));
     if (!s)
         rb_raise(rb_eRuntimeError, "stelnettts_session_open: failed to open %s", StringValueCStr(model_path));
     return ULL2NUM((uintptr_t)s);
 }
 
 static VALUE rb_session_close(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     if (s)
         stelnettts_session_close(s);
     return Qnil;
 }
 
 static VALUE rb_session_set_codec_path(VALUE self, VALUE handle, VALUE path) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_codec_path(s, StringValueCStr(path));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_codec_path failed (rc=%d)", rc);
@@ -375,7 +375,7 @@ static VALUE rb_session_set_codec_path(VALUE self, VALUE handle, VALUE path) {
 
 // Drop the kokoro per-session phoneme cache. (PLAN #56 #5)
 static VALUE rb_session_clear_phoneme_cache(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_kokoro_clear_phoneme_cache(s);
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "clear_phoneme_cache failed (rc=%d)", rc);
@@ -385,7 +385,7 @@ static VALUE rb_session_clear_phoneme_cache(VALUE self, VALUE handle) {
 // ---- Sticky session-state setters (PLAN #59 partial unblock) ----
 
 static VALUE rb_session_set_source_language(VALUE self, VALUE handle, VALUE lang) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_source_language(s, NIL_P(lang) ? "" : StringValueCStr(lang));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_source_language failed (rc=%d)", rc);
@@ -393,7 +393,7 @@ static VALUE rb_session_set_source_language(VALUE self, VALUE handle, VALUE lang
 }
 
 static VALUE rb_session_set_target_language(VALUE self, VALUE handle, VALUE lang) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_target_language(s, NIL_P(lang) ? "" : StringValueCStr(lang));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_target_language failed (rc=%d)", rc);
@@ -406,7 +406,7 @@ static VALUE rb_session_set_target_language(VALUE self, VALUE handle, VALUE lang
  * carrying the reference's accent. Optional — otherwise inferred from the voice
  * bank or the reference transcript. */
 static VALUE rb_session_set_tts_reference_language(VALUE self, VALUE handle, VALUE lang) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_tts_reference_language(s, NIL_P(lang) ? "" : StringValueCStr(lang));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_tts_reference_language failed (rc=%d)", rc);
@@ -414,7 +414,7 @@ static VALUE rb_session_set_tts_reference_language(VALUE self, VALUE handle, VAL
 }
 
 static VALUE rb_session_set_punctuation(VALUE self, VALUE handle, VALUE enable) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_punctuation(s, RTEST(enable) ? 1 : 0);
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_punctuation failed (rc=%d)", rc);
@@ -422,7 +422,7 @@ static VALUE rb_session_set_punctuation(VALUE self, VALUE handle, VALUE enable) 
 }
 
 static VALUE rb_session_set_translate(VALUE self, VALUE handle, VALUE enable) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_translate(s, RTEST(enable) ? 1 : 0);
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_translate failed (rc=%d)", rc);
@@ -430,7 +430,7 @@ static VALUE rb_session_set_translate(VALUE self, VALUE handle, VALUE enable) {
 }
 
 static VALUE rb_session_set_temperature(VALUE self, VALUE handle, VALUE temperature, VALUE seed) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_temperature(s, (float)NUM2DBL(temperature), (unsigned long long)NUM2ULL(seed));
     // rc == -2 = no backend supports it; soft no-op.
     if (rc != 0 && rc != -2)
@@ -439,7 +439,7 @@ static VALUE rb_session_set_temperature(VALUE self, VALUE handle, VALUE temperat
 }
 
 static VALUE rb_session_set_tts_seed(VALUE self, VALUE handle, VALUE seed) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_tts_seed(s, (unsigned long long)NUM2ULL(seed));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_tts_seed failed (rc=%d)", rc);
@@ -447,7 +447,7 @@ static VALUE rb_session_set_tts_seed(VALUE self, VALUE handle, VALUE seed) {
 }
 
 static VALUE rb_session_set_max_new_tokens(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_max_new_tokens(s, NUM2INT(n));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_max_new_tokens failed (rc=%d)", rc);
@@ -455,7 +455,7 @@ static VALUE rb_session_set_max_new_tokens(VALUE self, VALUE handle, VALUE n) {
 }
 
 static VALUE rb_session_set_frequency_penalty(VALUE self, VALUE handle, VALUE penalty) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_frequency_penalty(s, (float)NUM2DBL(penalty));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_frequency_penalty failed (rc=%d)", rc);
@@ -463,7 +463,7 @@ static VALUE rb_session_set_frequency_penalty(VALUE self, VALUE handle, VALUE pe
 }
 
 static VALUE rb_session_set_tts_steps(VALUE self, VALUE handle, VALUE steps) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_tts_steps(s, NUM2INT(steps));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_tts_steps failed (rc=%d)", rc);
@@ -471,7 +471,7 @@ static VALUE rb_session_set_tts_steps(VALUE self, VALUE handle, VALUE steps) {
 }
 
 static VALUE rb_session_set_tts_num_candidates(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_tts_num_candidates(s, NUM2INT(n));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_tts_num_candidates failed (rc=%d)", rc);
@@ -479,7 +479,7 @@ static VALUE rb_session_set_tts_num_candidates(VALUE self, VALUE handle, VALUE n
 }
 
 static VALUE rb_session_set_top_p(VALUE self, VALUE handle, VALUE top_p) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_top_p(s, (float)NUM2DBL(top_p));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_top_p failed (rc=%d)", rc);
@@ -487,7 +487,7 @@ static VALUE rb_session_set_top_p(VALUE self, VALUE handle, VALUE top_p) {
 }
 
 static VALUE rb_session_set_top_k(VALUE self, VALUE handle, VALUE top_k) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_top_k(s, NUM2INT(top_k));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_top_k failed (rc=%d)", rc);
@@ -495,7 +495,7 @@ static VALUE rb_session_set_top_k(VALUE self, VALUE handle, VALUE top_k) {
 }
 
 static VALUE rb_session_set_do_sample(VALUE self, VALUE handle, VALUE enable) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_do_sample(s, RTEST(enable) ? 1 : 0);
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_do_sample failed (rc=%d)", rc);
@@ -503,7 +503,7 @@ static VALUE rb_session_set_do_sample(VALUE self, VALUE handle, VALUE enable) {
 }
 
 static VALUE rb_session_set_min_p(VALUE self, VALUE handle, VALUE min_p) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_min_p(s, (float)NUM2DBL(min_p));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_min_p failed (rc=%d)", rc);
@@ -511,7 +511,7 @@ static VALUE rb_session_set_min_p(VALUE self, VALUE handle, VALUE min_p) {
 }
 
 static VALUE rb_session_set_repetition_penalty(VALUE self, VALUE handle, VALUE r) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_repetition_penalty(s, (float)NUM2DBL(r));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_repetition_penalty failed (rc=%d)", rc);
@@ -519,7 +519,7 @@ static VALUE rb_session_set_repetition_penalty(VALUE self, VALUE handle, VALUE r
 }
 
 static VALUE rb_session_set_cfg_weight(VALUE self, VALUE handle, VALUE cfg) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_cfg_weight(s, (float)NUM2DBL(cfg));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_cfg_weight failed (rc=%d)", rc);
@@ -527,7 +527,7 @@ static VALUE rb_session_set_cfg_weight(VALUE self, VALUE handle, VALUE cfg) {
 }
 
 static VALUE rb_session_set_tts_noise_temp(VALUE self, VALUE handle, VALUE temp) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_tts_noise_temp(s, (float)NUM2DBL(temp));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_tts_noise_temp failed (rc=%d)", rc);
@@ -535,7 +535,7 @@ static VALUE rb_session_set_tts_noise_temp(VALUE self, VALUE handle, VALUE temp)
 }
 
 static VALUE rb_session_set_exaggeration(VALUE self, VALUE handle, VALUE exag) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_exaggeration(s, (float)NUM2DBL(exag));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_exaggeration failed (rc=%d)", rc);
@@ -543,7 +543,7 @@ static VALUE rb_session_set_exaggeration(VALUE self, VALUE handle, VALUE exag) {
 }
 
 static VALUE rb_session_set_max_speech_tokens(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_max_speech_tokens(s, NUM2INT(n));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_max_speech_tokens failed (rc=%d)", rc);
@@ -551,7 +551,7 @@ static VALUE rb_session_set_max_speech_tokens(VALUE self, VALUE handle, VALUE n)
 }
 
 static VALUE rb_session_set_min_speech_tokens(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_min_speech_tokens(s, NUM2INT(n));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_min_speech_tokens failed (rc=%d)", rc);
@@ -559,7 +559,7 @@ static VALUE rb_session_set_min_speech_tokens(VALUE self, VALUE handle, VALUE n)
 }
 
 static VALUE rb_session_set_length_scale(VALUE self, VALUE handle, VALUE scale) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_length_scale(s, (float)NUM2DBL(scale));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_length_scale failed (rc=%d)", rc);
@@ -567,7 +567,7 @@ static VALUE rb_session_set_length_scale(VALUE self, VALUE handle, VALUE scale) 
 }
 
 static VALUE rb_session_set_best_of(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_best_of(s, NUM2INT(n));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_best_of failed (rc=%d)", rc);
@@ -575,7 +575,7 @@ static VALUE rb_session_set_best_of(VALUE self, VALUE handle, VALUE n) {
 }
 
 static VALUE rb_session_set_beam_size(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_beam_size(s, NUM2INT(n));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_beam_size failed (rc=%d)", rc);
@@ -586,7 +586,7 @@ static VALUE rb_session_set_beam_size(VALUE self, VALUE handle, VALUE n) {
 // Omni CTC, wav2vec2/hubert/data2vec, canary-ctc). Off by default so the normal
 // path pays no copy; read them back with transcribe_with_logits.
 static VALUE rb_session_set_return_logits(VALUE self, VALUE handle, VALUE enable) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_return_logits(s, RTEST(enable) ? 1 : 0);
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_return_logits failed (rc=%d)", rc);
@@ -596,7 +596,7 @@ static VALUE rb_session_set_return_logits(VALUE self, VALUE handle, VALUE enable
 // set_grammar_text(handle, gbnf_text, root_rule, penalty)
 // Pass nil or "" for gbnf_text to clear the grammar.
 static VALUE rb_session_set_grammar_text(VALUE self, VALUE handle, VALUE gbnf, VALUE root, VALUE penalty) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     const char* gbnf_str = NIL_P(gbnf) ? NULL : StringValueCStr(gbnf);
     const char* root_str = NIL_P(root) ? NULL : StringValueCStr(root);
     int rc = stelnettts_session_set_grammar_text(s, gbnf_str, root_str, (float)NUM2DBL(penalty));
@@ -610,7 +610,7 @@ static VALUE rb_session_set_grammar_text(VALUE self, VALUE handle, VALUE gbnf, V
 // set_fallback_thresholds(handle, entropy_thold, logprob_thold, no_speech_thold, temperature_inc)
 static VALUE rb_session_set_fallback_thresholds(VALUE self, VALUE handle, VALUE entropy, VALUE logprob, VALUE no_speech,
                                                 VALUE temp_inc) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_fallback_thresholds(s, (float)NUM2DBL(entropy), (float)NUM2DBL(logprob),
                                                       (float)NUM2DBL(no_speech), (float)NUM2DBL(temp_inc));
     if (rc != 0)
@@ -619,7 +619,7 @@ static VALUE rb_session_set_fallback_thresholds(VALUE self, VALUE handle, VALUE 
 }
 
 static VALUE rb_session_set_alt_n(VALUE self, VALUE handle, VALUE n) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_alt_n(s, NUM2INT(n));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_alt_n failed (rc=%d)", rc);
@@ -629,7 +629,7 @@ static VALUE rb_session_set_alt_n(VALUE self, VALUE handle, VALUE n) {
 // set_whisper_decode_extras(handle, suppress_nst, suppress_regex, carry_initial_prompt)
 static VALUE rb_session_set_whisper_decode_extras(VALUE self, VALUE handle, VALUE suppress_nst, VALUE suppress_regex,
                                                   VALUE carry_prompt) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     const char* regex = NIL_P(suppress_regex) ? "" : StringValueCStr(suppress_regex);
     int rc =
         stelnettts_session_set_whisper_decode_extras(s, RTEST(suppress_nst) ? 1 : 0, regex, RTEST(carry_prompt) ? 1 : 0);
@@ -639,7 +639,7 @@ static VALUE rb_session_set_whisper_decode_extras(VALUE self, VALUE handle, VALU
 }
 
 static VALUE rb_session_set_ask(VALUE self, VALUE handle, VALUE prompt) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_ask(s, StringValueCStr(prompt));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_ask failed (rc=%d)", rc);
@@ -647,7 +647,7 @@ static VALUE rb_session_set_ask(VALUE self, VALUE handle, VALUE prompt) {
 }
 
 static VALUE rb_session_detect_language(VALUE self, VALUE handle, VALUE pcm_arr, VALUE lid_path, VALUE method) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     Check_Type(pcm_arr, T_ARRAY);
     long n = RARRAY_LEN(pcm_arr);
     float* pcm = (float*)malloc(sizeof(float) * (size_t)n);
@@ -671,7 +671,7 @@ static VALUE rb_session_detect_language(VALUE self, VALUE handle, VALUE pcm_arr,
 static VALUE rb_session_set_voice(int argc, VALUE* argv, VALUE self) {
     VALUE handle, path, ref_text;
     rb_scan_args(argc, argv, "21", &handle, &path, &ref_text);
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     const char* rt = NIL_P(ref_text) ? NULL : StringValueCStr(ref_text);
     int rc = stelnettts_session_set_voice(s, StringValueCStr(path), rt);
     if (rc != 0)
@@ -680,7 +680,7 @@ static VALUE rb_session_set_voice(int argc, VALUE* argv, VALUE self) {
 }
 
 static VALUE rb_session_set_speaker_name(VALUE self, VALUE handle, VALUE name) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_speaker_name(s, StringValueCStr(name));
     if (rc == -2)
         rb_raise(rb_eArgError, "unknown speaker: %s", StringValueCStr(name));
@@ -692,7 +692,7 @@ static VALUE rb_session_set_speaker_name(VALUE self, VALUE handle, VALUE name) {
 }
 
 static VALUE rb_session_set_speaker_id(VALUE self, VALUE handle, VALUE id) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_speaker_id(s, NUM2INT(id));
     if (rc != 0 && rc != -2)
         rb_raise(rb_eRuntimeError, "set_speaker_id failed (rc=%d)", rc);
@@ -700,7 +700,7 @@ static VALUE rb_session_set_speaker_id(VALUE self, VALUE handle, VALUE id) {
 }
 
 static VALUE rb_session_set_punc_model(VALUE self, VALUE handle, VALUE punc_model) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_punc_model(s, NIL_P(punc_model) ? "" : StringValueCStr(punc_model));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_punc_model failed (rc=%d)", rc);
@@ -708,7 +708,7 @@ static VALUE rb_session_set_punc_model(VALUE self, VALUE handle, VALUE punc_mode
 }
 
 static VALUE rb_session_set_hotwords(VALUE self, VALUE handle, VALUE hotwords, VALUE boost) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_hotwords(s, NIL_P(hotwords) ? "" : StringValueCStr(hotwords), (float)NUM2DBL(boost));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_hotwords failed (rc=%d)", rc);
@@ -720,7 +720,7 @@ static VALUE rb_session_set_hotwords(VALUE self, VALUE handle, VALUE hotwords, V
  * --sensitivity. rc=-2 is an unrecognised name, raised as ArgumentError so a
  * typo is never silently treated as "balanced". */
 static VALUE rb_session_set_sensitivity(VALUE self, VALUE handle, VALUE preset) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_sensitivity(s, NIL_P(preset) ? "" : StringValueCStr(preset));
     if (rc == -2)
         rb_raise(rb_eArgError, "unknown sensitivity preset (expected: conservative, balanced, aggressive)");
@@ -730,7 +730,7 @@ static VALUE rb_session_set_sensitivity(VALUE self, VALUE handle, VALUE preset) 
 }
 
 static VALUE rb_session_set_g2p_dict(VALUE self, VALUE handle, VALUE source) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_g2p_dict(s, NIL_P(source) ? "" : StringValueCStr(source));
     if (rc != 0)
         rb_raise(rb_eRuntimeError, "set_g2p_dict failed (rc=%d)", rc);
@@ -738,7 +738,7 @@ static VALUE rb_session_set_g2p_dict(VALUE self, VALUE handle, VALUE source) {
 }
 
 static VALUE rb_session_speakers(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int n = stelnettts_session_n_speakers(s);
     VALUE arr = rb_ary_new_capa(n);
     for (int i = 0; i < n; i++) {
@@ -749,7 +749,7 @@ static VALUE rb_session_speakers(VALUE self, VALUE handle) {
 }
 
 static VALUE rb_session_set_instruct(VALUE self, VALUE handle, VALUE instruct) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_instruct(s, StringValueCStr(instruct));
     if (rc == -3)
         rb_raise(rb_eRuntimeError,
@@ -761,7 +761,7 @@ static VALUE rb_session_set_instruct(VALUE self, VALUE handle, VALUE instruct) {
 
 /* #316: synthesize these phonemes verbatim, skipping the G2P. Empty clears. kokoro and piper only (rc=-2 otherwise). */
 static VALUE rb_session_set_tts_phonemes(VALUE self, VALUE handle, VALUE phonemes) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_tts_phonemes(s, StringValueCStr(phonemes));
     if (rc == -2)
         rb_raise(rb_eRuntimeError,
@@ -772,17 +772,17 @@ static VALUE rb_session_set_tts_phonemes(VALUE self, VALUE handle, VALUE phoneme
 }
 
 static VALUE rb_session_is_custom_voice(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     return stelnettts_session_is_custom_voice(s) ? Qtrue : Qfalse;
 }
 
 static VALUE rb_session_is_voice_design(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     return stelnettts_session_is_voice_design(s) ? Qtrue : Qfalse;
 }
 
 static VALUE rb_session_synthesize(VALUE self, VALUE handle, VALUE text) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int n = 0;
     float* pcm = stelnettts_session_synthesize(s, StringValueCStr(text), &n);
     if (!pcm || n <= 0) {
@@ -801,7 +801,7 @@ static VALUE rb_session_synthesize(VALUE self, VALUE handle, VALUE text) {
 // accept_marking_responsibility was called first on the session. Otherwise
 // identical to synthesize; returns 24 kHz mono PCM as Array<Float>.
 static VALUE rb_session_synthesize_raw(VALUE self, VALUE handle, VALUE text) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int n = 0;
     float* pcm = stelnettts_session_synthesize_raw(s, StringValueCStr(text), &n);
     if (!pcm || n <= 0) {
@@ -820,7 +820,7 @@ static VALUE rb_session_synthesize_raw(VALUE self, VALUE handle, VALUE text) {
 // Art. 50). Required before synthesize_raw returns UNMARKED audio; recorded for
 // audit. Returns the ABI status code as an Integer.
 static VALUE rb_session_accept_marking_responsibility(VALUE self, VALUE handle, VALUE attestation) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_accept_marking_responsibility(s, NIL_P(attestation) ? "" : StringValueCStr(attestation));
     return INT2NUM(rc);
 }
@@ -835,7 +835,7 @@ static VALUE rb_session_accept_marking_responsibility(VALUE self, VALUE handle, 
 //   silently downgrading it to "unknown".
 static VALUE rb_session_set_speaker_identity(VALUE self, VALUE handle, VALUE identity) {
     (void)self;
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int rc = stelnettts_session_set_speaker_identity(s, NIL_P(identity) ? "" : StringValueCStr(identity));
     if (rc == -2)
         rb_raise(rb_eArgError, "unrecognised speaker_identity (expected real_person, synthetic or unknown)");
@@ -894,7 +894,7 @@ static VALUE rb_watermark_detect(VALUE self, VALUE pcm_arr) {
 //   (lfm2-audio, mini-omni2): the input PCM is answered as spoken audio; the
 //   optional transcript is the model's text of its own reply (nil when none).
 static VALUE rb_session_speech_to_speech(VALUE self, VALUE handle, VALUE pcm_arr) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     Check_Type(pcm_arr, T_ARRAY);
     long n = RARRAY_LEN(pcm_arr);
     float* in = (float*)malloc(sizeof(float) * (size_t)n);
@@ -929,7 +929,7 @@ static VALUE rb_session_speech_to_speech(VALUE self, VALUE handle, VALUE pcm_arr
 // StelnetTTS::Session.input_sample_rate(handle) -> Integer
 //   The native input sample rate the loaded backend expects, in Hz.
 static VALUE rb_session_input_sample_rate(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     return INT2NUM(stelnettts_session_input_sample_rate(s));
 }
 
@@ -937,26 +937,26 @@ static VALUE rb_session_input_sample_rate(VALUE self, VALUE handle) {
 //   Sample rate of the PCM synthesize/speech_to_speech produce; 0 when the
 //   backend has no audio output (ASR-only). (#332)
 static VALUE rb_session_output_sample_rate(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     return INT2NUM(stelnettts_session_output_sample_rate(s));
 }
 
 // StelnetTTS::Session.input_channels(handle) / output_channels(handle) -> Integer
 //   1 (mono) for every current backend; output_channels is 0 for ASR-only. (#332)
 static VALUE rb_session_input_channels(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     return INT2NUM(stelnettts_session_input_channels(s));
 }
 
 static VALUE rb_session_output_channels(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     return INT2NUM(stelnettts_session_output_channels(s));
 }
 
 // --- ASR transcription (PLAN #59) ---
 // StelnetTTS::Session.transcribe(handle, pcm_array) -> [{text:, t0:, t1:, words: [{text:, t0:, t1:, p:}]}]
 static VALUE rb_session_transcribe(VALUE self, VALUE handle, VALUE pcm_arr) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     long n = RARRAY_LEN(pcm_arr);
     float* pcm = (float*)malloc(sizeof(float) * (size_t)n);
     for (long i = 0; i < n; i++)
@@ -1010,7 +1010,7 @@ static VALUE rb_session_transcribe(VALUE self, VALUE handle, VALUE pcm_arr) {
 //   for canary-ctc). Opts the session into logit
 //   capture for this call (mirrors set_return_logits(true)).
 static VALUE rb_session_transcribe_with_logits(VALUE self, VALUE handle, VALUE pcm_arr) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     stelnettts_session_set_return_logits(s, 1);
     long n = RARRAY_LEN(pcm_arr);
     float* pcm = (float*)malloc(sizeof(float) * (size_t)n);
@@ -1087,7 +1087,7 @@ static VALUE rb_session_transcribe_with_logits(VALUE self, VALUE handle, VALUE p
 //   uses U+2581), so a consumer can detokenize a greedy CTC decode over the
 //   transcribe_with_logits grid. nil for backends without a CTC vocab.
 static VALUE rb_session_ctc_vocab(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     int n = stelnettts_session_n_vocab(s);
     if (n <= 0)
         return Qnil;
@@ -1106,7 +1106,7 @@ static VALUE rb_session_ctc_vocab(VALUE self, VALUE handle) {
 // StelnetTTS::Session.get_progress (0..100) to render a progress bar.
 static VALUE rb_session_transcribe_chunked(VALUE self, VALUE handle, VALUE pcm_arr, VALUE chunk_s, VALUE overlap_s,
                                            VALUE language) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     long n = RARRAY_LEN(pcm_arr);
     float* pcm = (float*)malloc(sizeof(float) * (size_t)n);
     for (long i = 0; i < n; i++)
@@ -1257,9 +1257,9 @@ static VALUE rb_kokoro_resolve_for_lang(VALUE self, VALUE model_path, VALUE lang
 
 static VALUE rb_stream_open(VALUE self, VALUE session_h, VALUE step_ms, VALUE length_ms, VALUE keep_ms, VALUE language,
                             VALUE translate) {
-    struct CrispasrSession* sess = (struct CrispasrSession*)NUM2ULL(session_h);
+    struct StelnetAsrSession* sess = (struct StelnetAsrSession*)NUM2ULL(session_h);
     const char* lang = NIL_P(language) ? "" : StringValueCStr(language);
-    struct CrispasrStream* st = stelnettts_session_stream_open(sess, 4, NUM2INT(step_ms), NUM2INT(length_ms),
+    struct StelnetAsrStream* st = stelnettts_session_stream_open(sess, 4, NUM2INT(step_ms), NUM2INT(length_ms),
                                                              NUM2INT(keep_ms), lang, RTEST(translate) ? 1 : 0);
     if (!st) {
         rb_raise(rb_eRuntimeError, "stelnettts_session_stream_open failed (whisper-only today)");
@@ -1268,7 +1268,7 @@ static VALUE rb_stream_open(VALUE self, VALUE session_h, VALUE step_ms, VALUE le
 }
 
 static VALUE rb_stream_feed(VALUE self, VALUE handle, VALUE pcm_arr) {
-    struct CrispasrStream* st = (struct CrispasrStream*)NUM2ULL(handle);
+    struct StelnetAsrStream* st = (struct StelnetAsrStream*)NUM2ULL(handle);
     Check_Type(pcm_arr, T_ARRAY);
     long n = RARRAY_LEN(pcm_arr);
     if (n == 0)
@@ -1286,7 +1286,7 @@ static VALUE rb_stream_feed(VALUE self, VALUE handle, VALUE pcm_arr) {
 }
 
 static VALUE rb_stream_get_text(VALUE self, VALUE handle) {
-    struct CrispasrStream* st = (struct CrispasrStream*)NUM2ULL(handle);
+    struct StelnetAsrStream* st = (struct StelnetAsrStream*)NUM2ULL(handle);
     char buf[8192];
     buf[0] = '\0';
     double t0 = 0.0, t1 = 0.0;
@@ -1303,7 +1303,7 @@ static VALUE rb_stream_get_text(VALUE self, VALUE handle) {
 }
 
 static VALUE rb_stream_flush(VALUE self, VALUE handle) {
-    struct CrispasrStream* st = (struct CrispasrStream*)NUM2ULL(handle);
+    struct StelnetAsrStream* st = (struct StelnetAsrStream*)NUM2ULL(handle);
     int rc = stelnettts_stream_flush(st);
     if (rc < 0)
         rb_raise(rb_eRuntimeError, "stelnettts_stream_flush failed (rc=%d)", rc);
@@ -1311,7 +1311,7 @@ static VALUE rb_stream_flush(VALUE self, VALUE handle) {
 }
 
 static VALUE rb_stream_close(VALUE self, VALUE handle) {
-    struct CrispasrStream* st = (struct CrispasrStream*)NUM2ULL(handle);
+    struct StelnetAsrStream* st = (struct StelnetAsrStream*)NUM2ULL(handle);
     if (st)
         stelnettts_stream_close(st);
     return Qnil;
@@ -1568,7 +1568,7 @@ static VALUE rb_kokoro_lang_has_native_voice(VALUE self, VALUE lang) {
 
 static VALUE rb_session_translate_text(VALUE self, VALUE handle, VALUE text, VALUE src_lang, VALUE tgt_lang,
                                        VALUE max_tokens) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     char* res = stelnettts_session_translate_text(s, StringValueCStr(text), StringValueCStr(src_lang),
                                                 StringValueCStr(tgt_lang), NUM2INT(max_tokens));
     if (!res)
@@ -1588,14 +1588,14 @@ static VALUE rb_session_available_backends(VALUE self) {
 // on the last transcribe (ISO-639-1); other backends return the source-language
 // hint, or "unknown".
 static VALUE rb_session_detected_language(VALUE self, VALUE handle) {
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     char buf[32] = {0};
     stelnettts_session_detected_language(s, buf, sizeof(buf));
     return rb_utf8_str_new_cstr(buf);
 }
 
 static VALUE rb_session_open_explicit(VALUE self, VALUE model_path, VALUE backend, VALUE n_threads) {
-    struct CrispasrSession* s =
+    struct StelnetAsrSession* s =
         stelnettts_session_open_explicit(StringValueCStr(model_path), StringValueCStr(backend), NUM2INT(n_threads));
     if (!s)
         rb_raise(rb_eRuntimeError, "stelnettts_session_open_explicit failed");
@@ -1795,7 +1795,7 @@ static VALUE rb_speaker_db_enroll(VALUE self, VALUE dir_path, VALUE name, VALUE 
 static VALUE rb_session_transcribe_vad_lang(int argc, VALUE* argv, VALUE self) {
     VALUE handle, pcm_arr, vad_model, language;
     rb_scan_args(argc, argv, "4", &handle, &pcm_arr, &vad_model, &language);
-    struct CrispasrSession* s = (struct CrispasrSession*)NUM2ULL(handle);
+    struct StelnetAsrSession* s = (struct StelnetAsrSession*)NUM2ULL(handle);
     long n = RARRAY_LEN(pcm_arr);
     float* pcm = (float*)calloc(n > 0 ? n : 1, sizeof(float));
     for (long i = 0; i < n; i++)
@@ -1831,7 +1831,7 @@ static VALUE rb_session_result_word_alt_p(VALUE self, VALUE res_handle, VALUE i_
 
 // --- Stream set_live_decode ---
 static VALUE rb_stream_set_live_decode(VALUE self, VALUE handle, VALUE enabled) {
-    struct CrispasrStream* s = (struct CrispasrStream*)NUM2ULL(handle);
+    struct StelnetAsrStream* s = (struct StelnetAsrStream*)NUM2ULL(handle);
     stelnettts_stream_set_live_decode(s, RTEST(enabled) ? 1 : 0);
     return Qnil;
 }

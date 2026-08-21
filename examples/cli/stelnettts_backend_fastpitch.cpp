@@ -18,7 +18,7 @@
 
 namespace {
 
-class FastPitchBackend : public CrispasrBackend {
+class FastPitchBackend : public StelnetAsrBackend {
 public:
     ~FastPitchBackend() override { FastPitchBackend::shutdown(); }
 
@@ -100,6 +100,6 @@ private:
 
 // -- Factory registration --
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_fastpitch_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_fastpitch_backend() {
     return std::make_unique<FastPitchBackend>();
 }

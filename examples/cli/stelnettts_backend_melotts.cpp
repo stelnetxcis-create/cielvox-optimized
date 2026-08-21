@@ -77,7 +77,7 @@ static bool read_wav_mono(const char* path, std::vector<float>& pcm, int& sr) {
     return false;
 }
 
-class MelottsBackend : public CrispasrBackend {
+class MelottsBackend : public StelnetAsrBackend {
 public:
     // RAII cleanup: the TTS/S2S return paths don't call backend->shutdown()
     // explicitly (only transcribe does), so free on destruction — otherwise the
@@ -269,6 +269,6 @@ private:
     int ov2_output_sr_ = 0;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_melotts_backend() {
-    return std::unique_ptr<CrispasrBackend>(new MelottsBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_melotts_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new MelottsBackend());
 }

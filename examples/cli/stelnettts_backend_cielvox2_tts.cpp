@@ -82,7 +82,7 @@ static std::string discover_default_voice(const std::string& model_path) {
     return "";
 }
 
-class Qwen3TtsBackend : public CrispasrBackend {
+class Qwen3TtsBackend : public StelnetAsrBackend {
 public:
     explicit Qwen3TtsBackend(bool is_base) : is_base_(is_base) {}
     ~Qwen3TtsBackend() override { Qwen3TtsBackend::shutdown(); }
@@ -133,7 +133,7 @@ public:
         if (codec_path.empty())
             codec_path = discover_codec(p.model);
         if (codec_path.empty()) {
-            CrispasrRegistryEntry entry;
+            StelnetAsrRegistryEntry entry;
             if (stelnettts_registry_lookup(p.backend, entry, p.tts_codec_quant) && !entry.companion_filename.empty()) {
                 codec_path = stelnettts_resolve_model_cli(entry.companion_filename, p.backend, p.no_prints, p.cache_dir,
                                                         p.auto_download, p.tts_codec_quant);
@@ -420,10 +420,10 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_cielvox2_tts_backend() {
-    return std::unique_ptr<CrispasrBackend>(new Qwen3TtsBackend(false));
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_cielvox2_tts_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new Qwen3TtsBackend(false));
 }
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_cielvox2_tts_base_backend() {
-    return std::unique_ptr<CrispasrBackend>(new Qwen3TtsBackend(true));
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_cielvox2_tts_base_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new Qwen3TtsBackend(true));
 }

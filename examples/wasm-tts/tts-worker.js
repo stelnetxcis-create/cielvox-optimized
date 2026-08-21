@@ -16,7 +16,7 @@ function main () {
     importScripts(LOADER); // defines the global `whisper_factory`
 
     let M = null, opened = false, loadedVoice = null, deDict = false;
-    const G2P_DIR = 'home/web_user/.cache/crispasr';
+    const G2P_DIR = 'home/web_user/.cache/stelnet_asr';
     const post = (m, t) => self.postMessage(m, t || []);
     const fetchU = async u => {
         const r = await fetch(u);

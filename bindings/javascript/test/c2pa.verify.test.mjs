@@ -13,9 +13,9 @@ import { c2paVerifyWav } from '../c2pa-verify.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const asset = (p) => path.join(here, '..', '..', '..', 'assets', 'c2pa', p);
 const fixture = (p) => path.join(here, '..', '..', '..', 'tests', 'assets', 'c2pa', p);
-const haveCert = fs.existsSync(asset('crispasr-default-c2pa.crt'));
-const cert = haveCert ? fs.readFileSync(asset('crispasr-default-c2pa.crt'), 'utf8') : null;
-const key = haveCert ? fs.readFileSync(asset('crispasr-default-c2pa.key'), 'utf8') : null;
+const haveCert = fs.existsSync(asset('stelnet_asr-default-c2pa.crt'));
+const cert = haveCert ? fs.readFileSync(asset('stelnet_asr-default-c2pa.crt'), 'utf8') : null;
+const key = haveCert ? fs.readFileSync(asset('stelnet_asr-default-c2pa.key'), 'utf8') : null;
 
 function makeWav(n = 4800, sr = 24000) {
   const buf = Buffer.alloc(44 + n * 2);
@@ -34,7 +34,7 @@ test('verify: our JS-signed WAV validates (round-trip)', { skip: !haveCert }, as
   assert.equal(r.dataHashValid, true, r.errors.join('; '));
   assert.equal(r.assertionsValid, true, r.errors.join('; '));
   assert.equal(r.valid, true);
-  assert.equal(r.manifest.generatorName, 'CrispASR');
+  assert.equal(r.manifest.generatorName, 'StelnetASR');
   assert.equal(r.manifest.actions[0].action, 'c2pa.created');
 });
 

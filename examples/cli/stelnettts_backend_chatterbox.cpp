@@ -90,7 +90,7 @@ static std::string discover_s3gen(const whisper_params& p) {
     if (!path.empty())
         return path;
 
-    CrispasrRegistryEntry entry;
+    StelnetAsrRegistryEntry entry;
     if (stelnettts_registry_lookup(p.backend, entry, p.tts_codec_quant) && !entry.companion_filename.empty()) {
         return stelnettts_resolve_model_cli(entry.companion_filename, p.backend, p.no_prints, p.cache_dir,
                                           p.auto_download, p.tts_codec_quant);
@@ -104,7 +104,7 @@ static std::string discover_s3gen(const whisper_params& p) {
     return "";
 }
 
-class ChatterboxBackend : public CrispasrBackend {
+class ChatterboxBackend : public StelnetAsrBackend {
 public:
     ChatterboxBackend() = default;
     ~ChatterboxBackend() override { ChatterboxBackend::shutdown(); }
@@ -234,6 +234,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_chatterbox_backend() {
-    return std::unique_ptr<CrispasrBackend>(new ChatterboxBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_chatterbox_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new ChatterboxBackend());
 }

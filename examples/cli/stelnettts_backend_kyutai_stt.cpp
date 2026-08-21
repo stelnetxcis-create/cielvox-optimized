@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-class KyutaiSttBackend : public CrispasrBackend {
+class KyutaiSttBackend : public StelnetAsrBackend {
 public:
     KyutaiSttBackend() = default;
 
@@ -206,7 +206,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
         std::string accumulated;
@@ -253,6 +253,6 @@ private:
     kyutai_stt_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_kyutai_stt_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_kyutai_stt_backend() {
     return std::make_unique<KyutaiSttBackend>();
 }

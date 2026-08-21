@@ -505,7 +505,7 @@ std::vector<stelnettts_segment> stelnettts_run_voxtral_style_pipeline_streamed(t
 template <typename Ops>
 void stelnettts_run_voxtral_style_pipeline_streamed_cb(typename Ops::CtxT* ctx, const float* samples, int n_samples,
                                                      const whisper_params& params,
-                                                     CrispasrBackend::stelnettts_stream_callback on_text) {
+                                                     StelnetAsrBackend::stelnettts_stream_callback on_text) {
     if (!ctx)
         return;
 

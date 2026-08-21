@@ -23,10 +23,10 @@ import java.util.Collections;
  */
 class ChatParamsTest {
 
-    /** @return whether libcrispasr could be resolved */
+    /** @return whether libstelnet_asr could be resolved */
     static boolean libraryAvailable() {
         try {
-            NativeLibrary.getInstance("crispasr");
+            NativeLibrary.getInstance("stelnet_asr");
             return true;
         } catch (Throwable t) {
             return false;
@@ -169,7 +169,7 @@ class ChatParamsTest {
         ChatException e = assertThrows(ChatException.class,
                 () -> ChatSession.open("/nonexistent/model.gguf"));
         assertFalse(e instanceof ChatAbortedException,
-                "only CRISPASR_CHAT_ERR_ABORTED may classify as a cancellation");
+                "only STELNET_ASR_CHAT_ERR_ABORTED may classify as a cancellation");
         assertFalse(e.getMessage().isEmpty());
     }
 
@@ -191,7 +191,7 @@ class ChatParamsTest {
     @EnabledIf("libraryAvailable")
     void memoryEstimateThrowsForAModelItCannotRead() {
         assertThrows(ChatException.class, () -> ChatSession.memoryEstimate(
-                "/nonexistent/crispasr-memory-estimate.gguf", null));
+                "/nonexistent/stelnet_asr-memory-estimate.gguf", null));
     }
 
     /** Every entry point the header declares is reachable through {@link ChatLib}. */
@@ -199,16 +199,16 @@ class ChatParamsTest {
     @EnabledIf("libraryAvailable")
     void everyChatSymbolResolves() {
         String[] symbols = {
-            "crispasr_chat_open_params_default", "crispasr_chat_generate_params_default",
-            "crispasr_chat_open", "crispasr_chat_close", "crispasr_chat_reset",
-            "crispasr_chat_generate", "crispasr_chat_generate_stream",
-            "crispasr_chat_set_abort_callback", "crispasr_chat_template_name",
-            "crispasr_chat_n_ctx", "crispasr_chat_count_tokens",
-            "crispasr_chat_memory_estimate", "crispasr_chat_string_free",
-            "crispasr_chat_ai_disclosure_text",
+            "stelnet_asr_chat_open_params_default", "stelnet_asr_chat_generate_params_default",
+            "stelnet_asr_chat_open", "stelnet_asr_chat_close", "stelnet_asr_chat_reset",
+            "stelnet_asr_chat_generate", "stelnet_asr_chat_generate_stream",
+            "stelnet_asr_chat_set_abort_callback", "stelnet_asr_chat_template_name",
+            "stelnet_asr_chat_n_ctx", "stelnet_asr_chat_count_tokens",
+            "stelnet_asr_chat_memory_estimate", "stelnet_asr_chat_string_free",
+            "stelnet_asr_chat_ai_disclosure_text",
         };
         assertEquals(14, symbols.length, "the header exports fourteen entry points");
-        NativeLibrary lib = NativeLibrary.getInstance("crispasr");
+        NativeLibrary lib = NativeLibrary.getInstance("stelnet_asr");
         for (String s : symbols) {
             assertNotNull(lib.getFunction(s), s);
         }

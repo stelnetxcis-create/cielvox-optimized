@@ -9,11 +9,11 @@ require_relative "helper"
 #   - User Proc GC'd while the device is running → segfault on dispatch
 #   - close() not joining the pump thread → use-after-free on the queue
 #
-# Gated behind CRISPASR_MIC_TEST=1 because CI runners typically have
+# Gated behind STELNET_ASR_MIC_TEST=1 because CI runners typically have
 # no microphone and the device-open call would fail.
 class TestMicSmoke < TestBase
   def setup
-    omit "set CRISPASR_MIC_TEST=1 to run mic tests" unless ENV["CRISPASR_MIC_TEST"] == "1"
+    omit "set STELNET_ASR_MIC_TEST=1 to run mic tests" unless ENV["STELNET_ASR_MIC_TEST"] == "1"
   end
 
   def test_mic_fires_callbacks
@@ -21,7 +21,7 @@ class TestMicSmoke < TestBase
     callbacks = 0
     total_samples = 0
 
-    handle = Whisper::CrispASR::Mic.open(16000, 1) do |pcm|
+    handle = Whisper::StelnetASR::Mic.open(16000, 1) do |pcm|
       mu.synchronize do
         callbacks += 1
         total_samples += pcm.size
@@ -29,11 +29,11 @@ class TestMicSmoke < TestBase
     end
 
     begin
-      Whisper::CrispASR::Mic.start(handle)
+      Whisper::StelnetASR::Mic.start(handle)
       sleep 1.0
-      Whisper::CrispASR::Mic.stop(handle)
+      Whisper::StelnetASR::Mic.stop(handle)
     ensure
-      Whisper::CrispASR::Mic.close(handle)
+      Whisper::StelnetASR::Mic.close(handle)
     end
 
     cb_count = mu.synchronize { callbacks }
@@ -46,7 +46,7 @@ class TestMicSmoke < TestBase
   end
 
   def test_default_device_name
-    name = Whisper::CrispASR::Mic.default_device_name
+    name = Whisper::StelnetASR::Mic.default_device_name
     assert_not_nil name
     # Empty is allowed (headless host with no input device); we just
     # want to confirm the symbol resolves without crashing.

@@ -35,11 +35,11 @@ CACHE_ARG=()
 [ -n "$CACHE_DIR" ] && CACHE_ARG=(--cache-dir "$CACHE_DIR")
 
 # Locate the binary.
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not found (build first)"
     exit 0
 fi
@@ -77,7 +77,7 @@ SERVER_LOG=$(mktemp -t stelnettts-punc-server.XXXXXX)
 trap 'if [ "$KEEP_SERVER" -eq 0 ] && [ -n "${SERVER_PID:-}" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi; rm -f "$SERVER_LOG"' EXIT
 
 echo "Starting stelnettts-server on :$PORT with --punc-model fullstop…"
-"$CRISPASR" --server -m "$MODEL" --punc-model fullstop \
+"$STELNET_ASR" --server -m "$MODEL" --punc-model fullstop \
     --host 127.0.0.1 --port "$PORT" --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} \
     > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!

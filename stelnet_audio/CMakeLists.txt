@@ -1,59 +1,59 @@
-# crisp_audio — shared C++ audio-encoder library.
+# stelnet_audio — shared C++ audio-encoder library.
 #
 # Used by StelnetTTS (cielvox2_asr.cpp) and StelnetEmbed (BidirLM-Omni audio path)
 # to share the Whisper-shape Conv-stem + Transformer-encoder forward pass.
 #
-# Linked into StelnetEmbed via add_subdirectory("../StelnetTTS/crisp_audio") from
+# Linked into StelnetEmbed via add_subdirectory("../StelnetTTS/stelnet_audio") from
 # StelnetEmbed's top-level CMakeLists.txt.
 
 cmake_minimum_required(VERSION 3.14)
 
-# crisp_audio links against the consumer's "core" target — which provides
+# stelnet_audio links against the consumer's "core" target — which provides
 # core_gguf::* and core_mel::* symbols. StelnetTTS's stelnettts-core and
 # StelnetEmbed's crispembed-core both supply these from identical sources;
 # we pick whichever the parent build defines so consumers don't end up
 # with duplicate symbols.
 if(TARGET stelnettts-core)
-    set(_crisp_audio_core_target stelnettts-core)
-    set(_crisp_audio_core_inc    ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    set(_stelnet_audio_core_target stelnettts-core)
+    set(_stelnet_audio_core_inc    ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 elseif(TARGET crispembed-core)
-    set(_crisp_audio_core_target crispembed-core)
+    set(_stelnet_audio_core_target crispembed-core)
     # StelnetEmbed exposes core/* via crispembed-core's PUBLIC include dirs;
     # nothing extra needed here.
-    set(_crisp_audio_core_inc "")
+    set(_stelnet_audio_core_inc "")
 else()
-    message(STATUS "crisp_audio: no core target (stelnettts-core or crispembed-core) — skipping")
+    message(STATUS "stelnet_audio: no core target (stelnettts-core or crispembed-core) — skipping")
     return()
 endif()
 
-add_library(crisp_audio STATIC
+add_library(stelnet_audio STATIC
     src/audio_tower.cpp
-    include/crisp_audio.h
+    include/stelnet_audio.h
 )
 
-target_include_directories(crisp_audio
+target_include_directories(stelnet_audio
     PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-if(_crisp_audio_core_inc)
-    target_include_directories(crisp_audio PRIVATE ${_crisp_audio_core_inc})
+if(_stelnet_audio_core_inc)
+    target_include_directories(stelnet_audio PRIVATE ${_stelnet_audio_core_inc})
 endif()
 
-target_link_libraries(crisp_audio
-    PUBLIC  ${_crisp_audio_core_target} ggml ggml-base
+target_link_libraries(stelnet_audio
+    PUBLIC  ${_stelnet_audio_core_target} ggml ggml-base
 )
 
-target_compile_features(crisp_audio PUBLIC cxx_std_17)
-set_target_properties(crisp_audio PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_features(stelnet_audio PUBLIC cxx_std_17)
+set_target_properties(stelnet_audio PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(NOT MSVC)
-    target_compile_options(crisp_audio PRIVATE -O3)
+    target_compile_options(stelnet_audio PRIVATE -O3)
 endif()
 
 if(GGML_METAL)
-    target_compile_definitions(crisp_audio PRIVATE GGML_USE_METAL)
-    target_link_libraries(crisp_audio PUBLIC stelnettts_link_ggml_metal)
+    target_compile_definitions(stelnet_audio PRIVATE GGML_USE_METAL)
+    target_link_libraries(stelnet_audio PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
-    target_compile_definitions(crisp_audio PRIVATE GGML_USE_CUDA)
-    target_link_libraries(crisp_audio PUBLIC stelnettts_link_ggml_cuda)
+    target_compile_definitions(stelnet_audio PRIVATE GGML_USE_CUDA)
+    target_link_libraries(stelnet_audio PUBLIC stelnettts_link_ggml_cuda)
 endif()

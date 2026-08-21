@@ -57,7 +57,7 @@ const traditionalParams = {
 
 async function runVADExample() {
   try {
-    console.log("=== CrispASR Node.js VAD Example ===\n");
+    console.log("=== StelnetASR Node.js VAD Example ===\n");
     
     // Check if VAD model exists
     const fs = require('fs');

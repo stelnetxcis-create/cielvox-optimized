@@ -43,7 +43,7 @@ inline int64_t cs_to_sample_in_slice(int64_t cs_abs, int64_t slice_t0_cs) {
 // on near-equal energy. Same threshold the historical stelnettts
 // `--diarize` path uses.
 void apply_energy(const float* left, const float* right, int n_samples, int64_t slice_t0_cs,
-                  std::vector<CrispasrDiarizeSegment>& segs) {
+                  std::vector<StelnetAsrDiarizeSegment>& segs) {
     for (auto& seg : segs) {
         int64_t is0 = cs_to_sample_in_slice(seg.t0_cs, slice_t0_cs);
         int64_t is1 = cs_to_sample_in_slice(seg.t1_cs, slice_t0_cs);
@@ -77,7 +77,7 @@ void apply_energy(const float* left, const float* right, int n_samples, int64_t 
 // correlation peak's sign tells us which channel the voice is closest
 // to. Falls back to energy on short segments.
 void apply_xcorr(const float* left, const float* right, int n_samples, int64_t slice_t0_cs,
-                 std::vector<CrispasrDiarizeSegment>& segs) {
+                 std::vector<StelnetAsrDiarizeSegment>& segs) {
     constexpr int MAX_LAG = 80; // ±5 ms at 16 kHz
     for (auto& seg : segs) {
         int64_t is0 = cs_to_sample_in_slice(seg.t0_cs, slice_t0_cs);
@@ -129,7 +129,7 @@ void apply_xcorr(const float* left, const float* right, int n_samples, int64_t s
 // speaker ID — a proxy for turn boundaries that works on any input.
 constexpr int64_t MIN_TURN_GAP_CS = 60;
 
-void apply_vad_turns(std::vector<CrispasrDiarizeSegment>& segs) {
+void apply_vad_turns(std::vector<StelnetAsrDiarizeSegment>& segs) {
     if (segs.empty())
         return;
     int speaker = 0;
@@ -218,7 +218,7 @@ void stelnettts_diarize_free_pyannote_cache() {
     }
 }
 
-bool apply_pyannote(const float* mono, int n_samples, int64_t slice_t0_cs, std::vector<CrispasrDiarizeSegment>& segs,
+bool apply_pyannote(const float* mono, int n_samples, int64_t slice_t0_cs, std::vector<StelnetAsrDiarizeSegment>& segs,
                     const std::string& model_path, int n_threads) {
     if (model_path.empty())
         return false;
@@ -341,7 +341,7 @@ int score_speaker_for_range(const float* log_probs, int T, double frame_dur_s, i
 }
 
 void assign_speakers_from_log_posteriors(const float* log_probs, int T, double frame_dur_s, int64_t slice_t0_cs,
-                                         std::vector<CrispasrDiarizeSegment>& segs) {
+                                         std::vector<StelnetAsrDiarizeSegment>& segs) {
     if (!log_probs || T <= 0 || frame_dur_s <= 0.0)
         return;
     for (auto& seg : segs) {
@@ -447,8 +447,8 @@ int foxnose_embed_cb(void* ud, int worker, const float* pcm, int n, float* out) 
     return wespeaker_embed(e->ctx[worker], pcm, n, out);
 }
 
-bool apply_foxnose(const float* left, int n_samples, const CrispasrDiarizeOptions& opts,
-                   std::vector<CrispasrDiarizeSegment>& segs, std::vector<CrispasrDiarizeTurn>* out_turns) {
+bool apply_foxnose(const float* left, int n_samples, const StelnetAsrDiarizeOptions& opts,
+                   std::vector<StelnetAsrDiarizeSegment>& segs, std::vector<StelnetAsrDiarizeTurn>* out_turns) {
     if (opts.foxnose_embedder_path.empty()) {
         fprintf(stderr, "stelnettts_diarize: foxnose needs --diarize-embedder <wespeaker.gguf>\n");
         return false;
@@ -564,28 +564,28 @@ bool apply_foxnose(const float* left, int n_samples, const CrispasrDiarizeOption
 } // namespace
 
 bool stelnettts_diarize_segments(const float* left, const float* right, int n_samples, bool is_stereo,
-                               std::vector<CrispasrDiarizeSegment>& segs, const CrispasrDiarizeOptions& opts,
-                               std::vector<CrispasrDiarizeTurn>* out_turns) {
+                               std::vector<StelnetAsrDiarizeSegment>& segs, const StelnetAsrDiarizeOptions& opts,
+                               std::vector<StelnetAsrDiarizeTurn>* out_turns) {
     if (segs.empty() || !left || n_samples <= 0)
         return true; // nothing to do, but not an error
 
     switch (opts.method) {
-    case CrispasrDiarizeMethod::Energy:
+    case StelnetAsrDiarizeMethod::Energy:
         if (!is_stereo || !right)
             return true; // can't energy-diarize mono; leave speakers untouched
         apply_energy(left, right, n_samples, opts.slice_t0_cs, segs);
         return true;
-    case CrispasrDiarizeMethod::Xcorr:
+    case StelnetAsrDiarizeMethod::Xcorr:
         if (!is_stereo || !right)
             return true;
         apply_xcorr(left, right, n_samples, opts.slice_t0_cs, segs);
         return true;
-    case CrispasrDiarizeMethod::VadTurns:
+    case StelnetAsrDiarizeMethod::VadTurns:
         apply_vad_turns(segs);
         return true;
-    case CrispasrDiarizeMethod::Pyannote:
+    case StelnetAsrDiarizeMethod::Pyannote:
         return apply_pyannote(left, n_samples, opts.slice_t0_cs, segs, opts.pyannote_model_path, opts.n_threads);
-    case CrispasrDiarizeMethod::FoxNose:
+    case StelnetAsrDiarizeMethod::FoxNose:
         return apply_foxnose(left, n_samples, opts, segs, out_turns);
     }
     return false;

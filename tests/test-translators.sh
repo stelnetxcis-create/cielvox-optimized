@@ -12,15 +12,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="./build/bin/stelnettts"
+STELNET_ASR="./build/bin/stelnettts"
 SAMPLE_EN="./samples/jfk.wav"
 SAMPLE_JA="./samples/ja/jsut_water_3s.wav"
 TMPDIR=$(mktemp -d -t stelnettts-translators.XXXXXX)
 GEMMA_CACHE="$HOME/.cache/stelnettts/test-translators-gemma"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-if [ ! -x "$CRISPASR" ]; then
-    echo "ERROR: $CRISPASR not found. Build first."
+if [ ! -x "$STELNET_ASR" ]; then
+    echo "ERROR: $STELNET_ASR not found. Build first."
     exit 1
 fi
 if [ ! -f "$SAMPLE_EN" ]; then
@@ -62,7 +62,7 @@ run_text_translate() {
     fi
 
     local out
-    local -a cmd=("$CRISPASR" --backend "$backend" -m auto --auto-download)
+    local -a cmd=("$STELNET_ASR" --backend "$backend" -m auto --auto-download)
     if [ "${#cache_args[@]}" -gt 0 ]; then
         cmd+=("${cache_args[@]}")
     fi
@@ -92,7 +92,7 @@ run_audio_translate() {
         cache_args=(--cache-dir "$GEMMA_CACHE")
     fi
 
-    local -a cmd=("$CRISPASR" --backend "$backend" -m auto --auto-download)
+    local -a cmd=("$STELNET_ASR" --backend "$backend" -m auto --auto-download)
     if [ "${#cache_args[@]}" -gt 0 ]; then
         cmd+=("${cache_args[@]}")
     fi
@@ -123,7 +123,7 @@ run_lid() {
     local expect="$2"
     local base="$TMPDIR/lid-$(basename "$infile" .wav)"
 
-    local -a cmd=("$CRISPASR" --backend gemma4-e2b -m auto --auto-download --cache-dir "$GEMMA_CACHE" -f "$infile" -dl -of "$base" -ojf -otxt --no-prints)
+    local -a cmd=("$STELNET_ASR" --backend gemma4-e2b -m auto --auto-download --cache-dir "$GEMMA_CACHE" -f "$infile" -dl -of "$base" -ojf -otxt --no-prints)
     if ! "${cmd[@]}" >/dev/null 2>&1; then
         fail "LID on $(basename "$infile") crashed"
         return

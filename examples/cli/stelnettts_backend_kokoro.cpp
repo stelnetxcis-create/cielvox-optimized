@@ -55,7 +55,7 @@ std::string kokoro_resolve_fallback_voice(const std::string& lang, const std::st
     return path;
 }
 
-class KokoroBackend : public CrispasrBackend {
+class KokoroBackend : public StelnetAsrBackend {
 public:
     KokoroBackend() = default;
     ~KokoroBackend() override { KokoroBackend::shutdown(); }
@@ -192,6 +192,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_kokoro_backend() {
-    return std::unique_ptr<CrispasrBackend>(new KokoroBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_kokoro_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new KokoroBackend());
 }

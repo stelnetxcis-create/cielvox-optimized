@@ -75,7 +75,7 @@ struct TextLidHook {
     }
 };
 
-class CohereBackend : public CrispasrBackend {
+class CohereBackend : public StelnetAsrBackend {
 public:
     CohereBackend() = default;
     ~CohereBackend() override { CohereBackend::shutdown(); }
@@ -333,6 +333,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_cohere_backend() {
-    return std::unique_ptr<CrispasrBackend>(new CohereBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_cohere_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new CohereBackend());
 }

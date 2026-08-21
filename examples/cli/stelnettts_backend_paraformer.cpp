@@ -9,7 +9,7 @@
 #include <cstring>
 #include <vector>
 
-class ParaformerBackend : public CrispasrBackend {
+class ParaformerBackend : public StelnetAsrBackend {
 public:
     ParaformerBackend() = default;
 
@@ -120,6 +120,6 @@ private:
     paraformer_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_paraformer_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_paraformer_backend() {
     return std::make_unique<ParaformerBackend>();
 }

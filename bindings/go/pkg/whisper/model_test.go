@@ -3,7 +3,7 @@ package whisper_test
 import (
 	"testing"
 
-	"github.com/CrispStrobe/CrispASR/bindings/go/pkg/whisper"
+	"github.com/CrispStrobe/StelnetASR/bindings/go/pkg/whisper"
 	assert "github.com/stretchr/testify/assert"
 )
 

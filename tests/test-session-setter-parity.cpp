@@ -42,7 +42,7 @@ const char* kSurfaces[] = {
     "stelnettts-sys/src/lib.rs",
     "stelnettts/src/lib.rs",
     "flutter/stelnettts/lib/src/stelnettts.dart",
-    "bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java",
+    "bindings/java/src/main/java/io/github/ggerganov/whispercpp/StelnetAsrSession.java",
     "bindings/ruby/ext/ruby_stelnettts_session.c",
     "bindings/csharp/StelnetTTS/NativeMethods.cs",
     "bindings/javascript/emscripten.cpp",

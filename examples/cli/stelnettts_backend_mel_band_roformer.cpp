@@ -27,7 +27,7 @@
 
 namespace {
 
-class MelBandRoformerBackend : public CrispasrBackend {
+class MelBandRoformerBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "mel-band-roformer"; }
 
@@ -47,6 +47,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_mel_band_roformer_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_mel_band_roformer_backend() {
     return std::make_unique<MelBandRoformerBackend>();
 }

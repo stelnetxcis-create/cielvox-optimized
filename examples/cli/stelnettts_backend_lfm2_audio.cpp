@@ -17,7 +17,7 @@
 
 namespace {
 
-class Lfm2AudioBackend : public CrispasrBackend {
+class Lfm2AudioBackend : public StelnetAsrBackend {
 public:
     Lfm2AudioBackend() = default;
     ~Lfm2AudioBackend() override { Lfm2AudioBackend::shutdown(); }
@@ -113,6 +113,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_lfm2_audio_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_lfm2_audio_backend() {
     return std::make_unique<Lfm2AudioBackend>();
 }

@@ -18,7 +18,7 @@
 
 namespace {
 
-class KugelAudioBackend : public CrispasrBackend {
+class KugelAudioBackend : public StelnetAsrBackend {
 public:
     KugelAudioBackend() = default;
     // cppcheck-suppress virtualCallInConstructor
@@ -92,6 +92,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_kugelaudio_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_kugelaudio_backend() {
     return std::make_unique<KugelAudioBackend>();
 }

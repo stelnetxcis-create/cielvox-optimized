@@ -25,11 +25,11 @@ for arg in "$@"; do
     esac
 done
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
@@ -53,7 +53,7 @@ run_tts() {
     local out_wav="$1"
     local log_file="$2"
 
-    "$CRISPASR" --backend vibevoice-1.5b -m auto \
+    "$STELNET_ASR" --backend vibevoice-1.5b -m auto \
         --tts "$TEXT" \
         --tts-output "$out_wav" \
         --no-prints \

@@ -11,7 +11,7 @@
 //   - No ping/pong (connection drops on timeout)
 
 #include "ws_stream.h"
-// CrispasrSession/CrispasrStream types and functions are forward-declared
+// StelnetAsrSession/StelnetAsrStream types and functions are forward-declared
 // in ws_stream.h and resolved at link time from libstelnettts.
 
 #include <atomic>

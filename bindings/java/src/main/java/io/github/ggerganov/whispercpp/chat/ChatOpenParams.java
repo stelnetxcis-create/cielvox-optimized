@@ -6,9 +6,9 @@ import com.sun.jna.Pointer;
 import java.util.List;
 
 /**
- * Per-session, model-level options of {@code crispasr_chat_open}.
+ * Per-session, model-level options of {@code stelnet_asr_chat_open}.
  *
- * <p>A fresh instance is seeded from {@code crispasr_chat_open_params_default},
+ * <p>A fresh instance is seeded from {@code stelnet_asr_chat_open_params_default},
  * so setting one option leaves every other one at the ABI default rather than
  * at a Java zero — {@code nGpuLayers} stays -1 (all layers) instead of becoming
  * 0 (CPU only), {@code useMmap} stays true, {@code nBatch} stays 512.
@@ -28,7 +28,7 @@ public final class ChatOpenParams {
 
     /** A params object holding the ABI's own defaults. */
     public ChatOpenParams() {
-        ChatLib.INSTANCE.crispasr_chat_open_params_default(c);
+        ChatLib.INSTANCE.stelnet_asr_chat_open_params_default(c);
     }
 
     /** @return generation threads */

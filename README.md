@@ -75,7 +75,7 @@ export STELNETTTS_CIELVOX2_TTS_CP_BACKEND=cpu
   --speaker-identity synthetic
 ```
 
-### CustomVoice (0.6b / 1.7b) — built-in presets
+### CustomVoice (0.6b / 1.7b) — built-in presets ----BROKEN ATM! STILL FIXING DONT USE THIS----
 
 ```bash
 ./build/bin/stelnettts \

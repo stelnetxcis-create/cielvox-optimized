@@ -29,7 +29,7 @@
 
 namespace {
 
-class BtcChordsBackend : public CrispasrBackend {
+class BtcChordsBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "btc-chords"; }
 
@@ -51,6 +51,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_btc_chords_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_btc_chords_backend() {
     return std::make_unique<BtcChordsBackend>();
 }

@@ -5,7 +5,7 @@
 
 #include <cstdio>
 
-class SidonBackend final : public CrispasrBackend {
+class SidonBackend final : public StelnetAsrBackend {
 public:
     const char* name() const override { return "sidon"; }
     uint32_t capabilities() const override { return CAP_S2S; }
@@ -43,6 +43,6 @@ private:
     sidon_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_sidon_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_sidon_backend() {
     return std::make_unique<SidonBackend>();
 }

@@ -44,7 +44,7 @@
 //     machine-readable form. There is no watermark-equivalent for short-form
 //     text that survives a copy-paste, so nothing here marks the output. The
 //     practical option is metadata travelling with the response (the server
-//     sends X-Crispasr-Ai-Generated on /v1/chat/completions; do the same).
+//     sends X-StelnetAsr-Ai-Generated on /v1/chat/completions; do the same).
 //
 //   Art. 50(1) — a system that interacts directly with natural persons must
 //     tell them they are talking to an AI, unless that is obvious to a

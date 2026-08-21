@@ -97,7 +97,7 @@ public class WhisperCpp implements AutoCloseable {
         Pointer pointer;
 
         // whisper_full_default_params_by_ref allocates memory which we need to delete, so only create max 1 pointer for each strategy.
-        if (strategy == WhisperSamplingStrategy.CRISPASR_SAMPLING_GREEDY) {
+        if (strategy == WhisperSamplingStrategy.STELNET_ASR_SAMPLING_GREEDY) {
             if (greedyParamsPointer == null) {
                 greedyParamsPointer = lib.whisper_full_default_params_by_ref(strategy.ordinal());
             }

@@ -6,7 +6,7 @@
 // -> greedy decode -> GPT-2 byte detokenize.
 //
 // This code is a direct port of examples/granite-main/main.cpp's pipeline,
-// wrapped in the CrispasrBackend interface. Once granite_speech_transcribe
+// wrapped in the StelnetAsrBackend interface. Once granite_speech_transcribe
 // gains a real implementation, or once the shared LLM decode loop lands in
 // src/core/, this file should shrink dramatically.
 //
@@ -57,7 +57,7 @@ constexpr int kNumSuffix4 = 16;
 constexpr int kLegacyAudioTok4 = 100352;
 constexpr int kLegacyEos4 = 100257;
 
-class GraniteBackend : public CrispasrBackend {
+class GraniteBackend : public StelnetAsrBackend {
 public:
     GraniteBackend() = default;
     ~GraniteBackend() override { GraniteBackend::shutdown(); }
@@ -717,7 +717,7 @@ public:
         const bool want_ts = is_plus && (params.output_wts || params.output_jsn_full || params.max_len > 0 ||
                                          params.output_srt || params.output_vtt || params.split_on_punct);
         if (params.beam_size > 1 || want_saa || want_ts) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, t_offset_cs, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, t_offset_cs, params, on_text);
             return;
         }
 
@@ -916,6 +916,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_granite_backend() {
-    return std::unique_ptr<CrispasrBackend>(new GraniteBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_granite_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new GraniteBackend());
 }

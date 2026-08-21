@@ -31,7 +31,7 @@ RUN apt-get update && \
 ENV LIBRARY_PATH=/usr/local/cuda-13.0/lib64/stubs:/usr/local/cuda-13.0/compat:$LIBRARY_PATH
 
 COPY . .
-ARG CRISPASR_BUILD_JOBS
+ARG STELNET_ASR_BUILD_JOBS
 # GGML_NATIVE=OFF is REQUIRED for a distributed image (#261). Without it ggml
 # defaults GGML_NATIVE=ON → `-march=native`, baking the BUILD runner's CPU
 # instruction set (e.g. AVX-512) into the CPU ggml kernels. GPU ASR runs fine
@@ -50,15 +50,15 @@ ARG CRISPASR_BUILD_JOBS
 # claimed here. Spell every extension out so the contract is visible and can't
 # drift silently — a #261 reporter's pre-AVX2 CPU SIGILL'd inside
 # ggml_cpu_init() on a BMI2 instruction while the old cpu-isa self-check (which
-# only read CrispASR's own baseline TUs) still printed "OK".
+# only read StelnetASR's own baseline TUs) still printed "OK".
 # AVX-512 stays off. The GPU kernels are unaffected.
-RUN jobs="${CRISPASR_BUILD_JOBS:-$(nproc)}" && \
-    cmake -S . -B build -G Ninja -DCRISPASR_BUILD_TESTS=OFF -DGGML_CUDA=1 \
+RUN jobs="${STELNET_ASR_BUILD_JOBS:-$(nproc)}" && \
+    cmake -S . -B build -G Ninja -DSTELNET_ASR_BUILD_TESTS=OFF -DGGML_CUDA=1 \
         -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
         -DGGML_BMI2=ON -DGGML_SSE42=ON -DGGML_AVX=ON -DGGML_AVX512=OFF \
         -DCMAKE_CUDA_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;120-real;120-virtual" \
         -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
-    cmake --build build -j"${jobs}" --target crispasr-cli
+    cmake --build build -j"${jobs}" --target stelnet_asr-cli
 # --allow-shlib-undefined: libggml-cuda.so links against libcuda.so.1
 # (the CUDA driver), which lives outside the image — the host's nvidia
 # runtime mounts it in at runtime. The stubs dir on PATH gives us
@@ -100,7 +100,7 @@ RUN apt-get update && \
 #
 # Compat libs stay on disk at /usr/local/cuda/compat/. Users with old host
 # drivers can still opt back in at runtime via:
-#   docker run -e CRISPASR_USE_CUDA_COMPAT=1 ...
+#   docker run -e STELNET_ASR_USE_CUDA_COMPAT=1 ...
 # which run-server.sh honours by prepending the dir to LD_LIBRARY_PATH.
 RUN rm -f /etc/ld.so.conf.d/000_cuda_compat.conf /etc/ld.so.conf.d/cuda-compat.conf && ldconfig
 
@@ -110,24 +110,24 @@ RUN rm -f /etc/ld.so.conf.d/000_cuda_compat.conf /etc/ld.so.conf.d/cuda-compat.c
 ARG GIT_SHA=unknown
 ARG GIT_REF=unknown
 ARG BUILD_DATE=unknown
-LABEL org.opencontainers.image.title="crispasr"
-LABEL org.opencontainers.image.source="https://github.com/CrispStrobe/CrispASR"
+LABEL org.opencontainers.image.title="stelnet_asr"
+LABEL org.opencontainers.image.source="https://github.com/CrispStrobe/StelnetASR"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.ref.name="${GIT_REF}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
-LABEL org.opencontainers.image.description="crispasr unified ASR — CUDA 13.0 build (driver R580+ recommended)"
+LABEL org.opencontainers.image.description="stelnet_asr unified ASR — CUDA 13.0 build (driver R580+ recommended)"
 COPY --from=build /app /app
 # build-info.txt comes AFTER the COPY so it isn't clobbered. run-server.sh
 # cats it on every startup so the first 5 lines of any user log identify
 # the build (#31).
 RUN printf 'image=main-cuda\ncuda_version=13.0\ngit_sha=%s\ngit_ref=%s\nbuild_date=%s\n' \
         "${GIT_SHA}" "${GIT_REF}" "${BUILD_DATE}" > /app/build-info.txt
-RUN useradd -m -u 1000 crispasr && \
+RUN useradd -m -u 1000 stelnet_asr && \
   mkdir -p /cache /models && \
-  chown -R crispasr:crispasr /app /cache /models
+  chown -R stelnet_asr:stelnet_asr /app /cache /models
 RUN du -sh /app/*
 RUN find /app -type f -size +100M
 ENV PATH=/app/build/bin:$PATH
-ENV CRISPASR_CACHE_DIR=/cache
-USER crispasr
+ENV STELNET_ASR_CACHE_DIR=/cache
+USER stelnet_asr
 ENTRYPOINT [ "tini", "--", "bash", "/app/.devops/run-server.sh" ]

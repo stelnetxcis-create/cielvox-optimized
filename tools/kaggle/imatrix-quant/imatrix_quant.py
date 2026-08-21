@@ -62,9 +62,9 @@ with kh.build_heartbeat("cmake.build"):
     subprocess.check_call(
         ["cmake", "--build", str(BUILD), "--target", "stelnettts", "stelnettts-quantize",
          f"-j{kh.safe_build_jobs(gpu=True)}"], cwd=str(REPO), timeout=3600)
-CRISPASR = str(BUILD / "bin" / "stelnettts")
+STELNET_ASR = str(BUILD / "bin" / "stelnettts")
 QUANTIZE = str(BUILD / "bin" / "stelnettts-quantize")
-assert Path(CRISPASR).exists() and Path(QUANTIZE).exists(), "build produced no binaries"
+assert Path(STELNET_ASR).exists() and Path(QUANTIZE).exists(), "build produced no binaries"
 kh.step("built")
 
 # ── 3. calibration corpus (CC0 Common Voice EN+DE) ──────────────────────────
@@ -95,7 +95,7 @@ def cer(hyp, ref):
 
 
 def transcribe(model, wav, timeout=600):
-    r = subprocess.run([CRISPASR, "-m", model, "-f", wav],
+    r = subprocess.run([STELNET_ASR, "-m", model, "-f", wav],
                        capture_output=True, text=True, timeout=timeout)
     lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
     return lines[-1] if lines else ""
@@ -138,7 +138,7 @@ for mi, M in enumerate(MODELS):
         t0 = time.time()
         for ci, w in enumerate(CALIB):
             env = dict(os.environ, STELNETTTS_IMATRIX_OUT=str(imat))
-            subprocess.run([CRISPASR, "-m", str(f16), "-f", w], env=env,
+            subprocess.run([STELNET_ASR, "-m", str(f16), "-f", w], env=env,
                            capture_output=True, text=True, timeout=600)
         ok_imat = imat.exists() and imat.stat().st_size > 4096
         print(f"  imatrix {'OK' if ok_imat else 'MISSING'} "

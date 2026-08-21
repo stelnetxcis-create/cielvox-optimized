@@ -61,7 +61,7 @@ std::string discover_sibling(const std::string& base_dir, const std::vector<cons
     return "";
 }
 
-class CosyVoice3TtsBackend : public CrispasrBackend {
+class CosyVoice3TtsBackend : public StelnetAsrBackend {
 public:
     CosyVoice3TtsBackend() = default;
     ~CosyVoice3TtsBackend() override { CosyVoice3TtsBackend::shutdown(); }
@@ -322,6 +322,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_cosyvoice3_tts_backend() {
-    return std::unique_ptr<CrispasrBackend>(new CosyVoice3TtsBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_cosyvoice3_tts_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new CosyVoice3TtsBackend());
 }

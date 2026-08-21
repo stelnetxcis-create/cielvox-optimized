@@ -18,7 +18,7 @@ class Options
 
     output = nil
     Dir.chdir __dir__ do
-      output = `#{@cmake.shellescape} -S sources -B build -D CRISPASR_BUILD_TESTS=OFF -D CRISPASR_BUILD_EXAMPLES=OFF -D CRISPASR_BUILD_SERVER=OFF -L`
+      output = `#{@cmake.shellescape} -S sources -B build -D STELNET_ASR_BUILD_TESTS=OFF -D STELNET_ASR_BUILD_EXAMPLES=OFF -D STELNET_ASR_BUILD_SERVER=OFF -L`
     end
     @cmake_options = output.lines.drop_while {|line| line.chomp != "-- Cache values"}.drop(1)
                        .filter_map {|line|
@@ -62,9 +62,9 @@ class Options
 
   # See src/CmakeLists.txt
   def configure_coreml
-    if enabled?("CRISPASR_COREML")
+    if enabled?("STELNET_ASR_COREML")
       $LDFLAGS << " -framework Foundation -framework CoreML"
-      $defs << "-DRUBY_CRISPASR_USE_COREML"
+      $defs << "-DRUBY_STELNET_ASR_USE_COREML"
     end
   end
 

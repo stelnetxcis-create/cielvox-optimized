@@ -116,7 +116,7 @@ static std::vector<float> resample_linear(const std::vector<float>& in, int sr_i
     return out;
 }
 
-class F5TtsBackend : public CrispasrBackend {
+class F5TtsBackend : public StelnetAsrBackend {
 public:
     ~F5TtsBackend() override { F5TtsBackend::shutdown(); }
 
@@ -298,6 +298,6 @@ private:
 
 // ── Factory registration ────────────────────────────────────────────
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_f5_tts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_f5_tts_backend() {
     return std::make_unique<F5TtsBackend>();
 }

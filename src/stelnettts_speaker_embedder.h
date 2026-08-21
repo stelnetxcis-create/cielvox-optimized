@@ -14,9 +14,9 @@
 #include <memory>
 #include <string>
 
-class CrispasrSpeakerEmbedder {
+class StelnetAsrSpeakerEmbedder {
 public:
-    virtual ~CrispasrSpeakerEmbedder() = default;
+    virtual ~StelnetAsrSpeakerEmbedder() = default;
 
     /// Output embedding dimension (e.g. 192 for TitaNet-Large).
     virtual int dim() const = 0;
@@ -45,7 +45,7 @@ public:
     ///
     /// Returning nullptr is not a failure — the caller embeds serially, exactly
     /// as before.
-    virtual std::unique_ptr<CrispasrSpeakerEmbedder> clone() const { return nullptr; }
+    virtual std::unique_ptr<StelnetAsrSpeakerEmbedder> clone() const { return nullptr; }
 };
 
 /// Build a speaker embedder from a CLI-supplied model spec.
@@ -69,5 +69,5 @@ public:
 ///
 /// Returns nullptr on any failure; the diarize flow then runs without
 /// embeddings (P2a+P2e local pyannote tracks only).
-std::unique_ptr<CrispasrSpeakerEmbedder> stelnettts_make_speaker_embedder(const std::string& model_spec, int n_threads,
+std::unique_ptr<StelnetAsrSpeakerEmbedder> stelnettts_make_speaker_embedder(const std::string& model_spec, int n_threads,
                                                                         const std::string& cache_dir);

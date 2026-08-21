@@ -13,7 +13,7 @@ import java.util.List;
  * Per-call sampler options of the two generate entry points.
  *
  * <p>A fresh instance is seeded from
- * {@code crispasr_chat_generate_params_default}, so setting one option leaves
+ * {@code stelnet_asr_chat_generate_params_default}, so setting one option leaves
  * every other one at the ABI default rather than at a Java zero — in
  * particular {@code temperature} stays 0.8 instead of becoming 0.0, which
  * would silently turn every generation greedy.
@@ -30,7 +30,7 @@ public final class ChatGenerateParams {
 
     /** A params object holding the ABI's own defaults. */
     public ChatGenerateParams() {
-        ChatLib.INSTANCE.crispasr_chat_generate_params_default(c);
+        ChatLib.INSTANCE.stelnet_asr_chat_generate_params_default(c);
     }
 
     /** @return the hard cap on generated tokens */

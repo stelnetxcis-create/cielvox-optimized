@@ -27,7 +27,7 @@ std::string decode_token(const std::string& s) {
     return core_bpe::token_bytes_to_utf8(s);
 }
 
-class MossAudioBackend : public CrispasrBackend {
+class MossAudioBackend : public StelnetAsrBackend {
 public:
     MossAudioBackend() = default;
     ~MossAudioBackend() override { MossAudioBackend::shutdown(); }
@@ -89,7 +89,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
         std::string prompt_buf_s;
@@ -139,6 +139,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_moss_audio_backend() {
-    return std::unique_ptr<CrispasrBackend>(new MossAudioBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_moss_audio_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new MossAudioBackend());
 }

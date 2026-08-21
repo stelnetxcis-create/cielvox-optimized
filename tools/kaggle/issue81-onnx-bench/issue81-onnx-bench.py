@@ -114,8 +114,8 @@ with kh.build_heartbeat("cmake.build"):
         print("=== stelnettts-cli BUILD FAILED — last 40 lines ===", flush=True)
         print("\n".join((_b.stdout or "").splitlines()[-40:]), flush=True)
         raise SystemExit("stelnettts-cli build failed")
-CRISPASR = BUILD / "bin" / "stelnettts"
-print(f"  built: {CRISPASR}")
+STELNET_ASR = BUILD / "bin" / "stelnettts"
+print(f"  built: {STELNET_ASR}")
 
 # ── Phase 1: Install onnx-asr (+ onnxruntime-gpu for the CUDA EP) ────────────
 print("\n=== Phase 1: install onnx-asr ===", flush=True)
@@ -239,7 +239,7 @@ def bench_stelnettts(backend, model_path, audio_path, audio_dur, label, extra_fl
       rebuild. force_cpu: run '--no-gpu' regardless of the global gpu_flag —
       issue #81's real gap is x86 CPU (OpenBLAS), so the TDT_BATCH A/B is CPU-only."""
     this_gpu = "--no-gpu" if force_cpu else gpu_flag
-    cmd = f"{env_prefix}{CRISPASR} --backend {backend} {this_gpu} -m {model_path} -f {audio_path} {extra_flags}"
+    cmd = f"{env_prefix}{STELNET_ASR} --backend {backend} {this_gpu} -m {model_path} -f {audio_path} {extra_flags}"
 
     for _ in range(n_warmup):
         subprocess.run(cmd, shell=True, capture_output=True, timeout=120)

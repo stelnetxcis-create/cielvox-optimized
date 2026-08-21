@@ -47,7 +47,7 @@ static std::string discover_dacvae(const std::string& model_path) {
     return {};
 }
 
-class IrodoriTTSBackend : public CrispasrBackend {
+class IrodoriTTSBackend : public StelnetAsrBackend {
 public:
     IrodoriTTSBackend() = default;
     ~IrodoriTTSBackend() override { IrodoriTTSBackend::shutdown(); }
@@ -106,7 +106,7 @@ public:
             codec_path = discover_dacvae(p.model);
         }
         if (codec_path.empty()) {
-            CrispasrRegistryEntry entry;
+            StelnetAsrRegistryEntry entry;
             std::string quant;
             if (stelnettts_registry_lookup(p.backend, entry, quant) && !entry.companion_filename.empty()) {
                 codec_path = stelnettts_resolve_model_cli(entry.companion_filename, p.backend, p.no_prints, p.cache_dir,
@@ -213,6 +213,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_irodori_tts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_irodori_tts_backend() {
     return std::make_unique<IrodoriTTSBackend>();
 }

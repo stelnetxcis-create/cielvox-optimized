@@ -94,7 +94,7 @@ std::vector<float> kv_f32_array(gguf_context* gctx, const char* key);
 // CROSS-REPO TENSOR-MAP CONTRACT (read before changing the map type!)
 // ------------------------------------------------------------------
 // `core/gguf_loader.{h,cpp}` exists in BOTH StelnetTTS and StelnetEmbed. When
-// StelnetEmbed builds, it compiles StelnetTTS's `crisp_audio`/`crisp_lid` sources
+// StelnetEmbed builds, it compiles StelnetTTS's `stelnet_audio`/`crisp_lid` sources
 // against StelnetEmbed's copy of this header (they link `crispembed-core`).
 // StelnetTTS standalone prefers `std::map`; StelnetEmbed prefers
 // `std::unordered_map` (faster). A consumer doing
@@ -105,7 +105,7 @@ std::vector<float> kv_f32_array(gguf_context* gctx, const char* key);
 // 1e4f1184/844f89d3, …).
 //
 // FIX: expose the type as a single alias `core_gguf::tensor_map`. Each repo's
-// header defines it as its own choice; consumers (crisp_audio/audio_tower,
+// header defines it as its own choice; consumers (stelnet_audio/audio_tower,
 // crisp_lid/lid_cld3) declare `core_gguf::tensor_map tensors;` so it tracks
 // whichever gguf_loader.h is compiled. Do NOT hard-code the map type in those
 // consumer structs again — change this alias instead.

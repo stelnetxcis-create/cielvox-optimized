@@ -17,7 +17,7 @@
 
 namespace {
 
-class ParakeetBackend : public CrispasrBackend {
+class ParakeetBackend : public StelnetAsrBackend {
 public:
     ParakeetBackend() = default;
     ~ParakeetBackend() override { ParakeetBackend::shutdown(); }
@@ -360,6 +360,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_parakeet_backend() {
-    return std::unique_ptr<CrispasrBackend>(new ParakeetBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_parakeet_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new ParakeetBackend());
 }

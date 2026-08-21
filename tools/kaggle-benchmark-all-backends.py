@@ -31,7 +31,7 @@ WORK = "/kaggle/working"
 # should hold only artifacts worth retrieving.
 SCRATCH = "/kaggle/temp" if os.path.isdir("/kaggle/temp") else "/tmp"
 BUILD_DIR = f"{SCRATCH}/StelnetTTS/build"
-CRISPASR = f"{BUILD_DIR}/bin/stelnettts"
+STELNET_ASR = f"{BUILD_DIR}/bin/stelnettts"
 QUANTIZE = f"{BUILD_DIR}/bin/stelnettts-quantize"
 RESULTS_DIR = f"{WORK}/results"
 SAMPLE_DIR = f"{WORK}/samples"
@@ -381,7 +381,7 @@ with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD_DIR} "
                         f"--target stelnettts-cli -j{build_jobs}")
 
-assert os.path.isfile(CRISPASR), f"Build failed: {CRISPASR} not found"
+assert os.path.isfile(STELNET_ASR), f"Build failed: {STELNET_ASR} not found"
 
 # Show version + git commit
 ok, out, _, _ = run(f"cd {STELNETTTS_DIR} && git log --oneline -1")
@@ -564,7 +564,7 @@ def benchmark_backend(backend, display_name, timeout, notes):
     # Stream stderr in real-time for all backends to diagnose hangs
     # Use greedy decoding (--beam 1) for benchmark: beam search is 5x slower
     # and doesn't meaningfully change WER on short test audio.
-    cmd = (f"STELNETTTS_VERBOSE=1 FIRERED_BENCH=1 {CRISPASR} --backend {backend} -m auto --auto-download "
+    cmd = (f"STELNETTTS_VERBOSE=1 FIRERED_BENCH=1 {STELNET_ASR} --backend {backend} -m auto --auto-download "
            f"-f {JFK_WAV} --no-prints -v -bs 1")
     t0 = time.time()
     ok, stdout, stderr, elapsed = run(cmd, timeout=timeout, stream_stderr=True)
@@ -695,7 +695,7 @@ if BENCHMARK_TTS == "1":
         print(f"  TTS: {name} (--backend {backend})")
         print(f"{'='*60}")
         outfile = f"/tmp/tts-bench-{backend}.wav"
-        cmd = [CRISPASR, "--backend", backend, "-m", "auto", "--auto-download",
+        cmd = [STELNET_ASR, "--backend", backend, "-m", "auto", "--auto-download",
                "--tts-output", outfile, "--no-prints"]
 
         # Per-backend voice/speaker overrides. Several TTS backends REQUIRE a
@@ -781,7 +781,7 @@ if BENCHMARK_MT == "1":
             print(f"⏭ MT {name} ({backend}): already streamed for run '{RUN_TAG}' — resume skip")
             continue
         print(f"\n{'='*60}\n  MT: {name} (--backend {backend})\n{'='*60}")
-        cmd = [CRISPASR, "--backend", backend, "-m", "auto", "--auto-download",
+        cmd = [STELNET_ASR, "--backend", backend, "-m", "auto", "--auto-download",
                "-sl", "en", "-tl", "de", "--text", MT_TEXT, "--no-prints"]
         t0 = time.time()
         mt_r = None

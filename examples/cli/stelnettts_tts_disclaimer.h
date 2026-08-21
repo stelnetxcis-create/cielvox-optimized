@@ -45,7 +45,7 @@ inline cache& get_cache() {
 //
 // Thread-safe: multiple concurrent requests block on the first
 // synthesis, then all get the cached result.
-inline const std::vector<float>& stelnettts_tts_get_disclaimer(CrispasrBackend* backend, const whisper_params& params) {
+inline const std::vector<float>& stelnettts_tts_get_disclaimer(StelnetAsrBackend* backend, const whisper_params& params) {
     auto& c = stelnettts_disclaimer::get_cache();
     std::call_once(c.flag, [&]() {
         // Synthesize with no voice reference → default/neutral voice
@@ -71,7 +71,7 @@ inline const std::vector<float>& stelnettts_tts_get_disclaimer(CrispasrBackend* 
 
 // Prepend disclaimer + silence gap to the given PCM vector. Modifies
 // `audio` in-place. No-op if disclaimer is empty (synthesis failed).
-inline void stelnettts_tts_prepend_disclaimer(std::vector<float>& audio, CrispasrBackend* backend,
+inline void stelnettts_tts_prepend_disclaimer(std::vector<float>& audio, StelnetAsrBackend* backend,
                                             const whisper_params& params) {
     const auto& disclaimer = stelnettts_tts_get_disclaimer(backend, params);
     if (disclaimer.empty())

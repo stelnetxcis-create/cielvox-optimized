@@ -446,7 +446,7 @@ struct stage_scope {
 
 // Load audio from a multipart file upload, transcribe it, return result.
 // Acquires model_mutex internally.
-static transcription_result do_transcribe(const httplib::MultipartFormData& audio_file, CrispasrBackend* backend,
+static transcription_result do_transcribe(const httplib::MultipartFormData& audio_file, StelnetAsrBackend* backend,
                                           std::mutex& model_mutex, whisper_params rp, bool need_timestamps,
                                           fireredpunc_context* punc_ctx = nullptr, pcs_context* pcs_ctx = nullptr,
                                           truecaser_context* tc_ctx = nullptr,
@@ -827,18 +827,18 @@ static transcription_result do_transcribe(const httplib::MultipartFormData& audi
                     rp.diarize_foxnose_global = true;
 
                 // Pre-compute global caches for cross-slice consistency.
-                CrispasrPyannoteCache pyannote_cache;
+                StelnetAsrPyannoteCache pyannote_cache;
                 if (rp.diarize_method == "pyannote" && !pcmf32.empty()) {
                     stelnettts_compute_pyannote_cache(pcmf32.data(), n_samples, rp, pyannote_cache);
                 }
-                CrispasrSherpaCache sherpa_cache;
+                StelnetAsrSherpaCache sherpa_cache;
                 if ((rp.diarize_method == "sherpa" || rp.diarize_method == "sherpa-onnx" ||
                      rp.diarize_method == "ecapa") &&
                     !pcmf32.empty()) {
                     stelnettts_compute_sherpa_cache(pcmf32.data(), n_samples, rp, sherpa_cache);
                 }
-                const CrispasrPyannoteCache* pya_ptr = pyannote_cache.valid() ? &pyannote_cache : nullptr;
-                const CrispasrSherpaCache* shp_ptr = sherpa_cache.valid() ? &sherpa_cache : nullptr;
+                const StelnetAsrPyannoteCache* pya_ptr = pyannote_cache.valid() ? &pyannote_cache : nullptr;
+                const StelnetAsrSherpaCache* shp_ptr = sherpa_cache.valid() ? &sherpa_cache : nullptr;
 
                 // Apply diarize per-slice. The CLI does this inside its slice
                 // loop, where the slice owns its segment vector; the server
@@ -1218,7 +1218,7 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
         api_keys.insert(api_keys.end(), more.begin(), more.end());
     }
 
-    std::unique_ptr<CrispasrBackend> backend;
+    std::unique_ptr<StelnetAsrBackend> backend;
     std::mutex model_mutex;
     std::atomic<bool> ready{false};
     std::string backend_name = params.backend;
@@ -1232,7 +1232,7 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
     // a private mutex; different workers never contend. Built only when
     // STELNETTTS_SERVER_WORKERS>1 (default 1 = single instance, unchanged).
     struct AsrWorker {
-        std::unique_ptr<CrispasrBackend> backend;
+        std::unique_ptr<StelnetAsrBackend> backend;
         std::mutex mtx;
     };
     std::unique_ptr<core_pool::WorkerPool<AsrWorker>> asr_pool;
@@ -2177,8 +2177,8 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
     //   200 application/octet-stream  — raw float32 PCM (stelnettts-specific f32)
     //
     //   Response headers on a voice clone:
-    //     X-Crispasr-Spoken-Disclaimer: applied|skipped
-    //     X-Crispasr-Marking-Warning:   <set only when an unattested opt-out was denied>
+    //     X-StelnetAsr-Spoken-Disclaimer: applied|skipped
+    //     X-StelnetAsr-Marking-Warning:   <set only when an unattested opt-out was denied>
     //
     //   400 — backend lacks CAP_TTS, missing/empty input, input too long,
     //         malformed body, unknown response_format, speed out of range,
@@ -2213,7 +2213,7 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
         // handler emits carries it. Without it a [CONSENT] line and the response
         // it authorised are unlinkable on a server serving many requests.
         stelnettts_consent::new_request_id();
-        res.set_header("X-Crispasr-Request-Id", stelnettts_consent::request_correlation_id());
+        res.set_header("X-StelnetAsr-Request-Id", stelnettts_consent::request_correlation_id());
         if (!require_auth(req, res))
             return;
         if (!ready.load()) {
@@ -2410,9 +2410,9 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
         auto set_marking_headers = [&marking, needs_spoken_disclosure](Response& r) {
             if (!needs_spoken_disclosure)
                 return;
-            r.set_header("X-Crispasr-Spoken-Disclaimer", marking.apply_spoken_disclaimer ? "applied" : "skipped");
+            r.set_header("X-StelnetAsr-Spoken-Disclaimer", marking.apply_spoken_disclaimer ? "applied" : "skipped");
             if (marking.optout_denied)
-                r.set_header("X-Crispasr-Marking-Warning",
+                r.set_header("X-StelnetAsr-Marking-Warning",
                              "'spoken_disclaimer': false ignored - it requires a 'marking_attestation' field "
                              "(or a server launched with --accept-marking-responsibility); "
                              "served with the spoken AI-disclaimer");
@@ -3094,7 +3094,7 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
         // handler emits carries it. Without it a [CONSENT] line and the response
         // it authorised are unlinkable on a server serving many requests.
         stelnettts_consent::new_request_id();
-        res.set_header("X-Crispasr-Request-Id", stelnettts_consent::request_correlation_id());
+        res.set_header("X-StelnetAsr-Request-Id", stelnettts_consent::request_correlation_id());
         if (!require_auth(req, res))
             return;
         // CAP_TTS gate (documented CAP_TTS-only; matches the GET /v1/voices guard).
@@ -3445,8 +3445,8 @@ int stelnettts_run_server(whisper_params& params, const std::string& host, int p
         // client that drops the headers publishes unmarked text, and marking
         // what you then do with it stays the deployer's duty. Weak marking that
         // travels is still strictly better than none, and it costs two headers.
-        res.set_header("X-Crispasr-Ai-Generated", "true");
-        res.set_header("X-Crispasr-Ai-Disclosure", stelnettts_chat_ai_disclosure_text());
+        res.set_header("X-StelnetAsr-Ai-Generated", "true");
+        res.set_header("X-StelnetAsr-Ai-Disclosure", stelnettts_chat_ai_disclosure_text());
 
         const auto now_unix = []() -> int64_t {
             return (int64_t)std::chrono::duration_cast<std::chrono::seconds>(

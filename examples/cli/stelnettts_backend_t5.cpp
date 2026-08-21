@@ -30,7 +30,7 @@
 
 namespace {
 
-class T5Backend : public CrispasrBackend {
+class T5Backend : public StelnetAsrBackend {
 public:
     T5Backend() = default;
     ~T5Backend() override { T5Backend::shutdown(); }
@@ -121,6 +121,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_t5_backend() {
-    return std::unique_ptr<CrispasrBackend>(new T5Backend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_t5_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new T5Backend());
 }

@@ -1,12 +1,12 @@
 PYTHON = python
 
-CRISPASR_PREFIX = ../../
-CRISPASR_MODEL = tiny
+STELNET_ASR_PREFIX = ../../
+STELNET_ASR_MODEL = tiny
 
-CRISPASR_CLI = $(CRISPASR_PREFIX)build/bin/crispasr
-CRISPASR_FLAGS = --no-prints --language en --output-txt
+STELNET_ASR_CLI = $(STELNET_ASR_PREFIX)build/bin/stelnet_asr
+STELNET_ASR_FLAGS = --no-prints --language en --output-txt
 
-# You can create eval.conf to override the CRISPASR_* variables
+# You can create eval.conf to override the STELNET_ASR_* variables
 # defined above.
 -include eval.conf
 
@@ -15,7 +15,7 @@ AUDIO_SRCS = $(sort $(wildcard LibriSpeech/*/*/*/*.flac))
 TRANS_TXTS = $(addsuffix .txt, $(AUDIO_SRCS))
 
 # We output the evaluation result to this file.
-DONE = $(CRISPASR_MODEL).txt
+DONE = $(STELNET_ASR_MODEL).txt
 
 all: $(DONE)
 
@@ -26,11 +26,11 @@ $(DONE): $(TRANS_TXTS)
 # Note: This task writes to a temporary file first to
 # create the target file atomically.
 %.flac.txt: %.flac
-	$(CRISPASR_CLI) $(CRISPASR_FLAGS) --model $(CRISPASR_PREFIX)models/ggml-$(CRISPASR_MODEL).bin --file $^ --output-file $^.tmp
+	$(STELNET_ASR_CLI) $(STELNET_ASR_FLAGS) --model $(STELNET_ASR_PREFIX)models/ggml-$(STELNET_ASR_MODEL).bin --file $^ --output-file $^.tmp
 	mv $^.tmp.txt $^.txt
 
 archive:
-	tar -czf $(CRISPASR_MODEL).tar.gz --exclude="*.flac" LibriSpeech $(DONE)
+	tar -czf $(STELNET_ASR_MODEL).tar.gz --exclude="*.flac" LibriSpeech $(DONE)
 
 clean:
 	@rm -f $(TRANS_TXTS)

@@ -11,11 +11,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build-ninja-compile/bin/stelnettts build/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
@@ -83,7 +83,7 @@ post_speech() {
 
 echo "=== cielvox2-tts /v1/audio/speech seed regression ==="
 SERVER_LOG=$(mktemp -t stelnettts-cielvox2-tts-seed-server.XXXXXX)
-CIELVOX2_TTS_SEED=999 "$CRISPASR" --server --backend cielvox2-tts-customvoice \
+CIELVOX2_TTS_SEED=999 "$STELNET_ASR" --server --backend cielvox2-tts-customvoice \
     -m "$MODEL" --codec-model "$CODEC" --host 127.0.0.1 --port "$PORT" --no-prints \
     > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!

@@ -8,7 +8,7 @@ import (
 // CGO
 
 /*
-#include <crispasr.h>
+#include <stelnet_asr.h>
 */
 import "C"
 

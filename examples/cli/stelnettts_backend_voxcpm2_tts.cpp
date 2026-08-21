@@ -22,7 +22,7 @@
 
 namespace {
 
-class VoxCPM2TTSBackend : public CrispasrBackend {
+class VoxCPM2TTSBackend : public StelnetAsrBackend {
 public:
     VoxCPM2TTSBackend() = default;
     ~VoxCPM2TTSBackend() override { VoxCPM2TTSBackend::shutdown(); }
@@ -148,6 +148,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_voxcpm2_tts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_voxcpm2_tts_backend() {
     return std::make_unique<VoxCPM2TTSBackend>();
 }

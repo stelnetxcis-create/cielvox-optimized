@@ -20,11 +20,11 @@ for arg in "$@"; do
     esac
 done
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-[ -n "$CRISPASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
+[ -n "$STELNET_ASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 # Locate a whisper GGUF.
 MODEL="${STELNETTTS_MODEL_WHISPER:-}"
@@ -52,7 +52,7 @@ echo "Model: $MODEL"
 echo "Audio: $AUDIO"
 LOG=$(mktemp /mnt/volume1/tmp-overflow/stelnettts-diarized.XXXXXX)
 trap 'kill "$SV" 2>/dev/null; rm -f "$LOG"' EXIT
-"$CRISPASR" --server -m "$MODEL" --host 127.0.0.1 --port "$PORT" > "$LOG" 2>&1 &
+"$STELNET_ASR" --server -m "$MODEL" --host 127.0.0.1 --port "$PORT" > "$LOG" 2>&1 &
 SV=$!
 ready=0
 for i in $(seq 1 120); do

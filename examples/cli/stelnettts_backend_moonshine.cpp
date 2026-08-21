@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-class MoonshineBackend : public CrispasrBackend {
+class MoonshineBackend : public StelnetAsrBackend {
 public:
     MoonshineBackend() = default;
 
@@ -143,6 +143,6 @@ private:
     moonshine_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_moonshine_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_moonshine_backend() {
     return std::make_unique<MoonshineBackend>();
 }

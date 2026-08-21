@@ -20,7 +20,7 @@
 
 namespace {
 
-class BarkBackend : public CrispasrBackend {
+class BarkBackend : public StelnetAsrBackend {
 public:
     BarkBackend() = default;
     ~BarkBackend() override { BarkBackend::shutdown(); }
@@ -127,6 +127,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_bark_backend() {
-    return std::unique_ptr<CrispasrBackend>(new BarkBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_bark_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new BarkBackend());
 }

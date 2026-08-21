@@ -190,7 +190,7 @@ inline void stelnettts_gap_fill_resolve_overlaps(std::vector<stelnettts_segment>
     }
 }
 
-inline void stelnettts_gap_fill_slice(CrispasrBackend& be, const whisper_params& params, const float* samples,
+inline void stelnettts_gap_fill_slice(StelnetAsrBackend& be, const whisper_params& params, const float* samples,
                                     int n_samples_total, int sample_rate, const stelnettts_audio_slice& sl,
                                     std::vector<stelnettts_segment>& segs) {
     int64_t min_gap_cs = 100; // 1.0 s of missing speech triggers a refill

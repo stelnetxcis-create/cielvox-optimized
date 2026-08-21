@@ -32,7 +32,7 @@ namespace {
 // mis-slicing shows up as a changed result rather than as noise. Sleeps a
 // little so the workers genuinely interleave — without that, a fast fake could
 // finish in submission order by luck and hide a real ordering bug.
-class FakeEmbedder : public CrispasrSpeakerEmbedder {
+class FakeEmbedder : public StelnetAsrSpeakerEmbedder {
 public:
     explicit FakeEmbedder(int d = 8) : d_(d) {}
 
@@ -55,7 +55,7 @@ public:
         return true;
     }
 
-    std::unique_ptr<CrispasrSpeakerEmbedder> clone() const override { return std::make_unique<FakeEmbedder>(d_); }
+    std::unique_ptr<StelnetAsrSpeakerEmbedder> clone() const override { return std::make_unique<FakeEmbedder>(d_); }
 
     static constexpr float kRejectMarker = -12345.0f;
 

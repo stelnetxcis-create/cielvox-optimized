@@ -1,4 +1,4 @@
-// Minimal static server that sets the cross-origin-isolation headers CrispASR's multithreaded WASM
+// Minimal static server that sets the cross-origin-isolation headers StelnetASR's multithreaded WASM
 // needs (SharedArrayBuffer). COEP `credentialless` lets the cross-origin HuggingFace model fetch work
 // without the CDN having to send CORP. Run:  node server.mjs   →  http://localhost:8791
 import http from 'node:http';

@@ -76,7 +76,7 @@ static std::string resolve_pocket_voice_path(const whisper_params& params) {
     return voice_path; // leave as-is; the WAV reader below emits a clear error.
 }
 
-class PocketTTSBackend : public CrispasrBackend {
+class PocketTTSBackend : public StelnetAsrBackend {
 public:
     PocketTTSBackend() = default;
     ~PocketTTSBackend() override { PocketTTSBackend::shutdown(); }
@@ -209,6 +209,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_pocket_tts_backend() {
-    return std::unique_ptr<CrispasrBackend>(new PocketTTSBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_pocket_tts_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new PocketTTSBackend());
 }

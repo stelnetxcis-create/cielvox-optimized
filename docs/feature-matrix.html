@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>CrispASR feature matrix</title>
+<title>StelnetASR feature matrix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
@@ -65,8 +65,8 @@
 </head>
 <body>
 <header>
-  <h1>CrispASR feature matrix</h1>
-  <div class="sub">Auto-generated from <code>crispasr --list-backends-json</code>. Click any column header to sort. Type to filter rows by backend name; click cap pills below to require that capability.</div>
+  <h1>StelnetASR feature matrix</h1>
+  <div class="sub">Auto-generated from <code>stelnet_asr --list-backends-json</code>. Click any column header to sort. Type to filter rows by backend name; click cap pills below to require that capability.</div>
 </header>
 <div class="controls">
   <input type="text" id="filter" placeholder="Filter by backend name…" autofocus>
@@ -78,7 +78,7 @@
 </div>
 <div class="meta">
   Regenerate via <code>python tools/gen-feature-matrix.py</code>. Single source of truth: the C++ binary's
-  <code>--list-backends-json</code> output (capability bits in <code>examples/cli/crispasr_backend.h</code>).
+  <code>--list-backends-json</code> output (capability bits in <code>examples/cli/stelnet_asr_backend.h</code>).
   Drift between the matrix and the binary is impossible by construction.
 </div>
 <script>

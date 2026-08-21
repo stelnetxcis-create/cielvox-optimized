@@ -18,18 +18,18 @@ extern "C" {
 #endif
 
 // Forward-declare Session API (exported by libstelnettts)
-struct CrispasrSession;
-struct CrispasrStream;
-struct CrispasrSession* stelnettts_session_open(const char* model_path, int n_threads);
-void stelnettts_session_close(struct CrispasrSession* s);
-struct CrispasrStream* stelnettts_session_stream_open(struct CrispasrSession* s, int n_threads,
+struct StelnetAsrSession;
+struct StelnetAsrStream;
+struct StelnetAsrSession* stelnettts_session_open(const char* model_path, int n_threads);
+void stelnettts_session_close(struct StelnetAsrSession* s);
+struct StelnetAsrStream* stelnettts_session_stream_open(struct StelnetAsrSession* s, int n_threads,
                                                      int step_ms, int length_ms, int keep_ms,
                                                      const char* language, int translate);
-int stelnettts_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
-int stelnettts_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap,
+int stelnettts_stream_feed(struct StelnetAsrStream* s, const float* pcm, int n_samples);
+int stelnettts_stream_get_text(struct StelnetAsrStream* s, char* out_text, int out_cap,
                               double* out_t0_s, double* out_t1_s, long long* out_counter);
-int stelnettts_stream_flush(struct CrispasrStream* s);
-void stelnettts_stream_close(struct CrispasrStream* s);
+int stelnettts_stream_flush(struct StelnetAsrStream* s);
+void stelnettts_stream_close(struct StelnetAsrStream* s);
 
 // Start the WebSocket listener thread on `port`. `model_path` is used
 // to create per-connection stelnettts sessions. Returns 0 on success.

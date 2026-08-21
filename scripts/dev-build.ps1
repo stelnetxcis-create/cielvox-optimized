@@ -1,9 +1,9 @@
 # dev-build.ps1 — Windows analogue of dev-build.sh.
 # Picks Ninja, ccache (when present), and a Release config.
 # Usage:
-#   .\scripts\dev-build.ps1                           # build crispasr
+#   .\scripts\dev-build.ps1                           # build stelnet_asr
 #   .\scripts\dev-build.ps1 -Reconfigure              # nuke build/ first
-#   .\scripts\dev-build.ps1 -Target crispasr-quantize # build different target
+#   .\scripts\dev-build.ps1 -Target stelnet_asr-quantize # build different target
 #   .\scripts\dev-build.ps1 -DGGML_VULKAN=ON          # extra cmake args
 #
 # Run from a Visual Studio "x64 Native Tools" prompt or any shell where
@@ -11,7 +11,7 @@
 
 param(
     [switch]$Reconfigure,
-    [string]$Target = "crispasr",
+    [string]$Target = "stelnet_asr",
     [Parameter(ValueFromRemainingArguments)] [string[]]$ExtraArgs
 )
 
@@ -21,7 +21,7 @@ Set-Location -Path (Join-Path $PSScriptRoot "..")
 $args = @(
     "-G", "Ninja",
     "-DCMAKE_BUILD_TYPE=Release",
-    "-DCRISPASR_BUILD_TESTS=OFF"
+    "-DSTELNET_ASR_BUILD_TESTS=OFF"
 )
 
 # ccache integration is auto-detected by ggml's CMakeLists when the

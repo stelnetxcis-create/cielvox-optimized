@@ -25,7 +25,7 @@
 
 namespace {
 
-class CanaryBackend : public CrispasrBackend {
+class CanaryBackend : public StelnetAsrBackend {
 public:
     CanaryBackend() = default;
     ~CanaryBackend() override { CanaryBackend::shutdown(); }
@@ -214,6 +214,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_canary_backend() {
-    return std::unique_ptr<CrispasrBackend>(new CanaryBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_canary_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new CanaryBackend());
 }

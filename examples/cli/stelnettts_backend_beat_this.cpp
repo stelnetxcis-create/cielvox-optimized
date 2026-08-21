@@ -29,7 +29,7 @@
 
 namespace {
 
-class BeatThisBackend : public CrispasrBackend {
+class BeatThisBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "beat-this"; }
 
@@ -49,6 +49,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_beat_this_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_beat_this_backend() {
     return std::make_unique<BeatThisBackend>();
 }

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0AAC5D9629539CCF003032C3"
-               BuildableName = "CrispASRDemo.app"
-               BlueprintName = "crispasr.swiftui"
-               ReferencedContainer = "container:crispasr.swiftui.xcodeproj">
+               BuildableName = "StelnetASRDemo.app"
+               BlueprintName = "stelnet_asr.swiftui"
+               ReferencedContainer = "container:stelnet_asr.swiftui.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0AAC5D9629539CCF003032C3"
-            BuildableName = "CrispASRDemo.app"
-            BlueprintName = "crispasr.swiftui"
-            ReferencedContainer = "container:crispasr.swiftui.xcodeproj">
+            BuildableName = "StelnetASRDemo.app"
+            BlueprintName = "stelnet_asr.swiftui"
+            ReferencedContainer = "container:stelnet_asr.swiftui.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0AAC5D9629539CCF003032C3"
-            BuildableName = "CrispASRDemo.app"
-            BlueprintName = "crispasr.swiftui"
-            ReferencedContainer = "container:crispasr.swiftui.xcodeproj">
+            BuildableName = "StelnetASRDemo.app"
+            BlueprintName = "stelnet_asr.swiftui"
+            ReferencedContainer = "container:stelnet_asr.swiftui.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

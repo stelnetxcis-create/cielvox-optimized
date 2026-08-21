@@ -25,10 +25,10 @@ set -euo pipefail
 
 SRC="${1:?usage: stamp-published-voices.sh <dir> [outdir]}"
 OUT="${2:-$SRC/stamped}"
-CRISPASR="${STELNETTTS_BIN:-build/bin/stelnettts}"
+STELNET_ASR="${STELNETTTS_BIN:-build/bin/stelnettts}"
 STAMPER="$(dirname "$0")/stamp-speaker-identity.py"
 
-[ -x "$CRISPASR" ] || { echo "stelnettts binary not found at $CRISPASR (set STELNETTTS_BIN)" >&2; exit 1; }
+[ -x "$STELNET_ASR" ] || { echo "stelnettts binary not found at $STELNET_ASR (set STELNETTTS_BIN)" >&2; exit 1; }
 [ -f "$STAMPER" ]  || { echo "stamper not found at $STAMPER" >&2; exit 1; }
 mkdir -p "$OUT"
 
@@ -37,7 +37,7 @@ for f in "$SRC"/*.gguf; do
     [ -e "$f" ] || continue
     base="$(basename "$f")"
     # Exit 3 == unknown. Ask the binary; never decide here.
-    if identity="$("$CRISPASR" --print-speaker-identity "$f" --no-prints 2>/dev/null)"; then
+    if identity="$("$STELNET_ASR" --print-speaker-identity "$f" --no-prints 2>/dev/null)"; then
         :
     else
         rc=$?

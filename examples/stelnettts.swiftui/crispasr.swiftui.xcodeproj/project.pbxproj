@@ -12,13 +12,13 @@
 		0AA751492953AC2E001EE061 /* models in Resources */ = {isa = PBXBuildFile; fileRef = 0AA751472953AC2E001EE061 /* models */; };
 		0AA7514C2953B569001EE061 /* RiffWaveUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA7514B2953B569001EE061 /* RiffWaveUtils.swift */; };
 		0AA7514E2953D958001EE061 /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA7514D2953D958001EE061 /* Recorder.swift */; };
-		0AAC5D9B29539CCF003032C3 /* CrispASRDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AAC5D9A29539CCF003032C3 /* CrispASRDemoApp.swift */; };
+		0AAC5D9B29539CCF003032C3 /* StelnetASRDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AAC5D9A29539CCF003032C3 /* StelnetASRDemoApp.swift */; };
 		0AAC5D9D29539CCF003032C3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AAC5D9C29539CCF003032C3 /* ContentView.swift */; };
 		0AAC5D9F29539CD0003032C3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0AAC5D9E29539CD0003032C3 /* Assets.xcassets */; };
 		0AAC5DCE2953A05C003032C3 /* WhisperState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AAC5DCD2953A05C003032C3 /* WhisperState.swift */; };
 		0AAC5DD12953A394003032C3 /* LibWhisper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AAC5DD02953A394003032C3 /* LibWhisper.swift */; };
-		5B3454FF2D8178F80005A3BC /* crispasr.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B3454FE2D8178F80005A3BC /* crispasr.xcframework */; };
-		5B3455002D8178F80005A3BC /* crispasr.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5B3454FE2D8178F80005A3BC /* crispasr.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5B3454FF2D8178F80005A3BC /* stelnet_asr.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B3454FE2D8178F80005A3BC /* stelnet_asr.xcframework */; };
+		5B3455002D8178F80005A3BC /* stelnet_asr.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5B3454FE2D8178F80005A3BC /* stelnet_asr.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7F79E0EE2CE0A78000ACD7BF /* DownloadButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F79E0ED2CE0A78000ACD7BF /* DownloadButton.swift */; };
 		7F79E0F02CE0C6F700ACD7BF /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F79E0EF2CE0C6F700ACD7BF /* Model.swift */; };
 /* End PBXBuildFile section */
@@ -30,7 +30,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				5B3455002D8178F80005A3BC /* crispasr.xcframework in Embed Frameworks */,
+				5B3455002D8178F80005A3BC /* stelnet_asr.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -43,14 +43,14 @@
 		0AA751472953AC2E001EE061 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; path = models; sourceTree = "<group>"; };
 		0AA7514B2953B569001EE061 /* RiffWaveUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiffWaveUtils.swift; sourceTree = "<group>"; };
 		0AA7514D2953D958001EE061 /* Recorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
-		0AAC5D9729539CCF003032C3 /* CrispASRDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CrispASRDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		0AAC5D9A29539CCF003032C3 /* CrispASRDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrispASRDemoApp.swift; sourceTree = "<group>"; };
+		0AAC5D9729539CCF003032C3 /* StelnetASRDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StelnetASRDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0AAC5D9A29539CCF003032C3 /* StelnetASRDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StelnetASRDemoApp.swift; sourceTree = "<group>"; };
 		0AAC5D9C29539CCF003032C3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0AAC5D9E29539CD0003032C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		0AAC5DA029539CD0003032C3 /* CrispASRDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CrispASRDemo.entitlements; sourceTree = "<group>"; };
+		0AAC5DA029539CD0003032C3 /* StelnetASRDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StelnetASRDemo.entitlements; sourceTree = "<group>"; };
 		0AAC5DCD2953A05C003032C3 /* WhisperState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperState.swift; sourceTree = "<group>"; };
 		0AAC5DD02953A394003032C3 /* LibWhisper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibWhisper.swift; sourceTree = "<group>"; };
-		5B3454FE2D8178F80005A3BC /* crispasr.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = crispasr.xcframework; path = "../../build-apple/crispasr.xcframework"; sourceTree = "<group>"; };
+		5B3454FE2D8178F80005A3BC /* stelnet_asr.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = stelnet_asr.xcframework; path = "../../build-apple/stelnet_asr.xcframework"; sourceTree = "<group>"; };
 		7F79E0ED2CE0A78000ACD7BF /* DownloadButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadButton.swift; sourceTree = "<group>"; };
 		7F79E0EF2CE0C6F700ACD7BF /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -60,7 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B3454FF2D8178F80005A3BC /* crispasr.xcframework in Frameworks */,
+				5B3454FF2D8178F80005A3BC /* stelnet_asr.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,8 +98,8 @@
 			isa = PBXGroup;
 			children = (
 				0A8E48FF2954B3F100704C1B /* README.md */,
-				0AAC5DCF2953A36C003032C3 /* crispasr.swift */,
-				0AAC5D9929539CCF003032C3 /* crispasr.swiftui.demo */,
+				0AAC5DCF2953A36C003032C3 /* stelnet_asr.swift */,
+				0AAC5D9929539CCF003032C3 /* stelnet_asr.swiftui.demo */,
 				0AAC5D9829539CCF003032C3 /* Products */,
 				E3F92DC32AFA8E3800A6A9D4 /* Frameworks */,
 			);
@@ -108,12 +108,12 @@
 		0AAC5D9829539CCF003032C3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0AAC5D9729539CCF003032C3 /* CrispASRDemo.app */,
+				0AAC5D9729539CCF003032C3 /* StelnetASRDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		0AAC5D9929539CCF003032C3 /* crispasr.swiftui.demo */ = {
+		0AAC5D9929539CCF003032C3 /* stelnet_asr.swiftui.demo */ = {
 			isa = PBXGroup;
 			children = (
 				0AA7514A2953B561001EE061 /* Utils */,
@@ -121,17 +121,17 @@
 				0AA7513F2953AB32001EE061 /* Models */,
 				0AAC5DD32953A9ED003032C3 /* Supporting files */,
 				0AAC5DD22953A9E3003032C3 /* UI */,
-				0AAC5D9A29539CCF003032C3 /* CrispASRDemoApp.swift */,
+				0AAC5D9A29539CCF003032C3 /* StelnetASRDemoApp.swift */,
 			);
-			path = crispasr.swiftui.demo;
+			path = stelnet_asr.swiftui.demo;
 			sourceTree = "<group>";
 		};
-		0AAC5DCF2953A36C003032C3 /* crispasr.swift */ = {
+		0AAC5DCF2953A36C003032C3 /* stelnet_asr.swift */ = {
 			isa = PBXGroup;
 			children = (
 				0AAC5DD02953A394003032C3 /* LibWhisper.swift */,
 			);
-			path = crispasr.swift;
+			path = stelnet_asr.swift;
 			sourceTree = "<group>";
 		};
 		0AAC5DD22953A9E3003032C3 /* UI */ = {
@@ -147,7 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				0AAC5D9E29539CD0003032C3 /* Assets.xcassets */,
-				0AAC5DA029539CD0003032C3 /* CrispASRDemo.entitlements */,
+				0AAC5DA029539CD0003032C3 /* StelnetASRDemo.entitlements */,
 			);
 			path = "Supporting files";
 			sourceTree = "<group>";
@@ -155,7 +155,7 @@
 		E3F92DC32AFA8E3800A6A9D4 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				5B3454FE2D8178F80005A3BC /* crispasr.xcframework */,
+				5B3454FE2D8178F80005A3BC /* stelnet_asr.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -163,9 +163,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0AAC5D9629539CCF003032C3 /* crispasr.swiftui */ = {
+		0AAC5D9629539CCF003032C3 /* stelnet_asr.swiftui */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0AAC5DBC29539CD0003032C3 /* Build configuration list for PBXNativeTarget "crispasr.swiftui" */;
+			buildConfigurationList = 0AAC5DBC29539CD0003032C3 /* Build configuration list for PBXNativeTarget "stelnet_asr.swiftui" */;
 			buildPhases = (
 				0AAC5D9329539CCF003032C3 /* Sources */,
 				0AAC5D9429539CCF003032C3 /* Frameworks */,
@@ -176,11 +176,11 @@
 			);
 			dependencies = (
 			);
-			name = crispasr.swiftui;
+			name = stelnet_asr.swiftui;
 			packageProductDependencies = (
 			);
-			productName = CrispASRDemo;
-			productReference = 0AAC5D9729539CCF003032C3 /* CrispASRDemo.app */;
+			productName = StelnetASRDemo;
+			productReference = 0AAC5D9729539CCF003032C3 /* StelnetASRDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -199,7 +199,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 0AAC5D9229539CCF003032C3 /* Build configuration list for PBXProject "crispasr.swiftui" */;
+			buildConfigurationList = 0AAC5D9229539CCF003032C3 /* Build configuration list for PBXProject "stelnet_asr.swiftui" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -212,7 +212,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0AAC5D9629539CCF003032C3 /* crispasr.swiftui */,
+				0AAC5D9629539CCF003032C3 /* stelnet_asr.swiftui */,
 			);
 		};
 /* End PBXProject section */
@@ -237,7 +237,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0AAC5D9D29539CCF003032C3 /* ContentView.swift in Sources */,
-				0AAC5D9B29539CCF003032C3 /* CrispASRDemoApp.swift in Sources */,
+				0AAC5D9B29539CCF003032C3 /* StelnetASRDemoApp.swift in Sources */,
 				0AAC5DCE2953A05C003032C3 /* WhisperState.swift in Sources */,
 				0AAC5DD12953A394003032C3 /* LibWhisper.swift in Sources */,
 				0AA7514C2953B569001EE061 /* RiffWaveUtils.swift in Sources */,
@@ -367,10 +367,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "crispasr.swiftui.demo/Supporting files/CrispASRDemo.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "stelnet_asr.swiftui.demo/Supporting files/StelnetASRDemo.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"crispasr.swiftui.demo/Supporting files/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"stelnet_asr.swiftui.demo/Supporting files/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -390,7 +390,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.crispasr.demo.swiftui;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stelnet_asr.demo.swiftui;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -409,10 +409,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "crispasr.swiftui.demo/Supporting files/CrispASRDemo.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "stelnet_asr.swiftui.demo/Supporting files/StelnetASRDemo.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"crispasr.swiftui.demo/Supporting files/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"stelnet_asr.swiftui.demo/Supporting files/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -437,7 +437,7 @@
 					"-O3",
 					"-DNDEBUG",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.crispasr.demo.swiftui;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stelnet_asr.demo.swiftui;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -452,7 +452,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0AAC5D9229539CCF003032C3 /* Build configuration list for PBXProject "crispasr.swiftui" */ = {
+		0AAC5D9229539CCF003032C3 /* Build configuration list for PBXProject "stelnet_asr.swiftui" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0AAC5DBA29539CD0003032C3 /* Debug */,
@@ -461,7 +461,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		0AAC5DBC29539CD0003032C3 /* Build configuration list for PBXNativeTarget "crispasr.swiftui" */ = {
+		0AAC5DBC29539CD0003032C3 /* Build configuration list for PBXNativeTarget "stelnet_asr.swiftui" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0AAC5DBD29539CD0003032C3 /* Debug */,

@@ -27,7 +27,7 @@ struct stelnettts_lid_result {
 bool stelnettts_detect_language_cli(const float* samples, int n_samples, const whisper_params& params,
                                   stelnettts_lid_result& out);
 
-class CrispasrBackend; // fwd
+class StelnetAsrBackend; // fwd
 
 // Ask the ALREADY-LOADED backend to identify the language itself, before
 // reaching for an external detector. Returns false when the backend has no
@@ -40,5 +40,5 @@ class CrispasrBackend; // fwd
 // it does not support, while whisper-tiny LID knows 99 and regularly does.
 // Three surfaces (file CLI, session path, server) run the same pre-step, so
 // the decision lives here rather than being written out three times.
-bool stelnettts_backend_probe_language(CrispasrBackend& backend, const float* samples, int n_samples,
+bool stelnettts_backend_probe_language(StelnetAsrBackend& backend, const float* samples, int n_samples,
                                      const whisper_params& params, stelnettts_lid_result& out);

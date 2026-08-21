@@ -1066,7 +1066,7 @@ the whole audio.
 | `<path>.gguf` | Dispatched by filename (`indextts` substring -> IndexTTS, otherwise TitaNet) | — |
 
 The interface is pluggable: add a new adapter by subclassing
-`CrispasrSpeakerEmbedder` in `src/stelnettts_speaker_embedder.cpp` and
+`StelnetAsrSpeakerEmbedder` in `src/stelnettts_speaker_embedder.cpp` and
 extending the factory's dispatch.
 
 `--diarize-max-speakers N` (default 8) bounds the search. `--diarize-num-speakers N`

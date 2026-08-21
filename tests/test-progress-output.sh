@@ -8,20 +8,20 @@
 #
 # Usage:
 #   ./tests/test-progress-output.sh
-#   CRISPASR=./build/bin/stelnettts ./tests/test-progress-output.sh
+#   STELNET_ASR=./build/bin/stelnettts ./tests/test-progress-output.sh
 #
 # Exit code: 0 if all pass, 1 if any fail.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR:-./build/bin/stelnettts}"
+STELNET_ASR="${STELNET_ASR:-./build/bin/stelnettts}"
 SAMPLE="${SAMPLE:-./samples/jfk.wav}"
 PASS=0
 FAIL=0
 
-if [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: $CRISPASR not found or not executable"
+if [ ! -x "$STELNET_ASR" ]; then
+    echo "SKIP: $STELNET_ASR not found or not executable"
     exit 0
 fi
 if [ ! -f "$SAMPLE" ]; then
@@ -50,7 +50,7 @@ echo "=== test-progress-output.sh ==="
 # not trigger a visible print. So we just verify the flag doesn't crash.
 echo "[whisper -pp]"
 STDERR_W=$(mktemp)
-"$CRISPASR" -m auto -f "$SAMPLE" -pp 2>"$STDERR_W" >/dev/null || true
+"$STELNET_ASR" -m auto -f "$SAMPLE" -pp 2>"$STDERR_W" >/dev/null || true
 
 # Accept either progress output or successful completion (exit 0).
 if grep -q "progress" "$STDERR_W"; then
@@ -66,7 +66,7 @@ rm -f "$STDERR_W"
 # VAD splits audio into multiple slices; -pp should print per-slice progress.
 echo "[parakeet -pp --vad]"
 STDERR_P=$(mktemp)
-"$CRISPASR" --backend parakeet -m auto -f "$SAMPLE" -pp --vad --no-prints \
+"$STELNET_ASR" --backend parakeet -m auto -f "$SAMPLE" -pp --vad --no-prints \
     2>"$STDERR_P" >/dev/null || true
 
 if grep -q "progress" "$STDERR_P"; then
@@ -84,7 +84,7 @@ rm -f "$STDERR_P"
 # ── Test 3: unified backend without -pp should NOT produce progress ──────
 echo "[parakeet no -pp]"
 STDERR_NP=$(mktemp)
-"$CRISPASR" --backend parakeet -m auto -f "$SAMPLE" --vad --no-prints \
+"$STELNET_ASR" --backend parakeet -m auto -f "$SAMPLE" --vad --no-prints \
     2>"$STDERR_NP" >/dev/null || true
 
 if grep -q "progress = " "$STDERR_NP"; then
@@ -99,7 +99,7 @@ rm -f "$STDERR_NP"
 # ── Test 4: -pp with moonshine (fast CTC backend, VAD) ──────────────────
 echo "[moonshine -pp --vad]"
 STDERR_M=$(mktemp)
-"$CRISPASR" --backend moonshine -m auto -f "$SAMPLE" -pp --vad --no-prints \
+"$STELNET_ASR" --backend moonshine -m auto -f "$SAMPLE" -pp --vad --no-prints \
     2>"$STDERR_M" >/dev/null || true
 
 if grep -q "progress" "$STDERR_M"; then

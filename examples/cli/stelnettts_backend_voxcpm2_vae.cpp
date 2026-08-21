@@ -8,7 +8,7 @@
 
 namespace {
 
-class VoxCPM2VAEBackend final : public CrispasrBackend {
+class VoxCPM2VAEBackend final : public StelnetAsrBackend {
 public:
     const char* name() const override { return "voxcpm2-vae"; }
     uint32_t capabilities() const override { return CAP_S2S; }
@@ -56,6 +56,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_voxcpm2_vae_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_voxcpm2_vae_backend() {
     return std::make_unique<VoxCPM2VAEBackend>();
 }

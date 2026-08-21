@@ -17,9 +17,9 @@
 
 set -u
 
-CRISPASR="${1:-${CRISPASR:-}}"
-[ -z "$CRISPASR" ] && CRISPASR="$(command -v stelnettts || true)"
-if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
+STELNET_ASR="${1:-${STELNET_ASR:-}}"
+[ -z "$STELNET_ASR" ] && STELNET_ASR="$(command -v stelnettts || true)"
+if [ -z "$STELNET_ASR" ] || [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not provided/executable"
     exit 0
 fi
@@ -40,7 +40,7 @@ OUT="$(mktemp)"
 
 run() {
     DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH:-}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
-        "$CRISPASR" --backend tiron -m "$MODEL" --auto-download -f "$AUDIO" "$@" >"$OUT" 2>&1
+        "$STELNET_ASR" --backend tiron -m "$MODEL" --auto-download -f "$AUDIO" "$@" >"$OUT" 2>&1
 }
 
 fail=0

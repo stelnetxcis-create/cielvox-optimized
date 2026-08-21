@@ -34,41 +34,41 @@ static bool g_compute_thread_set = false;
 // The unified Session C-ABI is declared in stelnettts.h (included above)
 // as `struct stelnettts_session`. Legacy name alias for the Embind wrappers:
 extern "C" {
-typedef struct stelnettts_session CrispasrSession;
-CrispasrSession* stelnettts_session_open(const char* model_path, int n_threads);
-void stelnettts_session_close(CrispasrSession* s);
-int stelnettts_session_set_codec_path(CrispasrSession* s, const char* path);
-int stelnettts_session_set_voice(CrispasrSession* s, const char* path, const char* ref_text_or_null);
-int stelnettts_session_set_speaker_name(CrispasrSession* s, const char* name);
-int stelnettts_session_n_speakers(CrispasrSession* s);
-const char* stelnettts_session_get_speaker_name(CrispasrSession* s, int i);
-int stelnettts_session_set_instruct(CrispasrSession* s, const char* instruct);
+typedef struct stelnettts_session StelnetAsrSession;
+StelnetAsrSession* stelnettts_session_open(const char* model_path, int n_threads);
+void stelnettts_session_close(StelnetAsrSession* s);
+int stelnettts_session_set_codec_path(StelnetAsrSession* s, const char* path);
+int stelnettts_session_set_voice(StelnetAsrSession* s, const char* path, const char* ref_text_or_null);
+int stelnettts_session_set_speaker_name(StelnetAsrSession* s, const char* name);
+int stelnettts_session_n_speakers(StelnetAsrSession* s);
+const char* stelnettts_session_get_speaker_name(StelnetAsrSession* s, int i);
+int stelnettts_session_set_instruct(StelnetAsrSession* s, const char* instruct);
 // #316: synthesize these phonemes verbatim, skipping the G2P. Empty clears. kokoro and piper only (rc=-2).
 int stelnettts_session_set_tts_phonemes(struct stelnettts_session* s, const char* phonemes);
-int stelnettts_session_is_custom_voice(CrispasrSession* s);
-int stelnettts_session_is_voice_design(CrispasrSession* s);
-float* stelnettts_session_synthesize(CrispasrSession* s, const char* text, int* out_n_samples);
+int stelnettts_session_is_custom_voice(StelnetAsrSession* s);
+int stelnettts_session_is_voice_design(StelnetAsrSession* s);
+float* stelnettts_session_synthesize(StelnetAsrSession* s, const char* text, int* out_n_samples);
 // #321 parity: UNMARKED synthesis (hard-refused unless accept_marking_responsibility was called first),
 // the marking attestation gate, speech-to-speech, the input-rate probe, and two setters.
-float* stelnettts_session_synthesize_raw(CrispasrSession* s, const char* text, int* out_n_samples);
-int stelnettts_session_accept_marking_responsibility(CrispasrSession* s, const char* attestation);
+float* stelnettts_session_synthesize_raw(StelnetAsrSession* s, const char* text, int* out_n_samples);
+int stelnettts_session_accept_marking_responsibility(StelnetAsrSession* s, const char* attestation);
 // Whose voice a PRESET voice is (EU AI Act Art. 50(4)); -2 on a bad value.
-int stelnettts_session_set_speaker_identity(CrispasrSession* s, const char* identity);
-float* stelnettts_session_speech_to_speech(CrispasrSession* s, const float* in_samples, int n_in_samples, char** out_text,
+int stelnettts_session_set_speaker_identity(StelnetAsrSession* s, const char* identity);
+float* stelnettts_session_speech_to_speech(StelnetAsrSession* s, const float* in_samples, int n_in_samples, char** out_text,
                                          int* out_n_samples);
-int stelnettts_session_input_sample_rate(CrispasrSession* s);
+int stelnettts_session_input_sample_rate(StelnetAsrSession* s);
 // #332: output-side counterparts (rate of synthesize/s2s PCM; mono channels).
-int stelnettts_session_output_sample_rate(CrispasrSession* s);
-int stelnettts_session_input_channels(CrispasrSession* s);
-int stelnettts_session_output_channels(CrispasrSession* s);
-int stelnettts_session_set_g2p_dict(CrispasrSession* s, const char* source);
-int stelnettts_session_set_speaker_id(CrispasrSession* s, int id);
+int stelnettts_session_output_sample_rate(StelnetAsrSession* s);
+int stelnettts_session_input_channels(StelnetAsrSession* s);
+int stelnettts_session_output_channels(StelnetAsrSession* s);
+int stelnettts_session_set_g2p_dict(StelnetAsrSession* s, const char* source);
+int stelnettts_session_set_speaker_id(StelnetAsrSession* s, int id);
 void stelnettts_pcm_free(float* pcm);
 unsigned char* stelnettts_c2pa_sign(const unsigned char* data, size_t len, const char* format, const char* cert_path,
                                   const char* key_path, size_t* out_len);
 void stelnettts_c2pa_free(unsigned char* p);
 unsigned char* stelnettts_pcm_to_wav(const float* pcm, int n_samples, int sample_rate, size_t* out_len);
-int stelnettts_session_kokoro_clear_phoneme_cache(CrispasrSession* s);
+int stelnettts_session_kokoro_clear_phoneme_cache(StelnetAsrSession* s);
 int stelnettts_kokoro_resolve_model_for_lang_abi(const char* model_path, const char* lang, char* out_path,
                                                int out_path_len);
 int stelnettts_kokoro_resolve_fallback_voice_abi(const char* model_path, const char* lang, char* out_path,
@@ -77,84 +77,84 @@ int stelnettts_kokoro_resolve_fallback_voice_abi(const char* model_path, const c
 // --- Full C-ABI parity declarations ---
 // Session extras
 int stelnettts_session_available_backends(char* out_csv, int out_cap);
-int stelnettts_session_detected_language(CrispasrSession* s, char* out_buf, int out_cap);
+int stelnettts_session_detected_language(StelnetAsrSession* s, char* out_buf, int out_cap);
 // CTC vocabulary access (Omni CTC backend): n_vocab piece count, token_text
 // maps an id to its model-owned raw piece (do not free) or "" when out of
 // range / unsupported.
-int stelnettts_session_n_vocab(CrispasrSession* s);
-const char* stelnettts_session_token_text(CrispasrSession* s, int id);
+int stelnettts_session_n_vocab(StelnetAsrSession* s);
+const char* stelnettts_session_token_text(StelnetAsrSession* s, int id);
 // Pitch (F0) estimation — CREPE. `pitch` runs the track and returns the
 // frame count; `pitch_frames` hands back a session-owned flat array of
 // 3 floats per frame {time_ms, f0_hz, voiced_prob}, frame-major.
 // Referencing these here is also what keeps the `crepe` objects from
 // being dead-stripped out of the wasm module at link time.
-int stelnettts_session_pitch(CrispasrSession* s, const float* pcm_16k, int n_samples, float hop_ms);
-const float* stelnettts_session_pitch_frames(CrispasrSession* s, int* out_n_frames);
-int stelnettts_session_pitch_sample_rate(CrispasrSession* s);
+int stelnettts_session_pitch(StelnetAsrSession* s, const float* pcm_16k, int n_samples, float hop_ms);
+const float* stelnettts_session_pitch_frames(StelnetAsrSession* s, int* out_n_frames);
+int stelnettts_session_pitch_sample_rate(StelnetAsrSession* s);
 
 // Chord recognition — BTC. `chords` runs the timeline and returns the span
 // count; `chords_spans` hands back a session-owned flat array of 4 floats per
 // span ({startMs, endMs, label, confidence}). The label is an index; resolve
 // it with chords_span_name, since the names are strings.
-int stelnettts_session_chords(CrispasrSession* s, const float* pcm, int n_samples, int sample_rate);
-const float* stelnettts_session_chords_spans(CrispasrSession* s, int* out_n_spans);
-const char* stelnettts_session_chords_span_name(CrispasrSession* s, int idx);
-int stelnettts_session_chords_vocab_size(CrispasrSession* s);
-CrispasrSession* stelnettts_session_open_explicit(const char* model_path, const char* backend_name, int n_threads);
-CrispasrSession* stelnettts_session_open_with_params(const char* model_path, const char* backend_name,
+int stelnettts_session_chords(StelnetAsrSession* s, const float* pcm, int n_samples, int sample_rate);
+const float* stelnettts_session_chords_spans(StelnetAsrSession* s, int* out_n_spans);
+const char* stelnettts_session_chords_span_name(StelnetAsrSession* s, int idx);
+int stelnettts_session_chords_vocab_size(StelnetAsrSession* s);
+StelnetAsrSession* stelnettts_session_open_explicit(const char* model_path, const char* backend_name, int n_threads);
+StelnetAsrSession* stelnettts_session_open_with_params(const char* model_path, const char* backend_name,
                                                    const void* params);
-const char* stelnettts_session_backend(CrispasrSession* s);
-int stelnettts_session_set_source_language(CrispasrSession* s, const char* lang);
-int stelnettts_session_set_target_language(CrispasrSession* s, const char* lang);
-int stelnettts_session_set_tts_reference_language(CrispasrSession* s, const char* lang);
-int stelnettts_session_set_punctuation(CrispasrSession* s, int enable);
-int stelnettts_session_set_punc_model(CrispasrSession* s, const char* punc_model);
-int stelnettts_session_set_hotwords(CrispasrSession* s, const char* hotwords, float boost);
-int stelnettts_session_set_sensitivity(CrispasrSession* s, const char* preset);
-int stelnettts_session_set_translate(CrispasrSession* s, int enable);
-int stelnettts_session_set_temperature(CrispasrSession* s, float temperature, unsigned long long seed);
-int stelnettts_session_set_tts_seed(CrispasrSession* s, unsigned long long seed);
-int stelnettts_session_set_tts_steps(CrispasrSession* s, int steps);
-int stelnettts_session_set_tts_num_candidates(CrispasrSession* s, int n);
-int stelnettts_session_set_max_new_tokens(CrispasrSession* s, int n);
-int stelnettts_session_set_frequency_penalty(CrispasrSession* s, float penalty);
-int stelnettts_session_set_top_p(CrispasrSession* s, float top_p);
-int stelnettts_session_set_top_k(CrispasrSession* s, int top_k);
-int stelnettts_session_set_do_sample(CrispasrSession* s, int enable);
-int stelnettts_session_set_min_p(CrispasrSession* s, float min_p);
-int stelnettts_session_set_repetition_penalty(CrispasrSession* s, float r);
-int stelnettts_session_set_cfg_weight(CrispasrSession* s, float cfg_weight);
-int stelnettts_session_set_tts_noise_temp(CrispasrSession* s, float noise_temp);
-int stelnettts_session_set_exaggeration(CrispasrSession* s, float exaggeration);
-int stelnettts_session_set_max_speech_tokens(CrispasrSession* s, int n);
-int stelnettts_session_set_min_speech_tokens(CrispasrSession* s, int n);
-int stelnettts_session_set_length_scale(CrispasrSession* s, float scale);
-int stelnettts_session_set_best_of(CrispasrSession* s, int n);
-int stelnettts_session_set_beam_size(CrispasrSession* s, int n);
-int stelnettts_session_set_return_logits(CrispasrSession* s, int enable);
-int stelnettts_session_set_grammar_text(CrispasrSession* s, const char* gbnf_text, const char* root_rule, float penalty);
-int stelnettts_session_set_fallback_thresholds(CrispasrSession* s, float entropy_thold, float logprob_thold,
+const char* stelnettts_session_backend(StelnetAsrSession* s);
+int stelnettts_session_set_source_language(StelnetAsrSession* s, const char* lang);
+int stelnettts_session_set_target_language(StelnetAsrSession* s, const char* lang);
+int stelnettts_session_set_tts_reference_language(StelnetAsrSession* s, const char* lang);
+int stelnettts_session_set_punctuation(StelnetAsrSession* s, int enable);
+int stelnettts_session_set_punc_model(StelnetAsrSession* s, const char* punc_model);
+int stelnettts_session_set_hotwords(StelnetAsrSession* s, const char* hotwords, float boost);
+int stelnettts_session_set_sensitivity(StelnetAsrSession* s, const char* preset);
+int stelnettts_session_set_translate(StelnetAsrSession* s, int enable);
+int stelnettts_session_set_temperature(StelnetAsrSession* s, float temperature, unsigned long long seed);
+int stelnettts_session_set_tts_seed(StelnetAsrSession* s, unsigned long long seed);
+int stelnettts_session_set_tts_steps(StelnetAsrSession* s, int steps);
+int stelnettts_session_set_tts_num_candidates(StelnetAsrSession* s, int n);
+int stelnettts_session_set_max_new_tokens(StelnetAsrSession* s, int n);
+int stelnettts_session_set_frequency_penalty(StelnetAsrSession* s, float penalty);
+int stelnettts_session_set_top_p(StelnetAsrSession* s, float top_p);
+int stelnettts_session_set_top_k(StelnetAsrSession* s, int top_k);
+int stelnettts_session_set_do_sample(StelnetAsrSession* s, int enable);
+int stelnettts_session_set_min_p(StelnetAsrSession* s, float min_p);
+int stelnettts_session_set_repetition_penalty(StelnetAsrSession* s, float r);
+int stelnettts_session_set_cfg_weight(StelnetAsrSession* s, float cfg_weight);
+int stelnettts_session_set_tts_noise_temp(StelnetAsrSession* s, float noise_temp);
+int stelnettts_session_set_exaggeration(StelnetAsrSession* s, float exaggeration);
+int stelnettts_session_set_max_speech_tokens(StelnetAsrSession* s, int n);
+int stelnettts_session_set_min_speech_tokens(StelnetAsrSession* s, int n);
+int stelnettts_session_set_length_scale(StelnetAsrSession* s, float scale);
+int stelnettts_session_set_best_of(StelnetAsrSession* s, int n);
+int stelnettts_session_set_beam_size(StelnetAsrSession* s, int n);
+int stelnettts_session_set_return_logits(StelnetAsrSession* s, int enable);
+int stelnettts_session_set_grammar_text(StelnetAsrSession* s, const char* gbnf_text, const char* root_rule, float penalty);
+int stelnettts_session_set_fallback_thresholds(StelnetAsrSession* s, float entropy_thold, float logprob_thold,
                                              float no_speech_thold, float temperature_inc);
-int stelnettts_session_set_alt_n(CrispasrSession* s, int n);
-int stelnettts_session_set_whisper_decode_extras(CrispasrSession* s, int suppress_nst, const char* suppress_regex,
+int stelnettts_session_set_alt_n(StelnetAsrSession* s, int n);
+int stelnettts_session_set_whisper_decode_extras(StelnetAsrSession* s, int suppress_nst, const char* suppress_regex,
                                                int carry_initial_prompt);
-int stelnettts_session_set_ask(CrispasrSession* s, const char* prompt);
-int stelnettts_session_detect_language(CrispasrSession* s, const float* pcm, int n_samples, const char* lid_model_path,
+int stelnettts_session_set_ask(StelnetAsrSession* s, const char* prompt);
+int stelnettts_session_detect_language(StelnetAsrSession* s, const float* pcm, int n_samples, const char* lid_model_path,
                                      int method, char* out_lang, int out_lang_cap, float* out_prob);
 
 // Session ASR transcription
 struct stelnettts_session_result;
-struct stelnettts_session_result* stelnettts_session_transcribe(CrispasrSession* s, const float* pcm, int n_samples);
-struct stelnettts_session_result* stelnettts_session_transcribe_lang(CrispasrSession* s, const float* pcm, int n_samples,
+struct stelnettts_session_result* stelnettts_session_transcribe(StelnetAsrSession* s, const float* pcm, int n_samples);
+struct stelnettts_session_result* stelnettts_session_transcribe_lang(StelnetAsrSession* s, const float* pcm, int n_samples,
                                                                  const char* language);
-struct stelnettts_session_result* stelnettts_session_transcribe_chunked_lang(CrispasrSession* s, const float* pcm,
+struct stelnettts_session_result* stelnettts_session_transcribe_chunked_lang(StelnetAsrSession* s, const float* pcm,
                                                                          int n_samples, int chunk_seconds,
                                                                          int overlap_seconds, const char* language);
 int stelnettts_get_progress(void);
-struct stelnettts_session_result* stelnettts_session_transcribe_vad(CrispasrSession* s, const float* pcm, int n_samples,
+struct stelnettts_session_result* stelnettts_session_transcribe_vad(StelnetAsrSession* s, const float* pcm, int n_samples,
                                                                 int sample_rate, const char* vad_model_path,
                                                                 void* opts);
-struct stelnettts_session_result* stelnettts_session_transcribe_vad_lang(CrispasrSession* s, const float* pcm,
+struct stelnettts_session_result* stelnettts_session_transcribe_vad_lang(StelnetAsrSession* s, const float* pcm,
                                                                      int n_samples, int sample_rate,
                                                                      const char* vad_model_path, void* opts,
                                                                      const char* language);
@@ -178,22 +178,22 @@ int stelnettts_session_result_n_logit_frames(struct stelnettts_session_result* r
 int stelnettts_session_result_n_logit_vocab(struct stelnettts_session_result* r);
 const float* stelnettts_session_result_logits(struct stelnettts_session_result* r);
 void stelnettts_session_result_free(struct stelnettts_session_result* r);
-char* stelnettts_session_translate_text(CrispasrSession* s, const char* text, const char* src_lang, const char* tgt_lang,
+char* stelnettts_session_translate_text(StelnetAsrSession* s, const char* text, const char* src_lang, const char* tgt_lang,
                                       int max_tokens);
 void stelnettts_session_translate_text_free(char* text);
 
 // Streaming
-struct CrispasrStream;
-struct CrispasrStream* stelnettts_session_stream_open(CrispasrSession* s, int n_threads, int step_ms, int length_ms,
+struct StelnetAsrStream;
+struct StelnetAsrStream* stelnettts_session_stream_open(StelnetAsrSession* s, int n_threads, int step_ms, int length_ms,
                                                     int keep_ms, const char* language, int translate);
-struct CrispasrStream* stelnettts_stream_open(void* ctx, int n_threads, int step_ms, int length_ms, int keep_ms,
+struct StelnetAsrStream* stelnettts_stream_open(void* ctx, int n_threads, int step_ms, int length_ms, int keep_ms,
                                             const char* language, int translate);
-int stelnettts_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
-int stelnettts_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap, double* out_t0_s, double* out_t1_s,
+int stelnettts_stream_feed(struct StelnetAsrStream* s, const float* pcm, int n_samples);
+int stelnettts_stream_get_text(struct StelnetAsrStream* s, char* out_text, int out_cap, double* out_t0_s, double* out_t1_s,
                              long long* out_counter);
-int stelnettts_stream_flush(struct CrispasrStream* s);
-void stelnettts_stream_close(struct CrispasrStream* s);
-void stelnettts_stream_set_live_decode(struct CrispasrStream* s, int enabled);
+int stelnettts_stream_flush(struct StelnetAsrStream* s);
+void stelnettts_stream_close(struct StelnetAsrStream* s);
+void stelnettts_stream_set_live_decode(struct StelnetAsrStream* s, int enabled);
 
 // Punctuation
 void* stelnettts_punc_init(const char* model_path);
@@ -313,10 +313,10 @@ int stelnettts_diarize_segments_abi(const float* left_pcm, const float* right_pc
                                   void* segs, int n_segs, const void* opts);
 }
 
-static CrispasrSession* g_tts_session = nullptr;
+static StelnetAsrSession* g_tts_session = nullptr;
 // Backend-agnostic ASR session (parakeet/canary/whisper/…) for the asr* surface
 // below — distinct from the whisper-only g_context used by init()/full_default().
-static CrispasrSession* g_asr_session = nullptr;
+static StelnetAsrSession* g_asr_session = nullptr;
 
 struct whisper_context* g_context;
 

@@ -75,7 +75,7 @@ TEST_CASE("companion: sibling file found next to model skips resolve", "[unit][c
     write_dummy(companion_path);
 
     // Simulate the dispatcher's sibling check.
-    CrispasrRegistryEntry entry;
+    StelnetAsrRegistryEntry entry;
     REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
     bool companion_found = false;
@@ -100,7 +100,7 @@ TEST_CASE("companion: sibling file absent triggers resolve path", "[unit][compan
     const std::string model_path = dir + "/mimo-asr-q4_k.gguf";
     write_dummy(model_path);
 
-    CrispasrRegistryEntry entry;
+    StelnetAsrRegistryEntry entry;
     REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
     bool companion_found = false;
@@ -129,7 +129,7 @@ TEST_CASE("companion: cached companion in cache_dir skips resolve", "[unit][comp
     const std::string cached_companion = cache_dir + "/mimo-tokenizer-q4_k.gguf";
     write_dummy(cached_companion);
 
-    CrispasrRegistryEntry entry;
+    StelnetAsrRegistryEntry entry;
     REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
     const std::string found = stelnettts_cache::probe_cached_file(entry.companion_filename, cache_dir);
@@ -142,7 +142,7 @@ TEST_CASE("companion: cached companion in cache_dir skips resolve", "[unit][comp
 TEST_CASE("companion: empty cache_dir means companion not found", "[unit][companion]") {
     const std::string cache_dir = make_temp_dir();
 
-    CrispasrRegistryEntry entry;
+    StelnetAsrRegistryEntry entry;
     REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
     const std::string found = stelnettts_cache::probe_cached_file(entry.companion_filename, cache_dir);
@@ -157,21 +157,21 @@ TEST_CASE("companion: empty cache_dir means companion not found", "[unit][compan
 // companion's actual size, not the LM's.
 
 TEST_CASE("companion: mimo-asr companion size is ~395 MB, not ~4.2 GB (#148)", "[unit][companion]") {
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     REQUIRE(stelnettts_registry_lookup("mimo-asr", e));
     REQUIRE(e.companion_approx_size == "~395 MB");
     REQUIRE(e.approx_size == "~4.2 GB"); // LM size, for contrast
 }
 
 TEST_CASE("companion: cielvox2-tts companion size is ~60 MB, not ~986 MB (#146)", "[unit][companion]") {
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     REQUIRE(stelnettts_registry_lookup("cielvox2-tts", e));
     REQUIRE(e.companion_approx_size == "~60 MB");
     REQUIRE(e.approx_size == "~986 MB");
 }
 
 TEST_CASE("companion: lookup_by_filename shows companion size in approx_size (#146)", "[unit][companion]") {
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     REQUIRE(stelnettts_registry_lookup_by_filename("mimo-tokenizer-q4_k.gguf", e));
     // When resolving a companion by filename, approx_size should be the
     // companion's own size — this is what the "Available for download"
@@ -180,14 +180,14 @@ TEST_CASE("companion: lookup_by_filename shows companion size in approx_size (#1
 }
 
 TEST_CASE("companion: snac-24khz lookup_by_filename shows codec size", "[unit][companion]") {
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     REQUIRE(stelnettts_registry_lookup_by_filename("snac-24khz.gguf", e));
     REQUIRE(e.approx_size == "~80 MB");
     REQUIRE(e.approx_size.find("GB") == std::string::npos);
 }
 
 TEST_CASE("companion: chatterbox-s3gen lookup_by_filename shows vocoder size", "[unit][companion]") {
-    CrispasrRegistryEntry e;
+    StelnetAsrRegistryEntry e;
     REQUIRE(stelnettts_registry_lookup_by_filename("chatterbox-s3gen-q8_0.gguf", e));
     REQUIRE(e.approx_size == "~627 MB");
 }

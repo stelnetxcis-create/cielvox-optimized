@@ -191,7 +191,7 @@ TEST_CASE("issue324: relabel-only diarizer preserves order and text", "[diarize]
 // splitter to drive (no model, no subprocess — just a hand-built timeline).
 
 TEST_CASE("issue324: real turn-splitting diarizer loses no words", "[diarize][unit][issue324]") {
-    CrispasrSherpaCache cache;
+    StelnetAsrSherpaCache cache;
     // Speaker changes at 5 s and 10 s — inside both slices' segments.
     cache.segments.push_back({0.0, 5.0, 0});
     cache.segments.push_back({5.0, 10.0, 1});

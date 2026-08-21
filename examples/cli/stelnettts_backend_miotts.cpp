@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-class MioTtsBackend : public CrispasrBackend {
+class MioTtsBackend : public StelnetAsrBackend {
 public:
     bool init(const whisper_params& p) override {
         auto cp = miotts_context_default_params();
@@ -52,6 +52,6 @@ private:
     miotts_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_create_miotts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_create_miotts_backend() {
     return std::make_unique<MioTtsBackend>();
 }

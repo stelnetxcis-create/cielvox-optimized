@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /mnt/akademie_storage/crispasr
+CMAKE_SOURCE_DIR = /mnt/akademie_storage/stelnet_asr
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /mnt/akademie_storage/crispasr
+CMAKE_BINARY_DIR = /mnt/akademie_storage/stelnet_asr
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -142,9 +142,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/akademie_storage/crispasr/CMakeFiles /mnt/akademie_storage/crispasr//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/akademie_storage/stelnet_asr/CMakeFiles /mnt/akademie_storage/stelnet_asr//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/akademie_storage/crispasr/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/akademie_storage/stelnet_asr/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -757,17 +757,17 @@ common/fast:
 .PHONY : common/fast
 
 #=============================================================================
-# Target rules for targets named crispasr
+# Target rules for targets named stelnet_asr
 
 # Build rule for target.
-crispasr: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 crispasr
-.PHONY : crispasr
+stelnet_asr: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 stelnet_asr
+.PHONY : stelnet_asr
 
 # fast build rule for target.
-crispasr/fast:
-	$(MAKE) $(MAKESILENT) -f examples/cli/CMakeFiles/crispasr.dir/build.make examples/cli/CMakeFiles/crispasr.dir/build
-.PHONY : crispasr/fast
+stelnet_asr/fast:
+	$(MAKE) $(MAKESILENT) -f examples/cli/CMakeFiles/stelnet_asr.dir/build.make examples/cli/CMakeFiles/stelnet_asr.dir/build
+.PHONY : stelnet_asr/fast
 
 #=============================================================================
 # Target rules for targets named whisper-bench
@@ -1132,7 +1132,7 @@ help:
 	@echo "... wav2vec2-ggml"
 	@echo "... whisper"
 	@echo "... whisper-bench"
-	@echo "... crispasr"
+	@echo "... stelnet_asr"
 	@echo "... whisper-quantize"
 	@echo "... whisper-server"
 	@echo "... whisper-vad-speech-segments"

@@ -16,14 +16,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="./build/bin/stelnettts"
+STELNET_ASR="./build/bin/stelnettts"
 SAMPLE="./samples/jfk.wav"
 PASS=0
 FAIL=0
 SKIP=0
 
-if [ ! -f "$CRISPASR" ]; then
-    echo "ERROR: $CRISPASR not found. Build first."
+if [ ! -f "$STELNET_ASR" ]; then
+    echo "ERROR: $STELNET_ASR not found. Build first."
     exit 1
 fi
 if [ ! -f "$SAMPLE" ]; then
@@ -43,7 +43,7 @@ test_backend() {
 
     # Run transcription
     local output
-    output=$(timeout "$timeout_sec" "$CRISPASR" --backend "$backend" -m auto --auto-download \
+    output=$(timeout "$timeout_sec" "$STELNET_ASR" --backend "$backend" -m auto --auto-download \
         -f "$SAMPLE" --no-prints 2>/dev/null) || {
         echo "FAIL (timeout or crash)"
         FAIL=$((FAIL + 1))
@@ -118,7 +118,7 @@ if [ "${STELNETTTS_TEST_TTS:-0}" = "1" ]; then
         echo -n "  $b: "
         local_out="/tmp/tts-$b.wav"
         rm -f "$local_out"
-        if timeout 120 "$CRISPASR" --backend "$b" -m auto --tts "Hello world." --tts-output "$local_out" \
+        if timeout 120 "$STELNET_ASR" --backend "$b" -m auto --tts "Hello world." --tts-output "$local_out" \
             --no-prints 2>/dev/null; then
             if [ -f "$local_out" ] && [ "$(stat -c%s "$local_out")" -gt 1000 ]; then
                 echo "PASS ($(stat -c%s "$local_out") bytes)"

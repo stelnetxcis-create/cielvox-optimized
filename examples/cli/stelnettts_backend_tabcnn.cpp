@@ -31,7 +31,7 @@
 
 namespace {
 
-class TabCnnBackend : public CrispasrBackend {
+class TabCnnBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "tabcnn"; }
 
@@ -54,6 +54,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_tabcnn_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_tabcnn_backend() {
     return std::make_unique<TabCnnBackend>();
 }

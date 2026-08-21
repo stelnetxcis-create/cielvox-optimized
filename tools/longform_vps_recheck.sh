@@ -3,7 +3,7 @@
 # (commits dc2295b2 cohere, 6fef8790 voxtral).
 set -uo pipefail
 
-CRISPASR=/mnt/akademie_storage/whisper.cpp/build/bin/stelnettts
+STELNET_ASR=/mnt/akademie_storage/whisper.cpp/build/bin/stelnettts
 OUT_DIR=/mnt/akademie_storage/longform_results_recheck
 CLIPS_DIR=/mnt/akademie_storage
 mkdir -p "$OUT_DIR"
@@ -35,7 +35,7 @@ for length in "${LENGTHS[@]}"; do
     wait_for_memory
     echo "==> $stem"
     t0=$(date +%s)
-    eval timeout 900 "$CRISPASR" -m "$model" $extra \
+    eval timeout 900 "$STELNET_ASR" -m "$model" $extra \
       --split-on-punct -ml 1 -of "$of_prefix" --output-json-full \
       -f "$clip" 2>"${of_prefix}.stderr" > "${of_prefix}.stdout"
     rc=$?

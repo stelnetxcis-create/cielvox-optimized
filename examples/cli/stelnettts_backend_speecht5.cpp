@@ -37,7 +37,7 @@ static std::vector<float> load_float_bin(const std::string& path) {
     return data;
 }
 
-class SpeechT5Backend : public CrispasrBackend {
+class SpeechT5Backend : public StelnetAsrBackend {
 public:
     SpeechT5Backend() = default;
     ~SpeechT5Backend() override { SpeechT5Backend::shutdown(); }
@@ -134,6 +134,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_speecht5_backend() {
-    return std::unique_ptr<CrispasrBackend>(new SpeechT5Backend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_speecht5_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new SpeechT5Backend());
 }

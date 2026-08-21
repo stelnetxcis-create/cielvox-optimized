@@ -88,14 +88,14 @@ if %ERRORLEVEL% neq 0 (
   goto :eof
 )
 
-rem Check if 'crispasr' is available in the system PATH
-where crispasr >nul 2>&1
+rem Check if 'stelnet_asr' is available in the system PATH
+where stelnet_asr >nul 2>&1
 if %ERRORLEVEL%==0 (
-  rem If found, suggest 'crispasr' (relying on PATH resolution)
-  set "whisper_cmd=crispasr"
+  rem If found, suggest 'stelnet_asr' (relying on PATH resolution)
+  set "whisper_cmd=stelnet_asr"
 ) else (
   rem If not found, suggest the local build version
-  set "whisper_cmd=%root_path%\build\bin\Release\crispasr.exe"
+  set "whisper_cmd=%root_path%\build\bin\Release\stelnet_asr.exe"
 )
 
 echo Done! Model %model% saved in %models_path%\ggml-%model%.bin

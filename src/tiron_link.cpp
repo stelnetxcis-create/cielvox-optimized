@@ -45,7 +45,7 @@ struct Group {
 } // namespace
 
 TironLinkResult stelnettts_tiron_link_speakers(const std::vector<TironTurn>& turns, const float* pcm_16k, int n_samples,
-                                             CrispasrSpeakerEmbedder* embedder, const TironLinkOptions& opts) {
+                                             StelnetAsrSpeakerEmbedder* embedder, const TironLinkOptions& opts) {
     TironLinkResult res;
     if (turns.empty())
         return res;

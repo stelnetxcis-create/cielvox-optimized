@@ -8,7 +8,7 @@
 // raw bytes — decoded via core_bpe::token_bytes_to_utf8().
 //
 // Direct port of examples/cielvox2-asr-main/main.cpp wrapped in the
-// CrispasrBackend interface.
+// StelnetAsrBackend interface.
 
 #include "stelnettts_backend.h"
 #include "stelnettts_backend_utils.h"
@@ -35,7 +35,7 @@ std::string decode_token(const std::string& s) {
     return core_bpe::token_bytes_to_utf8(s);
 }
 
-class Qwen3Backend : public CrispasrBackend {
+class Qwen3Backend : public StelnetAsrBackend {
 public:
     Qwen3Backend() = default;
     ~Qwen3Backend() override { Qwen3Backend::shutdown(); }
@@ -684,6 +684,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_qwen3_backend() {
-    return std::unique_ptr<CrispasrBackend>(new Qwen3Backend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_qwen3_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new Qwen3Backend());
 }

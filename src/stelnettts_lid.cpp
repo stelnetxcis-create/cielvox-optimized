@@ -69,7 +69,7 @@ EcapaLidCache& ecapa_lid_cache() {
     return c;
 }
 
-bool detect_whisper(const float* samples, int n_samples, const CrispasrLidOptions& opts, CrispasrLidResult& out) {
+bool detect_whisper(const float* samples, int n_samples, const StelnetAsrLidOptions& opts, StelnetAsrLidResult& out) {
     if (opts.model_path.empty())
         return false;
 
@@ -149,7 +149,7 @@ bool detect_whisper(const float* samples, int n_samples, const CrispasrLidOption
     return true;
 }
 
-bool detect_silero(const float* samples, int n_samples, const CrispasrLidOptions& opts, CrispasrLidResult& out) {
+bool detect_silero(const float* samples, int n_samples, const StelnetAsrLidOptions& opts, StelnetAsrLidResult& out) {
     if (opts.model_path.empty())
         return false;
 
@@ -194,7 +194,7 @@ bool detect_silero(const float* samples, int n_samples, const CrispasrLidOptions
     return true;
 }
 
-bool detect_firered(const float* samples, int n_samples, const CrispasrLidOptions& opts, CrispasrLidResult& out) {
+bool detect_firered(const float* samples, int n_samples, const StelnetAsrLidOptions& opts, StelnetAsrLidResult& out) {
     if (opts.model_path.empty())
         return false;
 
@@ -234,7 +234,7 @@ bool detect_firered(const float* samples, int n_samples, const CrispasrLidOption
     return true;
 }
 
-bool detect_ecapa(const float* samples, int n_samples, const CrispasrLidOptions& opts, CrispasrLidResult& out) {
+bool detect_ecapa(const float* samples, int n_samples, const StelnetAsrLidOptions& opts, StelnetAsrLidResult& out) {
     if (opts.model_path.empty())
         return false;
 
@@ -275,8 +275,8 @@ bool detect_ecapa(const float* samples, int n_samples, const CrispasrLidOptions&
 
 } // namespace
 
-bool stelnettts_detect_language(const float* samples, int n_samples, const CrispasrLidOptions& opts,
-                              CrispasrLidResult& out) {
+bool stelnettts_detect_language(const float* samples, int n_samples, const StelnetAsrLidOptions& opts,
+                              StelnetAsrLidResult& out) {
     if (!samples || n_samples <= 0)
         return false;
     // Truncate to 15 s — LID models don't benefit from longer audio, and
@@ -285,13 +285,13 @@ bool stelnettts_detect_language(const float* samples, int n_samples, const Crisp
     if (n_samples > kLidMaxSamples)
         n_samples = kLidMaxSamples;
     switch (opts.method) {
-    case CrispasrLidMethod::Whisper:
+    case StelnetAsrLidMethod::Whisper:
         return detect_whisper(samples, n_samples, opts, out);
-    case CrispasrLidMethod::Silero:
+    case StelnetAsrLidMethod::Silero:
         return detect_silero(samples, n_samples, opts, out);
-    case CrispasrLidMethod::Firered:
+    case StelnetAsrLidMethod::Firered:
         return detect_firered(samples, n_samples, opts, out);
-    case CrispasrLidMethod::Ecapa:
+    case StelnetAsrLidMethod::Ecapa:
         return detect_ecapa(samples, n_samples, opts, out);
     }
     return false;

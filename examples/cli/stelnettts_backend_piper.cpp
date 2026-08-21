@@ -16,7 +16,7 @@
 
 namespace {
 
-class PiperBackend : public CrispasrBackend {
+class PiperBackend : public StelnetAsrBackend {
 public:
     ~PiperBackend() override {
         if (ctx_)
@@ -149,6 +149,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_piper_backend() {
-    return std::unique_ptr<CrispasrBackend>(new PiperBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_piper_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new PiperBackend());
 }

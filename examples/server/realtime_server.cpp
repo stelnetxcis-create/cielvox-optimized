@@ -267,13 +267,13 @@ static std::vector<uint8_t> base64_decode(const std::string& in) {
 
 struct rt_session {
     socket_t client_fd;
-    CrispasrBackend* backend;
+    StelnetAsrBackend* backend;
     std::mutex* model_mutex;
     whisper_params rp;
     std::vector<float> audio_buffer;
     std::string text_sent;
 
-    rt_session(socket_t fd, CrispasrBackend* b, std::mutex* m, whisper_params p)
+    rt_session(socket_t fd, StelnetAsrBackend* b, std::mutex* m, whisper_params p)
         : client_fd(fd), backend(b), model_mutex(m), rp(std::move(p)) {}
 
     void process_audio() {
@@ -418,7 +418,7 @@ static void rt_handle_connection(rt_session* sess) {
     delete sess;
 }
 
-static void rt_listener_thread(CrispasrBackend* backend, std::mutex* model_mutex, whisper_params base_params) {
+static void rt_listener_thread(StelnetAsrBackend* backend, std::mutex* model_mutex, whisper_params base_params) {
     while (g_rt_running.load()) {
         struct sockaddr_in addr;
         socklen_t addr_len = sizeof(addr);
@@ -431,7 +431,7 @@ static void rt_listener_thread(CrispasrBackend* backend, std::mutex* model_mutex
     }
 }
 
-int realtime_server_start(CrispasrBackend* backend, std::mutex& model_mutex, const whisper_params& base_params,
+int realtime_server_start(StelnetAsrBackend* backend, std::mutex& model_mutex, const whisper_params& base_params,
                           int port) {
     if (g_rt_running.load())
         return 0;

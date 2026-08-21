@@ -18,7 +18,7 @@
 #
 # Usage: bash tests/test_strict_pipeline.sh [stelnettts-bin] [src-dir]
 
-CRISPASR="${1:-${STELNETTTS_BIN:-build/bin/stelnettts}}"
+STELNET_ASR="${1:-${STELNETTTS_BIN:-build/bin/stelnettts}}"
 SRC_DIR="${2:-.}"
 # Tier selector, same split as test_vad_export_live.sh and for the same reason:
 # labelled `unit`, this script reported green in CI while SKIPPING the
@@ -58,7 +58,7 @@ expect_exit() {
     fi
 }
 
-if [ ! -f "$CRISPASR" ]; then echo "SKIP: stelnettts binary not found at $CRISPASR"; exit 0; fi
+if [ ! -f "$STELNET_ASR" ]; then echo "SKIP: stelnettts binary not found at $STELNET_ASR"; exit 0; fi
 if [ ! -f "$JFK_WAV" ]; then echo "SKIP: test audio not found at $JFK_WAV"; exit 0; fi
 
 echo "=== Issue #311: strict pipeline semantics ==="
@@ -66,13 +66,13 @@ echo "=== Issue #311: strict pipeline semantics ==="
 # ─── Model-free: config validation + help text ──────────────────────────────
 # --require-vad without any VAD request is a usage error (exit 2), evaluated at
 # the top of run_backend before model load, so a real model isn't needed.
-"$CRISPASR" --require-vad -m "$BOGUS" -f "$JFK_WAV" >/dev/null 2>"$TMPDIR/e1"; rc=$?
+"$STELNET_ASR" --require-vad -m "$BOGUS" -f "$JFK_WAV" >/dev/null 2>"$TMPDIR/e1"; rc=$?
 if [ "$rc" -eq 2 ]; then pass "config: --require-vad without --vad → exit 2"; else fail "config: --require-vad without --vad → exit 2 (got $rc)"; fi
 
-"$CRISPASR" --require-punctuation -m "$BOGUS" -f "$JFK_WAV" >/dev/null 2>"$TMPDIR/e2"; rc=$?
+"$STELNET_ASR" --require-punctuation -m "$BOGUS" -f "$JFK_WAV" >/dev/null 2>"$TMPDIR/e2"; rc=$?
 if [ "$rc" -eq 2 ]; then pass "config: --require-punctuation without --punc-model → exit 2"; else fail "config: --require-punctuation without --punc-model → exit 2 (got $rc)"; fi
 
-HELP="$("$CRISPASR" --help 2>&1 || true)"
+HELP="$("$STELNET_ASR" --help 2>&1 || true)"
 for flag in -- --strict-pipeline --require-vad --require-word-timestamps --require-punctuation; do
     [ "$flag" = "--" ] && continue
     if echo "$HELP" | grep -q -- "$flag"; then pass "help lists $flag"; else fail "help lists $flag"; fi
@@ -99,7 +99,7 @@ fi
 # would otherwise mark real strict passes as spurious).
 WB=(--backend whisper)
 if [ -n "$MODEL" ]; then
-    if ! "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" -nt >/dev/null 2>&1; then
+    if ! "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" -nt >/dev/null 2>&1; then
         skip "model-gated A/B" "whisper model '$MODEL' did not load/transcribe via unified dispatch"
         MODEL=""
     fi
@@ -111,23 +111,23 @@ else
     echo "--- model-gated A/B with $MODEL ---"
     # VAD: unloadable required model fails; permissive falls back and succeeds.
     expect_exit nonzero "VAD unloadable + --require-vad → fail" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --vad -vm "$BOGUS" --require-vad
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --vad -vm "$BOGUS" --require-vad
     expect_exit nonzero "VAD unloadable + --strict-pipeline → fail" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --vad -vm "$BOGUS" --strict-pipeline
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --vad -vm "$BOGUS" --strict-pipeline
     expect_exit zero "VAD unloadable, permissive (no flag) → succeed" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --vad -vm "$BOGUS"
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --vad -vm "$BOGUS"
 
     # Punctuation: unloadable required model fails; permissive continues.
     expect_exit nonzero "punc unloadable + --require-punctuation → fail" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --punc-model "$BOGUS" --require-punctuation
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --punc-model "$BOGUS" --require-punctuation
     expect_exit zero "punc unloadable, permissive → succeed" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --punc-model "$BOGUS"
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" --punc-model "$BOGUS"
 
     # Word timestamps: unloadable aligner (no words) fails; permissive keeps segs.
     expect_exit nonzero "aligner unloadable + --require-word-timestamps → fail" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" -am "$BOGUS" --force-aligner --require-word-timestamps -ojf -of "$TMPDIR/wt"
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" -am "$BOGUS" --force-aligner --require-word-timestamps -ojf -of "$TMPDIR/wt"
     expect_exit zero "aligner unloadable, permissive → succeed" -- \
-        "$CRISPASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" -am "$BOGUS" --force-aligner -ojf -of "$TMPDIR/wt2"
+        "$STELNET_ASR" "${WB[@]}" -m "$MODEL" -f "$JFK_WAV" -am "$BOGUS" --force-aligner -ojf -of "$TMPDIR/wt2"
 fi
 
 echo ""

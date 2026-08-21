@@ -82,7 +82,7 @@ Create `examples/cli/stelnettts_backend_yourmodel.cpp`:
 #include "yourmodel.h"
 
 namespace {
-class YourmodelBackend : public CrispasrBackend {
+class YourmodelBackend : public StelnetAsrBackend {
 public:
     const char * name() const override { return "yourmodel"; }
     uint32_t capabilities() const override {
@@ -98,7 +98,7 @@ private:
 };
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_yourmodel_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_yourmodel_backend() {
     return std::make_unique<YourmodelBackend>();
 }
 ```
@@ -133,7 +133,7 @@ for #292 confirmed those were already forwarded; max_new_tokens was the one gap.
 In `examples/cli/stelnettts_backend.cpp`:
 
 ```cpp
-std::unique_ptr<CrispasrBackend> stelnettts_make_yourmodel_backend();
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_yourmodel_backend();
 // ...
 if (name == "yourmodel") return stelnettts_make_yourmodel_backend();
 // ...
@@ -216,7 +216,7 @@ TTS backends need extra wiring beyond ASR:
    if (codec_path.empty())
        codec_path = discover_snac(p.model); // look next to model
    if (codec_path.empty()) {
-       CrispasrRegistryEntry entry;
+       StelnetAsrRegistryEntry entry;
        if (stelnettts_registry_lookup(p.backend, entry, ...) && ...)
            codec_path = stelnettts_resolve_model_cli(entry.companion_filename, ...);
    }
@@ -331,7 +331,7 @@ owned buffer then free via `stelnettts_pcm_free`; free any `out_text` via
 - **Rust (repo root, not `bindings/`)**: `stelnettts-sys/src/lib.rs` extern decl
   **and** `stelnettts/src/lib.rs` safe `pub fn`.
 - `flutter/stelnettts/lib/src/stelnettts.dart` — `lookupFunction` + method.
-- `bindings/java/.../CrispasrSession.java` — JNA `Lib` interface decl + method.
+- `bindings/java/.../StelnetAsrSession.java` — JNA `Lib` interface decl + method.
 - `bindings/ruby/ext/ruby_stelnettts_session.c` — `extern` decl, `rb_session_set_X`,
   and a `rb_define_singleton_method` registration.
 - `bindings/csharp/StelnetTTS/NativeMethods.cs` — `[DllImport]` P/Invoke, **and**
@@ -452,7 +452,7 @@ Wire ALL of the following:
    added to BOTH capability-name tables in `stelnettts_backend.cpp` (the text one
    and the JSON one) so it shows up in `--list-backends` and the matrix.
 3. **Redirect shim** — `examples/cli/stelnettts_backend_<name>.cpp` implementing
-   `CrispasrBackend` whose `init()` prints "run it with `--<task>`" and returns
+   `StelnetAsrBackend` whose `init()` prints "run it with `--<task>`" and returns
    false, with `capabilities()` returning the task bit. This is what puts the
    backend in `--list-backends` and gives `--backend X` (without the task flag)
    a clear error instead of a confusing one. Copy

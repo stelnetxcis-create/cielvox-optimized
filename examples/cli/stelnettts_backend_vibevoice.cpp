@@ -68,7 +68,7 @@ static std::vector<float> resample_16k_to_24k(const float* in, int n_in) {
     return out;
 }
 
-class VibeVoiceBackend : public CrispasrBackend {
+class VibeVoiceBackend : public StelnetAsrBackend {
 public:
     VibeVoiceBackend(std::string backend_name, bool allow_generic_no_voice)
         : backend_name_(std::move(backend_name)), allow_generic_no_voice_(allow_generic_no_voice) {}
@@ -351,15 +351,15 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_vibevoice_backend() {
-    return std::unique_ptr<CrispasrBackend>(new VibeVoiceBackend("vibevoice", false));
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_vibevoice_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new VibeVoiceBackend("vibevoice", false));
 }
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_vibevoice_tts_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_vibevoice_tts_backend() {
     // TTS-only alias — skips the ASR encoder check in init().
-    return std::unique_ptr<CrispasrBackend>(new VibeVoiceBackend("vibevoice-tts", false));
+    return std::unique_ptr<StelnetAsrBackend>(new VibeVoiceBackend("vibevoice-tts", false));
 }
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_vibevoice_1p5b_backend() {
-    return std::unique_ptr<CrispasrBackend>(new VibeVoiceBackend("vibevoice-1.5b", true));
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_vibevoice_1p5b_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new VibeVoiceBackend("vibevoice-1.5b", true));
 }

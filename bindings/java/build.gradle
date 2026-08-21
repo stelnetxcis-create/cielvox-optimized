@@ -5,7 +5,7 @@ plugins {
     id 'signing'
 }
 
-archivesBaseName = 'crispasr-java'
+archivesBaseName = 'stelnet_asr-java'
 group = 'io.github.ggerganov'
 version = '1.4.0'
 
@@ -26,19 +26,19 @@ sourceSets {
 
 tasks.register('copyLibwhisperDynlib', Copy) {
     from '../../build/src'
-    include 'libcrispasr.dylib'
+    include 'libstelnet_asr.dylib'
     into 'build/generated/resources/main'
 }
 
 tasks.register('copyLibwhisperSo', Copy) {
     from '../../build/src'
-    include 'libcrispasr.so'
+    include 'libstelnet_asr.so'
     into 'build/generated/resources/main'
 }
 
 tasks.register('copyWhisperDLL', Copy) {
     from '../../build/bin/Release'
-    include 'crispasr.dll'
+    include 'stelnet_asr.dll'
     into 'build/generated/resources/main'
 }
 
@@ -106,16 +106,16 @@ repositories {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = 'crispasr-java'
+            artifactId = 'stelnet_asr-java'
             from components.java
             pom {
-                name = 'crispasr-java'
-                description = "Java JNA bindings for CrispASR"
-                url = 'https://github.com/ggerganov/crispasr'
+                name = 'stelnet_asr-java'
+                description = "Java JNA bindings for StelnetASR"
+                url = 'https://github.com/ggerganov/stelnet_asr'
                 licenses {
                     license {
                         name = 'MIT licence'
-                        url = 'https://raw.githubusercontent.com/ggerganov/crispasr/master/LICENSE'
+                        url = 'https://raw.githubusercontent.com/ggerganov/stelnet_asr/master/LICENSE'
                     }
                 }
                 developers {
@@ -131,8 +131,8 @@ publishing {
                     }
                 }
                 scm {
-                    connection = 'scm:git:git://github.com/ggerganov/crispasr.git'
-                    url = 'https://github.com/ggerganov/crispasr'
+                    connection = 'scm:git:git://github.com/ggerganov/stelnet_asr.git'
+                    url = 'https://github.com/ggerganov/stelnet_asr'
                 }
             }
         }

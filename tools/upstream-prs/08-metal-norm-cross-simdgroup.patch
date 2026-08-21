@@ -29,7 +29,7 @@ site fix in kernel_norm_fuse_impl (mean + variance reductions),
 kernel_rms_norm_fuse_impl (mean-square), and kernel_l2_norm_impl
 (squared-sum).
 
-Also adds per-T overloads (crispasr_vec_sum / crispasr_vec_sqsum)
+Also adds per-T overloads (stelnet_asr_vec_sum / stelnet_asr_vec_sqsum)
 to replace `dot(scalar, scalar)` calls — `dot()` is not spec-defined
 for scalar types and shouldn't be relied on in the kernel_norm_f32
 (non-_4) instantiation. This is independent of the reduction bug
@@ -46,10 +46,10 @@ diff --git a/ggml/src/ggml-metal/ggml-metal.metal b/ggml/src/ggml-metal/ggml-met
 +// instantiation used to call `dot(scalar, scalar)` which is not
 +// defined by the Metal Shading Language Specification. Use these
 +// overloads so the scalar path doesn't depend on undefined behavior.
-+static inline float crispasr_vec_sum(float v)  { return v; }
-+static inline float crispasr_vec_sum(float4 v) { return v.x + v.y + v.z + v.w; }
-+static inline float crispasr_vec_sqsum(float v)  { return v * v; }
-+static inline float crispasr_vec_sqsum(float4 v) { return v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w; }
++static inline float stelnet_asr_vec_sum(float v)  { return v; }
++static inline float stelnet_asr_vec_sum(float4 v) { return v.x + v.y + v.z + v.w; }
++static inline float stelnet_asr_vec_sqsum(float v)  { return v * v; }
++static inline float stelnet_asr_vec_sqsum(float4 v) { return v.x*v.x + v.y*v.y + v.z*v.z + v.w*v.w; }
 +
  // F == 1 : norm (no fuse)
  // F == 2 : norm + mul
@@ -59,7 +59,7 @@ diff --git a/ggml/src/ggml-metal/ggml-metal.metal b/ggml/src/ggml-metal/ggml-met
          sumft += x[i00];
      }
 -    sumf = dot(sumft, T(1.0f));
-+    sumf = crispasr_vec_sum(sumft);
++    sumf = stelnet_asr_vec_sum(sumft);
      sumf = simd_sum(sumf);
 
      threadgroup_barrier(mem_flags::mem_threadgroup);
@@ -88,7 +88,7 @@ diff --git a/ggml/src/ggml-metal/ggml-metal.metal b/ggml/src/ggml-metal/ggml-met
      for (int i00 = tpitg.x; i00 < args.ne00_t; i00 += ntg.x) {
          y[i00] = x[i00] - mean;
 -        sumf += dot(y[i00], y[i00]);
-+        sumf += crispasr_vec_sqsum(y[i00]);
++        sumf += stelnet_asr_vec_sqsum(y[i00]);
      }
      sumf = simd_sum(sumf);
 
@@ -117,7 +117,7 @@ diff --git a/ggml/src/ggml-metal/ggml-metal.metal b/ggml/src/ggml-metal/ggml-met
      // parallel sum
      for (int i00 = tpitg.x; i00 < args.ne00_t; i00 += ntg.x) {
 -        sumf += dot(x[i00], x[i00]);
-+        sumf += crispasr_vec_sqsum(x[i00]);
++        sumf += stelnet_asr_vec_sqsum(x[i00]);
      }
      sumf = simd_sum(sumf);
 
@@ -146,7 +146,7 @@ diff --git a/ggml/src/ggml-metal/ggml-metal.metal b/ggml/src/ggml-metal/ggml-met
      // parallel sum
      for (int i00 = tpitg.x; i00 < args.ne00; i00 += ntg.x) {
 -        sumf += dot(x[i00], x[i00]);
-+        sumf += crispasr_vec_sqsum(x[i00]);
++        sumf += stelnet_asr_vec_sqsum(x[i00]);
      }
      sumf = simd_sum(sumf);
 

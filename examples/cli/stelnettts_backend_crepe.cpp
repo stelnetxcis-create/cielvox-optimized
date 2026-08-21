@@ -21,7 +21,7 @@
 
 namespace {
 
-class CrepeBackend : public CrispasrBackend {
+class CrepeBackend : public StelnetAsrBackend {
 public:
     const char* name() const override { return "crepe"; }
 
@@ -41,6 +41,6 @@ public:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_crepe_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_crepe_backend() {
     return std::make_unique<CrepeBackend>();
 }

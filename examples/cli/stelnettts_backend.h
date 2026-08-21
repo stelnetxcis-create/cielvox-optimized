@@ -144,9 +144,9 @@ enum stelnettts_capability : uint32_t {
 // Backend interface
 // ---------------------------------------------------------------------------
 
-class CrispasrBackend {
+class StelnetAsrBackend {
 public:
-    virtual ~CrispasrBackend() = default;
+    virtual ~StelnetAsrBackend() = default;
 
     // Human-readable name ("whisper", "parakeet", "canary", ...).
     virtual const char* name() const = 0;
@@ -425,7 +425,7 @@ public:
 
 // Create a backend by name. Returns nullptr if the name is not recognised or
 // the backend was not compiled in. Caller owns the returned pointer.
-std::unique_ptr<CrispasrBackend> stelnettts_create_backend(const std::string& name);
+std::unique_ptr<StelnetAsrBackend> stelnettts_create_backend(const std::string& name);
 
 // Detect the backend from GGUF metadata. Reads the "general.architecture"
 // key using gguf_init_from_file() and maps it to a backend name. Returns

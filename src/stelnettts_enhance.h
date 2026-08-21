@@ -2,7 +2,7 @@
 //
 // Single backend so far:
 //
-//   * `CrispasrEnhanceMethod::Rnnoise` — RNNoise (xiph/rnnoise v0.1,
+//   * `StelnetAsrEnhanceMethod::Rnnoise` — RNNoise (xiph/rnnoise v0.1,
 //     classic GRU model, ~425 KB weights embedded in libstelnettts).
 //     16 kHz mono float32 input/output in [-1, 1]. Internally
 //     upsamples to 48 kHz, runs RNNoise's 480-sample / 10 ms frames,
@@ -17,12 +17,12 @@
 
 #include <stdint.h>
 
-enum class CrispasrEnhanceMethod {
+enum class StelnetAsrEnhanceMethod {
     Rnnoise = 0,
 };
 
-struct CrispasrEnhanceOptions {
-    CrispasrEnhanceMethod method = CrispasrEnhanceMethod::Rnnoise;
+struct StelnetAsrEnhanceOptions {
+    StelnetAsrEnhanceMethod method = StelnetAsrEnhanceMethod::Rnnoise;
     bool verbose = false;
 };
 
@@ -31,4 +31,4 @@ struct CrispasrEnhanceOptions {
 /// true on success; on failure the reason is printed to stderr
 /// when `opts.verbose` is true, and `out` is left untouched.
 bool stelnettts_enhance_audio(const float* in_samples, int n_samples, float* out_samples,
-                            const CrispasrEnhanceOptions& opts);
+                            const StelnetAsrEnhanceOptions& opts);

@@ -1913,8 +1913,8 @@ its audio — with the spoken disclaimer applied, i.e. the documented default. T
 denial is announced, never silent:
 
 ```
-X-Crispasr-Spoken-Disclaimer: applied
-X-Crispasr-Marking-Warning:   'spoken_disclaimer': false ignored - it requires a
+X-StelnetAsr-Spoken-Disclaimer: applied
+X-StelnetAsr-Marking-Warning:   'spoken_disclaimer': false ignored - it requires a
                               'marking_attestation' field (or a server launched with
                               --accept-marking-responsibility); served with the
                               spoken AI-disclaimer

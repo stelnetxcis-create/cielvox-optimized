@@ -4,7 +4,7 @@
 # memory pressure. Sequential, with memory-free check between iterations.
 set -uo pipefail
 
-CRISPASR=/mnt/akademie_storage/whisper.cpp/build/bin/stelnettts
+STELNET_ASR=/mnt/akademie_storage/whisper.cpp/build/bin/stelnettts
 GGUF_DIR=/mnt/akademie_storage
 OUT_DIR=/mnt/akademie_storage/longform_results
 CLIPS_DIR=/mnt/akademie_storage
@@ -62,7 +62,7 @@ run_one() {
 
   echo "==> $stem"
   local t0=$(date +%s)
-  eval $env_prefix timeout 900 "$CRISPASR" -m "$model_path" $extra \
+  eval $env_prefix timeout 900 "$STELNET_ASR" -m "$model_path" $extra \
     --split-on-punct -ml 1 -of "$of_prefix" --output-json-full \
     -f "$clip" 2>"${of_prefix}.stderr" > "${of_prefix}.stdout"
   local rc=$?

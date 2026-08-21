@@ -17,7 +17,7 @@
 
 namespace {
 
-class M2M100Backend : public CrispasrBackend {
+class M2M100Backend : public StelnetAsrBackend {
 public:
     M2M100Backend() = default;
     ~M2M100Backend() override { M2M100Backend::shutdown(); }
@@ -88,6 +88,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_m2m100_backend() {
-    return std::unique_ptr<CrispasrBackend>(new M2M100Backend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_m2m100_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new M2M100Backend());
 }

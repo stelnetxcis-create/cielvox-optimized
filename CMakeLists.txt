@@ -438,7 +438,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/stelnettts.pc"
 # (cli/server/tests) links it.
 add_subdirectory(glint EXCLUDE_FROM_ALL)
 
-add_subdirectory(crisp_audio)
+add_subdirectory(stelnet_audio)
 
 if (STELNETTTS_BUILD_TESTS AND NOT CMAKE_JS_VERSION)
     include(CTest)

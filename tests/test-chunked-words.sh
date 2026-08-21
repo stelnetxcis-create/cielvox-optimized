@@ -21,9 +21,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${STELNETTTS_BIN:-./build-ninja-compile/bin/stelnettts}"
-if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="./build/bin/stelnettts"
+STELNET_ASR="${STELNETTTS_BIN:-./build-ninja-compile/bin/stelnettts}"
+if [ ! -x "$STELNET_ASR" ]; then
+    STELNET_ASR="./build/bin/stelnettts"
 fi
 
 # Resolve the parakeet-ja model from the standard HF cache. Skip if missing.
@@ -36,8 +36,8 @@ if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     exit 2
 fi
 
-if [ ! -x "$CRISPASR" ]; then
-    echo "ERROR: stelnettts binary not found (tried $CRISPASR)"
+if [ ! -x "$STELNET_ASR" ]; then
+    echo "ERROR: stelnettts binary not found (tried $STELNET_ASR)"
     exit 1
 fi
 
@@ -64,7 +64,7 @@ FAILED=0
 run_chunk_test() {
     local cs="$1"
     local out
-    out=$("$CRISPASR" --backend parakeet -m "$MODEL" -l ja \
+    out=$("$STELNET_ASR" --backend parakeet -m "$MODEL" -l ja \
         --chunk-seconds "$cs" --no-prints \
         -f "$WAV" 2>/dev/null | tr -d '\r')
 

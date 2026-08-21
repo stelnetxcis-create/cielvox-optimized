@@ -189,7 +189,7 @@ could not be reproduced. Now applied when non-zero (0 = the runtime's own
 default 42, so nothing changes unless a caller asks). Verified: `--seed 999`
 differs from the default and is byte-identical across two runs.
 
-**SE-side gap, worked around (2026-08-07, follow-up):** `OmniVoiceCrispAsr.Speak()`
+**SE-side gap, worked around (2026-08-07, follow-up):** `OmniVoiceStelnetAsr.Speak()`
 accepts `TtsLanguage? language` and never sends it — the payload is
 `{input, response_format, speed}` — and the launch args carry no `-l`. Rather
 than leave the fix blocked on someone else's release, omnivoice now **guesses

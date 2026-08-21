@@ -17,7 +17,7 @@
 
 namespace {
 
-class Wav2Vec2Backend : public CrispasrBackend {
+class Wav2Vec2Backend : public StelnetAsrBackend {
 public:
     Wav2Vec2Backend() = default;
     ~Wav2Vec2Backend() override { Wav2Vec2Backend::shutdown(); }
@@ -116,6 +116,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_wav2vec2_backend() {
-    return std::unique_ptr<CrispasrBackend>(new Wav2Vec2Backend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_wav2vec2_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new Wav2Vec2Backend());
 }

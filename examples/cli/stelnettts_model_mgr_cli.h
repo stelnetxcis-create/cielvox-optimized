@@ -9,7 +9,7 @@
 
 #include <string>
 
-struct CrispasrResolvePreview {
+struct StelnetAsrResolvePreview {
     bool matched_registry = false;
     bool exists_locally = false;
     bool would_download = false;
@@ -40,6 +40,6 @@ std::string stelnettts_resolve_model_cli(const std::string& model_arg, const std
 /// Preview the non-interactive resolution result without downloading.
 /// When `ignore_cache` is true, local cache hits are reported as
 /// `would_download` instead of `exists_locally`.
-CrispasrResolvePreview stelnettts_preview_model_cli(const std::string& model_arg, const std::string& backend_name,
+StelnetAsrResolvePreview stelnettts_preview_model_cli(const std::string& model_arg, const std::string& backend_name,
                                                   const std::string& cache_dir_override = "",
                                                   const std::string& preferred_quant = "", bool ignore_cache = false);

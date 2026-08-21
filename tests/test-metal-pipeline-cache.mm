@@ -6,7 +6,7 @@
 // File-static helpers in the implementation aren't directly
 // linkable, so this test exercises the cache through its public
 // side-effects: open a Metal device, hit a few compiled pipelines
-// via the bundled libcrispasr.metallib, free the device, and
+// via the bundled libstelnet_asr.metallib, free the device, and
 // assert that an archive file landed in the configured cache
 // directory. Then reopen and confirm the file is still present
 // (the reload path is exercised but the load log lines aren't
@@ -41,7 +41,7 @@ struct MetalCacheFixture {
             old_cache = v;
         }
         tmp = fs::temp_directory_path() /
-              ("crispasr-test-metalcache-" + std::to_string((unsigned long)::getpid()));
+              ("stelnet_asr-test-metalcache-" + std::to_string((unsigned long)::getpid()));
         fs::create_directories(tmp);
         setenv("GGML_METAL_PIPELINE_CACHE", tmp.c_str(), /*overwrite=*/1);
         // Make sure the opt-out env var isn't sticky from another shell.
@@ -74,7 +74,7 @@ TEST_CASE_METHOD(MetalCacheFixture,
     //      empty) without errors.
     //
     // The "archive contains compiled PSOs" claim is exercised by
-    // the manual crispasr-CLI smoke test recorded in HISTORY §5.18
+    // the manual stelnet_asr-CLI smoke test recorded in HISTORY §5.18
     // — that path does run real graphs and produces the ~683 KB
     // serialised archive. Unit-testing it here would require
     // loading a model + running a graph, which is heavier than the
@@ -101,7 +101,7 @@ TEST_CASE("metal pipeline cache: DISABLE env var skips archive creation",
     // no .archive file lands in the cache dir.
     fs::path tmp =
         fs::temp_directory_path() /
-        ("crispasr-test-metalcache-disable-" + std::to_string((unsigned long)::getpid()));
+        ("stelnet_asr-test-metalcache-disable-" + std::to_string((unsigned long)::getpid()));
     fs::create_directories(tmp);
     setenv("GGML_METAL_PIPELINE_CACHE", tmp.c_str(), 1);
     setenv("GGML_METAL_PIPELINE_CACHE_DISABLE", "1", 1);

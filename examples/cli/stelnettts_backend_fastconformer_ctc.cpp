@@ -29,7 +29,7 @@
 
 namespace {
 
-class FastConformerCtcBackend : public CrispasrBackend {
+class FastConformerCtcBackend : public StelnetAsrBackend {
 public:
     FastConformerCtcBackend() = default;
     ~FastConformerCtcBackend() override { FastConformerCtcBackend::shutdown(); }
@@ -137,6 +137,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_fastconformer_ctc_backend() {
-    return std::unique_ptr<CrispasrBackend>(new FastConformerCtcBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_fastconformer_ctc_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new FastConformerCtcBackend());
 }

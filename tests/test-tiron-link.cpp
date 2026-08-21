@@ -17,7 +17,7 @@
 namespace {
 
 // dim-4 fake: voiceprint = e_k where k = round(pcm[0]) clamped to [0,3].
-class FakeEmbedder : public CrispasrSpeakerEmbedder {
+class FakeEmbedder : public StelnetAsrSpeakerEmbedder {
 public:
     int dim() const override { return 4; }
     bool embed(const float* pcm, int n, float* out) override {

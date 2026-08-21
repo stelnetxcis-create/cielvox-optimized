@@ -1,4 +1,4 @@
-var factory = require('../bindings/javascript/crispasr.js')
+var factory = require('../bindings/javascript/stelnet_asr.js')
 
 factory().then(function(whisper) {
     var fs = require('fs');

@@ -12,14 +12,14 @@
 #   SHERPA_BIN=/path/to/sherpa-onnx-offline-speaker-diarization \
 #   SEG_MODEL=/path/to/model.onnx \
 #   EMB_MODEL=/path/to/embedding.onnx \
-#   CRISPASR=/path/to/stelnettts \
+#   STELNET_ASR=/path/to/stelnettts \
 #   bash tests/test_diarize_live.sh
 #
 # Defaults (this VPS):
 SHERPA_BIN="${SHERPA_BIN:-/mnt/storage/sherpa-onnx/sherpa-onnx-v1.13.2-linux-x64-static/bin/sherpa-onnx-offline-speaker-diarization}"
 SEG_MODEL="${SEG_MODEL:-/mnt/akademie_storage/test_cohere/sherpa-onnx-pyannote-segmentation-3-0/model.onnx}"
 EMB_MODEL="${EMB_MODEL:-/mnt/storage/sherpa-onnx/models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx}"
-CRISPASR="${CRISPASR:-/tmp/build-diarize/bin/stelnettts}"
+STELNET_ASR="${STELNET_ASR:-/tmp/build-diarize/bin/stelnettts}"
 PARAFORMER_MODEL="${PARAFORMER_MODEL:-/mnt/storage/paraformer-zh/paraformer-zh-q4_k.gguf}"
 JFK_WAV="${JFK_WAV:-/mnt/akademie_storage/whisper.cpp/samples/jfk.wav}"
 ZH_WAV="${ZH_WAV:-/mnt/storage/paraformer-zh-upstream/example/asr_example.wav}"
@@ -41,7 +41,7 @@ check() {
 }
 
 # Prerequisite checks
-for f in "$SHERPA_BIN" "$SEG_MODEL" "$EMB_MODEL" "$CRISPASR"; do
+for f in "$SHERPA_BIN" "$SEG_MODEL" "$EMB_MODEL" "$STELNET_ASR"; do
     if [ ! -f "$f" ]; then
         echo "SKIP: required file not found: $f"
         exit 0
@@ -63,7 +63,7 @@ check "sherpa binary produces speaker regions" test -n "$SHERPA_OUT"
 # Test 2: global diarization path is used (not per-slice)
 echo ""
 echo "--- Test 2: global sherpa path ---"
-DIARIZE_LOG=$($CRISPASR \
+DIARIZE_LOG=$($STELNET_ASR \
     --backend paraformer -m "$PARAFORMER_MODEL" -f "$ZH_WAV" \
     --diarize --diarize-method sherpa \
     --sherpa-bin "$SHERPA_BIN" --sherpa-segment-model "$SEG_MODEL" \
@@ -93,7 +93,7 @@ check "Chinese transcript matches with diarize on" test "$TRANSCRIPT" = "$EXPECT
 # Test 5: JFK with diarization
 echo ""
 echo "--- Test 5: JFK English with global diarize ---"
-JFK_OUT=$($CRISPASR \
+JFK_OUT=$($STELNET_ASR \
     --backend paraformer -m "$PARAFORMER_MODEL" -f "$JFK_WAV" \
     --diarize --diarize-method sherpa \
     --sherpa-bin "$SHERPA_BIN" --sherpa-segment-model "$SEG_MODEL" \

@@ -16,13 +16,13 @@ import (
 	"os"
 	"testing"
 
-	whisper "github.com/CrispStrobe/CrispASR/bindings/go"
+	whisper "github.com/CrispStrobe/StelnetASR/bindings/go"
 	assert "github.com/stretchr/testify/assert"
 )
 
 const separateModelEnv = "SEPARATE_MODEL"
 
-func openSeparateSession(t *testing.T) *whisper.CrispasrSession {
+func openSeparateSession(t *testing.T) *whisper.StelnetAsrSession {
 	t.Helper()
 	path := os.Getenv(separateModelEnv)
 	if path == "" {

@@ -438,7 +438,7 @@ TEST_CASE("the German cascade crosses an identity boundary", "[unit][compliance]
 // ---------------------------------------------------------------------------
 // Architecture -> backend name, for callers with a file and no session.
 //
-// --print-speaker-identity inspects a FILE. It has no CrispasrBackend to ask
+// --print-speaker-identity inspects a FILE. It has no StelnetAsrBackend to ask
 // for name(), so it derives one from what the file declares. Without this it
 // consulted only the voice-pack table and reported `unknown` for every piper,
 // fastpitch and bananamind MODEL — silently, and the bulk stamper then skipped

@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-class GlmAsrBackend : public CrispasrBackend {
+class GlmAsrBackend : public StelnetAsrBackend {
 public:
     GlmAsrBackend() = default;
 
@@ -183,7 +183,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_ || params.beam_size > 1 || params.temperature > 0.0f) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
 
@@ -382,6 +382,6 @@ private:
     std::string tgt_lang_;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_glm_asr_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_glm_asr_backend() {
     return std::make_unique<GlmAsrBackend>();
 }

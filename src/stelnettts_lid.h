@@ -2,13 +2,13 @@
 //
 // Two in-process backends:
 //
-//   * `CrispasrLidMethod::Whisper` — uses the stelnettts encoder +
+//   * `StelnetAsrLidMethod::Whisper` — uses the stelnettts encoder +
 //     language head on a multilingual ggml-*.bin model. Typically
 //     `ggml-tiny.bin` (75 MB, fast, covers the languages whisper was
 //     trained on). Process-wide caching keeps the context alive across
 //     calls so batch jobs don't reload 75 MB per slice.
 //
-//   * `CrispasrLidMethod::Silero` — uses the GGUF-packed Silero 95-
+//   * `StelnetAsrLidMethod::Silero` — uses the GGUF-packed Silero 95-
 //     language classifier through `src/silero_lid.*`. Smaller model
 //     (~10 MB) and wider language coverage than whisper-tiny.
 //
@@ -30,21 +30,21 @@
 #include <string>
 #include <vector>
 
-enum class CrispasrLidMethod {
+enum class StelnetAsrLidMethod {
     Whisper = 0,
     Silero = 1,
     Firered = 2,
     Ecapa = 3,
 };
 
-struct CrispasrLidResult {
+struct StelnetAsrLidResult {
     std::string lang_code;    // ISO 639-1 ("en", "de", "ja", ...) — empty on failure
     float confidence = -1.0f; // [0, 1], -1 if unknown
     std::string source;       // "whisper" | "silero"
 };
 
-struct CrispasrLidOptions {
-    CrispasrLidMethod method = CrispasrLidMethod::Whisper;
+struct StelnetAsrLidOptions {
+    StelnetAsrLidMethod method = StelnetAsrLidMethod::Whisper;
     std::string model_path; // concrete file path; required
     int n_threads = 4;
     bool use_gpu = false;
@@ -57,8 +57,8 @@ struct CrispasrLidOptions {
 /// Returns true on success; `out.lang_code` carries the ISO code.
 /// On failure the reason is printed to stderr when `opts.verbose` is
 /// true, and the function returns false.
-bool stelnettts_detect_language(const float* samples, int n_samples, const CrispasrLidOptions& opts,
-                              CrispasrLidResult& out);
+bool stelnettts_detect_language(const float* samples, int n_samples, const StelnetAsrLidOptions& opts,
+                              StelnetAsrLidResult& out);
 
 /// Compact the first 15 seconds of speech slices for request-level LID.
 /// Slices are sample indices into `pcm` at 16 kHz; short gaps are inserted

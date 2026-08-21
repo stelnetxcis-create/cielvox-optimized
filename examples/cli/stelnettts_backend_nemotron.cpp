@@ -14,7 +14,7 @@
 
 namespace {
 
-class NemotronBackend : public CrispasrBackend {
+class NemotronBackend : public StelnetAsrBackend {
 public:
     NemotronBackend() = default;
     ~NemotronBackend() override { NemotronBackend::shutdown(); }
@@ -136,7 +136,7 @@ public:
     void transcribe_streaming(const float* samples, int n_samples, int64_t /*t_offset_cs*/,
                               const whisper_params& params, stelnettts_stream_callback on_text) override {
         if (!ctx_) {
-            CrispasrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
+            StelnetAsrBackend::transcribe_streaming(samples, n_samples, 0, params, on_text);
             return;
         }
         std::string accumulated;
@@ -183,6 +183,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_nemotron_backend() {
-    return std::unique_ptr<CrispasrBackend>(new NemotronBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_nemotron_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new NemotronBackend());
 }

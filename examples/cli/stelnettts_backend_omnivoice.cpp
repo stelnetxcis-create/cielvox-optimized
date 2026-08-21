@@ -48,7 +48,7 @@ static std::string discover_tokenizer(const std::string& model_path) {
     return "";
 }
 
-class OmniVoiceBackend : public CrispasrBackend {
+class OmniVoiceBackend : public StelnetAsrBackend {
 public:
     OmniVoiceBackend() = default;
     ~OmniVoiceBackend() override { OmniVoiceBackend::shutdown(); }
@@ -240,6 +240,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_omnivoice_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_omnivoice_backend() {
     return std::make_unique<OmniVoiceBackend>();
 }

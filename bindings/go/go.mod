@@ -1,4 +1,4 @@
-module github.com/CrispStrobe/CrispASR/bindings/go
+module github.com/CrispStrobe/StelnetASR/bindings/go
 
 go 1.23
 

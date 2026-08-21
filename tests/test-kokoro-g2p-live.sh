@@ -12,11 +12,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for c in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    [ -x "$c" ] && { CRISPASR="$c"; break; }
+    [ -x "$c" ] && { STELNET_ASR="$c"; break; }
 done
-[ -z "$CRISPASR" ] && { echo "SKIP: stelnettts binary not found"; exit 0; }
+[ -z "$STELNET_ASR" ] && { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 MODELS="${STELNETTTS_MODELS_DIR:-${STELNETTTS_MODELS:-$HOME/.cache/stelnettts}}"
 KOKORO="${STELNETTTS_KOKORO_MODEL:-$MODELS/kokoro-82m-q8_0.gguf}"
@@ -33,10 +33,10 @@ bad() { echo "  ✗ $1"; FAIL=$((FAIL+1)); }
 
 # ── 1. the reported bug: a number must be SPOKEN, not silently dropped ────────
 echo "=== #316: numbers survive the G2P ==="
-"$CRISPASR" --tts "A text to speech model with 82 million parameters." \
+"$STELNET_ASR" --tts "A text to speech model with 82 million parameters." \
     --backend kokoro -m "$KOKORO" --voice "$VOICE" --tts-output "$TMP/n.wav" >/dev/null 2>&1
 if [ -s "$TMP/n.wav" ]; then
-    TXT=$("$CRISPASR" -m "$ASR" -f "$TMP/n.wav" -l en --no-prints 2>/dev/null | tr -d '\n')
+    TXT=$("$STELNET_ASR" -m "$ASR" -f "$TMP/n.wav" -l en --no-prints 2>/dev/null | tr -d '\n')
     echo "    ASR: $TXT"
     # A tiny ASR model transcribes spoken digits loosely — "eighty two" has come
     # back as "82", "eighty-two" and even "80-to-a". Any of those proves the
@@ -54,10 +54,10 @@ fi
 
 # ── 2. --tts-phonemes drives the model directly ───────────────────────────────
 echo "=== --tts-phonemes bypasses the G2P ==="
-"$CRISPASR" --tts "THIS TEXT MUST BE IGNORED" --tts-phonemes "həlˈO wˈɜɹld" \
+"$STELNET_ASR" --tts "THIS TEXT MUST BE IGNORED" --tts-phonemes "həlˈO wˈɜɹld" \
     --backend kokoro -m "$KOKORO" --voice "$VOICE" --tts-output "$TMP/p.wav" >/dev/null 2>&1
 if [ -s "$TMP/p.wav" ]; then
-    TXT=$("$CRISPASR" -m "$ASR" -f "$TMP/p.wav" -l en --no-prints 2>/dev/null | tr -d '\n')
+    TXT=$("$STELNET_ASR" -m "$ASR" -f "$TMP/p.wav" -l en --no-prints 2>/dev/null | tr -d '\n')
     echo "    ASR: $TXT"
     # The phonemes say "hello world"; the --tts text says something else. If the
     # flag were ignored we would hear the text instead — the exact silent
@@ -74,7 +74,7 @@ fi
 # ── 3. an unsupported backend must refuse, not fall back ─────────────────────
 echo "=== --tts-phonemes is refused where it cannot work ==="
 # Checked before any model load, so this needs no cielvox2-tts weights.
-OUT=$("$CRISPASR" --tts "x" --tts-phonemes "abc" --backend cielvox2-tts -m /nonexistent.gguf 2>&1)
+OUT=$("$STELNET_ASR" --tts "x" --tts-phonemes "abc" --backend cielvox2-tts -m /nonexistent.gguf 2>&1)
 if echo "$OUT" | grep -q "tts-phonemes is not supported"; then
     ok "refused with a message naming the flag"
 else
@@ -89,7 +89,7 @@ fi
 # text_to_ipa. This reads the phoneme string the model is actually handed.
 echo "=== #316 round 2: the rules reach the phoneme string ==="
 REPORTED='It'"'"'s described as "dramatic" because of the high-contrast, cinematic lighting and moody atmosphere I built into the prompt.'
-PH=$("$CRISPASR" --tts "$REPORTED" --backend kokoro -m "$KOKORO" --voice "$VOICE" \
+PH=$("$STELNET_ASR" --tts "$REPORTED" --backend kokoro -m "$KOKORO" --voice "$VOICE" \
         --tts-output "$TMP/r2.wav" -v 2>&1 | sed -n "s/^kokoro: phonemes: '\(.*\)'$/\1/p" | tr '\n' ' ')
 echo "    phonemes: ${PH:0:120}..."
 if [ -z "$PH" ]; then
@@ -117,7 +117,7 @@ fi
 # an ASR. Reproduced on ggml-tiny and ggml-base, both arms.
 echo "=== #316 round 2: ASR round-trip ==="
 if [ -s "$TMP/r2.wav" ]; then
-    TXT=$("$CRISPASR" -m "$ASR" -f "$TMP/r2.wav" -l en --no-prints 2>/dev/null \
+    TXT=$("$STELNET_ASR" -m "$ASR" -f "$TMP/r2.wav" -l en --no-prints 2>/dev/null \
             | sed 's/\x1b\[[0-9;]*m//g' | tr '\n' ' ')
     echo "    ASR: $TXT"
     if echo "$TXT" | grep -qi "eye built"; then

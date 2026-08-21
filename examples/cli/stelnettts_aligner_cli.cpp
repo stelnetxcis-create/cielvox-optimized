@@ -1,7 +1,7 @@
 // stelnettts_aligner_cli.cpp — CLI aligner adapter.
 //
 // Calls the shared library's `stelnettts_align_words` and converts the
-// resulting `CrispasrAlignedWord` vector to the CLI's `stelnettts_word`
+// resulting `StelnetAsrAlignedWord` vector to the CLI's `stelnettts_word`
 // shape consumed by stelnettts_run.cpp and downstream output formatters.
 
 #include "stelnettts_aligner_cli.h"

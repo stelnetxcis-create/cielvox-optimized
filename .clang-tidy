@@ -1,4 +1,4 @@
-# CrispASR .clang-tidy
+# StelnetASR .clang-tidy
 #
 # Analogy to the Python stack:
 #   bugprone-*          ≈ pylint error-level + mypy

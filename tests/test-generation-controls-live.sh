@@ -12,11 +12,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build-ninja-compile/bin/stelnettts build/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-if [ -z "$CRISPASR" ]; then
+if [ -z "$STELNET_ASR" ]; then
     echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
@@ -96,7 +96,7 @@ json_text() {
 }
 
 echo "=== CLI generation controls ($BACKEND) ==="
-CLI_OUT=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
+CLI_OUT=$("$STELNET_ASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
     --no-prints -n 8 --frequency-penalty 0.5 2>/tmp/stelnettts-gen-cli.err)
 if [ $? -ne 0 ]; then
     echo "  FAIL CLI command exited non-zero"
@@ -107,9 +107,9 @@ else
 fi
 rm -f /tmp/stelnettts-gen-cli.err
 
-CLI_SHORT=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
+CLI_SHORT=$("$STELNET_ASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
     --no-prints -n 1 2>/tmp/stelnettts-gen-cli-short.err)
-CLI_LONG=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
+CLI_LONG=$("$STELNET_ASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
     --no-prints -n 8 2>/tmp/stelnettts-gen-cli-long.err)
 if [ $? -eq 0 ]; then
     assert_greater_len "CLI max-new-tokens changes generated text length" "$CLI_SHORT" "$CLI_LONG"
@@ -120,9 +120,9 @@ else
 fi
 rm -f /tmp/stelnettts-gen-cli-short.err /tmp/stelnettts-gen-cli-long.err
 
-CLI_SEED_A=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
+CLI_SEED_A=$("$STELNET_ASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
     --no-prints -n 16 --temperature 1.0 --seed 123 2>/tmp/stelnettts-gen-cli-seed-a.err)
-CLI_SEED_B=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
+CLI_SEED_B=$("$STELNET_ASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
     --no-prints -n 16 --temperature 1.0 --seed 123 2>/tmp/stelnettts-gen-cli-seed-b.err)
 if [ $? -eq 0 ]; then
     assert_equal "CLI seed is reproducible under sampling" "$CLI_SEED_A" "$CLI_SEED_B"
@@ -136,7 +136,7 @@ rm -f /tmp/stelnettts-gen-cli-seed-a.err /tmp/stelnettts-gen-cli-seed-b.err
 echo
 echo "=== Server /v1/audio/transcriptions generation controls ($BACKEND) ==="
 SERVER_LOG=$(mktemp -t stelnettts-gen-server.XXXXXX)
-"$CRISPASR" --server --backend "$BACKEND" -m "$MODEL" \
+"$STELNET_ASR" --server --backend "$BACKEND" -m "$MODEL" \
     --host 127.0.0.1 --port "$PORT" --no-prints > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 

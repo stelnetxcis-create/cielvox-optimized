@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-class PianoTranscriptionBackend : public CrispasrBackend {
+class PianoTranscriptionBackend : public StelnetAsrBackend {
 public:
     bool init(const whisper_params& p) override {
         auto cp = piano_transcription_default_params();
@@ -76,6 +76,6 @@ private:
     piano_transcription_ctx* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_create_piano_transcription_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_create_piano_transcription_backend() {
     return std::make_unique<PianoTranscriptionBackend>();
 }

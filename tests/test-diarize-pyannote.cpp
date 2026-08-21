@@ -53,7 +53,7 @@ TEST_CASE("apply_pyannote: silence segment leaves speaker = -1", "[unit][diarize
     for (int f = 0; f < T; f++)
         push_frame(probs, 0); // pure silence
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == -1);
@@ -65,7 +65,7 @@ TEST_CASE("apply_pyannote: pure-spk0 frames assign segment to spk 0", "[unit][di
     for (int f = 0; f < T; f++)
         push_frame(probs, 1); // spk0
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == 0);
@@ -77,7 +77,7 @@ TEST_CASE("apply_pyannote: pure-spk1 frames assign segment to spk 1", "[unit][di
     for (int f = 0; f < T; f++)
         push_frame(probs, 2); // spk1
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == 1);
@@ -89,7 +89,7 @@ TEST_CASE("apply_pyannote: pure-spk2 frames assign segment to spk 2", "[unit][di
     for (int f = 0; f < T; f++)
         push_frame(probs, 3); // spk2
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == 2);
@@ -108,7 +108,7 @@ TEST_CASE("apply_pyannote: minority-speaker turn within a segment can still surf
         push_frame(probs, 2); // spk1
     const int T = T_spk0 + T_spk1;
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == 1);
@@ -131,7 +131,7 @@ TEST_CASE("apply_pyannote: overlap class spk0+spk1 with extra spk1 frames tips t
         push_frame(probs, 2); // spk1
     const int T = T_overlap + T_spk1_only;
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == 1);
@@ -149,7 +149,7 @@ TEST_CASE("apply_pyannote: multiple ASR segments get independent labels by frame
         push_frame(probs, 3); // spk2
     const int T = 150;
 
-    std::vector<CrispasrDiarizeSegment> segs = {
+    std::vector<StelnetAsrDiarizeSegment> segs = {
         {0, frames_to_cs(50), -1},
         {frames_to_cs(50), frames_to_cs(100), -1},
         {frames_to_cs(100), frames_to_cs(150), -1},
@@ -170,14 +170,14 @@ TEST_CASE("apply_pyannote: slice_t0_cs offset is honored", "[unit][diarize][pyan
     // Segment expressed in absolute cs; slice starts at cs=500. So the
     // segment cs=[500, 500+frames_to_cs(T)) maps to local frames [0, T).
     const int64_t slice_t0 = 500;
-    std::vector<CrispasrDiarizeSegment> segs = {{slice_t0, slice_t0 + frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{slice_t0, slice_t0 + frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, slice_t0, segs);
 
     REQUIRE(segs[0].speaker == 1);
 }
 
 TEST_CASE("apply_pyannote: empty/invalid inputs are no-ops", "[unit][diarize][pyannote]") {
-    std::vector<CrispasrDiarizeSegment> segs = {{0, 1000, -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, 1000, -1}};
 
     // Null probs.
     assign_speakers_from_log_posteriors(nullptr, 100, kFrameDurS, 0, segs);
@@ -221,7 +221,7 @@ TEST_CASE("apply_pyannote: posterior weight beats one-hot count when overlap is 
         push_frame(probs, 2);
     const int T = 160;
 
-    std::vector<CrispasrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
+    std::vector<StelnetAsrDiarizeSegment> segs = {{0, frames_to_cs(T), -1}};
     assign_speakers_from_log_posteriors(probs.data(), T, kFrameDurS, 0, segs);
 
     REQUIRE(segs[0].speaker == 1);

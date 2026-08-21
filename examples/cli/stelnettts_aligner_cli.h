@@ -3,7 +3,7 @@
 // The dispatch + inference for both canary-ctc and cielvox2-forced-aligner
 // now lives in `src/stelnettts_aligner.{h,cpp}`. This header keeps the
 // thin CLI adapter that returns results as `stelnettts_word` (the CLI
-// type) instead of the library's `CrispasrAlignedWord`.
+// type) instead of the library's `StelnetAsrAlignedWord`.
 
 #pragma once
 

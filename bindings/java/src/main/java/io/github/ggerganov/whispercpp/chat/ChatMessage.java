@@ -21,10 +21,10 @@ public final class ChatMessage {
      */
     public ChatMessage(String role, String content) {
         if (role == null) {
-            throw new IllegalArgumentException("crispasr_chat: role must not be null");
+            throw new IllegalArgumentException("stelnet_asr_chat: role must not be null");
         }
         if (content == null) {
-            throw new IllegalArgumentException("crispasr_chat: content must not be null");
+            throw new IllegalArgumentException("stelnet_asr_chat: content must not be null");
         }
         this.role = role;
         this.content = content;

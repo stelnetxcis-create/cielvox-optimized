@@ -29,7 +29,7 @@ final class ChatNative {
      */
     static void requireNoInteriorNul(String s, String field) {
         if (s != null && s.indexOf('\0') >= 0) {
-            throw new IllegalArgumentException("crispasr_chat: " + field
+            throw new IllegalArgumentException("stelnet_asr_chat: " + field
                     + " contains an interior NUL byte, which C cannot carry");
         }
     }
@@ -95,7 +95,7 @@ final class ChatNative {
      * returning NULL, so there the struct is the only carrier and the hint is
      * 0; the streaming and reset paths also return the code.
      *
-     * <p>Only {@code CRISPASR_CHAT_ERR_ABORTED} is switched on. The header says
+     * <p>Only {@code STELNET_ASR_CHAT_ERR_ABORTED} is switched on. The header says
      * every other value is a diagnostic aid rather than a contract, so they all
      * become a plain {@link ChatException} carrying the message.
      *
@@ -113,7 +113,7 @@ final class ChatNative {
         if (code == 0) {
             code = codeHint;
         }
-        if (code == ChatLib.CRISPASR_CHAT_ERR_ABORTED) {
+        if (code == ChatLib.STELNET_ASR_CHAT_ERR_ABORTED) {
             return new ChatAbortedException(msg, code);
         }
         return new ChatException(msg, code);

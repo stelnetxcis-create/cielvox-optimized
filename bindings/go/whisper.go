@@ -9,31 +9,31 @@ import (
 // CGO
 
 /*
-// Static linking of libcrispasr.a requires every conditionally-built sub-lib
+// Static linking of libstelnet_asr.a requires every conditionally-built sub-lib
 // the C-ABI shim references. The linux/darwin LDFLAGS library lists below are
 // auto-generated from the CMake dependency graph via:
 //
 //     python tools/sync_go_cgo_ldflags.py
 //
 // CI checks for drift (see .github/workflows/bindings-go.yml). If you add a
-// new target_link_libraries(crispasr PUBLIC <X>) in src/CMakeLists.txt, re-run
+// new target_link_libraries(stelnet_asr PUBLIC <X>) in src/CMakeLists.txt, re-run
 // the sync script to update these lines automatically.
 #cgo CFLAGS: -I${SRCDIR}/../../include -I${SRCDIR}/../../ggml/include
-#cgo LDFLAGS: -L${SRCDIR}/../../build-ninja-compile/src -L${SRCDIR}/../../build-ninja-compile/glint -L${SRCDIR}/../../build-ninja-compile/crisp_audio -L${SRCDIR}/../../build-ninja-compile/crisp_lid -L${SRCDIR}/../../build-ninja-compile/crisp_punc -L${SRCDIR}/../../build-ninja-compile/crisp_truecase -L${SRCDIR}/../../build-ninja-compile/ggml/src -L${SRCDIR}/../../build-ninja-compile/_deps/crispasr_ogg-build -L${SRCDIR}/../../build-ninja-compile/_deps/crispasr_opus-build -L${SRCDIR}/../../build-ninja-compile/_deps/crispasr_opencore_amr-build
-#cgo LDFLAGS: -L${SRCDIR}/../../build/src -L${SRCDIR}/../../build/glint -L${SRCDIR}/../../build/crisp_audio -L${SRCDIR}/../../build/crisp_lid -L${SRCDIR}/../../build/crisp_punc -L${SRCDIR}/../../build/crisp_truecase -L${SRCDIR}/../../build/ggml/src -L${SRCDIR}/../../build/_deps/crispasr_ogg-build -L${SRCDIR}/../../build/_deps/crispasr_opus-build -L${SRCDIR}/../../build/_deps/crispasr_opencore_amr-build
-#cgo LDFLAGS: -L${SRCDIR}/../../build_go/src -L${SRCDIR}/../../build_go/glint -L${SRCDIR}/../../build_go/crisp_audio -L${SRCDIR}/../../build_go/crisp_lid -L${SRCDIR}/../../build_go/crisp_punc -L${SRCDIR}/../../build_go/crisp_truecase -L${SRCDIR}/../../build_go/ggml/src -L${SRCDIR}/../../build_go/_deps/crispasr_ogg-build -L${SRCDIR}/../../build_go/_deps/crispasr_opus-build -L${SRCDIR}/../../build_go/_deps/crispasr_opencore_amr-build
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../build-ninja-compile/ggml/src/ggml-blas -L${SRCDIR}/../../build-ninja-compile/ggml/src/ggml-metal -L${SRCDIR}/../../build-ninja-compile/_deps/crispasr_ogg-build -L${SRCDIR}/../../build-ninja-compile/_deps/crispasr_opus-build -L${SRCDIR}/../../build-ninja-compile/_deps/crispasr_opencore_amr-build
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../build/ggml/src/ggml-blas -L${SRCDIR}/../../build/ggml/src/ggml-metal -L${SRCDIR}/../../build/_deps/crispasr_ogg-build -L${SRCDIR}/../../build/_deps/crispasr_opus-build -L${SRCDIR}/../../build/_deps/crispasr_opencore_amr-build
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../build_go/ggml/src/ggml-blas -L${SRCDIR}/../../build_go/ggml/src/ggml-metal -L${SRCDIR}/../../build_go/_deps/crispasr_ogg-build -L${SRCDIR}/../../build_go/_deps/crispasr_opus-build -L${SRCDIR}/../../build_go/_deps/crispasr_opencore_amr-build
+#cgo LDFLAGS: -L${SRCDIR}/../../build-ninja-compile/src -L${SRCDIR}/../../build-ninja-compile/glint -L${SRCDIR}/../../build-ninja-compile/crisp_audio -L${SRCDIR}/../../build-ninja-compile/crisp_lid -L${SRCDIR}/../../build-ninja-compile/crisp_punc -L${SRCDIR}/../../build-ninja-compile/crisp_truecase -L${SRCDIR}/../../build-ninja-compile/ggml/src -L${SRCDIR}/../../build-ninja-compile/_deps/stelnet_asr_ogg-build -L${SRCDIR}/../../build-ninja-compile/_deps/stelnet_asr_opus-build -L${SRCDIR}/../../build-ninja-compile/_deps/stelnet_asr_opencore_amr-build
+#cgo LDFLAGS: -L${SRCDIR}/../../build/src -L${SRCDIR}/../../build/glint -L${SRCDIR}/../../build/crisp_audio -L${SRCDIR}/../../build/crisp_lid -L${SRCDIR}/../../build/crisp_punc -L${SRCDIR}/../../build/crisp_truecase -L${SRCDIR}/../../build/ggml/src -L${SRCDIR}/../../build/_deps/stelnet_asr_ogg-build -L${SRCDIR}/../../build/_deps/stelnet_asr_opus-build -L${SRCDIR}/../../build/_deps/stelnet_asr_opencore_amr-build
+#cgo LDFLAGS: -L${SRCDIR}/../../build_go/src -L${SRCDIR}/../../build_go/glint -L${SRCDIR}/../../build_go/crisp_audio -L${SRCDIR}/../../build_go/crisp_lid -L${SRCDIR}/../../build_go/crisp_punc -L${SRCDIR}/../../build_go/crisp_truecase -L${SRCDIR}/../../build_go/ggml/src -L${SRCDIR}/../../build_go/_deps/stelnet_asr_ogg-build -L${SRCDIR}/../../build_go/_deps/stelnet_asr_opus-build -L${SRCDIR}/../../build_go/_deps/stelnet_asr_opencore_amr-build
+#cgo darwin LDFLAGS: -L${SRCDIR}/../../build-ninja-compile/ggml/src/ggml-blas -L${SRCDIR}/../../build-ninja-compile/ggml/src/ggml-metal -L${SRCDIR}/../../build-ninja-compile/_deps/stelnet_asr_ogg-build -L${SRCDIR}/../../build-ninja-compile/_deps/stelnet_asr_opus-build -L${SRCDIR}/../../build-ninja-compile/_deps/stelnet_asr_opencore_amr-build
+#cgo darwin LDFLAGS: -L${SRCDIR}/../../build/ggml/src/ggml-blas -L${SRCDIR}/../../build/ggml/src/ggml-metal -L${SRCDIR}/../../build/_deps/stelnet_asr_ogg-build -L${SRCDIR}/../../build/_deps/stelnet_asr_opus-build -L${SRCDIR}/../../build/_deps/stelnet_asr_opencore_amr-build
+#cgo darwin LDFLAGS: -L${SRCDIR}/../../build_go/ggml/src/ggml-blas -L${SRCDIR}/../../build_go/ggml/src/ggml-metal -L${SRCDIR}/../../build_go/_deps/stelnet_asr_ogg-build -L${SRCDIR}/../../build_go/_deps/stelnet_asr_opus-build -L${SRCDIR}/../../build_go/_deps/stelnet_asr_opencore_amr-build
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build-ninja-compile/src -Wl,-rpath,${SRCDIR}/../../build/src
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build-ninja-compile/ggml/src -Wl,-rpath,${SRCDIR}/../../build/ggml/src
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build-ninja-compile/ggml/src/ggml-blas -Wl,-rpath,${SRCDIR}/../../build-ninja-compile/ggml/src/ggml-metal
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/ggml/src/ggml-blas -Wl,-rpath,${SRCDIR}/../../build/ggml/src/ggml-metal
-#cgo linux LDFLAGS: -Wl,--start-group -lggml-base -lggml-cpu -lggml -lwav2vec2-ggml -lcrispasr-core -ltada-encoder -ltada-codec -lcrisp_audio -lsnac -lmoonshine_tokenizer -lmimo_tokenizer -lbert-encoder -lfirered-asr -lopus -logg -lzonos-tts -lwespeaker -lwebrtc-vad -lvoxtral_tts -lvoxtral4b -lvoxtral -lvoxcpm2_tts -lvibevoice -ltitanet -ltada-tts -ltabcnn -lt5_translate -lspeecht5-tts -lsilero-lid -lsidon -lsensevoice -lrvc-svc -lqwen3_tts -lqwen3_asr -lpyannote-seg -lpocket-tts -lpiper-tts -lpiano-transcription -lparler-tts -lparakeet -lparaformer -loutetts -lorpheus -lopenvoice2 -lomnivoice -lomniasr -lnemotron -lmoss_tts_local -lmoss_tts -lmoss_transcribe_diarize -lmoss_transcribe -lmoss_audio -lmoonshine_streaming -lmoonshine -lmiotts -lmini-omni2 -lmimo_asr -lmelotts -lmel-band-roformer -lmarblenet-vad -lm2m100 -llfm2_audio -lkyutai-stt -lkugelaudio -lkokoro -lirodori-tts -lindextts -lhtdemucs -lhiggs_stt -lgranite_speech -lgranite_nle -lglm-asr -lglint -lgigaam -lgemma4_e2b -lfunasr -lfirered-vad -lfirered-lid -lfastpitch-tts -lf5-tts -lecapa-lid -ldots-tts -ldia-tts -lctc-align -lcsm-tts -lcrispasr_opusfile -lcrispasr_c2pa_native -lcrispasr-vad-encdec -lcrispasr-llama-core -lcrisp_truecase -lcrisp_punc -lcrisp_lid -lcrepe -lcosyvoice3_tts -lcohere -lchatterbox -lcanary_qwen -lcanary_ctc -lcanary -lbtc-chords -lbeatrice-pitch -lbeat-this -lbark-tts -lbananamind-tts -laudioseal -lark_asr -lcrispasr -Wl,--end-group -lm -lstdc++ -fopenmp
-#cgo darwin LDFLAGS: -lggml-base -lggml-cpu -lggml -lwav2vec2-ggml -lcrispasr-core -ltada-encoder -ltada-codec -lcrisp_audio -lsnac -lmoonshine_tokenizer -lmimo_tokenizer -lbert-encoder -lfirered-asr -lopus -logg -lzonos-tts -lwespeaker -lwebrtc-vad -lvoxtral_tts -lvoxtral4b -lvoxtral -lvoxcpm2_tts -lvibevoice -ltitanet -ltada-tts -ltabcnn -lt5_translate -lspeecht5-tts -lsilero-lid -lsidon -lsensevoice -lrvc-svc -lqwen3_tts -lqwen3_asr -lpyannote-seg -lpocket-tts -lpiper-tts -lpiano-transcription -lparler-tts -lparakeet -lparaformer -loutetts -lorpheus -lopenvoice2 -lomnivoice -lomniasr -lnemotron -lmoss_tts_local -lmoss_tts -lmoss_transcribe_diarize -lmoss_transcribe -lmoss_audio -lmoonshine_streaming -lmoonshine -lmiotts -lmini-omni2 -lmimo_asr -lmelotts -lmel-band-roformer -lmarblenet-vad -lm2m100 -llfm2_audio -lkyutai-stt -lkugelaudio -lkokoro -lirodori-tts -lindextts -lhtdemucs -lhiggs_stt -lgranite_speech -lgranite_nle -lglm-asr -lglint -lgigaam -lgemma4_e2b -lfunasr -lfirered-vad -lfirered-lid -lfastpitch-tts -lf5-tts -lecapa-lid -ldots-tts -ldia-tts -lctc-align -lcsm-tts -lcrispasr_opusfile -lcrispasr_c2pa_native -lcrispasr-vad-encdec -lcrispasr-llama-core -lcrisp_truecase -lcrisp_punc -lcrisp_lid -lcrepe -lcosyvoice3_tts -lcohere -lchatterbox -lcanary_qwen -lcanary_ctc -lcanary -lbtc-chords -lbeatrice-pitch -lbeat-this -lbark-tts -lbananamind-tts -laudioseal -lark_asr -lcrispasr -lm -lstdc++
+#cgo linux LDFLAGS: -Wl,--start-group -lggml-base -lggml-cpu -lggml -lwav2vec2-ggml -lstelnet_asr-core -ltada-encoder -ltada-codec -lcrisp_audio -lsnac -lmoonshine_tokenizer -lmimo_tokenizer -lbert-encoder -lfirered-asr -lopus -logg -lzonos-tts -lwespeaker -lwebrtc-vad -lvoxtral_tts -lvoxtral4b -lvoxtral -lvoxcpm2_tts -lvibevoice -ltitanet -ltada-tts -ltabcnn -lt5_translate -lspeecht5-tts -lsilero-lid -lsidon -lsensevoice -lrvc-svc -lqwen3_tts -lqwen3_asr -lpyannote-seg -lpocket-tts -lpiper-tts -lpiano-transcription -lparler-tts -lparakeet -lparaformer -loutetts -lorpheus -lopenvoice2 -lomnivoice -lomniasr -lnemotron -lmoss_tts_local -lmoss_tts -lmoss_transcribe_diarize -lmoss_transcribe -lmoss_audio -lmoonshine_streaming -lmoonshine -lmiotts -lmini-omni2 -lmimo_asr -lmelotts -lmel-band-roformer -lmarblenet-vad -lm2m100 -llfm2_audio -lkyutai-stt -lkugelaudio -lkokoro -lirodori-tts -lindextts -lhtdemucs -lhiggs_stt -lgranite_speech -lgranite_nle -lglm-asr -lglint -lgigaam -lgemma4_e2b -lfunasr -lfirered-vad -lfirered-lid -lfastpitch-tts -lf5-tts -lecapa-lid -ldots-tts -ldia-tts -lctc-align -lcsm-tts -lstelnet_asr_opusfile -lstelnet_asr_c2pa_native -lstelnet_asr-vad-encdec -lstelnet_asr-llama-core -lcrisp_truecase -lcrisp_punc -lcrisp_lid -lcrepe -lcosyvoice3_tts -lcohere -lchatterbox -lcanary_qwen -lcanary_ctc -lcanary -lbtc-chords -lbeatrice-pitch -lbeat-this -lbark-tts -lbananamind-tts -laudioseal -lark_asr -lstelnet_asr -Wl,--end-group -lm -lstdc++ -fopenmp
+#cgo darwin LDFLAGS: -lggml-base -lggml-cpu -lggml -lwav2vec2-ggml -lstelnet_asr-core -ltada-encoder -ltada-codec -lcrisp_audio -lsnac -lmoonshine_tokenizer -lmimo_tokenizer -lbert-encoder -lfirered-asr -lopus -logg -lzonos-tts -lwespeaker -lwebrtc-vad -lvoxtral_tts -lvoxtral4b -lvoxtral -lvoxcpm2_tts -lvibevoice -ltitanet -ltada-tts -ltabcnn -lt5_translate -lspeecht5-tts -lsilero-lid -lsidon -lsensevoice -lrvc-svc -lqwen3_tts -lqwen3_asr -lpyannote-seg -lpocket-tts -lpiper-tts -lpiano-transcription -lparler-tts -lparakeet -lparaformer -loutetts -lorpheus -lopenvoice2 -lomnivoice -lomniasr -lnemotron -lmoss_tts_local -lmoss_tts -lmoss_transcribe_diarize -lmoss_transcribe -lmoss_audio -lmoonshine_streaming -lmoonshine -lmiotts -lmini-omni2 -lmimo_asr -lmelotts -lmel-band-roformer -lmarblenet-vad -lm2m100 -llfm2_audio -lkyutai-stt -lkugelaudio -lkokoro -lirodori-tts -lindextts -lhtdemucs -lhiggs_stt -lgranite_speech -lgranite_nle -lglm-asr -lglint -lgigaam -lgemma4_e2b -lfunasr -lfirered-vad -lfirered-lid -lfastpitch-tts -lf5-tts -lecapa-lid -ldots-tts -ldia-tts -lctc-align -lcsm-tts -lstelnet_asr_opusfile -lstelnet_asr_c2pa_native -lstelnet_asr-vad-encdec -lstelnet_asr-llama-core -lcrisp_truecase -lcrisp_punc -lcrisp_lid -lcrepe -lcosyvoice3_tts -lcohere -lchatterbox -lcanary_qwen -lcanary_ctc -lcanary -lbtc-chords -lbeatrice-pitch -lbeat-this -lbark-tts -lbananamind-tts -laudioseal -lark_asr -lstelnet_asr -lm -lstdc++
 #cgo darwin LDFLAGS: -lggml-metal -lggml-blas
 #cgo darwin LDFLAGS: -framework Accelerate -framework Metal -framework Foundation -framework CoreGraphics
-#include <crispasr.h>
+#include <stelnet_asr.h>
 #include <stdlib.h>
 
 extern void callNewSegment(void* user_data, int new);
@@ -97,16 +97,16 @@ type (
 // GLOBALS
 
 const (
-	SAMPLING_GREEDY      SamplingStrategy = C.CRISPASR_SAMPLING_GREEDY
-	SAMPLING_BEAM_SEARCH SamplingStrategy = C.CRISPASR_SAMPLING_BEAM_SEARCH
+	SAMPLING_GREEDY      SamplingStrategy = C.STELNET_ASR_SAMPLING_GREEDY
+	SAMPLING_BEAM_SEARCH SamplingStrategy = C.STELNET_ASR_SAMPLING_BEAM_SEARCH
 )
 
 const (
-	SampleRate = C.CRISPASR_SAMPLE_RATE                 // Expected sample rate, samples per second
+	SampleRate = C.STELNET_ASR_SAMPLE_RATE                 // Expected sample rate, samples per second
 	SampleBits = uint16(unsafe.Sizeof(C.float(0))) * 8 // Sample size in bits
-	NumFFT     = C.CRISPASR_N_FFT
-	HopLength  = C.CRISPASR_HOP_LENGTH
-	ChunkSize  = C.CRISPASR_CHUNK_SIZE
+	NumFFT     = C.STELNET_ASR_N_FFT
+	HopLength  = C.STELNET_ASR_HOP_LENGTH
+	ChunkSize  = C.STELNET_ASR_CHUNK_SIZE
 )
 
 var (
@@ -360,8 +360,8 @@ func (ctx *Context) Whisper_full_parallel(params Params, samples []float32, proc
 }
 
 // Return the id of the autodetected language, returns -1 if not found
-// Added to crispasr in
-// https://github.com/CrispStrobe/CrispASR/commit/a1c1583cc7cd8b75222857afc936f0638c5683d6
+// Added to stelnet_asr in
+// https://github.com/CrispStrobe/StelnetASR/commit/a1c1583cc7cd8b75222857afc936f0638c5683d6
 //
 // Examples:
 //

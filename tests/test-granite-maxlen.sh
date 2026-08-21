@@ -13,11 +13,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR=""
+STELNET_ASR=""
 for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
-    if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
+    if [ -x "$cand" ]; then STELNET_ASR="$cand"; break; fi
 done
-[ -n "$CRISPASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
+[ -n "$STELNET_ASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 # Locate a granite-speech PLUS GGUF (word timestamps need PLUS variant).
 MODEL="${GRANITE_MODEL:-}"
@@ -48,8 +48,8 @@ echo "Audio: $AUDIO"
 PASS=0; FAIL=0
 
 # ── Test 1: --max-len produces more lines than default ──
-OUT_DEFAULT=$("$CRISPASR" -m "$MODEL" --backend granite -f "$AUDIO" --no-prints 2>/dev/null)
-OUT_MAXLEN=$("$CRISPASR" -m "$MODEL" --backend granite -f "$AUDIO" --max-len 40 -osrt --no-prints 2>/dev/null)
+OUT_DEFAULT=$("$STELNET_ASR" -m "$MODEL" --backend granite -f "$AUDIO" --no-prints 2>/dev/null)
+OUT_MAXLEN=$("$STELNET_ASR" -m "$MODEL" --backend granite -f "$AUDIO" --max-len 40 -osrt --no-prints 2>/dev/null)
 
 lines_default=$(echo "$OUT_DEFAULT" | wc -l)
 lines_maxlen=$(echo "$OUT_MAXLEN" | wc -l)

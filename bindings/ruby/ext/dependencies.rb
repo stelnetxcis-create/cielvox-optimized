@@ -16,11 +16,11 @@ class Dependencies
   end
 
   def libs
-    # Only include libraries reachable from the crispasr-lib and common targets.
+    # Only include libraries reachable from the stelnet_asr-lib and common targets.
     # Orphan static libs (e.g. granite_nle, ctc-align) that are defined but
-    # not linked into crispasr-lib would otherwise appear in the link line and
-    # cause "cannot find" errors when CRISPASR_BUILD_EXAMPLES=OFF.
-    roots = @nodes.select {|_, (label, _)| label =~ /\Acrispasr-lib\b/ || label == "common" }.keys
+    # not linked into stelnet_asr-lib would otherwise appear in the link line and
+    # cause "cannot find" errors when STELNET_ASR_BUILD_EXAMPLES=OFF.
+    roots = @nodes.select {|_, (label, _)| label =~ /\Astelnet_asr-lib\b/ || label == "common" }.keys
     reachable = Set.new
     queue = roots.dup
     until queue.empty?
@@ -40,7 +40,7 @@ class Dependencies
       end
     }.reverse.collect {|lib|
       # cmake target name → output name (OUTPUT_NAME property)
-      lib = "crispasr" if lib == "crispasr-lib"
+      lib = "stelnet_asr" if lib == "stelnet_asr-lib"
       "lib#{lib}.a"
     }
   end
@@ -52,16 +52,16 @@ class Dependencies
   private
 
   def dot_path
-    File.join(__dir__, "build", "crispasr.dot")
+    File.join(__dir__, "build", "stelnet_asr.dot")
   end
 
   def generate_dot
     args = ["-S", "sources", "-B", "build", "--graphviz", dot_path,
             "-D", "BUILD_SHARED_LIBS=OFF",
-            "-D", "CRISPASR_BUILD_TESTS=OFF",
-            "-D", "CRISPASR_BUILD_EXAMPLES=OFF",
-            "-D", "CRISPASR_BUILD_SERVER=OFF",
-            "-D", "CRISPASR_OPUS_FETCH=ON"]
+            "-D", "STELNET_ASR_BUILD_TESTS=OFF",
+            "-D", "STELNET_ASR_BUILD_EXAMPLES=OFF",
+            "-D", "STELNET_ASR_BUILD_SERVER=OFF",
+            "-D", "STELNET_ASR_OPUS_FETCH=ON"]
     args << @options.to_s unless @options.to_s.empty?
     system @cmake, *args, exception: true
   end

@@ -6,10 +6,10 @@ ignored_dirs = %w[
   .github
   ci
   examples/wchess/wchess.wasm
-  examples/crispasr.android
-  examples/crispasr.android.java
-  examples/crispasr.objc
-  examples/crispasr.swiftui
+  examples/stelnet_asr.android
+  examples/stelnet_asr.android.java
+  examples/stelnet_asr.objc
+  examples/stelnet_asr.swiftui
   grammars
   models
   samples
@@ -23,7 +23,7 @@ ignored_files = %w[
   .gitignore
   .gitmodules
   .dockerignore
-  crispasr.nvim
+  stelnet_asr.nvim
   twitch.sh
   yt-wsp.sh
   close-issue.yml

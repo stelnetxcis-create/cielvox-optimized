@@ -83,7 +83,7 @@ inline bool contains_ci(const std::string& haystack, const std::string& needle) 
 
 // Whose voice does this (backend, model) produce?
 //
-// `backend` is CrispasrBackend::name(); `model_path` is the loaded checkpoint
+// `backend` is StelnetAsrBackend::name(); `model_path` is the loaded checkpoint
 // (full path or bare name — only the tail is inspected).
 inline SpeakerIdentity identity_for_model(const std::string& backend, const std::string& model_path) {
     // ── piper ────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ inline SpeakerIdentity identity_for_model(const std::string& backend, const std:
 // keys on.
 //
 // Needed by --print-speaker-identity, which inspects a FILE with no session and
-// therefore no CrispasrBackend to ask for name(). Without it that verb consulted
+// therefore no StelnetAsrBackend to ask for name(). Without it that verb consulted
 // only the voice-pack table and reported `unknown` for every piper, fastpitch
 // and bananamind MODEL — silently, and the bulk stamper then skipped them all.
 // Caught by running it against the real published repos before uploading.

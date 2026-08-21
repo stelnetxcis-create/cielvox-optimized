@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * An open chat model plus its KV cache — the wrapper over the
- * {@code crispasr_chat_*} C ABI.
+ * {@code stelnet_asr_chat_*} C ABI.
  *
  * <pre>{@code
  * List<ChatMessage> turns = Arrays.asList(
@@ -84,7 +84,7 @@ public final class ChatSession implements AutoCloseable {
      */
     public static ChatSession open(String modelPath, ChatOpenParams params) {
         if (modelPath == null) {
-            throw new IllegalArgumentException("crispasr_chat: modelPath must not be null");
+            throw new IllegalArgumentException("stelnet_asr_chat: modelPath must not be null");
         }
         List<Memory> owned = new ArrayList<Memory>();
         Pointer path = ChatNative.cstring(modelPath, "modelPath", owned);
@@ -92,12 +92,12 @@ public final class ChatSession implements AutoCloseable {
         ChatLib.ChatError err = new ChatLib.ChatError();
         Pointer h;
         try {
-            h = ChatLib.INSTANCE.crispasr_chat_open(path, cp, err);
+            h = ChatLib.INSTANCE.stelnet_asr_chat_open(path, cp, err);
         } finally {
             owned.clear();
         }
         if (h == null) {
-            throw ChatNative.error("crispasr_chat_open: failed to open " + modelPath, err, 0);
+            throw ChatNative.error("stelnet_asr_chat_open: failed to open " + modelPath, err, 0);
         }
         return new ChatSession(h);
     }
@@ -127,7 +127,7 @@ public final class ChatSession implements AutoCloseable {
      */
     public static long memoryEstimate(String modelPath, ChatOpenParams params) {
         if (modelPath == null) {
-            throw new IllegalArgumentException("crispasr_chat: modelPath must not be null");
+            throw new IllegalArgumentException("stelnet_asr_chat: modelPath must not be null");
         }
         List<Memory> owned = new ArrayList<Memory>();
         Pointer path = ChatNative.cstring(modelPath, "modelPath", owned);
@@ -135,12 +135,12 @@ public final class ChatSession implements AutoCloseable {
         ChatLib.ChatError err = new ChatLib.ChatError();
         long n;
         try {
-            n = ChatLib.INSTANCE.crispasr_chat_memory_estimate(path, cp, err).longValue();
+            n = ChatLib.INSTANCE.stelnet_asr_chat_memory_estimate(path, cp, err).longValue();
         } finally {
             owned.clear();
         }
         if (n == 0) {
-            throw ChatNative.error("crispasr_chat_memory_estimate: could not estimate " + modelPath,
+            throw ChatNative.error("stelnet_asr_chat_memory_estimate: could not estimate " + modelPath,
                     err, 0);
         }
         return n;
@@ -154,7 +154,7 @@ public final class ChatSession implements AutoCloseable {
      * @return the disclosure text
      */
     public static String aiDisclosureText() {
-        String s = ChatLib.INSTANCE.crispasr_chat_ai_disclosure_text();
+        String s = ChatLib.INSTANCE.stelnet_asr_chat_ai_disclosure_text();
         return s == null ? "" : s;
     }
 
@@ -165,7 +165,7 @@ public final class ChatSession implements AutoCloseable {
      * that generation rather than cutting it off. Two things cover the handle
      * between them: the monitor below, for the window between reading
      * {@code handle} and entering C, which C cannot see into; and
-     * {@code crispasr_chat_close} itself, which counts the calls already
+     * {@code stelnet_asr_chat_close} itself, which counts the calls already
      * inside the session and waits for them. A generation holds the session
      * for as long as it decodes, so register a {@link ContinuePredicate}
      * first if the length of the wait matters.
@@ -174,7 +174,7 @@ public final class ChatSession implements AutoCloseable {
     public void close() {
         synchronized (lock) {
             if (handle != null) {
-                ChatLib.INSTANCE.crispasr_chat_close(handle);
+                ChatLib.INSTANCE.stelnet_asr_chat_close(handle);
                 handle = null;
             }
         }
@@ -192,11 +192,11 @@ public final class ChatSession implements AutoCloseable {
      */
     public void reset() {
         synchronized (lock) {
-            Pointer h = requireOpen("crispasr_chat_reset");
+            Pointer h = requireOpen("stelnet_asr_chat_reset");
             ChatLib.ChatError err = new ChatLib.ChatError();
-            int rc = ChatLib.INSTANCE.crispasr_chat_reset(h, err);
+            int rc = ChatLib.INSTANCE.stelnet_asr_chat_reset(h, err);
             if (rc != 0) {
-                throw ChatNative.error("crispasr_chat_reset failed", err, rc);
+                throw ChatNative.error("stelnet_asr_chat_reset failed", err, rc);
             }
         }
     }
@@ -207,7 +207,7 @@ public final class ChatSession implements AutoCloseable {
      */
     public int nCtx() {
         synchronized (lock) {
-            return ChatLib.INSTANCE.crispasr_chat_n_ctx(requireOpen("crispasr_chat_n_ctx"));
+            return ChatLib.INSTANCE.stelnet_asr_chat_n_ctx(requireOpen("stelnet_asr_chat_n_ctx"));
         }
     }
 
@@ -218,8 +218,8 @@ public final class ChatSession implements AutoCloseable {
      */
     public String templateName() {
         synchronized (lock) {
-            String s = ChatLib.INSTANCE.crispasr_chat_template_name(
-                    requireOpen("crispasr_chat_template_name"));
+            String s = ChatLib.INSTANCE.stelnet_asr_chat_template_name(
+                    requireOpen("stelnet_asr_chat_template_name"));
             return s == null ? "" : s;
         }
     }
@@ -271,13 +271,13 @@ public final class ChatSession implements AutoCloseable {
      */
     public int countTokens(List<ChatMessage> messages) {
         synchronized (lock) {
-            Pointer h = requireOpen("crispasr_chat_count_tokens");
+            Pointer h = requireOpen("stelnet_asr_chat_count_tokens");
             List<Memory> owned = new ArrayList<Memory>();
             ChatLib.CMessage[] cmsgs = toNative(messages, owned);
             ChatLib.ChatError err = new ChatLib.ChatError();
             int n;
             try {
-                n = ChatLib.INSTANCE.crispasr_chat_count_tokens(h, cmsgs, size(messages), err);
+                n = ChatLib.INSTANCE.stelnet_asr_chat_count_tokens(h, cmsgs, size(messages), err);
             } finally {
                 owned.clear();
             }
@@ -285,7 +285,7 @@ public final class ChatSession implements AutoCloseable {
                 // The negative return is a failure SENTINEL, not an error code,
                 // so it is not offered to the classifier as one: the struct is
                 // the only carrier here.
-                throw ChatNative.error("crispasr_chat_count_tokens failed", err, 0);
+                throw ChatNative.error("stelnet_asr_chat_count_tokens failed", err, 0);
             }
             return n;
         }
@@ -326,7 +326,7 @@ public final class ChatSession implements AutoCloseable {
      */
     public String generate(List<ChatMessage> messages, ChatGenerateParams params) {
         synchronized (lock) {
-            Pointer h = requireOpen("crispasr_chat_generate");
+            Pointer h = requireOpen("stelnet_asr_chat_generate");
             List<Memory> owned = new ArrayList<Memory>();
             ChatLib.CMessage[] cmsgs = toNative(messages, owned);
             ChatLib.CGenerateParams cp =
@@ -337,7 +337,7 @@ public final class ChatSession implements AutoCloseable {
             Pointer out;
             try {
                 arm(h, state);
-                out = ChatLib.INSTANCE.crispasr_chat_generate(h, cmsgs, size(messages), cp, err);
+                out = ChatLib.INSTANCE.stelnet_asr_chat_generate(h, cmsgs, size(messages), cp, err);
             } finally {
                 disarm(h);
                 owned.clear();
@@ -348,14 +348,14 @@ public final class ChatSession implements AutoCloseable {
                 try {
                     text = ChatNative.readString(out);
                 } finally {
-                    ChatLib.INSTANCE.crispasr_chat_string_free(out);
+                    ChatLib.INSTANCE.stelnet_asr_chat_string_free(out);
                 }
             }
             // A callback failure outranks whatever the native call reported,
             // and is raised only now that no C frame is left on the stack.
             state.rethrow();
             if (text == null) {
-                throw ChatNative.error("crispasr_chat_generate failed", err, 0);
+                throw ChatNative.error("stelnet_asr_chat_generate failed", err, 0);
             }
             return text;
         }
@@ -392,7 +392,7 @@ public final class ChatSession implements AutoCloseable {
     public void generateStream(List<ChatMessage> messages, ChatGenerateParams params,
             TokenListener onToken) {
         synchronized (lock) {
-            Pointer h = requireOpen("crispasr_chat_generate_stream");
+            Pointer h = requireOpen("stelnet_asr_chat_generate_stream");
             List<Memory> owned = new ArrayList<Memory>();
             ChatLib.CMessage[] cmsgs = toNative(messages, owned);
             ChatLib.CGenerateParams cp =
@@ -410,7 +410,7 @@ public final class ChatSession implements AutoCloseable {
             liveTokenCallback = tokenCallback;
             try {
                 arm(h, state);
-                rc = ChatLib.INSTANCE.crispasr_chat_generate_stream(h, cmsgs, size(messages), cp,
+                rc = ChatLib.INSTANCE.stelnet_asr_chat_generate_stream(h, cmsgs, size(messages), cp,
                         tokenCallback, Pointer.NULL, err);
             } finally {
                 disarm(h);
@@ -423,7 +423,7 @@ public final class ChatSession implements AutoCloseable {
             state.flush();
             state.rethrow();
             if (rc != 0) {
-                throw ChatNative.error("crispasr_chat_generate_stream failed", err, rc);
+                throw ChatNative.error("stelnet_asr_chat_generate_stream failed", err, rc);
             }
         }
     }
@@ -449,12 +449,12 @@ public final class ChatSession implements AutoCloseable {
             }
         };
         liveAbortCallback = cb;
-        ChatLib.INSTANCE.crispasr_chat_set_abort_callback(h, cb, Pointer.NULL);
+        ChatLib.INSTANCE.stelnet_asr_chat_set_abort_callback(h, cb, Pointer.NULL);
     }
 
     private void disarm(Pointer h) {
         if (liveAbortCallback != null) {
-            ChatLib.INSTANCE.crispasr_chat_set_abort_callback(h, null, Pointer.NULL);
+            ChatLib.INSTANCE.stelnet_asr_chat_set_abort_callback(h, null, Pointer.NULL);
             liveAbortCallback = null;
         }
     }
@@ -483,7 +483,7 @@ public final class ChatSession implements AutoCloseable {
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage m = messages.get(i);
             if (m == null) {
-                throw new IllegalArgumentException("crispasr_chat: messages[" + i + "] is null");
+                throw new IllegalArgumentException("stelnet_asr_chat: messages[" + i + "] is null");
             }
             out[i].role = ChatNative.cstring(m.role(), "messages[" + i + "].role", owned);
             out[i].content = ChatNative.cstring(m.content(), "messages[" + i + "].content", owned);
@@ -610,7 +610,7 @@ public final class ChatSession implements AutoCloseable {
             if (t instanceof Error) {
                 throw (Error) t;
             }
-            throw new IllegalStateException("crispasr_chat: callback threw", t);
+            throw new IllegalStateException("stelnet_asr_chat: callback threw", t);
         }
     }
 }

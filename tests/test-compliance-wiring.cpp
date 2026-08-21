@@ -94,7 +94,7 @@ TEST_CASE("every synthesis surface passes the bank to classify_voice", "[unit][c
         REQUIRE(contains(read_file("examples/cli/wyoming.cpp"), "g_backend->voice_bank_path()"));
     }
     SECTION("C ABI") {
-        // No CrispasrBackend here — the session resolves the bundle itself.
+        // No StelnetAsrBackend here — the session resolves the bundle itself.
         const std::string src = read_file("src/stelnettts_c_api.cpp");
         REQUIRE(contains(src, "s->cosyvoice3_voices_path = std::move(cv3_voices);"));
         REQUIRE(contains(src, "s->cosyvoice3_voices_path)"));
@@ -190,11 +190,11 @@ TEST_CASE("every binding can answer the speaker-identity question", "[unit][comp
     };
     static const Binding kBindings[] = {
         {"python/stelnettts/_binding.py", "def set_speaker_identity(self, identity: str)"},
-        {"bindings/go/stelnettts_session.go", "func (s *CrispasrSession) SetSpeakerIdentity(identity string) error"},
+        {"bindings/go/stelnettts_session.go", "func (s *StelnetAsrSession) SetSpeakerIdentity(identity string) error"},
         {"stelnettts/src/lib.rs", "pub fn set_speaker_identity(&self, identity: &str)"},
         {"stelnettts-sys/src/lib.rs", "pub fn stelnettts_session_set_speaker_identity("},
         {"bindings/ruby/ext/ruby_stelnettts_session.c", "\"set_speaker_identity\", rb_session_set_speaker_identity"},
-        {"bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java",
+        {"bindings/java/src/main/java/io/github/ggerganov/whispercpp/StelnetAsrSession.java",
          "public void setSpeakerIdentity(String identity)"},
         {"bindings/csharp/StelnetTTS/Session.cs", "public void SetSpeakerIdentity(string identity)"},
         {"flutter/stelnettts/lib/src/stelnettts.dart", "void setSpeakerIdentity(String identity)"},
@@ -231,7 +231,7 @@ TEST_CASE("bindings surface a bad value instead of swallowing it", "[unit][compl
                      "unrecognised speaker_identity {identity:?} (expected real_person, synthetic or unknown)"));
     REQUIRE(contains(read_file("bindings/ruby/ext/ruby_stelnettts_session.c"),
                      "unrecognised speaker_identity (expected real_person, synthetic or unknown)"));
-    REQUIRE(contains(read_file("bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java"),
+    REQUIRE(contains(read_file("bindings/java/src/main/java/io/github/ggerganov/whispercpp/StelnetAsrSession.java"),
                      "(expected real_person, synthetic or unknown)"));
     REQUIRE(contains(read_file("bindings/csharp/StelnetTTS/Session.cs"), "(expected real_person, synthetic or unknown)"));
     REQUIRE(contains(read_file("flutter/stelnettts/lib/src/stelnettts.dart"), "'real_person', 'synthetic' or 'unknown'"));
@@ -544,7 +544,7 @@ TEST_CASE("every binding that can opt out of marking can also mark", "[unit][com
                          "\"watermark_embed\", rb_watermark_embed"));
     }
     SECTION("java") {
-        REQUIRE(contains(read_file("bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java"),
+        REQUIRE(contains(read_file("bindings/java/src/main/java/io/github/ggerganov/whispercpp/StelnetAsrSession.java"),
                          "public static void watermarkEmbed(float[] pcm)"));
     }
     SECTION("csharp") {
@@ -591,8 +591,8 @@ TEST_CASE("the chat endpoint marks its responses as AI-generated", "[unit][compl
     // For an HTTP API that is a header, and it must be set on the buffered and
     // the SSE branch alike — set_header after a body write is too late.
     const std::string src = read_file("examples/cli/stelnettts_server.cpp");
-    REQUIRE(contains(src, "X-Crispasr-Ai-Generated"));
-    REQUIRE(contains(src, "X-Crispasr-Ai-Disclosure"));
+    REQUIRE(contains(src, "X-StelnetAsr-Ai-Generated"));
+    REQUIRE(contains(src, "X-StelnetAsr-Ai-Disclosure"));
 }
 
 TEST_CASE("the flutter chat binding surfaces the disclosure", "[unit][compliance]") {

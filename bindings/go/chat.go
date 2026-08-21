@@ -1,7 +1,7 @@
 package whisper
 
-// Chat / LLM surface for the Go binding: the crispasr_chat_* C ABI declared in
-// include/crispasr_chat.h. Text in, text out — separate from the ASR session
+// Chat / LLM surface for the Go binding: the stelnet_asr_chat_* C ABI declared in
+// include/stelnet_asr_chat.h. Text in, text out — separate from the ASR session
 // above, and usable on its own.
 //
 // EU AI Act Art. 50(1): a product that puts this in front of a natural person
@@ -9,10 +9,10 @@ package whisper
 // the canonical wording; see the header for the full note.
 
 /*
-// LDFLAGS for libcrispasr + all conditionally-built sub-libs are set in
+// LDFLAGS for libstelnet_asr + all conditionally-built sub-libs are set in
 // whisper.go (the canonical cgo block). Don't re-list here to avoid
-// `ld: warning: ignoring duplicate libraries: '-lcrispasr'`.
-#include <crispasr_chat.h>
+// `ld: warning: ignoring duplicate libraries: '-lstelnet_asr'`.
+#include <stelnet_asr_chat.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -21,31 +21,31 @@ package whisper
 // uintptr_t and only cast to void* at the ABI edge.
 // The chunk is const on the way in; the declaration drops the qualifier to
 // match the signature cgo generates for the exported Go function.
-extern void crispasrGoChatToken(char* utf8_chunk, uintptr_t user);
-extern bool crispasrGoChatAbort(uintptr_t user);
+extern void stelnet_asrGoChatToken(char* utf8_chunk, uintptr_t user);
+extern bool stelnet_asrGoChatAbort(uintptr_t user);
 
-static void crispasr_go_chat_token_cb(const char* utf8_chunk, void* user) {
-    crispasrGoChatToken((char*)utf8_chunk, (uintptr_t)user);
+static void stelnet_asr_go_chat_token_cb(const char* utf8_chunk, void* user) {
+    stelnet_asrGoChatToken((char*)utf8_chunk, (uintptr_t)user);
 }
 
-static bool crispasr_go_chat_abort_cb(void* user) {
-    return crispasrGoChatAbort((uintptr_t)user);
+static bool stelnet_asr_go_chat_abort_cb(void* user) {
+    return stelnet_asrGoChatAbort((uintptr_t)user);
 }
 
-static int32_t crispasr_go_chat_generate_stream(crispasr_chat_session_t s,
-                                                const crispasr_chat_message* messages, size_t n_messages,
-                                                const crispasr_chat_generate_params* params, uintptr_t user,
-                                                crispasr_chat_error* err) {
-    return crispasr_chat_generate_stream(s, messages, n_messages, params,
-                                         crispasr_go_chat_token_cb, (void*)user, err);
+static int32_t stelnet_asr_go_chat_generate_stream(stelnet_asr_chat_session_t s,
+                                                const stelnet_asr_chat_message* messages, size_t n_messages,
+                                                const stelnet_asr_chat_generate_params* params, uintptr_t user,
+                                                stelnet_asr_chat_error* err) {
+    return stelnet_asr_chat_generate_stream(s, messages, n_messages, params,
+                                         stelnet_asr_go_chat_token_cb, (void*)user, err);
 }
 
-static void crispasr_go_chat_set_abort(crispasr_chat_session_t s, uintptr_t user) {
-    crispasr_chat_set_abort_callback(s, crispasr_go_chat_abort_cb, (void*)user);
+static void stelnet_asr_go_chat_set_abort(stelnet_asr_chat_session_t s, uintptr_t user) {
+    stelnet_asr_chat_set_abort_callback(s, stelnet_asr_go_chat_abort_cb, (void*)user);
 }
 
-static void crispasr_go_chat_clear_abort(crispasr_chat_session_t s) {
-    crispasr_chat_set_abort_callback(s, NULL, NULL);
+static void stelnet_asr_go_chat_clear_abort(stelnet_asr_chat_session_t s) {
+    stelnet_asr_chat_set_abort_callback(s, NULL, NULL);
 }
 */
 import "C"
@@ -72,13 +72,13 @@ type ChatMessage struct {
 }
 
 // ChatOpenParams are the per-session, model-level options of
-// crispasr_chat_open. It carries the C struct the ABI's own defaults function
+// stelnet_asr_chat_open. It carries the C struct the ABI's own defaults function
 // fills and is read and written through the accessors below — the same shape
 // as Params on the ASR side. Setting one option therefore leaves every other
 // one at the ABI default, and the zero value behaves as DefaultChatOpenParams:
 // the first accessor call seeds it from the ABI.
 type ChatOpenParams struct {
-	c      C.crispasr_chat_open_params
+	c      C.stelnet_asr_chat_open_params
 	seeded bool
 
 	// chatTemplate stays on the Go side. The C field is a borrowed pointer the
@@ -93,7 +93,7 @@ type ChatOpenParams struct {
 // the accessors below, and its zero value behaves as
 // DefaultChatGenerateParams.
 type ChatGenerateParams struct {
-	c      C.crispasr_chat_generate_params
+	c      C.stelnet_asr_chat_generate_params
 	seeded bool
 
 	// stop stays on the Go side for the same reason as ChatOpenParams's
@@ -105,7 +105,7 @@ type ChatGenerateParams struct {
 // C session serialises its own context, and this wrapper serialises the calls
 // that register callbacks on it.
 type ChatSession struct {
-	handle C.crispasr_chat_session_t
+	handle C.stelnet_asr_chat_session_t
 
 	mu sync.Mutex // one native call at a time
 
@@ -120,10 +120,10 @@ type ChatSession struct {
 // generation rather than the model faulting. Test for it with errors.Is: it is
 // the one error code the C header promises as stable, so a caller running its
 // own cancellation can tell a cancel from a decode fault.
-var ErrChatAborted = errors.New("crispasr_chat: generation aborted")
+var ErrChatAborted = errors.New("stelnet_asr_chat: generation aborted")
 
-// chatErrAborted is the one error code crispasr_chat.h promises as a contract.
-const chatErrAborted = int32(C.CRISPASR_CHAT_ERR_ABORTED)
+// chatErrAborted is the one error code stelnet_asr_chat.h promises as a contract.
+const chatErrAborted = int32(C.STELNET_ASR_CHAT_ERR_ABORTED)
 
 // chatError turns a filled-in C error struct into a Go error.
 //
@@ -132,7 +132,7 @@ const chatErrAborted = int32(C.CRISPASR_CHAT_ERR_ABORTED)
 // the only carrier and the hint is 0; the streaming and reset paths also
 // return the code. Every C path fills err today, so the fallback is defence
 // against a future one that does not rather than a live fix.
-func chatError(fallback string, err *C.crispasr_chat_error, codeHint int32) error {
+func chatError(fallback string, err *C.stelnet_asr_chat_error, codeHint int32) error {
 	return chatErrorFrom(C.GoString(&err.message[0]), int32(err.code), fallback, codeHint)
 }
 
@@ -159,7 +159,7 @@ func chatErrorFrom(msg string, code int32, fallback string, codeHint int32) erro
 // rejects the same input.
 func chatCString(s, field string) (*C.char, error) {
 	if strings.IndexByte(s, 0) >= 0 {
-		return nil, fmt.Errorf("crispasr_chat: %s contains an interior NUL byte, which C cannot carry", field)
+		return nil, fmt.Errorf("stelnet_asr_chat: %s contains an interior NUL byte, which C cannot carry", field)
 	}
 	return C.CString(s), nil
 }
@@ -309,13 +309,13 @@ func (c *chatCall) keepGoing() (keep bool) {
 	return c.shouldContinue()
 }
 
-//export crispasrGoChatToken
-func crispasrGoChatToken(chunk *C.char, user C.uintptr_t) {
+//export stelnet_asrGoChatToken
+func stelnet_asrGoChatToken(chunk *C.char, user C.uintptr_t) {
 	cgo.Handle(user).Value().(*chatCall).deliverBytes([]byte(C.GoString(chunk)))
 }
 
-//export crispasrGoChatAbort
-func crispasrGoChatAbort(user C.uintptr_t) C.bool {
+//export stelnet_asrGoChatAbort
+func stelnet_asrGoChatAbort(user C.uintptr_t) C.bool {
 	// No polarity change here: the C callback returns true to CONTINUE, and so
 	// does the Go predicate.
 	return C.bool(cgo.Handle(user).Value().(*chatCall).keepGoing())
@@ -343,7 +343,7 @@ func DefaultChatGenerateParams() ChatGenerateParams {
 // the ABI defaults, so the zero value is never what reaches C.
 func (p *ChatOpenParams) ensure() {
 	if !p.seeded {
-		C.crispasr_chat_open_params_default(&p.c)
+		C.stelnet_asr_chat_open_params_default(&p.c)
 		p.seeded = true
 	}
 }
@@ -408,7 +408,7 @@ func (p *ChatOpenParams) SetChatTemplate(tmpl string) { p.ensure(); p.chatTempla
 // from the ABI defaults, so the zero value is never what reaches C.
 func (p *ChatGenerateParams) ensure() {
 	if !p.seeded {
-		C.crispasr_chat_generate_params_default(&p.c)
+		C.stelnet_asr_chat_generate_params_default(&p.c)
 		p.seeded = true
 	}
 }
@@ -495,7 +495,7 @@ func (p *ChatGenerateParams) SetPrefillOnly(v bool) { p.ensure(); p.c.prefill_on
 // wording (EU AI Act Art. 50(1)). Show it visibly at or before the first turn
 // of any conversational product built on this binding.
 func ChatAIDisclosureText() string {
-	return C.GoString(C.crispasr_chat_ai_disclosure_text())
+	return C.GoString(C.stelnet_asr_chat_ai_disclosure_text())
 }
 
 // ChatOpen opens a chat session over a GGUF chat model on disk. Pass nil for
@@ -513,10 +513,10 @@ func ChatOpen(modelPath string, params *ChatOpenParams) (*ChatSession, error) {
 		return nil, err
 	}
 
-	var cerr C.crispasr_chat_error
-	h := C.crispasr_chat_open(cpath, &cparams, &cerr)
+	var cerr C.stelnet_asr_chat_error
+	h := C.stelnet_asr_chat_open(cpath, &cparams, &cerr)
 	if h == nil {
-		return nil, chatError("crispasr_chat_open: failed to open "+modelPath, &cerr, 0)
+		return nil, chatError("stelnet_asr_chat_open: failed to open "+modelPath, &cerr, 0)
 	}
 	return &ChatSession{handle: h}, nil
 }
@@ -551,10 +551,10 @@ func ChatMemoryEstimate(modelPath string, params *ChatOpenParams) (uint64, error
 		return 0, err
 	}
 
-	var cerr C.crispasr_chat_error
-	n := C.crispasr_chat_memory_estimate(cpath, &cparams, &cerr)
+	var cerr C.stelnet_asr_chat_error
+	n := C.stelnet_asr_chat_memory_estimate(cpath, &cparams, &cerr)
 	if n == 0 {
-		return 0, chatError("crispasr_chat_memory_estimate: could not estimate "+modelPath, &cerr, 0)
+		return 0, chatError("stelnet_asr_chat_memory_estimate: could not estimate "+modelPath, &cerr, 0)
 	}
 	return uint64(n), nil
 }
@@ -564,7 +564,7 @@ func ChatMemoryEstimate(modelPath string, params *ChatOpenParams) (uint64, error
 // Safe from another goroutine while a generation runs, and it WAITS for that
 // generation rather than cutting it off. Two things cover the handle between
 // them: s.mu below, for the window between reading s.handle and entering C,
-// which C cannot see into; and crispasr_chat_close itself, which counts the
+// which C cannot see into; and stelnet_asr_chat_close itself, which counts the
 // calls already inside the session and waits for them. A generation holds the
 // session for as long as it decodes, so cancel with SetAbortCallback first if
 // the length of the wait matters.
@@ -575,7 +575,7 @@ func (s *ChatSession) Close() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.handle != nil {
-		C.crispasr_chat_close(s.handle)
+		C.stelnet_asr_chat_close(s.handle)
 		s.handle = nil
 	}
 }
@@ -587,11 +587,11 @@ func (s *ChatSession) Reset() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.handle == nil {
-		return errors.New("crispasr_chat_reset: session is closed")
+		return errors.New("stelnet_asr_chat_reset: session is closed")
 	}
-	var cerr C.crispasr_chat_error
-	if rc := C.crispasr_chat_reset(s.handle, &cerr); rc != 0 {
-		return chatError("crispasr_chat_reset failed", &cerr, int32(rc))
+	var cerr C.stelnet_asr_chat_error
+	if rc := C.stelnet_asr_chat_reset(s.handle, &cerr); rc != 0 {
+		return chatError("stelnet_asr_chat_reset failed", &cerr, int32(rc))
 	}
 	return nil
 }
@@ -603,7 +603,7 @@ func (s *ChatSession) NCtx() int {
 	if s.handle == nil {
 		return 0
 	}
-	return int(C.crispasr_chat_n_ctx(s.handle))
+	return int(C.stelnet_asr_chat_n_ctx(s.handle))
 }
 
 // TemplateName returns the name of the chat template the session resolved
@@ -614,14 +614,14 @@ func (s *ChatSession) TemplateName() string {
 	if s.handle == nil {
 		return ""
 	}
-	return C.GoString(C.crispasr_chat_template_name(s.handle))
+	return C.GoString(C.stelnet_asr_chat_template_name(s.handle))
 }
 
 // SetAbortCallback registers a predicate that can cancel a generation.
 //
 // Polarity: shouldContinue returns TRUE to LET THE GENERATION CONTINUE and
 // false to abort it. That is the polarity of the C callback it is handed to,
-// crispasr_chat_abort_callback, and of the ASR side's EncoderBeginCallback;
+// stelnet_asr_chat_abort_callback, and of the ASR side's EncoderBeginCallback;
 // this binding forwards the answer unchanged. Passing nil clears the predicate.
 //
 // The predicate is handed to the C session for the length of each Generate or
@@ -666,7 +666,7 @@ func (s *ChatSession) CountTokens(messages []ChatMessage) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.handle == nil {
-		return 0, errors.New("crispasr_chat_count_tokens: session is closed")
+		return 0, errors.New("stelnet_asr_chat_count_tokens: session is closed")
 	}
 
 	cmsgs, freeMsgs, err := chatMessagesToC(messages)
@@ -675,12 +675,12 @@ func (s *ChatSession) CountTokens(messages []ChatMessage) (int, error) {
 		return 0, err
 	}
 
-	var cerr C.crispasr_chat_error
-	n := C.crispasr_chat_count_tokens(s.handle, chatMessagesPtr(cmsgs), C.size_t(len(messages)), &cerr)
+	var cerr C.stelnet_asr_chat_error
+	n := C.stelnet_asr_chat_count_tokens(s.handle, chatMessagesPtr(cmsgs), C.size_t(len(messages)), &cerr)
 	if n < 0 {
 		// A negative return is the failure sentinel, not an error code, so
 		// there is no hint to fall back on — cerr is the only carrier.
-		return 0, chatError("crispasr_chat_count_tokens failed", &cerr, 0)
+		return 0, chatError("stelnet_asr_chat_count_tokens failed", &cerr, 0)
 	}
 	return int(n), nil
 }
@@ -699,7 +699,7 @@ func (s *ChatSession) Generate(messages []ChatMessage, params *ChatGenerateParam
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.handle == nil {
-		return "", errors.New("crispasr_chat_generate: session is closed")
+		return "", errors.New("stelnet_asr_chat_generate: session is closed")
 	}
 
 	cmsgs, freeMsgs, err := chatMessagesToC(messages)
@@ -717,17 +717,17 @@ func (s *ChatSession) Generate(messages []ChatMessage, params *ChatGenerateParam
 	_, done := s.begin(call)
 	defer done()
 
-	var cerr C.crispasr_chat_error
-	out := C.crispasr_chat_generate(s.handle, chatMessagesPtr(cmsgs), C.size_t(len(messages)), &cparams, &cerr)
+	var cerr C.stelnet_asr_chat_error
+	out := C.stelnet_asr_chat_generate(s.handle, chatMessagesPtr(cmsgs), C.size_t(len(messages)), &cparams, &cerr)
 
 	// A callback panic outranks whatever the native call reported, and is
 	// re-raised only now that no C frame is left on the stack.
 	call.repanic()
 
 	if out == nil {
-		return "", chatError("crispasr_chat_generate failed", &cerr, 0)
+		return "", chatError("stelnet_asr_chat_generate failed", &cerr, 0)
 	}
-	defer C.crispasr_chat_string_free(out)
+	defer C.stelnet_asr_chat_string_free(out)
 	return C.GoString(out), nil
 }
 
@@ -762,7 +762,7 @@ func (s *ChatSession) GenerateStream(messages []ChatMessage, params *ChatGenerat
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.handle == nil {
-		return errors.New("crispasr_chat_generate_stream: session is closed")
+		return errors.New("stelnet_asr_chat_generate_stream: session is closed")
 	}
 
 	cmsgs, freeMsgs, err := chatMessagesToC(messages)
@@ -780,8 +780,8 @@ func (s *ChatSession) GenerateStream(messages []ChatMessage, params *ChatGenerat
 	handle, done := s.begin(call)
 	defer done()
 
-	var cerr C.crispasr_chat_error
-	rc := C.crispasr_go_chat_generate_stream(s.handle, chatMessagesPtr(cmsgs), C.size_t(len(messages)),
+	var cerr C.stelnet_asr_chat_error
+	rc := C.stelnet_asr_go_chat_generate_stream(s.handle, chatMessagesPtr(cmsgs), C.size_t(len(messages)),
 		&cparams, C.uintptr_t(handle), &cerr)
 
 	// Whatever is still buffered belongs to the caller, aborted run or not.
@@ -789,7 +789,7 @@ func (s *ChatSession) GenerateStream(messages []ChatMessage, params *ChatGenerat
 	call.repanic()
 
 	if rc != 0 {
-		return chatError("crispasr_chat_generate_stream failed", &cerr, int32(rc))
+		return chatError("stelnet_asr_chat_generate_stream failed", &cerr, int32(rc))
 	}
 	return nil
 }
@@ -805,9 +805,9 @@ func (s *ChatSession) begin(call *chatCall) (cgo.Handle, func()) {
 	if call.shouldContinue == nil {
 		return handle, handle.Delete
 	}
-	C.crispasr_go_chat_set_abort(s.handle, C.uintptr_t(handle))
+	C.stelnet_asr_go_chat_set_abort(s.handle, C.uintptr_t(handle))
 	return handle, func() {
-		C.crispasr_go_chat_clear_abort(s.handle)
+		C.stelnet_asr_go_chat_clear_abort(s.handle)
 		handle.Delete()
 	}
 }
@@ -823,11 +823,11 @@ func (c *chatCall) repanic() {
 // chatMessagesToC copies the messages into C memory. The returned slice holds
 // no Go pointers, so it is legal to hand its backing array to C. The cleanup
 // is always safe to call, error or not.
-func chatMessagesToC(messages []ChatMessage) ([]C.crispasr_chat_message, func(), error) {
+func chatMessagesToC(messages []ChatMessage) ([]C.stelnet_asr_chat_message, func(), error) {
 	if len(messages) == 0 {
 		return nil, func() {}, nil
 	}
-	out := make([]C.crispasr_chat_message, len(messages))
+	out := make([]C.stelnet_asr_chat_message, len(messages))
 	owned := make([]*C.char, 0, 2*len(messages))
 	free := func() {
 		for _, p := range owned {
@@ -853,7 +853,7 @@ func chatMessagesToC(messages []ChatMessage) ([]C.crispasr_chat_message, func(),
 	return out, free, nil
 }
 
-func chatMessagesPtr(cmsgs []C.crispasr_chat_message) *C.crispasr_chat_message {
+func chatMessagesPtr(cmsgs []C.stelnet_asr_chat_message) *C.stelnet_asr_chat_message {
 	if len(cmsgs) == 0 {
 		return nil
 	}
@@ -864,7 +864,7 @@ func chatMessagesPtr(cmsgs []C.crispasr_chat_message) *C.crispasr_chat_message {
 // attaches the stop sequences to it. The stop-sequence array is C memory: it
 // lives inside a struct that crosses into C, which may hold no Go pointers.
 // The cleanup is always safe to call, error or not.
-func chatGenerateParamsToC(params *ChatGenerateParams) (C.crispasr_chat_generate_params, func(), error) {
+func chatGenerateParamsToC(params *ChatGenerateParams) (C.stelnet_asr_chat_generate_params, func(), error) {
 	if params == nil {
 		params = &ChatGenerateParams{}
 	}
@@ -901,7 +901,7 @@ func chatGenerateParamsToC(params *ChatGenerateParams) (C.crispasr_chat_generate
 // chatOpenParamsToC takes the C struct the caller has been mutating and
 // attaches the chat-template override to it. The cleanup is always safe to
 // call, error or not.
-func chatOpenParamsToC(params *ChatOpenParams) (C.crispasr_chat_open_params, func(), error) {
+func chatOpenParamsToC(params *ChatOpenParams) (C.stelnet_asr_chat_open_params, func(), error) {
 	if params == nil {
 		params = &ChatOpenParams{}
 	}

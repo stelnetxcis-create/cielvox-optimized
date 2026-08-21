@@ -20,9 +20,9 @@
 
 set -u
 
-CRISPASR="${1:-${CRISPASR:-}}"
-[ -z "$CRISPASR" ] && CRISPASR="$(command -v stelnettts || true)"
-if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
+STELNET_ASR="${1:-${STELNET_ASR:-}}"
+[ -z "$STELNET_ASR" ] && STELNET_ASR="$(command -v stelnettts || true)"
+if [ -z "$STELNET_ASR" ] || [ ! -x "$STELNET_ASR" ]; then
     echo "SKIP: stelnettts binary not provided/executable"
     exit 0
 fi
@@ -57,14 +57,14 @@ finish() {
 }
 
 echo "=== Speaker-ID live tests ==="
-echo "binary: $CRISPASR"
+echo "binary: $STELNET_ASR"
 echo "audio:  $AUDIO"
 echo "model:  $MODEL"
 echo ""
 
 # ── Test 1: enrollment is REFUSED without --speaker-db-consent ───────────────
 # The biometric gate must fire (exit 25) and must NOT write a voiceprint.
-OUT1="$("$CRISPASR" -m "$MODEL" -f "$AUDIO" --enroll-speaker TestUser --speaker-db "$DB" 2>&1)"
+OUT1="$("$STELNET_ASR" -m "$MODEL" -f "$AUDIO" --enroll-speaker TestUser --speaker-db "$DB" 2>&1)"
 RC1=$?
 if echo "$OUT1" | grep -qiE "download failed|could not resolve|failed to (resolve|download|load)|no such model|curl|wget"; then
     echo "SKIP: ASR model '$MODEL' unavailable (offline / no network) — skipping live cases"
@@ -83,7 +83,7 @@ else
 fi
 
 # ── Test 2: enroll WITH consent creates a voiceprint (.spkr) ─────────────────
-OUT2="$("$CRISPASR" -m "$MODEL" -f "$AUDIO" --enroll-speaker TestUser --speaker-db "$DB" --speaker-db-consent 2>&1)"
+OUT2="$("$STELNET_ASR" -m "$MODEL" -f "$AUDIO" --enroll-speaker TestUser --speaker-db "$DB" --speaker-db-consent 2>&1)"
 if [ -f "$DB/TestUser.spkr" ]; then
     ok "enroll with consent created TestUser.spkr"
 elif echo "$OUT2" | grep -qiE "resolve|download|not found|failed to load"; then
@@ -96,7 +96,7 @@ fi
 
 # ── Test 3: --speaker-db matching is IGNORED without consent ─────────────────
 # Even with a populated DB, the 1:N match must not run; a notice is printed.
-OUT3="$("$CRISPASR" -m "$MODEL" -f "$AUDIO" --diarize --speaker-db "$DB" 2>&1)"
+OUT3="$("$STELNET_ASR" -m "$MODEL" -f "$AUDIO" --diarize --speaker-db "$DB" 2>&1)"
 if echo "$OUT3" | grep -q "ignored"; then
     ok "--speaker-db without consent is ignored (prints notice)"
 else
@@ -106,7 +106,7 @@ fi
 
 # ── Test 4: session-scoped --diarize-speakers emits (speaker N) labels ───────
 # No DB, no names — just stable per-recording cluster labels.
-OUT4="$("$CRISPASR" -m "$MODEL" -f "$AUDIO" --diarize-speakers 2>&1)"
+OUT4="$("$STELNET_ASR" -m "$MODEL" -f "$AUDIO" --diarize-speakers 2>&1)"
 if echo "$OUT4" | grep -q "(speaker"; then
     ok "--diarize-speakers emits (speaker N) labels"
 else

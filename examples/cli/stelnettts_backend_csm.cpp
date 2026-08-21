@@ -22,7 +22,7 @@
 
 namespace {
 
-class CsmBackend : public CrispasrBackend {
+class CsmBackend : public StelnetAsrBackend {
 public:
     CsmBackend() = default;
     ~CsmBackend() override { CsmBackend::shutdown(); }
@@ -90,6 +90,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_csm_tts_backend() {
-    return std::unique_ptr<CrispasrBackend>(new CsmBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_csm_tts_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new CsmBackend());
 }

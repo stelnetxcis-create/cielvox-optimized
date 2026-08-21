@@ -31,7 +31,7 @@ RUN apt-get update && \
 ENV LIBRARY_PATH=/usr/local/cuda-13.0/lib64/stubs:/usr/local/cuda-13.0/compat:$LIBRARY_PATH
 
 COPY . .
-ARG CRISPASR_BUILD_JOBS
+ARG STELNET_ASR_BUILD_JOBS
 # PORTABLE variant (#261). Same CUDA GPU build as main-cuda, but the CPU ggml
 # backend is compiled for the GENERIC x86-64 baseline (SSE2 only) — every
 # optional ISA is explicitly OFF. The point: `ggml_cpu_init()` in the stock
@@ -44,7 +44,7 @@ ARG CRISPASR_BUILD_JOBS
 # CPUs — the RTX GPU still carries the ASR; CPU VAD/diarization run on the
 # generic (slower but correct) kernels.
 #
-# ⚠ Why one CrispASR option owns the full flag set: GGML_NATIVE=OFF does
+# ⚠ Why one StelnetASR option owns the full flag set: GGML_NATIVE=OFF does
 # NOT mean baseline.
 # ggml's CMake:
 #     if (GGML_NATIVE OR NOT GGML_NATIVE_DEFAULT)  set(INS_ENB OFF)
@@ -52,14 +52,14 @@ ARG CRISPASR_BUILD_JOBS
 #     option(GGML_BMI2 "..." ${INS_ENB})   # and GGML_SSE42 / GGML_AVX
 # GGML_NATIVE_DEFAULT is ON for a normal build, so GGML_NATIVE=OFF lands in the
 # else branch → INS_ENB=ON → BMI2/SSE42/AVX default ON and ggml-cpu gets
-# `-mbmi2`. CRISPASR_PORTABLE_CPU forces every current optional x86 ISA OFF in
+# `-mbmi2`. STELNET_ASR_PORTABLE_CPU forces every current optional x86 ISA OFF in
 # root CMake, including new ggml knobs added after this Dockerfile (#302).
-RUN jobs="${CRISPASR_BUILD_JOBS:-$(nproc)}" && \
-    cmake -S . -B build -G Ninja -DCRISPASR_BUILD_TESTS=OFF -DGGML_CUDA=1 \
-        -DCRISPASR_PORTABLE_CPU=ON \
+RUN jobs="${STELNET_ASR_BUILD_JOBS:-$(nproc)}" && \
+    cmake -S . -B build -G Ninja -DSTELNET_ASR_BUILD_TESTS=OFF -DGGML_CUDA=1 \
+        -DSTELNET_ASR_PORTABLE_CPU=ON \
         -DCMAKE_CUDA_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;120-real;120-virtual" \
         -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-shlib-undefined" && \
-    cmake --build build -j"${jobs}" --target crispasr-cli
+    cmake --build build -j"${jobs}" --target stelnet_asr-cli
 # --allow-shlib-undefined: libggml-cuda.so links against libcuda.so.1
 # (the CUDA driver), which lives outside the image — the host's nvidia
 # runtime mounts it in at runtime. The stubs dir on PATH gives us
@@ -101,7 +101,7 @@ RUN apt-get update && \
 #
 # Compat libs stay on disk at /usr/local/cuda/compat/. Users with old host
 # drivers can still opt back in at runtime via:
-#   docker run -e CRISPASR_USE_CUDA_COMPAT=1 ...
+#   docker run -e STELNET_ASR_USE_CUDA_COMPAT=1 ...
 # which run-server.sh honours by prepending the dir to LD_LIBRARY_PATH.
 RUN rm -f /etc/ld.so.conf.d/000_cuda_compat.conf /etc/ld.so.conf.d/cuda-compat.conf && ldconfig
 
@@ -111,24 +111,24 @@ RUN rm -f /etc/ld.so.conf.d/000_cuda_compat.conf /etc/ld.so.conf.d/cuda-compat.c
 ARG GIT_SHA=unknown
 ARG GIT_REF=unknown
 ARG BUILD_DATE=unknown
-LABEL org.opencontainers.image.title="crispasr"
-LABEL org.opencontainers.image.source="https://github.com/CrispStrobe/CrispASR"
+LABEL org.opencontainers.image.title="stelnet_asr"
+LABEL org.opencontainers.image.source="https://github.com/CrispStrobe/StelnetASR"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.ref.name="${GIT_REF}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
-LABEL org.opencontainers.image.description="crispasr unified ASR — CUDA 13.0 build, PORTABLE CPU baseline (generic SSE2; runs VAD/diarize on pre-Haswell CPUs). Driver R580+ recommended. (#261)"
+LABEL org.opencontainers.image.description="stelnet_asr unified ASR — CUDA 13.0 build, PORTABLE CPU baseline (generic SSE2; runs VAD/diarize on pre-Haswell CPUs). Driver R580+ recommended. (#261)"
 COPY --from=build /app /app
 # build-info.txt comes AFTER the COPY so it isn't clobbered. run-server.sh
 # cats it on every startup so the first 5 lines of any user log identify
 # the build (#31).
 RUN printf 'image=main-cuda-portable\ncuda_version=13.0\ncpu_baseline=generic-sse2\ngit_sha=%s\ngit_ref=%s\nbuild_date=%s\n' \
         "${GIT_SHA}" "${GIT_REF}" "${BUILD_DATE}" > /app/build-info.txt
-RUN useradd -m -u 1000 crispasr && \
+RUN useradd -m -u 1000 stelnet_asr && \
   mkdir -p /cache /models && \
-  chown -R crispasr:crispasr /app /cache /models
+  chown -R stelnet_asr:stelnet_asr /app /cache /models
 RUN du -sh /app/*
 RUN find /app -type f -size +100M
 ENV PATH=/app/build/bin:$PATH
-ENV CRISPASR_CACHE_DIR=/cache
-USER crispasr
+ENV STELNET_ASR_CACHE_DIR=/cache
+USER stelnet_asr
 ENTRYPOINT [ "tini", "--", "bash", "/app/.devops/run-server.sh" ]

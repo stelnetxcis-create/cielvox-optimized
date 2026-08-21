@@ -14,7 +14,7 @@
 
 #include "higgs_stt.h"
 #include "core/stelnettts_env.h"
-#include "../crisp_audio/include/crisp_audio.h"
+#include "../stelnet_audio/include/stelnet_audio.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -222,8 +222,8 @@ struct higgs_stt_vocab {
     std::unordered_map<std::string, int32_t> merge_rank; // "left right" → rank
 };
 
-// Forward decl from crisp_audio — full type lives in crisp_audio/include/crisp_audio.h
-struct crisp_audio_context;
+// Forward decl from stelnet_audio — full type lives in stelnet_audio/include/stelnet_audio.h
+struct stelnet_audio_context;
 
 struct higgs_stt_context {
     higgs_stt_context_params params;
@@ -263,8 +263,8 @@ struct higgs_stt_context {
     // higgs_stt_audio_tower struct above is kept around so existing in-tree
     // tests / fallbacks compile; it is no longer the path used by
     // higgs_stt_compute_mel / higgs_stt_run_encoder once `audio_ca` is open.
-    crisp_audio_context* audio_ca = nullptr;
-    std::string model_path; // remembered for lazy crisp_audio init
+    stelnet_audio_context* audio_ca = nullptr;
+    std::string model_path; // remembered for lazy stelnet_audio init
 
     // §176s: cached encoder graph — reused when (T_chunk, num_chunks, T_chunk_out) match.
     ggml_cgraph* cached_enc_gf = nullptr;
@@ -602,7 +602,7 @@ static void higgs_stt_fft_wrapper(const float* in, int N, float* out) {
 
 extern "C" float* higgs_stt_compute_mel(higgs_stt_context* ctx, const float* samples, int n_samples, int* out_n_mels,
                                         int* out_T_mel) {
-    // higgs uses the in-tree Whisper mel directly (no crisp_audio shared tower).
+    // higgs uses the in-tree Whisper mel directly (no stelnet_audio shared tower).
     if (!ctx || !samples || n_samples <= 0)
         return nullptr;
     const auto& hp = ctx->model.hparams;
@@ -1431,7 +1431,7 @@ extern "C" void higgs_stt_free(higgs_stt_context* ctx) {
     if (!ctx)
         return;
     if (ctx->audio_ca) {
-        crisp_audio_free(ctx->audio_ca);
+        stelnet_audio_free(ctx->audio_ca);
         ctx->audio_ca = nullptr;
     }
     if (ctx->sched)

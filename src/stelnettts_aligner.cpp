@@ -177,11 +177,11 @@ static constexpr int QWEN3_FA_MAX_CHUNK_SAMPLES = 120 * 16000; // 120 s @ 16 kHz
 
 // Align a single chunk — factored out so the chunking loop and the
 // short-audio fast path share the same code.
-static std::vector<CrispasrAlignedWord> align_qwen3_fa_one_chunk(cielvox2_asr_context* ctx,
+static std::vector<StelnetAsrAlignedWord> align_qwen3_fa_one_chunk(cielvox2_asr_context* ctx,
                                                                  const std::vector<std::string>& words,
                                                                  const float* samples, int n_samples,
                                                                  int64_t t_offset_cs) {
-    std::vector<CrispasrAlignedWord> out;
+    std::vector<StelnetAsrAlignedWord> out;
     if (words.empty())
         return out;
 
@@ -201,7 +201,7 @@ static std::vector<CrispasrAlignedWord> align_qwen3_fa_one_chunk(cielvox2_asr_co
 
     out.reserve(words.size());
     for (size_t i = 0; i < words.size(); i++) {
-        CrispasrAlignedWord cw;
+        StelnetAsrAlignedWord cw;
         cw.text = words[i];
         cw.t0_cs = t_offset_cs + start_ms[i] / 10;
         cw.t1_cs = t_offset_cs + end_ms[i] / 10;
@@ -210,10 +210,10 @@ static std::vector<CrispasrAlignedWord> align_qwen3_fa_one_chunk(cielvox2_asr_co
     return out;
 }
 
-std::vector<CrispasrAlignedWord> align_qwen3_fa(const std::string& model_path, const std::vector<std::string>& words,
+std::vector<StelnetAsrAlignedWord> align_qwen3_fa(const std::string& model_path, const std::vector<std::string>& words,
                                                 const float* samples, int n_samples, int64_t t_offset_cs,
                                                 int n_threads) {
-    std::vector<CrispasrAlignedWord> out;
+    std::vector<StelnetAsrAlignedWord> out;
     if (words.empty())
         return out;
 
@@ -313,10 +313,10 @@ std::vector<CrispasrAlignedWord> align_qwen3_fa(const std::string& model_path, c
     return out;
 }
 
-std::vector<CrispasrAlignedWord> align_wav2vec2_ctc(const std::string& model_path,
+std::vector<StelnetAsrAlignedWord> align_wav2vec2_ctc(const std::string& model_path,
                                                     const std::vector<std::string>& words, const float* samples,
                                                     int n_samples, int64_t t_offset_cs, int n_threads) {
-    std::vector<CrispasrAlignedWord> out;
+    std::vector<StelnetAsrAlignedWord> out;
     if (words.empty())
         return out;
 
@@ -360,7 +360,7 @@ std::vector<CrispasrAlignedWord> align_wav2vec2_ctc(const std::string& model_pat
 
     out.reserve(aligned.size());
     for (const auto& w : aligned) {
-        CrispasrAlignedWord cw;
+        StelnetAsrAlignedWord cw;
         cw.text = w.word;
         cw.t0_cs = t_offset_cs + (int64_t)std::llround((double)w.t0 * 100.0);
         cw.t1_cs = t_offset_cs + (int64_t)std::llround((double)w.t1 * 100.0);
@@ -416,9 +416,9 @@ std::vector<std::string> stelnettts_parse_srt_cues(const std::string& raw) {
     return cues;
 }
 
-std::vector<CrispasrAlignedSegment> stelnettts_group_aligned_segments(const std::vector<std::string>& segment_texts,
-                                                                    const std::vector<CrispasrAlignedWord>& words) {
-    std::vector<CrispasrAlignedSegment> out;
+std::vector<StelnetAsrAlignedSegment> stelnettts_group_aligned_segments(const std::vector<std::string>& segment_texts,
+                                                                    const std::vector<StelnetAsrAlignedWord>& words) {
+    std::vector<StelnetAsrAlignedSegment> out;
     size_t w = 0;
     for (size_t s = 0; s < segment_texts.size(); s++) {
         const size_t n = tokenise_words(segment_texts[s]).size();
@@ -426,7 +426,7 @@ std::vector<CrispasrAlignedSegment> stelnettts_group_aligned_segments(const std:
             continue;
         if (w >= words.size())
             break; // alignment ended early — drop the uncovered tail
-        CrispasrAlignedSegment seg;
+        StelnetAsrAlignedSegment seg;
         seg.text = segment_texts[s];
         seg.word_begin = w;
         seg.word_end = std::min(w + n, words.size());
@@ -455,7 +455,7 @@ std::vector<CrispasrAlignedSegment> stelnettts_group_aligned_segments(const std:
 // timestamps; a wrong auto-repair would be just as invisible as the collapse.
 // Opt in to repair with STELNETTTS_ALIGN_SENTINEL_REDISTRIBUTE=1, or turn the
 // whole check off with STELNETTTS_ALIGN_SENTINEL=0.
-static void align_sentinel_check(std::vector<CrispasrAlignedWord>& words, int n_samples, int64_t t_offset_cs) {
+static void align_sentinel_check(std::vector<StelnetAsrAlignedWord>& words, int n_samples, int64_t t_offset_cs) {
     if (words.empty())
         return;
     {
@@ -495,25 +495,25 @@ static void align_sentinel_check(std::vector<CrispasrAlignedWord>& words, int n_
     fprintf(stderr, "stelnettts[aligner]: redistributed %zu words across %.2fs\n", words.size(), (double)audio_sec);
 }
 
-static std::vector<CrispasrAlignedWord> align_words_impl(const std::string& aligner_model,
+static std::vector<StelnetAsrAlignedWord> align_words_impl(const std::string& aligner_model,
                                                          const std::string& transcript, const float* samples,
                                                          int n_samples, int64_t t_offset_cs, int n_threads,
                                                          bool* out_load_failed);
 
-std::vector<CrispasrAlignedWord> stelnettts_align_words(const std::string& aligner_model, const std::string& transcript,
+std::vector<StelnetAsrAlignedWord> stelnettts_align_words(const std::string& aligner_model, const std::string& transcript,
                                                       const float* samples, int n_samples, int64_t t_offset_cs,
                                                       int n_threads, bool* out_load_failed) {
-    std::vector<CrispasrAlignedWord> out =
+    std::vector<StelnetAsrAlignedWord> out =
         align_words_impl(aligner_model, transcript, samples, n_samples, t_offset_cs, n_threads, out_load_failed);
     align_sentinel_check(out, n_samples, t_offset_cs);
     return out;
 }
 
-static std::vector<CrispasrAlignedWord> align_words_impl(const std::string& aligner_model,
+static std::vector<StelnetAsrAlignedWord> align_words_impl(const std::string& aligner_model,
                                                          const std::string& transcript, const float* samples,
                                                          int n_samples, int64_t t_offset_cs, int n_threads,
                                                          bool* out_load_failed) {
-    std::vector<CrispasrAlignedWord> out;
+    std::vector<StelnetAsrAlignedWord> out;
     if (out_load_failed)
         *out_load_failed = false;
     if (aligner_model.empty() || transcript.empty() || !samples || n_samples <= 0)
@@ -596,7 +596,7 @@ static std::vector<CrispasrAlignedWord> align_words_impl(const std::string& alig
 
     out.reserve(aligned.size());
     for (const auto& w : aligned) {
-        CrispasrAlignedWord cw;
+        StelnetAsrAlignedWord cw;
         cw.text = w.text;
         cw.t0_cs = t_offset_cs + w.t0;
         cw.t1_cs = t_offset_cs + w.t1;

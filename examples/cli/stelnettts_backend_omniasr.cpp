@@ -11,7 +11,7 @@
 #include <vector>
 #include "core/stelnettts_env.h"
 
-class OmniasrBackend : public CrispasrBackend {
+class OmniasrBackend : public StelnetAsrBackend {
 public:
     OmniasrBackend() = default;
     // RAII cleanup so resources are freed on destruction even when a return path
@@ -213,6 +213,6 @@ private:
     stelnettts_ctc_logits last_logits_;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_omniasr_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_omniasr_backend() {
     return std::make_unique<OmniasrBackend>();
 }

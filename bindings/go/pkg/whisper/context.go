@@ -8,7 +8,7 @@ import (
 	"time"
 
 	// Bindings
-	whisper "github.com/CrispStrobe/CrispASR/bindings/go"
+	whisper "github.com/CrispStrobe/StelnetASR/bindings/go"
 )
 
 ///////////////////////////////////////////////////////////////////////////////

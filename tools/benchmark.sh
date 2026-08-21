@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-CRISPASR="${CRISPASR:-./build/bin/stelnettts}"
+STELNET_ASR="${STELNET_ASR:-./build/bin/stelnettts}"
 THREADS="${THREADS:-4}"
 
 # ---- Models (backend → GGUF path) ----
@@ -35,8 +35,8 @@ declare -A AUDIOS=(
 )
 
 # ---- Check prerequisites ----
-if [ ! -x "$CRISPASR" ]; then
-  echo "ERROR: $CRISPASR not found. Build first: cmake --build build --target stelnettts-cli" >&2
+if [ ! -x "$STELNET_ASR" ]; then
+  echo "ERROR: $STELNET_ASR not found. Build first: cmake --build build --target stelnettts-cli" >&2
   exit 1
 fi
 
@@ -83,7 +83,7 @@ except: print('0')
 
     # Run with timing
     start_ns=$(date +%s%N)
-    transcript=$("$CRISPASR" --backend "$backend" -m "$model" -f "$audio_path" \
+    transcript=$("$STELNET_ASR" --backend "$backend" -m "$model" -f "$audio_path" \
                  -np -t "$THREADS" 2>/dev/null || echo "ERROR")
     end_ns=$(date +%s%N)
 

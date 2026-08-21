@@ -19,13 +19,13 @@ import static org.junit.jupiter.api.Assertions.*;
  *   - Mic.close() never stops the device → callbacks fire on a
  *     freed handle and corrupt memory
  *
- * <p>Gated behind {@code CRISPASR_MIC_TEST=1} because CI runners
+ * <p>Gated behind {@code STELNET_ASR_MIC_TEST=1} because CI runners
  * typically have no microphone and the device-open call would fail.
  */
 class MicSmokeTest {
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "CRISPASR_MIC_TEST", matches = "1")
+    @EnabledIfEnvironmentVariable(named = "STELNET_ASR_MIC_TEST", matches = "1")
     void micFiresCallbacks() throws Exception {
         AtomicInteger callbacks = new AtomicInteger(0);
         AtomicInteger totalSamples = new AtomicInteger(0);
@@ -48,7 +48,7 @@ class MicSmokeTest {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "CRISPASR_MIC_TEST", matches = "1")
+    @EnabledIfEnvironmentVariable(named = "STELNET_ASR_MIC_TEST", matches = "1")
     void defaultDeviceNameIsAvailable() {
         String name = Mic.defaultDeviceName();
         assertNotNull(name);

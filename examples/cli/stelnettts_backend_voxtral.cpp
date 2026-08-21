@@ -88,7 +88,7 @@ struct VoxtralOps {
     }
 };
 
-class VoxtralBackend : public CrispasrBackend {
+class VoxtralBackend : public StelnetAsrBackend {
 public:
     VoxtralBackend() = default;
     ~VoxtralBackend() override { VoxtralBackend::shutdown(); }
@@ -147,6 +147,6 @@ private:
 
 } // namespace
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_voxtral_backend() {
-    return std::unique_ptr<CrispasrBackend>(new VoxtralBackend());
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_voxtral_backend() {
+    return std::unique_ptr<StelnetAsrBackend>(new VoxtralBackend());
 }

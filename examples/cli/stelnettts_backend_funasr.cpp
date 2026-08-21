@@ -15,7 +15,7 @@
 #include <cstring>
 #include <vector>
 
-class FunAsrBackend : public CrispasrBackend {
+class FunAsrBackend : public StelnetAsrBackend {
 public:
     FunAsrBackend() = default;
 
@@ -102,6 +102,6 @@ private:
     funasr_context* ctx_ = nullptr;
 };
 
-std::unique_ptr<CrispasrBackend> stelnettts_make_funasr_backend() {
+std::unique_ptr<StelnetAsrBackend> stelnettts_make_funasr_backend() {
     return std::make_unique<FunAsrBackend>();
 }
