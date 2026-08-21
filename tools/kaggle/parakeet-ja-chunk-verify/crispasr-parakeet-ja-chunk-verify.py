@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify #89 fix: parakeet-ja auto-chunk at 10s instead of 30s.
 
-Builds CrispASR from the fix/parakeet-ja-chunk branch, downloads
+Builds StelnetTTS from the fix/parakeet-ja-chunk branch, downloads
 parakeet-tdt-0.6b-ja Q4_K, and tests on reazon_baseball_14s x3 (42s).
 
 Expected: with the fix, auto-chunk fires at 10s (not 30s), recovering
@@ -20,53 +20,53 @@ WORK = Path("/kaggle/working")
 os.chdir(WORK)
 
 # ── Clone + harness ──────────────────────────────────────────────────
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_BRANCH = "fix/parakeet-ja-chunk"
-_CRISPASR_DIR = WORK / "CrispASR"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_BRANCH = "fix/parakeet-ja-chunk"
+_STELNETTTS_DIR = WORK / "StelnetTTS"
 
-if not _CRISPASR_DIR.exists():
+if not _STELNETTTS_DIR.exists():
     try:
         subprocess.check_call([
-            "git", "clone", "--depth", "1", "-b", CRISPASR_BRANCH,
-            CRISPASR_URL, str(_CRISPASR_DIR)
+            "git", "clone", "--depth", "1", "-b", STELNETTTS_BRANCH,
+            STELNETTTS_URL, str(_STELNETTTS_DIR)
         ])
-        sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+        sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
     except Exception:
         pass
 
-if str(_CRISPASR_DIR / "tools" / "kaggle") not in sys.path:
+if str(_STELNETTTS_DIR / "tools" / "kaggle") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kaggle_harness as kh
 kh.init_progress()
 
 # ── Build ────────────────────────────────────────────────────────────
 kh.install_build_toolchain()
-build_dir = _CRISPASR_DIR / "build"
+build_dir = _STELNETTTS_DIR / "build"
 build_dir.mkdir(exist_ok=True)
 
 with kh.build_heartbeat("cmake configure"):
     subprocess.check_call([
         "cmake", "-G", "Ninja", "-B", str(build_dir),
-        "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON",
+        "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
         "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
-    ], cwd=str(_CRISPASR_DIR), env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")})
+    ], cwd=str(_STELNETTTS_DIR), env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")})
 
 with kh.build_heartbeat("cmake build"):
     subprocess.check_call([
-        "cmake", "--build", str(build_dir), "--target", "crispasr-cli", "-j4",
+        "cmake", "--build", str(build_dir), "--target", "stelnettts-cli", "-j4",
     ], env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")})
 
-CRISPASR_BIN = build_dir / "bin" / "crispasr"
-assert CRISPASR_BIN.exists(), f"Binary not found at {CRISPASR_BIN}"
-print(f"Binary: {CRISPASR_BIN} ({CRISPASR_BIN.stat().st_size / 1e6:.1f} MB)")
+STELNETTTS_BIN = build_dir / "bin" / "stelnettts"
+assert STELNETTTS_BIN.exists(), f"Binary not found at {STELNETTTS_BIN}"
+print(f"Binary: {STELNETTTS_BIN} ({STELNETTTS_BIN.stat().st_size / 1e6:.1f} MB)")
 
 # ── HF auth (3-tier: env → Kaggle Secret → dataset file) ────────────
 hf_token = kh.resolve_hf_token()
 model_dir = WORK / "models"
 model_dir.mkdir(exist_ok=True)
 
-MODEL_REPO = "cstr/parakeet-tdt-0.6b-ja-GGUF"
+MODEL_REPO = "Xenna/parakeet-tdt-0.6b-ja-GGUF"
 MODEL_FILE = "parakeet-tdt-0.6b-ja-q4_k.gguf"
 model_path = model_dir / MODEL_FILE
 
@@ -84,7 +84,7 @@ if not model_path.exists():
 print(f"Model: {model_path} ({model_path.stat().st_size / 1e6:.1f} MB)")
 
 # ── Download test fixture ────────────────────────────────────────────
-FIXTURE_REPO = "cstr/crispasr-regression-fixtures"
+FIXTURE_REPO = "Xenna/stelnettts-regression-fixtures"
 FIXTURE_FILE = "parakeet-tdt-0.6b-ja/reazon_baseball_14s/audio.wav"
 fixture_path = model_dir / "reazon_baseball_14s.wav"
 
@@ -123,7 +123,7 @@ print("TEST 1: Default mode (should auto-enable VAD for JA model)")
 print("="*70)
 
 result = subprocess.run(
-    [str(CRISPASR_BIN), "-m", str(model_path), "-f", str(concat_path)],
+    [str(STELNETTTS_BIN), "-m", str(model_path), "-f", str(concat_path)],
     capture_output=True, text=True, timeout=300,
 )
 print(f"stdout: {result.stdout.strip()}")
@@ -138,7 +138,7 @@ print("TEST 2: Explicit --vad")
 print("="*70)
 
 result = subprocess.run(
-    [str(CRISPASR_BIN), "-m", str(model_path), "-f", str(concat_path), "--vad"],
+    [str(STELNETTTS_BIN), "-m", str(model_path), "-f", str(concat_path), "--vad"],
     capture_output=True, text=True, timeout=300,
 )
 print(f"stdout: {result.stdout.strip()}")
@@ -150,7 +150,7 @@ print("TEST 3: Explicit --chunk-seconds 30 (old default, bypasses VAD)")
 print("="*70)
 
 result = subprocess.run(
-    [str(CRISPASR_BIN), "-m", str(model_path), "-f", str(concat_path),
+    [str(STELNETTTS_BIN), "-m", str(model_path), "-f", str(concat_path),
      "--chunk-seconds", "30"],
     capture_output=True, text=True, timeout=300,
 )
@@ -163,7 +163,7 @@ print("TEST 4: Short clip (14s, no auto-VAD)")
 print("="*70)
 
 result = subprocess.run(
-    [str(CRISPASR_BIN), "-m", str(model_path), "-f", str(fixture_path)],
+    [str(STELNETTTS_BIN), "-m", str(model_path), "-f", str(fixture_path)],
     capture_output=True, text=True, timeout=300,
 )
 print(f"stdout: {result.stdout.strip()}")

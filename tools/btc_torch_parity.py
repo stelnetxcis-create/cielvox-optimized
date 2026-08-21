@@ -5,7 +5,7 @@ Usage:
     python tools/btc_torch_parity.py <btc-chords.gguf> <btc_model.pt> <BTC-ISMIR19 dir> [ref-dump.gguf]
 
 Passing a fourth argument writes a per-stage reference GGUF for the C++ diff
-(`crispasr-diff btc`). The dump includes `input_feat`, so the runtime replays
+(`stelnettts-diff btc`). The dump includes `input_feat`, so the runtime replays
 the EXACT features the spec scored rather than recomputing a CQT — a front-end
 difference can then never masquerade as a model parity failure.
 
@@ -209,7 +209,7 @@ cos = num / den if den else 0.0
 mx = float(np.abs(mine - ref).max())
 agree = float((mine.argmax(-1) == ref.argmax(-1)).mean())
 
-# Optional reference dump for the C++ per-stage diff (crispasr-diff btc).
+# Optional reference dump for the C++ per-stage diff (stelnettts-diff btc).
 if len(sys.argv) > 4:
     import gguf as _g
     w = _g.GGUFWriter(sys.argv[4], "btc-ref")

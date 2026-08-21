@@ -30,7 +30,7 @@ static std::string make_temp_dir() {
     std::string base = buf;
     if (!base.empty() && (base.back() == '\\' || base.back() == '/'))
         base.pop_back();
-    std::string dir = base + "/crispasr_spkdb_" + std::to_string(_getpid());
+    std::string dir = base + "/stelnettts_spkdb_" + std::to_string(_getpid());
     _mkdir(dir.c_str());
     return dir;
 }
@@ -38,10 +38,10 @@ static std::string make_temp_dir() {
 #include <sys/stat.h>
 #include <unistd.h>
 static std::string make_temp_dir() {
-    const char* env = std::getenv("CRISPASR_SCRATCH_DIR");
+    const char* env = std::getenv("STELNETTTS_SCRATCH_DIR");
     std::string base = (env && *env) ? env : ".scratch";
     mkdir(base.c_str(), 0755);
-    std::string pattern = base + "/crispasr_spkdb_XXXXXX";
+    std::string pattern = base + "/stelnettts_spkdb_XXXXXX";
     std::string writable = pattern;
     char* buf = writable.data();
     return mkdtemp(buf) ? std::string(buf) : base;

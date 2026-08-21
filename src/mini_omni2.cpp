@@ -21,8 +21,8 @@
 #include "core/gguf_loader.h"
 #include "core/mel.h"
 #include "core/snac.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -47,7 +47,7 @@
 static bool mini_omni2_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MINI_OMNI2_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MINI_OMNI2_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -215,7 +215,7 @@ extern "C" struct mini_omni2_context* mini_omni2_init_from_file(const char* path
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();

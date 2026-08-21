@@ -253,7 +253,7 @@ struct MappedFile {
     MappedFile& operator=(const MappedFile&) = delete;
 
     // Transfer ownership of the mmap region out of the RAII handle so it
-    // outlives the destructor. Used by the CRISPASR_GGUF_MMAP=1 path to
+    // outlives the destructor. Used by the STELNETTTS_GGUF_MMAP=1 path to
     // hand the mapping to a backend buffer that owns it for the model's
     // lifetime.
     void release() {
@@ -451,16 +451,16 @@ static std::vector<ggml_backend_buffer_t> take_split_extra(ggml_backend_buffer_t
 // load in ~5-10 s and uses half the peak RSS. The CPU mmap path has
 // been validated for every backend that goes through this loader
 // (mimo-asr, voxtral, voxtral4b, chatterbox base + turbo, kokoro,
-// qwen3-tts, vibevoice, parakeet, granite, …) since the PLAN #51a
+// cielvox2-tts, vibevoice, parakeet, granite, …) since the PLAN #51a
 // rollout in late April; flipping the default after a month of opt-in
 // testing matches llama.cpp's behaviour and resolves the slow-load
 // reports.
 //
-// Opt out with `CRISPASR_GGUF_MMAP=0` for users whose model files live
+// Opt out with `STELNETTTS_GGUF_MMAP=0` for users whose model files live
 // on volumes that may disappear mid-run (network mounts, removable
 // disks); mmap-backed weights SIGBUS if the underlying file vanishes.
 static bool mmap_loader_enabled() {
-    const char* v = std::getenv("CRISPASR_GGUF_MMAP");
+    const char* v = std::getenv("STELNETTTS_GGUF_MMAP");
     if (!v || !*v)
         return true;
     return *v != '0';
@@ -473,7 +473,7 @@ static bool mmap_loader_enabled() {
 // volatile read per page; Linux MADV_POPULATE_READ would be a cleaner
 // single-syscall version when available.
 static bool preload_enabled() {
-    const char* v = std::getenv("CRISPASR_GGUF_PRELOAD");
+    const char* v = std::getenv("STELNETTTS_GGUF_PRELOAD");
     return v && *v && *v != '0';
 }
 static void preload_pages(void* base, size_t size) {
@@ -501,7 +501,7 @@ static void preload_pages(void* base, size_t size) {
 // GB). Failure (typically RLIMIT_MEMLOCK exceeded) prints a warning
 // and continues — mmap'd weights still work, just without the pin.
 static bool mlock_enabled() {
-    const char* v = std::getenv("CRISPASR_MLOCK");
+    const char* v = std::getenv("STELNETTTS_MLOCK");
     return v && *v && *v != '0';
 }
 static void try_mlock(const char* tag, void* base, size_t size) {
@@ -595,7 +595,7 @@ static bool load_weights_impl(const char* path, ggml_backend_t backend, IncludeT
     // the weights — the difference between a 14.9 GB F16 GGUF loading on
     // a 16 GB Mac and thrashing swap. Default-on as of issue #94 (slow /
     // failing chatterbox-turbo load on macOS); opt out with
-    // `CRISPASR_GGUF_MMAP=0`.
+    // `STELNETTTS_GGUF_MMAP=0`.
     if (mmap_loader_enabled() && core_cpu_backend::is_cpu(backend)) {
         MappedFile mf(path, /*writable=*/true);
         if (mf.ok) {
@@ -863,7 +863,7 @@ static bool load_weights_impl(const char* path, ggml_backend_t backend, IncludeT
         // mmap path already hints WILLNEED (line 526) for the same
         // reason; doing it here brings the legacy path's load time
         // back in line for users who opt out of the zero-copy path
-        // with CRISPASR_GGUF_MMAP=0 (e.g. model files on network
+        // with STELNETTTS_GGUF_MMAP=0 (e.g. model files on network
         // mounts where mmap would SIGBUS on disconnect).
 #if !defined(_WIN32)
         if (!include_tensor)
@@ -1088,12 +1088,12 @@ bool load_weights_split(const char* path, ggml_backend_t gpu_backend, ggml_backe
     // tensors into groups of <= 1.5 GiB each and allocate one buffer per
     // chunk; the 1.5 GiB limit leaves headroom for alignment padding.
     //
-    // CRISPASR_GGUF_MAX_ALLOC_CHUNK (bytes) lowers the limit. A driver with a
+    // STELNETTTS_GGUF_MAX_ALLOC_CHUNK (bytes) lowers the limit. A driver with a
     // tighter cap than AMD's is the field use; the test use is that reaching
     // the chunked path otherwise costs a multi-gigabyte allocation, so without
     // this the branch that produces overflow buffers has no coverage at all.
     size_t max_alloc_chunk = (size_t)1536 * 1024 * 1024; // 1.5 GiB
-    if (const char* v = std::getenv("CRISPASR_GGUF_MAX_ALLOC_CHUNK")) {
+    if (const char* v = std::getenv("STELNETTTS_GGUF_MAX_ALLOC_CHUNK")) {
         const long long parsed = std::atoll(v);
         if (parsed > 0)
             max_alloc_chunk = (size_t)parsed;

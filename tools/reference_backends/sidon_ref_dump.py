@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dump SaruLab Sidon v0.1 reference intermediates for the CrispASR diff harness.
+"""Dump SaruLab Sidon v0.1 reference intermediates for the StelnetTTS diff harness.
 
 Runs the upstream *TorchScript* modules (self-contained; no sidon source needed):
 

@@ -1,7 +1,7 @@
 """
-CrispASR — Nemotron chunked encoder test on Kaggle
+StelnetTTS — Nemotron chunked encoder test on Kaggle
 
-Build CrispASR, download the nemotron F16 GGUF, run on JFK audio with
+Build StelnetTTS, download the nemotron F16 GGUF, run on JFK audio with
 the cache-aware chunked encoder. Report transcript + timing.
 
 GPU worker (for internet + fast build via ccache).
@@ -14,19 +14,19 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = REPO / "build"
 MODEL_GGUF = WORK / "nemotron-3.5-asr-streaming-0.6b-f16.gguf"
-BRANCH = os.environ.get("CRISPASR_REF", "main")
+BRANCH = os.environ.get("STELNETTTS_REF", "main")
 
 # ── Clone + harness ──
-print(f"[1/5] Cloning CrispASR ({BRANCH})...", flush=True)
+print(f"[1/5] Cloning StelnetTTS ({BRANCH})...", flush=True)
 Path("/kaggle/working/status.txt").write_text("step1: cloning\n")
 if REPO.exists():
     shutil.rmtree(REPO)
 subprocess.check_call(
     ["git", "clone", "--depth", "1", "--branch", BRANCH, "--recursive",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)], timeout=120)
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)], timeout=120)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh
 kh.init_progress()
@@ -51,7 +51,7 @@ subprocess.check_call([
 with kh.build_heartbeat("cmake.build"):
     subprocess.check_call([
         "cmake", "--build", str(BUILD),
-        "--target", "crispasr",
+        "--target", "stelnettts",
         f"-j{kh.safe_build_jobs(gpu=True)}",
     ], cwd=str(REPO), timeout=2400)
 kh.step("built")
@@ -64,7 +64,7 @@ if hf_token:
 
 from huggingface_hub import hf_hub_download
 model_path = hf_hub_download(
-    repo_id="cstr/nemotron-3.5-asr-streaming-GGUF",
+    repo_id="Xenna/nemotron-3.5-asr-streaming-GGUF",
     filename="nemotron-3.5-asr-streaming-0.6b-f16.gguf",
     cache_dir=str(WORK / "hf_cache"),
 )
@@ -79,7 +79,7 @@ Path("/kaggle/working/status.txt").write_text("step4: chunked encoder test\n")
 
 t0 = time.time()
 r = subprocess.run([
-    str(BUILD / "bin" / "crispasr"),
+    str(BUILD / "bin" / "stelnettts"),
     "--backend", "nemotron",
     "-m", str(MODEL_GGUF),
     "-f", str(REPO / "samples" / "jfk.wav"),
@@ -109,7 +109,7 @@ t0 = time.time()
 env = os.environ.copy()
 env["NEMOTRON_BATCH"] = "1"
 r2 = subprocess.run([
-    str(BUILD / "bin" / "crispasr"),
+    str(BUILD / "bin" / "stelnettts"),
     "--backend", "nemotron",
     "-m", str(MODEL_GGUF),
     "-f", str(REPO / "samples" / "jfk.wav"),

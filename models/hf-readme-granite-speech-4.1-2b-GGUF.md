@@ -13,12 +13,12 @@ tags:
 - asr
 - speech
 - gguf
-- crispasr
+- stelnettts
 ---
 
 # granite-speech-4.1-2b — GGUF
 
-GGUF conversions of [ibm-granite/granite-speech-4.1-2b](https://huggingface.co/ibm-granite/granite-speech-4.1-2b) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversions of [ibm-granite/granite-speech-4.1-2b](https://huggingface.co/ibm-granite/granite-speech-4.1-2b) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Files
 
@@ -46,7 +46,7 @@ runs F16 weights). The `-mini` file applies Q4_K to every quantisable
 2D weight including the encoder — useful when disk or download size
 matters more than transcript quality.
 
-_Tested with `crispasr-diff granite-4.1 <model.gguf> <ref.gguf> samples/jfk.wav`_
+_Tested with `stelnettts-diff granite-4.1 <model.gguf> <ref.gguf> samples/jfk.wav`_
 
 ## Architecture
 
@@ -58,14 +58,14 @@ Granite Speech 4.1 2B is a speech-LLM with three components:
 
 Total ~2.2 B parameters. Named "2B" to reflect the full system size rather than the base LLM alone.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # auto-download and transcribe
-crispasr --backend granite-4.1 -m auto samples/audio.wav
+stelnettts --backend granite-4.1 -m auto samples/audio.wav
 
 # or with explicit path
-crispasr --backend granite-4.1 \
+stelnettts --backend granite-4.1 \
   -m granite-speech-4.1-2b-q4_k.gguf \
   samples/audio.wav
 ```
@@ -90,7 +90,7 @@ python models/convert-granite-speech-to-gguf.py \
   --output granite-speech-4.1-2b-f16.gguf
 
 # Quantise F16 → Q4_K
-crispasr-quantize granite-speech-4.1-2b-f16.gguf \
+stelnettts-quantize granite-speech-4.1-2b-f16.gguf \
                   granite-speech-4.1-2b-q4_k.gguf q4_k
 ```
 

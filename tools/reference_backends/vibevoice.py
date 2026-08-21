@@ -390,7 +390,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
             "LLM stages (llm_argmax, generated_text) require loading the full 14 GB model.\n"
             "The 7B VibeVoice-ASR model checkpoint uses 'model_type: vibevoice' which is not\n"
             "supported by transformers 5.x without the original vibevoice package.\n"
-            "Workaround: downgrade transformers, or use the crispasr CLI to generate text."
+            "Workaround: downgrade transformers, or use the stelnettts CLI to generate text."
         )
 
     return out

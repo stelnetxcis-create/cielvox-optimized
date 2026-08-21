@@ -20,7 +20,7 @@ base_model: FireRedTeam/FireRedASR2-AED
 
 # FireRedASR2-AED -- GGUF
 
-GGUF conversions and quantisations of [`FireRedTeam/FireRedASR2-AED`](https://huggingface.co/FireRedTeam/FireRedASR2-AED) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`FireRedTeam/FireRedASR2-AED`](https://huggingface.co/FireRedTeam/FireRedASR2-AED) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -41,17 +41,17 @@ All variants produce identical transcription on test audio.
 - **CER:** 3.05% (Mandarin average, per paper)
 - **Encoder:** Hybrid ggml/CPU — ggml for matmuls, CPU for relative position attention scoring
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR && cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS && cd StelnetTTS
 cmake -S . -B build && cmake --build build -j8
 
 # Auto-detect backend from GGUF
-./build/bin/crispasr -m firered-asr2-aed-q4_k.gguf -f audio.wav
+./build/bin/stelnettts -m firered-asr2-aed-q4_k.gguf -f audio.wav
 
 # Explicit backend
-./build/bin/crispasr --backend firered-asr -m firered-asr2-aed-q4_k.gguf -f audio.wav -osrt
+./build/bin/stelnettts --backend firered-asr -m firered-asr2-aed-q4_k.gguf -f audio.wav -osrt
 ```
 
 Note: Output is in UPPERCASE (the model was trained with uppercase English text). CTC decoding is used; beam search decoder not yet implemented.
@@ -60,5 +60,5 @@ Note: Output is in UPPERCASE (the model was trained with uppercase English text)
 
 ```bash
 python models/convert-firered-asr-to-gguf.py --input FireRedTeam/FireRedASR2-AED --output firered-asr2-aed.gguf
-crispasr-quantize firered-asr2-aed.gguf firered-asr2-aed-q4_k.gguf q4_k
+stelnettts-quantize firered-asr2-aed.gguf firered-asr2-aed-q4_k.gguf q4_k
 ```

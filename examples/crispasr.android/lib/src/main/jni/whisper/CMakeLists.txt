@@ -1,31 +1,31 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(crispasr)
+project(stelnettts)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CRISPASR_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../../..)
+set(STELNETTTS_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../../..)
 
-# Get crispasr version
-file(READ "${CRISPASR_LIB_DIR}/CMakeLists.txt" MAIN_CMAKE_CONTENT)
+# Get stelnettts version
+file(READ "${STELNETTTS_LIB_DIR}/CMakeLists.txt" MAIN_CMAKE_CONTENT)
 string(REGEX MATCH "project\\(\"whisper\\.cpp\" VERSION ([0-9]+\\.[0-9]+\\.[0-9]+)\\)" VERSION_MATCH "${MAIN_CMAKE_CONTENT}")
 if(CMAKE_MATCH_1)
-    set(CRISPASR_VERSION ${CMAKE_MATCH_1} PARENT_SCOPE)
+    set(STELNETTTS_VERSION ${CMAKE_MATCH_1} PARENT_SCOPE)
 else()
-    set(CRISPASR_VERSION "unknown" PARENT_SCOPE)
+    set(STELNETTTS_VERSION "unknown" PARENT_SCOPE)
 endif()
 
-message(STATUS " Whisper version: ${CRISPASR_VERSION}")
+message(STATUS " Whisper version: ${STELNETTTS_VERSION}")
 
-# Path to external GGML, otherwise uses the copy in crispasr.
+# Path to external GGML, otherwise uses the copy in stelnettts.
 option(GGML_HOME "whisper: Path to external GGML source" OFF)
 
 set(
     SOURCE_FILES
-    ${CRISPASR_LIB_DIR}/src/crispasr
-    # imatrix collector: crispasr.cpp calls crispasr_imatrix_install(); this
-    # minimal whisper-only lib doesn't link crispasr-core, so compile it here.
-    # No-op unless CRISPASR_IMATRIX_OUT is set.
-    ${CRISPASR_LIB_DIR}/src/crispasr_imatrix.cpp
+    ${STELNETTTS_LIB_DIR}/src/stelnettts
+    # imatrix collector: stelnettts.cpp calls stelnettts_imatrix_install(); this
+    # minimal whisper-only lib doesn't link stelnettts-core, so compile it here.
+    # No-op unless STELNETTTS_IMATRIX_OUT is set.
+    ${STELNETTTS_LIB_DIR}/src/stelnettts_imatrix.cpp
     ${CMAKE_SOURCE_DIR}/jni.c
     )
 
@@ -41,7 +41,7 @@ function(build_library target_name)
     )
 
     target_compile_definitions(${target_name} PUBLIC GGML_USE_CPU)
-    target_compile_definitions(${target_name} PRIVATE CRISPASR_VERSION="${CRISPASR_VERSION}")
+    target_compile_definitions(${target_name} PRIVATE STELNETTTS_VERSION="${STELNETTTS_VERSION}")
 
     if (${target_name} STREQUAL "whisper_v8fp16_va")
         target_compile_options(${target_name} PRIVATE -march=armv8.2-a+fp16)
@@ -64,7 +64,7 @@ function(build_library target_name)
     if (GGML_HOME)
         FetchContent_Declare(ggml SOURCE_DIR ${GGML_HOME})
     else()
-        FetchContent_Declare(ggml SOURCE_DIR ${CRISPASR_LIB_DIR}/ggml)
+        FetchContent_Declare(ggml SOURCE_DIR ${STELNETTTS_LIB_DIR}/ggml)
     endif()
     FetchContent_MakeAvailable(ggml)
     target_compile_options(ggml PRIVATE ${GGML_COMPILE_OPTIONS})
@@ -81,10 +81,10 @@ endif ()
 
 build_library("whisper") # Default target
 
-include_directories(${CRISPASR_LIB_DIR})
-include_directories(${CRISPASR_LIB_DIR}/src)
-include_directories(${CRISPASR_LIB_DIR}/include)
-include_directories(${CRISPASR_LIB_DIR}/ggml/include)
-include_directories(${CRISPASR_LIB_DIR}/ggml/src)
-include_directories(${CRISPASR_LIB_DIR}/ggml/src/ggml-cpu)
+include_directories(${STELNETTTS_LIB_DIR})
+include_directories(${STELNETTTS_LIB_DIR}/src)
+include_directories(${STELNETTTS_LIB_DIR}/include)
+include_directories(${STELNETTTS_LIB_DIR}/ggml/include)
+include_directories(${STELNETTTS_LIB_DIR}/ggml/src)
+include_directories(${STELNETTTS_LIB_DIR}/ggml/src/ggml-cpu)
 

@@ -1,16 +1,16 @@
 # Server mode (HTTP API)
 
-`crispasr --server` starts a persistent HTTP server with the model
+`stelnettts --server` starts a persistent HTTP server with the model
 loaded once and reused across requests. Compatible with the OpenAI
 audio-transcription protocol, so any tool that already speaks
 OpenAI's API (LiteLLM, LangChain, custom clients) can point at
-CrispASR with zero code changes.
+StelnetTTS with zero code changes.
 
 ## Quick start
 
 ```bash
 # Start server with model loaded once
-crispasr --server -m model.gguf --port 8080
+stelnettts --server -m model.gguf --port 8080
 
 # Transcribe via HTTP (model stays loaded between requests):
 curl -F "file=@audio.wav" http://localhost:8080/inference
@@ -39,14 +39,14 @@ Use `--host 0.0.0.0` to accept remote connections.
 
 ## API keys
 
-To require API keys, set the `CRISPASR_API_KEYS` env var
+To require API keys, set the `STELNETTTS_API_KEYS` env var
 (comma-separated). **Do not** pass keys as CLI arguments — they would
 be visible in `ps` / `top`. Protected endpoints accept either
 `Authorization: Bearer <key>` or `X-API-Key: <key>`. `/health`
 remains public for container health checks.
 
 ```bash
-CRISPASR_API_KEYS=key-one,key-two crispasr --server -m model.gguf
+STELNETTTS_API_KEYS=key-one,key-two stelnettts --server -m model.gguf
 
 curl -H "Authorization: Bearer key-one" \
   -F "file=@audio.wav" \
@@ -61,14 +61,14 @@ curl -H "Authorization: Bearer key-one" \
 ```bash
 # Same curl syntax as the OpenAI API:
 curl http://localhost:8080/v1/audio/transcriptions \
-  -H "Authorization: Bearer $CRISPASR_API_KEY" \
+  -H "Authorization: Bearer $STELNETTTS_API_KEY" \
   -F "file=@audio.wav" \
   -F "response_format=json"
 # {"text": "And so, my fellow Americans, ask not what your country can do for you..."}
 
 # Verbose JSON with per-segment timestamps (matches OpenAI's format):
 curl http://localhost:8080/v1/audio/transcriptions \
-  -H "Authorization: Bearer $CRISPASR_API_KEY" \
+  -H "Authorization: Bearer $STELNETTTS_API_KEY" \
   -F "file=@audio.wav" \
   -F "response_format=verbose_json"
 # {"task": "transcribe", "language": "en", "duration": 11.0, "text": "...", "segments": [...]}
@@ -147,7 +147,7 @@ curl http://localhost:8080/v1/audio/transcriptions \
 | `require_word_timestamps` | `true`/`false` — fail unless every non-empty segment carries word timestamps (native or aligned) |
 | `require_punctuation` | `true`/`false` — fail unless a punctuation model is loaded (start the server with `--punc-model`) |
 
-The `/inference` endpoint accepts the same CrispASR extension fields.
+The `/inference` endpoint accepts the same StelnetTTS extension fields.
 
 ### Strict pipeline — fail on a required stage's failure (#311)
 
@@ -160,7 +160,7 @@ an `{"error": {...}}` body instead of a degraded `200`. A stage that ran and
 legitimately produced nothing (VAD detected no speech) stays a success. This
 mirrors the CLI's `--strict-pipeline` family (see
 [`cli.md`](cli.md#strict-pipeline--require-aux-stages-to-succeed---strict-pipeline-311));
-the strict decision is shared code (`crispasr_strict.h`), so the two front-ends
+the strict decision is shared code (`stelnettts_strict.h`), so the two front-ends
 cannot drift.
 
 ```bash
@@ -221,7 +221,7 @@ loaded resident and applied to every transcription:
   punctuation on backends that emit none (parakeet RNNT/CTC, etc.). Auto-enabled
   for non-PnC CTC backends, matching the CLI.
 - `--truecase-model auto|crf|lstm|<path>` — truecasing applied after punctuation.
-- `--no-warmup` (or `CRISPASR_NO_WARMUP=1`) — skip the startup warmup transcribe
+- `--no-warmup` (or `STELNETTTS_NO_WARMUP=1`) — skip the startup warmup transcribe
   (workaround for GPU drivers that hang/crash in warmup; see #165).
 
 ### Diarization example
@@ -234,7 +234,7 @@ curl http://localhost:8080/v1/audio/transcriptions \
   -F "diarize=true"
 
 # Pyannote diarization (works on mono, needs pyannote-seg GGUF):
-crispasr --server -m model.gguf --diarize --diarize-method pyannote \
+stelnettts --server -m model.gguf --diarize --diarize-method pyannote \
   --sherpa-segment-model pyannote-seg-3.0.gguf
 
 curl http://localhost:8080/v1/audio/transcriptions \
@@ -301,7 +301,7 @@ curl http://localhost:8080/v1/audio/transcriptions \
 # Boost domain-specific terms:
 curl http://localhost:8080/v1/audio/transcriptions \
   -F "file=@audio.wav" \
-  -F "hotwords=CrispASR,GGUF,parakeet" \
+  -F "hotwords=StelnetTTS,GGUF,parakeet" \
   -F "hotwords_boost=3.0"
 ```
 
@@ -312,19 +312,19 @@ currently loaded model.
 
 `POST /v1/audio/speech` is the OpenAI-compatible TTS counterpart to
 `/v1/audio/transcriptions`. Available whenever the loaded backend
-declares `CAP_TTS` (kokoro, qwen3-tts, vibevoice, orpheus,
+declares `CAP_TTS` (kokoro, cielvox2-tts, vibevoice, orpheus,
 chatterbox). Routes register on every backend; non-TTS backends
 respond with a 400 pointing the caller at `POST /load`.
 
 ```bash
-crispasr --server --backend qwen3-tts-customvoice \
-  -m qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf \
-  --codec-model qwen3-tts-tokenizer-12hz.gguf \
+stelnettts --server --backend cielvox2-tts-customvoice \
+  -m cielvox2-tts-12hz-1.7b-customvoice-q8_0.gguf \
+  --codec-model cielvox2-tts-tokenizer-12hz.gguf \
   --voice-dir ./voices \
   --port 8080
 
 curl http://localhost:8080/v1/audio/speech \
-  -H "Authorization: Bearer $CRISPASR_API_KEY" \
+  -H "Authorization: Bearer $STELNETTTS_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello there.", "voice": "vivian"}' \
   -o out.wav
@@ -336,10 +336,10 @@ curl http://localhost:8080/v1/audio/speech \
 |---|---|---|
 | `input` | (required) | Text to synthesize. Capped at `--tts-max-input-chars` (default 4096); set to 0 to disable the cap. Long input is automatically split on sentence boundaries before synthesis (see [long-form chunking](#long-form-chunking-for-v1audiospeech) below). |
 | `model` | (ignored) | Read but not validated — we serve whatever was loaded via `-m` or `POST /load`. Surfaced in the synth log line. |
-| `voice` | server's `--voice` | Passed through verbatim to the backend's `params.tts_voice`. Each backend interprets it on its own terms — qwen3-tts CustomVoice as a speaker name (`vivian`, `ryan`); qwen3-tts Base as a path or (with `--voice-dir`) a bare name resolving to `<voice-dir>/<name>.{wav,gguf}`; orpheus as a preset (`tara`, `leah`); tada as a `tada-ref-*.gguf` path/name. For **tada the voice is switched per request without a restart** (#201): naming a different reference reloads it; `default`/`auto`/omitted keeps the currently-loaded voice. A `.wav` reference is cloned on the fly (needs `ref_text` + the encoder/aligner GGUFs) when the server runs with `CRISPASR_TADA_WAV_CLONE=1` — otherwise convert it to a `tada-ref.gguf` first. |
-| `instructions` | empty | Voice-direction prose for backends that support it (qwen3-tts VoiceDesign). Silently ignored on other backends so OpenAI clients targeting `gpt-4o-mini-tts` don't see 4xx errors. |
-| `seed` | `0` | RNG seed for sampling. `0` = non-deterministic. Same-seed + same-text produces bit-identical audio on all sampling-capable TTS backends (qwen3-tts, chatterbox, vibevoice, orpheus). |
-| `temperature` | server's `--temperature` | Sampling temperature for AR TTS backends. `0` = greedy; backends apply their own default (e.g. 0.8 for qwen3-tts) when the global default of 0.0 is unchanged. |
+| `voice` | server's `--voice` | Passed through verbatim to the backend's `params.tts_voice`. Each backend interprets it on its own terms — cielvox2-tts CustomVoice as a speaker name (`vivian`, `ryan`); cielvox2-tts Base as a path or (with `--voice-dir`) a bare name resolving to `<voice-dir>/<name>.{wav,gguf}`; orpheus as a preset (`tara`, `leah`); tada as a `tada-ref-*.gguf` path/name. For **tada the voice is switched per request without a restart** (#201): naming a different reference reloads it; `default`/`auto`/omitted keeps the currently-loaded voice. A `.wav` reference is cloned on the fly (needs `ref_text` + the encoder/aligner GGUFs) when the server runs with `STELNETTTS_TADA_WAV_CLONE=1` — otherwise convert it to a `tada-ref.gguf` first. |
+| `instructions` | empty | Voice-direction prose for backends that support it (cielvox2-tts VoiceDesign). Silently ignored on other backends so OpenAI clients targeting `gpt-4o-mini-tts` don't see 4xx errors. |
+| `seed` | `0` | RNG seed for sampling. `0` = non-deterministic. Same-seed + same-text produces bit-identical audio on all sampling-capable TTS backends (cielvox2-tts, chatterbox, vibevoice, orpheus). |
+| `temperature` | server's `--temperature` | Sampling temperature for AR TTS backends. `0` = greedy; backends apply their own default (e.g. 0.8 for cielvox2-tts) when the global default of 0.0 is unchanged. |
 | `max_new_tokens` | server's `--max-new-tokens` | AR token generation cap. `<= 0` clears the override and uses the backend default. |
 | `max_speech_tokens` | backend default | MOSS-TTS / moss-tts-local hard cap on generated audio frames (~12.5 frames/sec). The decode loop is forced to end once this many frames are produced, so it bounds the worst-case synthesis length even when the model never emits its end token. Per request. |
 | `min_speech_tokens` | backend default | MOSS-TTS / moss-tts-local minimum number of generated audio frames (~12.5 frames/sec). The decode loop is forbidden from ending until this many frames are produced. **Setting `min_speech_tokens == max_speech_tokens` yields exact-duration synthesis** — the model generates precisely that window of audio (within one frame ≈ 80 ms) with no post-hoc tempo change, which is what game-dubbing / lip-sync work needs. Per request. |
@@ -353,18 +353,18 @@ curl http://localhost:8080/v1/audio/speech \
 | `cfg_scale` | backend default | Classifier-free-guidance scale. For tada the acoustic CFG (Python `acoustic_cfg`, default 1.6). Also chatterbox/f5. Per request. |
 | `noise_temp` | backend default | tada flow-matching noise temperature (Python `noise_temp`, default 0.9). Per request. |
 | `speed` | `1.0` | Tempo multiplier `0.25 .. 4.0` (OpenAI range). Applied as a post-synth linear resampler. Out-of-range returns 400 with `code=invalid_speed`. |
-| `response_format` | `"wav"` | `wav` (16-bit PCM RIFF, 24 kHz mono — default), `pcm` (OpenAI spec: 24 kHz signed 16-bit LE raw, no header), `f32` (crispasr-specific raw float32 for downstream DSP), or the compressed containers `mp3` / `aac` / `opus` — all encoded in-tree by [glint](https://github.com/CrispStrobe/glint), no build deps. `opus` returns a standard **Ogg Opus** file (`audio/ogg`); set `CRISPASR_OPUS_ENCODER=libopus` (build with libopus) to fall back to the legacy raw-packet framing (`audio/opus`) instead. |
-| `consent_attestation` | empty | Required when `voice` is a **clone**: a `.wav` reference, or a `.gguf` pack stamped `crispasr.voice.cloned_from_recording` by the baker that derived it from a real recording. The name is resolved against `--voice-dir` first, so a bare `"victim"` is treated exactly like `"victim.wav"`. A free-text statement attesting speaker consent, e.g. `"I have the speaker's consent"`. Logged for audit, with the reason the voice was classified a clone. Preset packs (kokoro, vibevoice, `tada-ref-<lang>`, …) carry no stamp and need no attestation — see [`eu-ai-act.md` §6.2](eu-ai-act.md#62-art-504--deepfake-disclosure). Note that "no attestation" is not "nothing to disclose": a preset whose voice is a real person still owes the audible label, via `speaker_identity` below. |
+| `response_format` | `"wav"` | `wav` (16-bit PCM RIFF, 24 kHz mono — default), `pcm` (OpenAI spec: 24 kHz signed 16-bit LE raw, no header), `f32` (stelnettts-specific raw float32 for downstream DSP), or the compressed containers `mp3` / `aac` / `opus` — all encoded in-tree by [glint](https://github.com/Cyna/glint), no build deps. `opus` returns a standard **Ogg Opus** file (`audio/ogg`); set `STELNETTTS_OPUS_ENCODER=libopus` (build with libopus) to fall back to the legacy raw-packet framing (`audio/opus`) instead. |
+| `consent_attestation` | empty | Required when `voice` is a **clone**: a `.wav` reference, or a `.gguf` pack stamped `stelnettts.voice.cloned_from_recording` by the baker that derived it from a real recording. The name is resolved against `--voice-dir` first, so a bare `"victim"` is treated exactly like `"victim.wav"`. A free-text statement attesting speaker consent, e.g. `"I have the speaker's consent"`. Logged for audit, with the reason the voice was classified a clone. Preset packs (kokoro, vibevoice, `tada-ref-<lang>`, …) carry no stamp and need no attestation — see [`eu-ai-act.md` §6.2](eu-ai-act.md#62-art-504--deepfake-disclosure). Note that "no attestation" is not "nothing to disclose": a preset whose voice is a real person still owes the audible label, via `speaker_identity` below. |
 | `ref_text` | empty | Transcript of the `.wav` clone reference, used by TADA on-the-fly cloning (#201). A companion `<name>.txt` in `--voice-dir` is used when omitted. Ignored by backends that clone from audio alone. |
-| `language` | server's `-l` | The language to **speak** (alias: `target_lang`). ISO-639-1 (`de`) or an English name (`German`). cosyvoice3 compares it to the reference voice's language and switches to cross-lingual synthesis when they differ; qwen3-tts sets the talker's explicit `codec_language_id`; moss-tts fills its `- Language:` prompt field; kokoro/zonos/piper pick the eSpeak voice. Language-agnostic backends (voxcpm2, f5-tts, vibevoice) ignore it and read the script of `input` instead. |
+| `language` | server's `-l` | The language to **speak** (alias: `target_lang`). ISO-639-1 (`de`) or an English name (`German`). cosyvoice3 compares it to the reference voice's language and switches to cross-lingual synthesis when they differ; cielvox2-tts sets the talker's explicit `codec_language_id`; moss-tts fills its `- Language:` prompt field; kokoro/zonos/piper pick the eSpeak voice. Language-agnostic backends (voxcpm2, f5-tts, vibevoice) ignore it and read the script of `input` instead. |
 | `source_lang` | empty | The language the **cloning reference** is spoken in (alias: `ref_lang`) — not the output language. Only cosyvoice3 acts on it, to decide whether the requested `language` needs cross-lingual synthesis. Optional: the backend otherwise infers it from the voice-bank entry or from `ref_text`. That inference declines rather than guesses on a short transcript, and when it declines the requested `language` has no effect and the clone keeps the reference's accent — set this to make it explicit (#329). |
-| `speaker_identity` | empty (`unknown`) | Whose voice a **preset** voice is: `real_person`, `synthetic` or `unknown`. `real_person` adds the audible AI disclosure to non-cloned output — a preset shipped inside a model can be an identifiable individual, which makes the output a deep fake under Art. 3(60) even though nothing was cloned. It does **not** require `consent_attestation`: whether that donor agreed to the model being trained is settled upstream and you cannot attest to it. Outranks the pack's own `crispasr.voice.speaker_identity` stamp and the backend default. An unrecognised value is a `400` with `code=invalid_speaker_identity` rather than a silent downgrade. See [`eu-ai-act.md` §6.2a](eu-ai-act.md#62a-whose-voice-is-a-preset-voice-speaker_identity). |
+| `speaker_identity` | empty (`unknown`) | Whose voice a **preset** voice is: `real_person`, `synthetic` or `unknown`. `real_person` adds the audible AI disclosure to non-cloned output — a preset shipped inside a model can be an identifiable individual, which makes the output a deep fake under Art. 3(60) even though nothing was cloned. It does **not** require `consent_attestation`: whether that donor agreed to the model being trained is settled upstream and you cannot attest to it. Outranks the pack's own `stelnettts.voice.speaker_identity` stamp and the backend default. An unrecognised value is a `400` with `code=invalid_speaker_identity` rather than a silent downgrade. See [`eu-ai-act.md` §6.2a](eu-ai-act.md#62a-whose-voice-is-a-preset-voice-speaker_identity). |
 | `spoken_disclaimer` | `true` | Set to `false` to skip the audible AI-disclosure prefix on voice-cloned output. Machine-readable provenance (watermark + C2PA) is always applied. When `false`, the caller assumes responsibility for providing appropriate AI-disclosure to end users — which is why the opt-out is only honoured when attested (see `marking_attestation`). |
 | `marking_attestation` | empty | Required (since v0.8.22) to **honour** `"spoken_disclaimer": false` on a voice clone — a free-text affirmation that you accept the AI-content disclosure duty, e.g. `"I will disclose this is AI-generated"`. Logged for audit. A server launched with `--accept-marking-responsibility` has already accepted that duty for every response it serves and satisfies this per-request field. **Without it the opt-out is denied, not the request** (since v0.8.24): the response is still `200`, but it carries the spoken disclaimer and the headers below say so. Earlier v0.8.22/v0.8.23 servers returned `400 marking_attestation_required` instead. |
 
 > **Watermarking.** Every response is watermarked by default. There is **no
 > per-request watermark toggle** — the mark is disabled only at the process
-> level by starting the server with `--no-watermark` (or `CRISPASR_NO_WATERMARK=1`),
+> level by starting the server with `--no-watermark` (or `STELNETTTS_NO_WATERMARK=1`),
 > which turns it off for **all** responses and logs a one-time warning that the
 > AI-content marking responsibility then rests with the operator. See
 > [`tts.md`](tts.md#disabling-the-watermark-operator-opt-out).
@@ -451,7 +451,7 @@ to their own conventions — see `docs/tts.md` for per-backend specifics.
 ### Long-form chunking for /v1/audio/speech
 
 The talker LM in every TTS backend has a finite training horizon
-(qwen3-tts-1.7b-base degrades past ~600 chars / 200 codec frames and
+(cielvox2-tts-1.7b-base degrades past ~600 chars / 200 codec frames and
 silently truncates trailing text at MAX_FRAMES). The route
 auto-chunks `input` on sentence boundaries before dispatching to the
 backend, then concatenates per-chunk PCM with a 200 ms silence pad.
@@ -463,7 +463,7 @@ backend, then concatenates per-chunk PCM with a 200 ms silence pad.
   split at `--tts-max-input-chars`.
 - Voice consistency holds across chunks because the talker re-prefills
   with the same ICL ref each call (and the per-call setup is amortised
-  by qwen3-tts's `last_voice_key_` cache).
+  by cielvox2-tts's `last_voice_key_` cache).
 - Server log line reports `chunks=N` for observability.
 
 Single-sentence input is a 1-element vector — per-call overhead is
@@ -475,7 +475,7 @@ Browser clients calling `/v1/*` from a different origin need the server
 to opt in via `--cors-origin`:
 
 ```bash
-crispasr --server --backend qwen3-tts-customvoice -m model.gguf \
+stelnettts --server --backend cielvox2-tts-customvoice -m model.gguf \
   --cors-origin '*'   # any origin — for dev only
 # or:
   --cors-origin 'https://app.example.com'   # specific origin — production
@@ -520,7 +520,7 @@ on S2S-capable backends (`lfm2-audio`, `mini-omni2`, `sidon`,
 return 400.
 
 ```bash
-crispasr --server --backend lfm2-audio -m lfm2-audio-1.5b-q5_k.gguf
+stelnettts --server --backend lfm2-audio -m lfm2-audio-1.5b-q5_k.gguf
 ```
 
 ```bash
@@ -540,7 +540,7 @@ curl http://localhost:8080/v1/audio/speech-to-speech \
 The intermediate ASR transcript (if the backend produces one) is
 returned in the `X-Transcript` response header (URL-encoded). Output
 audio is watermarked by default, same as TTS (process-level opt-out via
-`--no-watermark` / `CRISPASR_NO_WATERMARK`).
+`--no-watermark` / `STELNETTTS_NO_WATERMARK`).
 
 ### Deferred
 
@@ -559,7 +559,7 @@ analogue of the CLI `--text` mode. Available whenever the loaded backend has
 `CAP_TRANSLATE` (e.g. `m2m100`).
 
 ```bash
-crispasr --server -m m2m100-418m-q8_0.gguf --backend m2m100 &
+stelnettts --server -m m2m100-418m-q8_0.gguf --backend m2m100 &
 
 curl http://localhost:8080/v1/translate \
   -H "Content-Type: application/json" \
@@ -583,7 +583,7 @@ HTTP server (`-1` = off, the default; `0` = HTTP port + 1; `N` = port N). This
 is the server analogue of the CLI `--stream` path.
 
 ```bash
-crispasr --server -m ggml-base.en.bin --backend whisper --ws-port 0
+stelnettts --server -m ggml-base.en.bin --backend whisper --ws-port 0
 # → WS ws://127.0.0.1:8081
 ```
 
@@ -602,7 +602,7 @@ Whisper-only today. (Each connection opens its own streaming session.)
 When `--ws-port` is enabled, the server also exposes a **vLLM Realtime API** compatible WebSocket endpoint on `ws_port + 1`. This endpoint accepts standard JSON-encoded `input_audio_buffer.append` events (base64 PCM16) and streams back `conversation.item.input_audio_transcription.delta` events incrementally.
 
 ```bash
-crispasr --server -m qwen3-asr.gguf --backend qwen3-asr --ws-port 8081
+stelnettts --server -m cielvox2-asr.gguf --backend cielvox2-asr --ws-port 8081
 # → WS ws://127.0.0.1:8081 (Raw PCM)
 # → WS ws://127.0.0.1:8082/v1/realtime (vLLM Realtime API)
 ```
@@ -617,7 +617,7 @@ persistent HTTP server against a mounted model directory.
 
 ```bash
 cp .env.example .env
-# Edit CRISPASR_MODEL to point at a file mounted under ./models
+# Edit STELNETTTS_MODEL to point at a file mounted under ./models
 
 docker compose up --build
 
@@ -626,7 +626,7 @@ curl http://localhost:8080/health
 
 # OpenAI-compatible transcription API
 curl http://localhost:8080/v1/audio/transcriptions \
-  -H "Authorization: Bearer $CRISPASR_API_KEY" \
+  -H "Authorization: Bearer $STELNETTTS_API_KEY" \
   -F "file=@audio.wav" \
   -F "response_format=verbose_json" \
   -F "max_tokens=256" \
@@ -637,11 +637,11 @@ By default the compose stack:
 - builds from `.devops/main.Dockerfile`
 - mounts `./models` into `/models`
 - stores auto-downloaded models in the Docker-managed
-  `crispasr-cache` volume at `/cache`
+  `stelnettts-cache` volume at `/cache`
 - serves on `http://localhost:8080`
 
 If you want `/cache` to be a host directory instead, replace the
-`crispasr-cache:/cache` volume with `./cache:/cache` and make it
+`stelnettts-cache:/cache` volume with `./cache:/cache` and make it
 writable by the container user before startup:
 
 ```bash
@@ -649,10 +649,10 @@ mkdir -p cache models
 sudo chown -R "$(id -u):$(id -g)" cache models
 ```
 
-You can cap or raise build parallelism with `CRISPASR_BUILD_JOBS`:
+You can cap or raise build parallelism with `STELNETTTS_BUILD_JOBS`:
 
 ```bash
-docker compose build --build-arg CRISPASR_BUILD_JOBS=8
+docker compose build --build-arg STELNETTTS_BUILD_JOBS=8
 ```
 
 For CUDA builds, use the override file:
@@ -663,7 +663,7 @@ docker compose -f docker-compose.yml -f docker-compose.cuda.yml up --build
 
 ## Prebuilt CUDA images — choosing a tag
 
-We publish two CUDA tags on `ghcr.io/crispstrobe/crispasr`. Pick the
+We publish two CUDA tags on `ghcr.io/crispstrobe/stelnettts`. Pick the
 one that matches your host driver:
 
 | Tag | CUDA | Min NVIDIA driver | Supported arches | Notes |
@@ -677,20 +677,20 @@ If it's R535 or higher, pull `main-cuda`. If it's R510–R534, pull
 image will work.
 
 ```bash
-docker pull ghcr.io/crispstrobe/crispasr:main-cuda      # modern hosts
-docker pull ghcr.io/crispstrobe/crispasr:main-cuda-12   # legacy driver
+docker pull ghcr.io/crispstrobe/stelnettts:main-cuda      # modern hosts
+docker pull ghcr.io/crispstrobe/stelnettts:main-cuda-12   # legacy driver
 ```
 
 ## Wyoming protocol (Home Assistant Assist)
 
 Pass `--wyoming-port N` to start a Wyoming peer-to-peer JSONL/TCP server
-alongside the HTTP API. One `crispasr-server` instance then replaces both
+alongside the HTTP API. One `stelnettts-server` instance then replaces both
 `wyoming-faster-whisper` (STT) and `wyoming-piper` (TTS) in a Home Assistant
 Assist pipeline — no extra containers needed.
 
 ```bash
 # Start server with Wyoming on port 10300 (HA default)
-crispasr-server -m model.gguf --port 8080 --wyoming-port 10300
+stelnettts-server -m model.gguf --port 8080 --wyoming-port 10300
 ```
 
 ### Wire format
@@ -704,7 +704,7 @@ Each message is a JSON header line followed by an optional binary payload:
 
 ### Events handled
 
-| Incoming event | What CrispASR does |
+| Incoming event | What StelnetTTS does |
 |---|---|
 | `describe` | Replies with `info` — advertises ASR + TTS capabilities |
 | `transcribe` + `audio-start` + `audio-chunk` + `audio-stop` | Buffers int16 PCM chunks, resamples to 16 kHz float32 via linear interpolation after `audio-stop`, runs `backend->transcribe()`, returns `transcript` |
@@ -723,26 +723,26 @@ wyoming:
 ```
 
 The server advertises both STT and TTS under the same URI. HA will automatically
-use CrispASR for both directions once the integration is added.
+use StelnetTTS for both directions once the integration is added.
 
 ## Hugging Face Space wrapper
 
 There is also a Gradio-based Hugging Face Space wrapper under
-[`hf-space/`](../hf-space/README.md). It starts the CrispASR HTTP
+[`hf-space/`](../hf-space/README.md). It starts the StelnetTTS HTTP
 server inside the container and provides a small browser UI on top of
 the OpenAI-compatible transcription endpoint.
 
 Build it locally with:
 
 ```bash
-docker build -f hf-space/Dockerfile -t crispasr-hf-space .
+docker build -f hf-space/Dockerfile -t stelnettts-hf-space .
 docker run --rm -p 7860:7860 -p 8080:8080 \
-  -e CRISPASR_MODEL=/models/ggml-base.en.bin \
+  -e STELNETTTS_MODEL=/models/ggml-base.en.bin \
   -v "$PWD/models:/models" \
-  crispasr-hf-space
+  stelnettts-hf-space
 ```
 
-The compose files default to local image tags (`crispasr-local:*`)
+The compose files default to local image tags (`stelnettts-local:*`)
 so they don't depend on pulling a published registry image first.
 
 ## Environment overrides
@@ -751,15 +751,15 @@ You can override the loaded model and startup flags through `.env`:
 
 | Variable | Purpose |
 |---|---|
-| `CRISPASR_MODEL` | Model path inside the container (e.g. `/models/parakeet-tdt-0.6b-v2.gguf`) |
-| `CRISPASR_BACKEND` | Force a specific backend |
-| `CRISPASR_LANGUAGE` | ISO-639-1 code or `auto` for LID |
-| `CRISPASR_AUTO_DOWNLOAD` | Set to `1` to enable `-m auto` resolution |
-| `CRISPASR_CACHE_DIR` | Where auto-downloaded models live (defaults to `/cache`) |
-| `CRISPASR_API_KEYS` | Comma-separated API keys (see [API keys](#api-keys)) |
-| `CRISPASR_EXTRA_ARGS` | Forwarded verbatim to the server CLI (e.g. `--no-punctuation`) |
-| `CRISPASR_SERVER_WORKERS` | `N>1` loads N independent ASR backend instances so **pure-ASR** requests (explicit `language`, no aligner, no punctuation/truecaser) run concurrently instead of serializing on the single model. Costs N× model memory. Only a throughput win where a single request under-utilises the box (spare cores, a GPU not saturated by one stream, smaller models); a *net loss* on a saturated memory-bandwidth-bound CPU model, where the instances contend. Requests using shared LID/aligner/post-processing stay serialized. `/load` is disabled while a pool is active (restart to change models). Default `1` = single instance. Equivalent to the `--server-workers N` CLI flag (this env var overrides the flag when both are set). Full guidance: **[docs/concurrency.md](concurrency.md)**. |
+| `STELNETTTS_MODEL` | Model path inside the container (e.g. `/models/parakeet-tdt-0.6b-v2.gguf`) |
+| `STELNETTTS_BACKEND` | Force a specific backend |
+| `STELNETTTS_LANGUAGE` | ISO-639-1 code or `auto` for LID |
+| `STELNETTTS_AUTO_DOWNLOAD` | Set to `1` to enable `-m auto` resolution |
+| `STELNETTTS_CACHE_DIR` | Where auto-downloaded models live (defaults to `/cache`) |
+| `STELNETTTS_API_KEYS` | Comma-separated API keys (see [API keys](#api-keys)) |
+| `STELNETTTS_EXTRA_ARGS` | Forwarded verbatim to the server CLI (e.g. `--no-punctuation`) |
+| `STELNETTTS_SERVER_WORKERS` | `N>1` loads N independent ASR backend instances so **pure-ASR** requests (explicit `language`, no aligner, no punctuation/truecaser) run concurrently instead of serializing on the single model. Costs N× model memory. Only a throughput win where a single request under-utilises the box (spare cores, a GPU not saturated by one stream, smaller models); a *net loss* on a saturated memory-bandwidth-bound CPU model, where the instances contend. Requests using shared LID/aligner/post-processing stay serialized. `/load` is disabled while a pool is active (restart to change models). Default `1` = single instance. Equivalent to the `--server-workers N` CLI flag (this env var overrides the flag when both are set). Full guidance: **[docs/concurrency.md](concurrency.md)**. |
 
 The service is configured to avoid serving as root by default:
-- `user: "${CRISPASR_UID:-1000}:${CRISPASR_GID:-1000}"`
+- `user: "${STELNETTTS_UID:-1000}:${STELNETTTS_GID:-1000}"`
 - `security_opt: ["no-new-privileges:true"]`

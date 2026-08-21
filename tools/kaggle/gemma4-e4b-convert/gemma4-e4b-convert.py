@@ -17,7 +17,7 @@ internet — and we must download E4B from HF and upload the GGUFs back. Large
 artifacts go to /kaggle/temp (not /kaggle/working, capped at ~20 GB).
 
 REQUIREMENTS:
-  - chr1str/crispasr-hf-token dataset mounted (HF token); the token's HF
+  - chr1str/stelnettts-hf-token dataset mounted (HF token); the token's HF
     account must have accepted the google/gemma-4-E4B-it gated license.
 
 Push (under chr1str):
@@ -31,12 +31,12 @@ import subprocess
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
 BUILD = TEMP / "build"
 
 SRC_REPO = "google/gemma-4-E4B-it"
-HF_REPO = "cstr/gemma4-e4b-it-GGUF"
+HF_REPO = "Xenna/gemma4-e4b-it-GGUF"
 NAME = "gemma4-e4b-it"
 
 # ── Phase 0: Clone repo (harness + converter live in it) ────────────────────
@@ -45,7 +45,7 @@ if not REPO.exists():
     try:
         subprocess.check_call([
             "git", "clone", "--depth", "1", "-b", "main",
-            "https://github.com/CrispStrobe/CrispASR", str(REPO),
+            "https://github.com/Cyna/StelnetTTS", str(REPO),
         ])
     except Exception as e:
         print(f"  git clone failed: {e}")
@@ -63,7 +63,7 @@ kh.init_progress()
 # torch + transformers are pre-installed and NOT needed by the converter
 # (it reads safetensors directly) — don't reinstall torch (wastes time / OOM).
 kh.step("install deps")
-kh.install_build_toolchain()  # ninja + ccache + mold (for crispasr-quantize)
+kh.install_build_toolchain()  # ninja + ccache + mold (for stelnettts-quantize)
 kh.sh_with_progress("pip install -q safetensors gguf huggingface_hub hf_transfer")
 
 # ── Phase 2: Resolve HF token ───────────────────────────────────────────────
@@ -127,7 +127,7 @@ api.upload_file(
 )
 print("  uploaded F16")
 
-# ── Phase 6: Build crispasr-quantize ────────────────────────────────────────
+# ── Phase 6: Build stelnettts-quantize ────────────────────────────────────────
 kh.step("build quantizer")
 BUILD.mkdir(parents=True, exist_ok=True)
 flags = kh.cache_and_link_flags()
@@ -137,9 +137,9 @@ kh.sh_with_progress(
 )
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} --target crispasr-quantize"
+        f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} --target stelnettts-quantize"
     )
-quantize_bin = BUILD / "bin" / "crispasr-quantize"
+quantize_bin = BUILD / "bin" / "stelnettts-quantize"
 print(f"  quantizer: {quantize_bin}")
 
 # ── Phase 7: Quantize + upload (Q8_0, then Q4_K) ────────────────────────────

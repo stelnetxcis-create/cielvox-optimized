@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# dev-build.sh — fast iterative build of crispasr with platform-aware
+# dev-build.sh — fast iterative build of stelnettts with platform-aware
 # optimizations. Picks Ninja, ccache, OpenMP, and (where available)
 # the mold linker. Cross-platform via uname.
 #
 # First run from a fresh checkout:    scripts/dev-build.sh
 # Re-configure from scratch:          scripts/dev-build.sh --reconfigure
-# Build a different target:           scripts/dev-build.sh --target crispasr-quantize
+# Build a different target:           scripts/dev-build.sh --target stelnettts-quantize
 # Pass extra cmake args:              scripts/dev-build.sh -DGGML_VULKAN=ON
 #
 # All extra args are passed to cmake configure (when reconfiguring) or
@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 
 OS="$(uname -s)"
 RECONFIGURE=0
-TARGET=crispasr
+TARGET=stelnettts
 CMAKE_EXTRA=()
 
 # Argument parsing — capture flags we care about, pass the rest to cmake.
@@ -35,7 +35,7 @@ done
 ARGS=(
   -G Ninja
   -DCMAKE_BUILD_TYPE=Release
-  -DCRISPASR_BUILD_TESTS=OFF
+  -DSTELNETTTS_BUILD_TESTS=OFF
 )
 
 case "$OS" in

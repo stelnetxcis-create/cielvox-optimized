@@ -107,11 +107,11 @@ TEST_CASE("freeing weights unmaps the CPU mmap path's region", "[unit][gguf-mapp
         SUCCEED("region enumeration unavailable on this platform");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     ggml_backend_t backend = ggml_backend_cpu_init();
     REQUIRE(backend != nullptr);
-    Fixture fx("crispasr_test_mapping_cpu.gguf");
+    Fixture fx("stelnettts_test_mapping_cpu.gguf");
     REQUIRE(count_regions_backed_by(fx.abs) == 0);
 
     core_gguf::WeightLoad wl;
@@ -133,14 +133,14 @@ TEST_CASE("freeing weights unmaps the zero-copy GPU path's region", "[unit][gguf
         SUCCEED("region enumeration unavailable on this platform");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     ggml_backend_t backend = init_host_ptr_gpu_backend();
     if (!backend) {
         SUCCEED("no GPU device advertising buffer_from_host_ptr — the leaking path does not exist here");
         return;
     }
-    Fixture fx("crispasr_test_mapping_gpu.gguf");
+    Fixture fx("stelnettts_test_mapping_gpu.gguf");
     REQUIRE(count_regions_backed_by(fx.abs) == 0);
 
     core_gguf::WeightLoad wl;
@@ -162,7 +162,7 @@ TEST_CASE("repeated load/free cycles leave no mapping behind", "[unit][gguf-mapp
         SUCCEED("region enumeration unavailable on this platform");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     // Each load maps the file again and records a separate region, so a
     // release that handled only one of them accumulates the rest. Twenty
@@ -170,7 +170,7 @@ TEST_CASE("repeated load/free cycles leave no mapping behind", "[unit][gguf-mapp
     ggml_backend_t gpu = init_host_ptr_gpu_backend();
     ggml_backend_t backend = gpu ? gpu : ggml_backend_cpu_init();
     REQUIRE(backend != nullptr);
-    Fixture fx("crispasr_test_mapping_loop.gguf");
+    Fixture fx("stelnettts_test_mapping_loop.gguf");
 
     for (int i = 0; i < 20; i++) {
         core_gguf::WeightLoad wl;

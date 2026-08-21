@@ -1,6 +1,6 @@
 """Streaming-latency bench harness (PLAN #7 / #62c validation).
 
-Drives `crispasr_session_stream_open` + feed + flush + get_text on a
+Drives `stelnettts_session_stream_open` + feed + flush + get_text on a
 voxtral4b / kyutai-stt / moonshine-streaming session, measures per-stage
 wall-clock, and (with --check-batch-equality) compares the streaming
 transcript byte-for-byte against the single-shot batch transcribe.
@@ -8,7 +8,7 @@ transcript byte-for-byte against the single-shot batch transcribe.
 Phase 1 of PLAN #7 has decode-on-flush semantics: there's one decode
 call inside flush(), and get_text() returns the accumulated transcript
 at once. Per-token timing inside the decode loop is exposed via the
-`CRISPASR_VOXTRAL4B_BENCH=1` env var (printed to stderr by libcrispasr
+`STELNETTTS_VOXTRAL4B_BENCH=1` env var (printed to stderr by libstelnettts
 when set).
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "python"))
 
-import crispasr  # noqa: E402
+import stelnettts  # noqa: E402
 
 
 def load_wav_16k_mono(path: Path) -> np.ndarray:
@@ -76,7 +76,7 @@ def percentiles(xs: list[float], ps: list[int]) -> dict[int, float]:
 def run_one(*, backend: str, model_path: str, pcm: np.ndarray, chunk_ms: int) -> dict:
     chunk_n = int(chunk_ms * 16)
     t0 = time.perf_counter()
-    sess = crispasr.Session(backend=backend, model_path=model_path)
+    sess = stelnettts.Session(backend=backend, model_path=model_path)
     t_open = time.perf_counter() - t0
 
     t0 = time.perf_counter()
@@ -142,9 +142,9 @@ def main() -> int:
         # crashes on arbitrary input sizes. Use the CLI subprocess as the
         # ground-truth batch baseline.
         import subprocess
-        cli = REPO_ROOT / "build-ninja-compile" / "bin" / "crispasr"
+        cli = REPO_ROOT / "build-ninja-compile" / "bin" / "stelnettts"
         if not cli.exists():
-            raise SystemExit(f"crispasr CLI not found at {cli}")
+            raise SystemExit(f"stelnettts CLI not found at {cli}")
         t = time.perf_counter()
         proc = subprocess.run(
             [str(cli), "--backend", args.backend, "-m", args.model, "-f", args.clip],
@@ -153,7 +153,7 @@ def main() -> int:
         elapsed = time.perf_counter() - t
         if proc.returncode != 0:
             raise SystemExit(f"CLI batch run failed: {proc.stderr}")
-        # Last non-empty stdout line is the transcript (per crispasr CLI convention).
+        # Last non-empty stdout line is the transcript (per stelnettts CLI convention).
         lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
         batch_text = lines[-1] if lines else ""
         print(f"[bench] batch transcript: {batch_text!r}")

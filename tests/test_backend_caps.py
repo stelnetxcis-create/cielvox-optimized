@@ -3,7 +3,7 @@
 
 Two test classes:
 
-  TestCapabilityJSON   — static: crispasr --list-backends-json must declare
+  TestCapabilityJSON   — static: stelnettts --list-backends-json must declare
                          translate / src-tgt-language / voice-cloning for the
                          known set of backends.  No model, no network.
 
@@ -25,8 +25,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 BIN = os.environ.get(
-    "CRISPASR_BIN",
-    str(REPO / "build-ninja-compile" / "bin" / "crispasr"),
+    "STELNETTTS_BIN",
+    str(REPO / "build-ninja-compile" / "bin" / "stelnettts"),
 )
 SAMPLE = str(REPO / "samples" / "jfk.wav")
 
@@ -55,7 +55,7 @@ _TRANSLATE_BACKENDS = {
 _SRC_TGT_BACKENDS = {
     # TTS side (#304/#329): for these two the pair means the synthesis
     # languages — `-tl` is what to SPEAK, `-sl` is what the cloning reference is
-    # spoken in. The bit is what stops crispasr_run's warn_unsupported() from
+    # spoken in. The bit is what stops stelnettts_run's warn_unsupported() from
     # printing "--target-lang ignored by this backend" and discarding the flag,
     # which is how #329 came to read as "this engine has no language option".
     "cosyvoice3-tts",
@@ -63,8 +63,8 @@ _SRC_TGT_BACKENDS = {
     "chatterbox-turbo",
     "kartoffelbox-turbo",
     "lahgtna-chatterbox",
-    "qwen3-tts",
-    "qwen3-tts-1.7b-base",
+    "cielvox2-tts",
+    "cielvox2-tts-1.7b-base",
     "canary",
     "granite",
     "granite-4.1",
@@ -88,8 +88,8 @@ _VOICE_CLONING_BACKENDS = {
     "indextts",
     "omnivoice",
     "voxcpm2-tts",
-    "qwen3-tts",
-    "qwen3-tts-1.7b-base",
+    "cielvox2-tts",
+    "cielvox2-tts-1.7b-base",
 }
 
 
@@ -98,15 +98,15 @@ class TestVoiceCloningSessionDispatch(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        source = (REPO / "src" / "crispasr_c_api.cpp").read_text(encoding="utf-8")
-        cls.set_codec = source.split("CA_EXPORT int crispasr_session_set_codec_path", 1)[1].split(
-            "CA_EXPORT int crispasr_session_set_voice", 1
+        source = (REPO / "src" / "stelnettts_c_api.cpp").read_text(encoding="utf-8")
+        cls.set_codec = source.split("CA_EXPORT int stelnettts_session_set_codec_path", 1)[1].split(
+            "CA_EXPORT int stelnettts_session_set_voice", 1
         )[0]
-        cls.set_voice = source.split("CA_EXPORT int crispasr_session_set_voice", 1)[1].split(
-            "CA_EXPORT int crispasr_session_tada_set_makeref_models", 1
+        cls.set_voice = source.split("CA_EXPORT int stelnettts_session_set_voice", 1)[1].split(
+            "CA_EXPORT int stelnettts_session_tada_set_makeref_models", 1
         )[0]
-        cls.synthesize = source.split("static float* crispasr_session_synthesize_raw_impl", 1)[1].split(
-            "static int crispasr_session_set_prompt", 1
+        cls.synthesize = source.split("static float* stelnettts_session_synthesize_raw_impl", 1)[1].split(
+            "static int stelnettts_session_set_prompt", 1
         )[0]
 
     def test_omnivoice_dispatches_audio_tokenizer(self):
@@ -155,16 +155,16 @@ class TestVoiceCloningSessionDispatch(unittest.TestCase):
 
 # Backends that must NOT declare voice-cloning (preset-speaker, not reference-WAV cloning).
 _NO_VOICE_CLONING_BACKENDS = {
-    "qwen3-tts-customvoice",
-    "qwen3-tts-1.7b-customvoice",
-    "qwen3-tts-1.7b-voicedesign",
+    "cielvox2-tts-customvoice",
+    "cielvox2-tts-1.7b-customvoice",
+    "cielvox2-tts-1.7b-voicedesign",
     "vibevoice",
 }
 
 
-@unittest.skipUnless(os.path.exists(BIN), f"crispasr binary not found at {BIN} — set CRISPASR_BIN or build first")
+@unittest.skipUnless(os.path.exists(BIN), f"stelnettts binary not found at {BIN} — set STELNETTTS_BIN or build first")
 class TestCapabilityJSON(unittest.TestCase):
-    """crispasr --list-backends-json must declare translate / voice-cloning caps correctly."""
+    """stelnettts --list-backends-json must declare translate / voice-cloning caps correctly."""
 
     @classmethod
     def setUpClass(cls):
@@ -209,19 +209,19 @@ class TestCapabilityJSON(unittest.TestCase):
                          "whisper uses --language for target; src-tgt-language is for separate -sl/-tl flags")
 
 
-@unittest.skipUnless(os.path.exists(BIN), f"crispasr binary not found — set CRISPASR_BIN or build first")
+@unittest.skipUnless(os.path.exists(BIN), f"stelnettts binary not found — set STELNETTTS_BIN or build first")
 @unittest.skipUnless(os.path.exists(SAMPLE), f"sample file not found: {SAMPLE}")
 class TestTranslateLive(unittest.TestCase):
     """Live translation smoke-test — skipped when model files are absent."""
 
     _WHISPER_MODEL = os.environ.get(
-        "CRISPASR_WHISPER_MODEL",
-        "/Volumes/backups/ai/crispasr/ggml-tiny.bin",
+        "STELNETTTS_WHISPER_MODEL",
+        "/Volumes/backups/ai/stelnettts/ggml-tiny.bin",
     )
 
     @unittest.skipUnless(
-        os.path.exists(os.environ.get("CRISPASR_WHISPER_MODEL", "/Volumes/backups/ai/crispasr/ggml-tiny.bin")),
-        "whisper-tiny model not found — set CRISPASR_WHISPER_MODEL",
+        os.path.exists(os.environ.get("STELNETTTS_WHISPER_MODEL", "/Volumes/backups/ai/stelnettts/ggml-tiny.bin")),
+        "whisper-tiny model not found — set STELNETTTS_WHISPER_MODEL",
     )
     def test_whisper_translate_to_german(self):
         result = subprocess.run(
@@ -231,7 +231,7 @@ class TestTranslateLive(unittest.TestCase):
             text=True,
             timeout=60,
         )
-        self.assertEqual(result.returncode, 0, f"crispasr failed:\n{result.stderr}")
+        self.assertEqual(result.returncode, 0, f"stelnettts failed:\n{result.stderr}")
         combined = result.stdout + result.stderr
         self.assertTrue(len(combined.strip()) > 0, "translate produced no output")
 

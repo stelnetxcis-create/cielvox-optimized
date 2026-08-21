@@ -12,10 +12,10 @@
 // → identical codes).
 //
 // Env:
-//   CRISPASR_TEST_OMNIVOICE_MODEL      main GGUF (required to run; else SKIP)
-//   CRISPASR_TEST_OMNIVOICE_TOKENIZER  audio-tokenizer GGUF (optional)
-//   CRISPASR_TEST_OMNIVOICE_PROMPT_WAV 24 kHz mono ref voice (optional)
-//   CRISPASR_TEST_OMNIVOICE_PROMPT_TEXT ref transcription (optional)
+//   STELNETTTS_TEST_OMNIVOICE_MODEL      main GGUF (required to run; else SKIP)
+//   STELNETTTS_TEST_OMNIVOICE_TOKENIZER  audio-tokenizer GGUF (optional)
+//   STELNETTTS_TEST_OMNIVOICE_PROMPT_WAV 24 kHz mono ref voice (optional)
+//   STELNETTTS_TEST_OMNIVOICE_PROMPT_TEXT ref transcription (optional)
 
 #include "omnivoice.h"
 
@@ -36,9 +36,9 @@ static std::vector<int32_t> gen_codes(omnivoice_context* ctx, uint64_t seed, con
 }
 
 int main() {
-    const char* model = getenv("CRISPASR_TEST_OMNIVOICE_MODEL");
+    const char* model = getenv("STELNETTTS_TEST_OMNIVOICE_MODEL");
     if (!model || !model[0]) {
-        fprintf(stderr, "SKIP: CRISPASR_TEST_OMNIVOICE_MODEL not set\n");
+        fprintf(stderr, "SKIP: STELNETTTS_TEST_OMNIVOICE_MODEL not set\n");
         return 0;
     }
     if (FILE* f = fopen(model, "rb")) {
@@ -56,10 +56,10 @@ int main() {
         return 0;
     }
 
-    if (const char* tok = getenv("CRISPASR_TEST_OMNIVOICE_TOKENIZER"); tok && tok[0])
+    if (const char* tok = getenv("STELNETTTS_TEST_OMNIVOICE_TOKENIZER"); tok && tok[0])
         omnivoice_set_tokenizer_path(ctx, tok);
-    if (const char* w = getenv("CRISPASR_TEST_OMNIVOICE_PROMPT_WAV"); w && w[0]) {
-        const char* t = getenv("CRISPASR_TEST_OMNIVOICE_PROMPT_TEXT");
+    if (const char* w = getenv("STELNETTTS_TEST_OMNIVOICE_PROMPT_WAV"); w && w[0]) {
+        const char* t = getenv("STELNETTTS_TEST_OMNIVOICE_PROMPT_TEXT");
         omnivoice_set_voice_prompt(ctx, w, t ? t : "");
     }
 

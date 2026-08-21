@@ -3,16 +3,16 @@
 #
 # For each of 8 multilingual inputs covering Latin / Cyrillic / CJK /
 # Hiragana / Devanagari, this dumps a Python F32 reference via
-# tools/dump_reference.py and runs crispasr-diff against the F16
+# tools/dump_reference.py and runs stelnettts-diff against the F16
 # production GGUF — the same gate the May 2026 LID release went
 # through. Exits non-zero if any sample fails any stage.
 #
 # Required env / setup:
 #   * DYLD_LIBRARY_PATH set automatically (pycld3 oracle workaround)
 #   * /Volumes/backups/ai/upstream/cld3-runtime-deps/lib present
-#   * /Volumes/backups/ai/crispasr-models/lid-cld3/cld3-{f32,f16}.gguf
+#   * /Volumes/backups/ai/stelnettts-models/lid-cld3/cld3-{f32,f16}.gguf
 #     produced by `python models/convert-cld3-to-gguf.py [--f32]`
-#   * `cmake --build build-ninja-compile --target crispasr-diff`
+#   * `cmake --build build-ninja-compile --target stelnettts-diff`
 #
 # Usage:
 #   ./tools/test-lid-cld3.sh
@@ -22,21 +22,21 @@ set -e
 cd "$(dirname "$0")/.."
 
 DYLD=/Volumes/backups/ai/upstream/cld3-runtime-deps/lib
-F32=/Volumes/backups/ai/crispasr-models/lid-cld3/cld3-f32.gguf
-F16=/Volumes/backups/ai/crispasr-models/lid-cld3/cld3-f16.gguf
-BIN=./build-ninja-compile/bin/crispasr-diff
+F32=/Volumes/backups/ai/stelnettts-models/lid-cld3/cld3-f32.gguf
+F16=/Volumes/backups/ai/stelnettts-models/lid-cld3/cld3-f16.gguf
+BIN=./build-ninja-compile/bin/stelnettts-diff
 
 quiet=0
 [[ "${1:-}" == "--quiet" ]] && quiet=1
 
 if [[ ! -f "$F32" || ! -f "$F16" ]]; then
-    echo "missing GGUFs at /Volumes/backups/ai/crispasr-models/lid-cld3/" >&2
+    echo "missing GGUFs at /Volumes/backups/ai/stelnettts-models/lid-cld3/" >&2
     echo "  run: python models/convert-cld3-to-gguf.py" >&2
     echo "  and: python models/convert-cld3-to-gguf.py --f32 --out $F32" >&2
     exit 1
 fi
 if [[ ! -x "$BIN" ]]; then
-    echo "missing $BIN — run: cmake --build build-ninja-compile --target crispasr-diff" >&2
+    echo "missing $BIN — run: cmake --build build-ninja-compile --target stelnettts-diff" >&2
     exit 1
 fi
 

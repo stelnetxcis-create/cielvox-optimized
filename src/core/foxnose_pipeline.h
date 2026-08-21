@@ -7,7 +7,7 @@
 // of any model dependency, lets the wiring layer choose WeSpeaker or TitaNet,
 // and — the reason it matters most — makes the whole pipeline unit-testable
 // with a synthetic embedder whose speaker identities are known by
-// construction. Weight-free orchestration is exactly the code crispasr-diff
+// construction. Weight-free orchestration is exactly the code stelnettts-diff
 // cannot see (HARD RULE #3b).
 //
 // Clean-room; see core/spectral_diarize.h for the provenance argument.

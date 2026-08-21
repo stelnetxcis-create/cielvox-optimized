@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
-using crispasr_parakeet::token_has_japanese;
-using crispasr_parakeet::vocab_looks_japanese;
+using stelnettts_parakeet::token_has_japanese;
+using stelnettts_parakeet::vocab_looks_japanese;
 
 TEST_CASE("token_has_japanese: kana and kanji are detected, Latin is not", "[unit][parakeet][issue-257]") {
     REQUIRE(token_has_japanese("\xE3\x81\x82"));     // U+3042 あ (hiragana)

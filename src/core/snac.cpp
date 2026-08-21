@@ -55,7 +55,7 @@
 #include "core/activation.h"
 #include "core/conv.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -637,7 +637,7 @@ extern "C" struct snac_decoder_ctx* snac_decoder_init_from_file(const char* path
         return nullptr;
     }
     core_cpu_backend::set_n_threads(c->backend_cpu, c->n_threads);
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend) {
         c->backend = c->backend_cpu;
     }

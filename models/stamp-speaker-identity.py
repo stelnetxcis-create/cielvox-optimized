@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Stamp `crispasr.voice.speaker_identity` into an EXISTING GGUF.
+"""Stamp `stelnettts.voice.speaker_identity` into an EXISTING GGUF.
 
-Whose voice a preset voice is decides whether CrispASR prepends the EU AI Act
+Whose voice a preset voice is decides whether StelnetTTS prepends the EU AI Act
 Art. 50(4) audible disclosure. The runtime prefers a stamp inside the file over
 its built-in table of file-name patterns, because a stamped file answers for
 itself and survives being renamed, re-quantised or moved.
@@ -52,12 +52,12 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "ggml", "python"))
     import gguf
 
-# Must match crispasr_voice::speaker_identity_key() in
-# examples/cli/crispasr_speaker_identity.h. A drift between writer and reader
+# Must match stelnettts_voice::speaker_identity_key() in
+# examples/cli/stelnettts_speaker_identity.h. A drift between writer and reader
 # fails open — the stamp is simply never found — so it is spelled once here and
 # checked by tests/test-compliance-wiring.cpp.
-IDENTITY_KEY = "crispasr.voice.speaker_identity"
-EVIDENCE_KEY = "crispasr.voice.speaker_identity_evidence"
+IDENTITY_KEY = "stelnettts.voice.speaker_identity"
+EVIDENCE_KEY = "stelnettts.voice.speaker_identity_evidence"
 
 WRITABLE = ("real_person", "synthetic")
 

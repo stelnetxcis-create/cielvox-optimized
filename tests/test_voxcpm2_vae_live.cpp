@@ -1,7 +1,7 @@
 // VoxCPM2 AudioVAE live integration tests.
 //
-// CRISPASR_MODEL_VOXCPM2_VAE may point to either an AudioVAE-only GGUF or a
-// full VoxCPM2 GGUF. CRISPASR_MODEL_VOXCPM2_FULL enables the simultaneous
+// STELNETTTS_MODEL_VOXCPM2_VAE may point to either an AudioVAE-only GGUF or a
+// full VoxCPM2 GGUF. STELNETTTS_MODEL_VOXCPM2_FULL enables the simultaneous
 // full-TTS + upscaler lifecycle regression.
 
 #include <catch2/catch_test_macros.hpp>
@@ -62,9 +62,9 @@ static std::vector<float> require_valid_upscale(voxcpm2_vae_context* ctx, const 
 
 static void set_voxcpm2_graph_env(const char* value) {
 #if defined(_WIN32)
-    REQUIRE(_putenv_s("CRISPASR_VOXCPM2_USE_GRAPH", value ? value : "") == 0);
+    REQUIRE(_putenv_s("STELNETTTS_VOXCPM2_USE_GRAPH", value ? value : "") == 0);
 #else
-    const int rc = value ? setenv("CRISPASR_VOXCPM2_USE_GRAPH", value, 1) : unsetenv("CRISPASR_VOXCPM2_USE_GRAPH");
+    const int rc = value ? setenv("STELNETTTS_VOXCPM2_USE_GRAPH", value, 1) : unsetenv("STELNETTTS_VOXCPM2_USE_GRAPH");
     REQUIRE(rc == 0);
 #endif
 }
@@ -72,18 +72,18 @@ static void set_voxcpm2_graph_env(const char* value) {
 class ScopedVoxCPM2GraphEnv final {
 public:
     ScopedVoxCPM2GraphEnv() {
-        const char* value = std::getenv("CRISPASR_VOXCPM2_USE_GRAPH");
+        const char* value = std::getenv("STELNETTTS_VOXCPM2_USE_GRAPH");
         if (value)
             saved_ = value;
     }
     ~ScopedVoxCPM2GraphEnv() {
 #if defined(_WIN32)
-        (void)_putenv_s("CRISPASR_VOXCPM2_USE_GRAPH", saved_ ? saved_->c_str() : "");
+        (void)_putenv_s("STELNETTTS_VOXCPM2_USE_GRAPH", saved_ ? saved_->c_str() : "");
 #else
         if (saved_)
-            (void)setenv("CRISPASR_VOXCPM2_USE_GRAPH", saved_->c_str(), 1);
+            (void)setenv("STELNETTTS_VOXCPM2_USE_GRAPH", saved_->c_str(), 1);
         else
-            (void)unsetenv("CRISPASR_VOXCPM2_USE_GRAPH");
+            (void)unsetenv("STELNETTTS_VOXCPM2_USE_GRAPH");
 #endif
     }
 
@@ -119,14 +119,14 @@ static void compare_legacy_and_graph(voxcpm2_vae_context* ctx, const std::vector
 }
 
 static bool voxcpm2_vae_test_gpu_enabled() {
-    const char* value = std::getenv("CRISPASR_VOXCPM2_VAE_TEST_GPU");
+    const char* value = std::getenv("STELNETTTS_VOXCPM2_VAE_TEST_GPU");
     return value && *value && std::strcmp(value, "0") != 0;
 }
 
 TEST_CASE("VoxCPM2 AudioVAE speech upscaler", "[integration][voxcpm2-vae]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_VOXCPM2_VAE");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_VOXCPM2_VAE");
     if (!model_path || !*model_path)
-        SKIP("CRISPASR_MODEL_VOXCPM2_VAE not set");
+        SKIP("STELNETTTS_MODEL_VOXCPM2_VAE not set");
 
     auto params = voxcpm2_vae_context_default_params();
     params.n_threads = 2;
@@ -137,7 +137,7 @@ TEST_CASE("VoxCPM2 AudioVAE speech upscaler", "[integration][voxcpm2-vae]") {
 
     // Reject before graph construction/allocation. AudioVAE activation memory
     // is linear but large enough that a multi-minute single call can OOM.
-    if (!std::getenv("CRISPASR_VOXCPM2_VAE_MAX_SAMPLES")) {
+    if (!std::getenv("STELNETTTS_VOXCPM2_VAE_MAX_SAMPLES")) {
         std::vector<float> overlong(90 * 16000, 0.0f);
         int n_overlong = 123;
         float* rejected = voxcpm2_vae_upscale(ctx, overlong.data(), (int)overlong.size(), &n_overlong);
@@ -154,9 +154,9 @@ TEST_CASE("VoxCPM2 AudioVAE speech upscaler", "[integration][voxcpm2-vae]") {
 }
 
 TEST_CASE("VoxCPM2 TTS and AudioVAE contexts coexist", "[integration][voxcpm2-vae][coexistence]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_VOXCPM2_FULL");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_VOXCPM2_FULL");
     if (!model_path || !*model_path)
-        SKIP("CRISPASR_MODEL_VOXCPM2_FULL not set");
+        SKIP("STELNETTTS_MODEL_VOXCPM2_FULL not set");
 
     auto tts_params = voxcpm2_context_default_params();
     tts_params.n_threads = 3;

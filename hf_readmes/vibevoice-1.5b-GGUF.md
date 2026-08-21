@@ -8,7 +8,7 @@ tags:
 - text-to-speech
 - vibevoice
 - gguf
-- crispasr
+- stelnettts
 - voice-cloning
 base_model: microsoft/VibeVoice-1.5B
 pipeline_tag: text-to-speech
@@ -16,7 +16,7 @@ pipeline_tag: text-to-speech
 
 # VibeVoice-1.5B GGUF
 
-GGUF conversion of [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 This is the **base model** (not the streaming variant). It supports voice cloning from audio samples and multi-speaker synthesis.
 
@@ -42,7 +42,7 @@ Requires a **voice reference audio** (WAV file, 24 kHz mono) for voice cloning:
 ```bash
 # Voice cloning TTS
 VIBEVOICE_VOICE_AUDIO=reference_voice.wav \
-crispasr --tts "Hello, how are you today?" \
+stelnettts --tts "Hello, how are you today?" \
     -m vibevoice-1.5b-tts-q4_k.gguf \
     --tts-output output.wav
 ```

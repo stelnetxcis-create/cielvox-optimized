@@ -17,7 +17,7 @@ base_model: UsefulSensors/moonshine-base-ko
 
 # Moonshine Base (Korean) -- GGUF
 
-GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-ko`](https://huggingface.co/UsefulSensors/moonshine-base-ko) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-ko`](https://huggingface.co/UsefulSensors/moonshine-base-ko) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -34,14 +34,14 @@ GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-ko`](https:
 - **License:** [Moonshine AI Community License](https://huggingface.co/UsefulSensors/moonshine-tiny-ja/blob/main/LICENSE.txt) (free for <$1M revenue, attribution required)
 - **Source:** [`UsefulSensors/moonshine-base-ko`](https://huggingface.co/UsefulSensors/moonshine-base-ko)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Auto-download (English tiny only)
-./build/bin/crispasr --backend moonshine -m auto -f audio.wav
+./build/bin/stelnettts --backend moonshine -m auto -f audio.wav
 
 # Explicit model path
-./build/bin/crispasr --backend moonshine -m moonshine-base-ko-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend moonshine -m moonshine-base-ko-q4_k.gguf -f audio.wav
 ```
 
 ## Notes

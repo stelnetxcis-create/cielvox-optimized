@@ -2,7 +2,7 @@
 
 Captures stage-by-stage activations from the official PyTorch
 `MiMoAudioTokenizer.encoder` so the C++ runtime in src/mimo_tokenizer.cpp
-can be compared element-wise via crispasr-diff.
+can be compared element-wise via stelnettts-diff.
 
 Pipeline (see ref/mimo/github/src/mimo_audio_tokenizer/modeling_audio_tokenizer.py):
 

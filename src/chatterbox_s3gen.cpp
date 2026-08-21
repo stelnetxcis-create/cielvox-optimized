@@ -22,8 +22,8 @@
 #include "core/conv.h"
 #include "core/dac_decoder.h" // core_dac::fastconv_cache (shared FASTCONV)
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -51,7 +51,7 @@
 static bool cb_s3gen_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CB_S3GEN_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CB_S3GEN_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -279,7 +279,7 @@ static void fill_gaussian_noise(float* data, int n, mt19937_state& rng) {
 struct chatterbox_s3gen_context {
     int n_threads = 4;
     int verbosity = 1;
-    bool istft_full_idft = false; // CRISPASR_HIFT_FULL_IDFT=1 → torch.istft-compatible path
+    bool istft_full_idft = false; // STELNETTTS_HIFT_FULL_IDFT=1 → torch.istft-compatible path
     // When true, UNet mul_mat compute nodes are automatically routed to CPU to
     // prevent compound FP16 rounding through the 10-step CFM Euler solver.
     // Bisected cross-backend: Metal (round 7) + CUDA P100 (round 8, 2026-05-23).
@@ -291,11 +291,11 @@ struct chatterbox_s3gen_context {
     // produces NaN in full-pipeline runs at large T_mel (≥392) due to Metal/CUDA
     // synchronization issues with GPU→CPU tensor copies. The fix is mathematically
     // correct (diff harness cos_min=1.000 at T=102) but not yet safe for production.
-    // Use CRISPASR_S3GEN_UNET_PIN_CPU_OP=mul_mat to opt in for testing.
+    // Use STELNETTTS_S3GEN_UNET_PIN_CPU_OP=mul_mat to opt in for testing.
     bool unet_pin_mm_cpu = false;
 
     // True when the UNet weights are GPU-resident (default since we switched to
-    // full GPU + GGML_PREC_F32 mul_mat hints; opt-out via CRISPASR_S3GEN_UNET_CPU=1).
+    // full GPU + GGML_PREC_F32 mul_mat hints; opt-out via STELNETTTS_S3GEN_UNET_CPU=1).
     bool unet_on_gpu = false;
 
     // Set at load time on Metal when the CFM (s3.fd.*) weights are quantized.
@@ -308,7 +308,7 @@ struct chatterbox_s3gen_context {
     // to CPU restores intelligible mel; F16 s3gen stays GPU-resident (it takes
     // the correct mul_mm_f16_f32_hp path). CUDA is unaffected (PLAN #83 validated
     // GPU+PREC_F32 to cos 1.0 on P100), so this is gated to Metal builds. Opt
-    // back onto GPU with CRISPASR_S3GEN_UNET_CPU=0. (A GPU-keeping alternative
+    // back onto GPU with STELNETTTS_S3GEN_UNET_CPU=0. (A GPU-keeping alternative
     // would be to dequantize s3.fd.* to F16 at load on Metal.)
     bool force_unet_cpu = false;
 
@@ -328,7 +328,7 @@ struct chatterbox_s3gen_context {
     std::vector<uint8_t> compute_meta;
 
     // §208 — alternative single-all-GPU raw-gallocr CFM path
-    // (CRISPASR_S3GEN_UNET_GALLOCR=1). The legacy `sched` path rebuilds +
+    // (STELNETTTS_S3GEN_UNET_GALLOCR=1). The legacy `sched` path rebuilds +
     // re-allocates the b2 UNet graph every Euler step (~54% of synthesis) and
     // cannot cache (sched mutates the graph on alloc — SIGSEGV on reuse). A raw
     // ggml_gallocr on a single GPU backend does NOT mutate the graph on alloc,
@@ -366,7 +366,7 @@ struct chatterbox_s3gen_context {
     // s3.fd.* back to GPU) — each F16 conv kernel is baked on ITS OWN backend so
     // the pointer-swap in c->tensors preserves placement exactly. Cast-kill only
     // (no k=1→matmul), which is bitwise-identical to the legacy cast. Gated
-    // CRISPASR_S3GEN_FASTCONV (default OFF pending a full seeded A/B on a quiet box).
+    // STELNETTTS_S3GEN_FASTCONV (default OFF pending a full seeded A/B on a quiet box).
     core_dac::fastconv_cache fc_gpu;
     core_dac::fastconv_cache fc_cpu;
 
@@ -428,9 +428,9 @@ struct chatterbox_s3gen_context {
 // ── Per-sub-graph CPU-override helper ────────────────────────────
 //
 // Diagnostic env knobs to localize which S3Gen sub-graph breaks on GPU:
-//   CRISPASR_S3GEN_ENCODER_CPU=1   — Conformer encoder
-//   CRISPASR_S3GEN_UNET_CPU=1      — UNet1D CFM denoiser
-//   CRISPASR_S3GEN_VOCODER_CPU=1   — HiFT vocoder
+//   STELNETTTS_S3GEN_ENCODER_CPU=1   — Conformer encoder
+//   STELNETTTS_S3GEN_UNET_CPU=1      — UNet1D CFM denoiser
+//   STELNETTTS_S3GEN_VOCODER_CPU=1   — HiFT vocoder
 //
 // Implementation strategy: ggml_backend_sched requires the CPU backend
 // to be LAST in the backend list, so we can't swap to a "CPU-only"
@@ -464,20 +464,20 @@ static bool s3gen_env_force_cpu(s3gen_subgraph which) {
     const char* envname = nullptr;
     switch (which) {
     case s3gen_subgraph::encoder:
-        envname = "CRISPASR_S3GEN_ENCODER_CPU";
+        envname = "STELNETTTS_S3GEN_ENCODER_CPU";
         break;
     case s3gen_subgraph::unet:
-        envname = "CRISPASR_S3GEN_UNET_CPU";
+        envname = "STELNETTTS_S3GEN_UNET_CPU";
         break;
     case s3gen_subgraph::vocoder:
-        envname = "CRISPASR_S3GEN_VOCODER_CPU";
+        envname = "STELNETTTS_S3GEN_VOCODER_CPU";
         break;
     }
     const char* env = envname ? std::getenv(envname) : nullptr;
     return env && (env[0] == '1' || env[0] == 'y' || env[0] == 'Y');
 }
 // Per-op-type "keep on GPU" filter for the UNet1D bisect (PLAN #83 r7).
-// When CRISPASR_S3GEN_UNET_KEEP_GPU_OP=<name> is set, the pin function still
+// When STELNETTTS_S3GEN_UNET_KEEP_GPU_OP=<name> is set, the pin function still
 // pins everything to CPU EXCEPT the named op type. Pin is forced ON when the
 // keep-op env is set so the bisect works without also setting UNET_CPU=1.
 // Accepted names: ggml_op_name() lowercase ("conv_1d", "mul_mat", "norm",
@@ -524,8 +524,8 @@ static void s3gen_maybe_pin_graph_to_cpu(chatterbox_s3gen_context* c, ggml_cgrap
         return; // already on CPU — no-op
 
     const bool is_unet = (which == s3gen_subgraph::unet);
-    const char* keep_env = is_unet ? std::getenv("CRISPASR_S3GEN_UNET_KEEP_GPU_OP") : nullptr;
-    const char* pin_only_env = is_unet ? std::getenv("CRISPASR_S3GEN_UNET_PIN_CPU_OP") : nullptr;
+    const char* keep_env = is_unet ? std::getenv("STELNETTTS_S3GEN_UNET_KEEP_GPU_OP") : nullptr;
+    const char* pin_only_env = is_unet ? std::getenv("STELNETTTS_S3GEN_UNET_PIN_CPU_OP") : nullptr;
     const bool keep_mode = keep_env && *keep_env;
     const bool pin_only_mode = pin_only_env && *pin_only_env;
 
@@ -536,8 +536,8 @@ static void s3gen_maybe_pin_graph_to_cpu(chatterbox_s3gen_context* c, ggml_cgrap
     // the 10-step CFM Euler solver → cos_min 0.858 on both M1 and CUDA P100.
     // CPU mul_mat uses genuine F32 dequant + F32 accumulation and restores
     // cos_min = 1.000 (bisected rounds 7 + 8, 2026-05-23).
-    // Override: set CRISPASR_S3GEN_UNET_PIN_CPU_OP, CRISPASR_S3GEN_UNET_KEEP_GPU_OP,
-    // or CRISPASR_S3GEN_UNET_CPU=1 to take manual control.
+    // Override: set STELNETTTS_S3GEN_UNET_PIN_CPU_OP, STELNETTTS_S3GEN_UNET_KEEP_GPU_OP,
+    // or STELNETTTS_S3GEN_UNET_CPU=1 to take manual control.
     // force_cpu takes full priority — auto_pin_mm does not apply when UNET_CPU=1.
     const bool force_cpu = s3gen_env_force_cpu(which) || (is_unet && c->force_unet_cpu);
     const bool auto_pin_mm = is_unet && c->unet_pin_mm_cpu && !keep_mode && !pin_only_mode && !force_cpu;
@@ -555,13 +555,13 @@ static void s3gen_maybe_pin_graph_to_cpu(chatterbox_s3gen_context* c, ggml_cgrap
             if (auto_pin_mm) {
                 fprintf(stderr,
                         "s3gen: [%s] auto-pinning mul_mat to CPU (GPU FP16 compound drift fix; "
-                        "override with CRISPASR_S3GEN_UNET_PIN_CPU_OP or CRISPASR_S3GEN_UNET_KEEP_GPU_OP)\n",
+                        "override with STELNETTTS_S3GEN_UNET_PIN_CPU_OP or STELNETTTS_S3GEN_UNET_KEEP_GPU_OP)\n",
                         tag);
             } else if (keep_mode) {
                 fprintf(stderr, "s3gen: [%s] keeping op type \"%s\" on GPU; pinning all other compute nodes to CPU\n",
                         tag, keep_env);
             } else {
-                fprintf(stderr, "s3gen: CRISPASR_S3GEN_%s_CPU=1 — pinning all compute nodes to CPU backend\n", tag);
+                fprintf(stderr, "s3gen: STELNETTTS_S3GEN_%s_CPU=1 — pinning all compute nodes to CPU backend\n", tag);
             }
             log_seen[idx] = 1;
         }
@@ -643,11 +643,11 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
     c->n_threads = n_threads > 0 ? n_threads : 4;
     c->verbosity = verbosity;
     {
-        const char* env = std::getenv("CRISPASR_HIFT_FULL_IDFT");
+        const char* env = std::getenv("STELNETTTS_HIFT_FULL_IDFT");
         c->istft_full_idft = env && (env[0] == '1' || env[0] == 'y' || env[0] == 'Y');
     }
     {
-        const char* env = std::getenv("CRISPASR_CHATTERBOX_SEED");
+        const char* env = std::getenv("STELNETTTS_CHATTERBOX_SEED");
         if (env && env[0]) {
             c->noise_seed = (uint32_t)strtoul(env, nullptr, 10);
         } else {
@@ -666,18 +666,18 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
     // §212: apply the CPU thread count to the s3gen backend. Previously the
     // count was stored but never set on the backend, so the encoder / CFM (CPU
     // route) / HiFT vocoder all ran at ggml's default thread count regardless
-    // of -t or CRISPASR_CHATTERBOX_THREADS. Honour the env directly too, so a
+    // of -t or STELNETTTS_CHATTERBOX_THREADS. Honour the env directly too, so a
     // standalone s3gen (no parent chatterbox to pre-resolve it) is configurable.
     {
         int s3_threads = c->n_threads;
-        if (const char* e = std::getenv("CRISPASR_CHATTERBOX_THREADS"); e && *e)
+        if (const char* e = std::getenv("STELNETTTS_CHATTERBOX_THREADS"); e && *e)
             s3_threads = std::max(1, atoi(e));
         c->n_threads = s3_threads;
         core_cpu_backend::set_n_threads(c->backend_cpu, s3_threads);
         if (verbosity >= 1)
             fprintf(stderr, "s3gen: CPU backend threads=%d\n", s3_threads);
     }
-    c->backend = use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend) {
         if (verbosity >= 1 && use_gpu) {
             fprintf(stderr, "s3gen: GPU backend unavailable, falling back to CPU\n");
@@ -701,9 +701,9 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
     // the _hp kernel path (F32 accumulation), fixing the FP16 compound drift
     // that caused cos_min 0.858 in PLAN #83 (see LEARNINGS Rounds 7 + 8).
     // The parallel=true sched (set below) handles CFG uncond divergence (Bug B).
-    // Opt-out: CRISPASR_S3GEN_UNET_CPU=1 reverts to CPU residency for debugging.
+    // Opt-out: STELNETTTS_S3GEN_UNET_CPU=1 reverts to CPU residency for debugging.
     {
-        const char* unet_cpu_env = std::getenv("CRISPASR_S3GEN_UNET_CPU");
+        const char* unet_cpu_env = std::getenv("STELNETTTS_S3GEN_UNET_CPU");
         // Explicit env wins both ways: =1/y forces CPU, =0/n forces GPU (lets a
         // user override the Metal-q8 auto-route below).
         const bool unet_cpu_env_on =
@@ -717,8 +717,8 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
         // batch=1). Default fix: dequantize the quantized CFM (s3.fd.*) weights
         // to F16 at load and keep the CFM GPU-resident — the correct
         // mul_mm_f16_f32_hp path, at full GPU speed (the post-load conversion
-        // below sets dequant_cfm_f16 results). CRISPASR_S3GEN_UNET_CPU=1 forces
-        // the slower CPU route instead; CRISPASR_S3GEN_UNET_CPU=0 keeps the
+        // below sets dequant_cfm_f16 results). STELNETTTS_S3GEN_UNET_CPU=1 forces
+        // the slower CPU route instead; STELNETTTS_S3GEN_UNET_CPU=0 keeps the
         // (broken) q8 GPU path for debugging.
         if (!unet_cpu_env_on && !unet_cpu_env_off && c->backend != c->backend_cpu && s3gen_cfm_is_quantized(path)) {
             c->dequant_cfm_f16 = true;
@@ -733,7 +733,7 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
         } else {
             if (c->backend != c->backend_cpu && verbosity >= 1) {
                 fprintf(stderr, "s3gen: UNet GPU-resident (GGML_PREC_F32 mul_mat); "
-                                "set CRISPASR_S3GEN_UNET_CPU=1 to revert\n");
+                                "set STELNETTTS_S3GEN_UNET_CPU=1 to revert\n");
             }
             loaded = core_gguf::load_weights(path, c->backend, "s3gen", wl);
         }
@@ -797,7 +797,7 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
                 fprintf(stderr,
                         "s3gen: quantized CFM on Metal → dequantized %zu UNet1D weights q8→F16 GPU-resident "
                         "(%.0f→%.0f MiB; correct mul_mm_f16_f32_hp path, full GPU speed; "
-                        "CRISPASR_S3GEN_UNET_CPU=1 for the CPU route)\n",
+                        "STELNETTTS_S3GEN_UNET_CPU=1 for the CPU route)\n",
                         n_conv, bytes_q / 1048576.0, bytes_f16 / 1048576.0);
             }
         }
@@ -808,13 +808,13 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
     // ggml_conv_1d skips its per-graph F16→F32 kernel cast. Bitwise-identical to
     // the legacy cast (the bake IS that conversion, done once at load). Each
     // kernel is baked on its OWN backend to preserve split-load placement.
-    // Gated CRISPASR_S3GEN_FASTCONV; default OFF until a full seeded A/B lands.
+    // Gated STELNETTTS_S3GEN_FASTCONV; default OFF until a full seeded A/B lands.
     {
         // Default ON: the A/B proved cast-kill is audio byte-identical to the
         // legacy in-graph cast (ON vs OFF @seed42 = 0/32768 across all samples,
         // which for this flow-matching+AR pipeline also subsumes the determinism
         // gate — a non-deterministic run would have diverged). Set =0 to revert.
-        const char* e = std::getenv("CRISPASR_S3GEN_FASTCONV");
+        const char* e = std::getenv("STELNETTTS_S3GEN_FASTCONV");
         const bool on = !e || (e[0] != '0');
         if (on) {
             const bool have_gpu = (c->backend_cpu && c->backend_cpu != c->backend);
@@ -851,7 +851,7 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
                     swapped++;
                 }
             }
-            if (verbosity >= 1 || std::getenv("CRISPASR_S3GEN_FASTCONV_DEBUG")) {
+            if (verbosity >= 1 || std::getenv("STELNETTTS_S3GEN_FASTCONV_DEBUG")) {
                 fprintf(stderr, "s3gen: FASTCONV ON — baked %zu GPU + %zu CPU F16 conv kernels → F32 (%zu swapped)\n",
                         c->fc_gpu.f32.size(), c->fc_cpu.f32.size(), swapped);
             }
@@ -926,12 +926,12 @@ extern "C" struct chatterbox_s3gen_context* chatterbox_s3gen_init_from_file(cons
     // already GPU-resident via c->tensors, so the gallocr path picks them up
     // unchanged. Falls back to legacy automatically when unmet.
     {
-        const char* g = std::getenv("CRISPASR_S3GEN_UNET_GALLOCR");
+        const char* g = std::getenv("STELNETTTS_S3GEN_UNET_GALLOCR");
         const bool want_gallocr = g && (g[0] == '1' || g[0] == 'y' || g[0] == 'Y');
         c->unet_gallocr_active = want_gallocr && (c->backend != c->backend_cpu) && c->unet_on_gpu;
         if (want_gallocr && !c->unet_gallocr_active && verbosity >= 1) {
             fprintf(stderr,
-                    "s3gen: CRISPASR_S3GEN_UNET_GALLOCR requested but unmet "
+                    "s3gen: STELNETTTS_S3GEN_UNET_GALLOCR requested but unmet "
                     "(GPU=%d, unet_on_gpu=%d) — using legacy sched path\n",
                     (int)(c->backend != c->backend_cpu), (int)c->unet_on_gpu);
         } else if (c->unet_gallocr_active && verbosity >= 1) {
@@ -1693,9 +1693,9 @@ static std::vector<float> run_conformer_encoder(chatterbox_s3gen_context* c, con
     // Single-pass: rel_shift is now computed in the ggml graph via
     // pad+reshape+view+permute+slice (matching Python's view semantics).
 
-    // Dump per-layer RMS if CRISPASR_S3GEN_DUMP=1
+    // Dump per-layer RMS if STELNETTTS_S3GEN_DUMP=1
     {
-        const char* dump_env = std::getenv("CRISPASR_S3GEN_DUMP");
+        const char* dump_env = std::getenv("STELNETTTS_S3GEN_DUMP");
         if (dump_env && dump_env[0] == '1') {
             auto dump_rms = [&](const char* name) {
                 ggml_tensor* t = ggml_graph_get_tensor(gf, name);
@@ -1871,14 +1871,14 @@ static ggml_tensor* causal_block1d(ggml_context* ctx, ggml_tensor* x, // (C, T)
                                    ggml_tensor* conv_w, ggml_tensor* conv_b, ggml_tensor* ln_w, ggml_tensor* ln_b) {
     // PLAN #83 r9 follow-up #3: probe intermediates of one specific causal_block1d
     // call to bisect within the first resnet block. Set
-    // CRISPASR_S3GEN_UNET_PROBE_BLOCK1=<N> where N is the (0-based) sequential
+    // STELNETTTS_S3GEN_UNET_PROBE_BLOCK1=<N> where N is the (0-based) sequential
     // index of the causal_block1d call within ONE UNet graph build. The first
     // call (db.0.0.b1) is N=0; the second (db.0.0.b2) is N=1; etc. Each call
     // names + marks 5 intermediates as dump_probe_*; combine with
-    // CRISPASR_S3GEN_DUMP_UNET + CRISPASR_S3GEN_DUMP_UNET_NO_AUTO_MARK to
+    // STELNETTTS_S3GEN_DUMP_UNET + STELNETTTS_S3GEN_DUMP_UNET_NO_AUTO_MARK to
     // capture the values without the implicit mark cascade.
     static int s_block1d_call_idx = 0;
-    const char* probe_env = std::getenv("CRISPASR_S3GEN_UNET_PROBE_BLOCK1");
+    const char* probe_env = std::getenv("STELNETTTS_S3GEN_UNET_PROBE_BLOCK1");
     const int probe_target = probe_env ? std::atoi(probe_env) : -1;
     bool probe_this = (probe_target >= 0 && s_block1d_call_idx == probe_target);
     s_block1d_call_idx++;
@@ -1991,8 +1991,8 @@ static ggml_tensor* causal_resnet_block(ggml_context* ctx, ggml_tensor* x, ggml_
         // to this op specifically). Bypass the conv1d wrapper and emit
         // a direct mul_mat: transpose residual (T, IC) → (IC, T), then
         // mul_mat(res_T, rc_w_2d) → (T, OC). Gated on
-        // CRISPASR_S3GEN_RC_AS_MUL_MAT=1 for the experiment.
-        const char* rc_alt = std::getenv("CRISPASR_S3GEN_RC_AS_MUL_MAT");
+        // STELNETTTS_S3GEN_RC_AS_MUL_MAT=1 for the experiment.
+        const char* rc_alt = std::getenv("STELNETTTS_S3GEN_RC_AS_MUL_MAT");
         if (rc_w->ne[0] == 1 && rc_alt && rc_alt[0] == '1') {
             ggml_tensor* rc_w_2d = ggml_reshape_2d(ctx, rc_w, rc_w->ne[1], rc_w->ne[2]); // (IC, OC)
             ggml_tensor* res_T = ggml_cont(ctx, ggml_transpose(ctx, residual));          // (T, IC) → (IC, T)
@@ -2007,9 +2007,9 @@ static ggml_tensor* causal_resnet_block(ggml_context* ctx, ggml_tensor* x, ggml_
     // PLAN #83 r9 follow-up #5: probe the residual conv (rc) output specifically.
     // Bug B investigation showed dump_db_resnet diverges between Path X and Y
     // while b1/b2 outputs are identical, implicating the residual conv path.
-    // CRISPASR_S3GEN_UNET_PROBE_RC_OUT=1 marks rc's output as a dump tensor.
+    // STELNETTTS_S3GEN_UNET_PROBE_RC_OUT=1 marks rc's output as a dump tensor.
     if (std::strcmp(prefix, "s3.fd.db.0.0") == 0 && rc_w &&
-        std::getenv("CRISPASR_S3GEN_UNET_PROBE_RC_OUT") != nullptr) {
+        std::getenv("STELNETTTS_S3GEN_UNET_PROBE_RC_OUT") != nullptr) {
         ggml_set_name(residual, "dump_rc_out_db00");
         ggml_set_output(residual);
     }
@@ -2415,7 +2415,7 @@ static ggml_cgraph* build_graph_unet1d(chatterbox_s3gen_context* c, int T_mel) {
     // so we can dump what the GPU actually sees (post-compute readback)
     // and compare to host-side unet_input. Gated on env so production
     // doesn't pay the dup cost.
-    if (std::getenv("CRISPASR_S3GEN_UNET_PROBE_INPUT_SNAPSHOT") != nullptr) {
+    if (std::getenv("STELNETTTS_S3GEN_UNET_PROBE_INPUT_SNAPSHOT") != nullptr) {
         ggml_tensor* snap = ggml_dup(ctx0, x);
         ggml_set_name(snap, "dump_unet_input_snapshot");
         ggml_set_output(snap);
@@ -2423,38 +2423,38 @@ static ggml_cgraph* build_graph_unet1d(chatterbox_s3gen_context* c, int T_mel) {
     }
 
     // ---- Down blocks (1 block) ----
-    const bool dump_unet = std::getenv("CRISPASR_S3GEN_DUMP_UNET") != nullptr;
-    // PLAN #83 r9 bisect: CRISPASR_S3GEN_UNET_PRESERVE_INTERMEDIATES=1
+    const bool dump_unet = std::getenv("STELNETTTS_S3GEN_DUMP_UNET") != nullptr;
+    // PLAN #83 r9 bisect: STELNETTTS_S3GEN_UNET_PRESERVE_INTERMEDIATES=1
     // forces ggml_set_output on per-block intermediates. Disables
     // ggml-alloc in-place buffer reuse for those tensors.
     // PRESERVE_INTERMEDIATES alone marks only block outputs (~14
     // tensors). DUMP_UNET marks every per-resnet/transformer dump
     // point (62) for the diff-bisect.
-    const bool preserve_intermediates = std::getenv("CRISPASR_S3GEN_UNET_PRESERVE_INTERMEDIATES") != nullptr;
-    // CRISPASR_S3GEN_DUMP_UNET_NO_AUTO_MARK lets DUMP_UNET dump only the
+    const bool preserve_intermediates = std::getenv("STELNETTTS_S3GEN_UNET_PRESERVE_INTERMEDIATES") != nullptr;
+    // STELNETTTS_S3GEN_DUMP_UNET_NO_AUTO_MARK lets DUMP_UNET dump only the
     // tensors that other MARK_* knobs (or PRESERVE_INTERMEDIATES) have kept
     // live. Useful for narrowing which marks cause the Metal NaN — without
     // this, DUMP_UNET implicitly marks all 62 dump points and triggers it.
-    const bool dump_unet_auto_mark = dump_unet && std::getenv("CRISPASR_S3GEN_DUMP_UNET_NO_AUTO_MARK") == nullptr;
+    const bool dump_unet_auto_mark = dump_unet && std::getenv("STELNETTTS_S3GEN_DUMP_UNET_NO_AUTO_MARK") == nullptr;
     const bool mark_output_all = dump_unet_auto_mark; // every dump point
     // PLAN #83 r9 sub-bisect (May 2026 session): the 17 extra marks DUMP_UNET adds
     // on top of PRESERVE_INTERMEDIATES tip smoke into NaN. Split everything into
     // 5 groups gated independently to find the minimum trigger set.
-    const bool mark_db_resnet = mark_output_all || std::getenv("CRISPASR_S3GEN_UNET_MARK_DB_RESNET") != nullptr;
-    const bool mark_db_tb = mark_output_all || std::getenv("CRISPASR_S3GEN_UNET_MARK_DB_TB") != nullptr;
-    const bool mark_mb_resnet = mark_output_all || std::getenv("CRISPASR_S3GEN_UNET_MARK_MB_RESNET") != nullptr;
+    const bool mark_db_resnet = mark_output_all || std::getenv("STELNETTTS_S3GEN_UNET_MARK_DB_RESNET") != nullptr;
+    const bool mark_db_tb = mark_output_all || std::getenv("STELNETTTS_S3GEN_UNET_MARK_DB_TB") != nullptr;
+    const bool mark_mb_resnet = mark_output_all || std::getenv("STELNETTTS_S3GEN_UNET_MARK_MB_RESNET") != nullptr;
     const bool mark_db_out =
-        mark_output_all || preserve_intermediates || std::getenv("CRISPASR_S3GEN_UNET_MARK_DB_OUT") != nullptr;
+        mark_output_all || preserve_intermediates || std::getenv("STELNETTTS_S3GEN_UNET_MARK_DB_OUT") != nullptr;
     const bool mark_mb_out =
-        mark_output_all || preserve_intermediates || std::getenv("CRISPASR_S3GEN_UNET_MARK_MB_OUT") != nullptr;
+        mark_output_all || preserve_intermediates || std::getenv("STELNETTTS_S3GEN_UNET_MARK_MB_OUT") != nullptr;
     // PLAN #83 r9 sub-bisect: how many / which of the 12 mb_*_out marks tips
     // into NaN when combined with MARK_DB_RESNET. MAX takes priority over INDEX.
     int mb_out_max = -1;
     int mb_out_index = -1;
-    if (const char* env = std::getenv("CRISPASR_S3GEN_UNET_MARK_MB_OUT_MAX")) {
+    if (const char* env = std::getenv("STELNETTTS_S3GEN_UNET_MARK_MB_OUT_MAX")) {
         mb_out_max = std::atoi(env);
     }
-    if (const char* env = std::getenv("CRISPASR_S3GEN_UNET_MARK_MB_OUT_INDEX")) {
+    if (const char* env = std::getenv("STELNETTTS_S3GEN_UNET_MARK_MB_OUT_INDEX")) {
         mb_out_index = std::atoi(env);
     }
     auto should_mark_mb_out = [&](int i) -> bool {
@@ -2573,7 +2573,7 @@ static ggml_cgraph* build_graph_unet1d(chatterbox_s3gen_context* c, int T_mel) {
     ggml_set_name(x, "denoiser_out");
     // PLAN #83 r9 follow-up #5: env-gated dump of denoiser_out via a
     // dup-named tensor so the existing DUMP_UNET filter picks it up.
-    if (std::getenv("CRISPASR_S3GEN_UNET_PROBE_DENOISER_OUT") != nullptr) {
+    if (std::getenv("STELNETTTS_S3GEN_UNET_PROBE_DENOISER_OUT") != nullptr) {
         ggml_tensor* dump_x = ggml_dup(ctx0, x);
         ggml_set_name(dump_x, "dump_denoiser_out");
         ggml_set_output(dump_x);
@@ -2684,7 +2684,7 @@ static std::vector<float> cfm_euler_solve(chatterbox_s3gen_context* c,
     // When cfg_rate > 0 and not meanflow we run two UNet passes per step (cond + uncond).
     // The batch=2 graph fuses both into one Metal dispatch so attention GEMMs (≈90% of
     // compute) run as batched matmuls rather than two sequential single-batch calls.
-    // Opt out with CRISPASR_S3GEN_UNET_CFG_SINGLE=1 to force the old sequential path.
+    // Opt out with STELNETTTS_S3GEN_UNET_CFG_SINGLE=1 to force the old sequential path.
     // Interval-CFG (opt-in, APPROXIMATE — mirrors OMNIVOICE_CFG_INTERVAL): recompute
     // the uncond UNet pass only every K CFM Euler steps and reuse the cached uncond
     // velocity in between; the cond pass stays fresh every step; the first and last
@@ -2692,9 +2692,9 @@ static std::vector<float> cfm_euler_solve(chatterbox_s3gen_context* c,
     // B2 graph fuses cond+uncond in one dispatch, so there is nothing to skip), then
     // skips the uncond pass. Only active when K>1 && cfg_rate>0 && !meanflow, so at the
     // default the batched B2 path below is byte-for-byte unchanged (K=1 = exact).
-    // Gated CRISPASR_S3GEN_CFG_INTERVAL.
+    // Gated STELNETTTS_S3GEN_CFG_INTERVAL.
     const int cfg_interval = [] {
-        const char* e = std::getenv("CRISPASR_S3GEN_CFG_INTERVAL");
+        const char* e = std::getenv("STELNETTTS_S3GEN_CFG_INTERVAL");
         const int k = e ? std::atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
@@ -2706,7 +2706,7 @@ static std::vector<float> cfm_euler_solve(chatterbox_s3gen_context* c,
 
     // B2 fuses cond+uncond; interval needs the standalone uncond pass to skip → force single.
     const bool use_cfg_b2 =
-        (cfg_rate > 0.0f && !meanflow) && !std::getenv("CRISPASR_S3GEN_UNET_CFG_SINGLE") && !cfg_interval_on;
+        (cfg_rate > 0.0f && !meanflow) && !std::getenv("STELNETTTS_S3GEN_UNET_CFG_SINGLE") && !cfg_interval_on;
 
     // Reusable input buffer for batch=2: (T, 320, 2) — cond in batch 0, uncond in batch 1.
     std::vector<float> b2_input(use_cfg_b2 ? T_mel * 320 * 2 : 0, 0.0f);
@@ -2795,7 +2795,7 @@ static std::vector<float> cfm_euler_solve(chatterbox_s3gen_context* c,
             } else {
                 // ── Legacy ggml_backend_sched path (default) ──────────────────
                 // Rebuild graph each step (sched mutates it on alloc; not reusable).
-                const bool bench_alloc = crispasr_env::get("CRISPASR_CHATTERBOX_BENCH") != nullptr;
+                const bool bench_alloc = stelnettts_env::get("STELNETTTS_CHATTERBOX_BENCH") != nullptr;
                 int64_t t_alloc0 = bench_alloc ? ggml_time_us() : 0;
                 gf_b2 = build_graph_unet1d_b2(c, T_mel);
                 ggml_backend_sched_reset(c->sched);
@@ -3820,7 +3820,7 @@ static bool chatterbox_s3gen_compute_gen_mel(struct chatterbox_s3gen_context* ct
     }
 
     // Check for stage dump mode (per-stage intermediate comparison)
-    const char* dump_env = std::getenv("CRISPASR_S3GEN_DUMP");
+    const char* dump_env = std::getenv("STELNETTTS_S3GEN_DUMP");
     bool dump_stages = dump_env && dump_env[0] == '1';
 
     // 1. Conformer encoder: tokens → (80, T_mel)
@@ -4033,7 +4033,7 @@ extern "C" float* chatterbox_s3gen_synthesize(struct chatterbox_s3gen_context* c
     }
 
     // 6. Vocoder: mel → waveform
-    const char* dump_env2 = std::getenv("CRISPASR_S3GEN_DUMP");
+    const char* dump_env2 = std::getenv("STELNETTTS_S3GEN_DUMP");
     bool dump_voc = dump_env2 && dump_env2[0] == '1';
     std::map<std::string, std::vector<float>> voc_dump;
     int64_t t_voc0 = ggml_time_us();
@@ -4145,7 +4145,7 @@ extern "C" float* chatterbox_s3gen_hift_from_conv_post(const float* stft_cf, int
         return nullptr;
     }
     *out_n_samples = 0;
-    const char* env = std::getenv("CRISPASR_HIFT_FULL_IDFT");
+    const char* env = std::getenv("STELNETTTS_HIFT_FULL_IDFT");
     const bool full_idft = env && (env[0] == '1' || env[0] == 'y' || env[0] == 'Y');
     std::vector<float> wav = hift_pcm_from_conv_post_impl(stft_cf, T_stft, T_mel, full_idft);
     apply_trim_fade(wav);

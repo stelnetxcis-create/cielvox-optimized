@@ -4,7 +4,7 @@
 # session's WIP; see glint/README.md).
 #
 # Usage:
-#   tools/sync-glint.sh                  # clone github.com/CrispStrobe/glint, sync to origin/main
+#   tools/sync-glint.sh                  # clone github.com/Cyna/glint, sync to origin/main
 #   tools/sync-glint.sh /path/to/glint   # use a local clone (still syncs its committed HEAD)
 #   GLINT_REF=<sha|branch> tools/sync-glint.sh
 #
@@ -24,7 +24,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-GLINT_URL="${GLINT_URL:-https://github.com/CrispStrobe/glint}"
+GLINT_URL="${GLINT_URL:-https://github.com/Cyna/glint}"
 GLINT_REF="${GLINT_REF:-main}"
 
 if [ $# -ge 1 ]; then

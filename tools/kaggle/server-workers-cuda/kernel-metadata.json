@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-server-workers-cuda",
-  "title": "crispasr-server-workers-cuda",
-  "code_file": "crispasr-server-workers-cuda.py",
+  "id": "chr1str/stelnettts-server-workers-cuda",
+  "title": "stelnettts-server-workers-cuda",
+  "code_file": "stelnettts-server-workers-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

@@ -19,10 +19,10 @@
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
 #include "gguf.h"
@@ -39,7 +39,7 @@
 #include <vector>
 
 #include "core/bpe.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/ggml_cpu_backend.h"
 
 // ===========================================================================
@@ -49,7 +49,7 @@
 static bool glm_asr_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_GLM_ASR_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_GLM_ASR_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -268,7 +268,7 @@ extern "C" struct glm_asr_context* glm_asr_init_from_file(const char* path_model
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -343,11 +343,11 @@ extern "C" struct glm_asr_context* glm_asr_init_from_file(const char* path_model
     }
 
     // ---- pass 2: load tensor data ----
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total layers,
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total layers,
     // route llm.blk.<il>.* with il >= N onto the CPU backend.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)hp.llm_n_layers;
@@ -361,7 +361,7 @@ extern "C" struct glm_asr_context* glm_asr_init_from_file(const char* path_model
             delete ctx;
             return nullptr;
         }
-        fprintf(stderr, "glm_asr: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "glm_asr: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path_model, ctx->backend, "glm_asr", wl)) {
@@ -472,7 +472,7 @@ extern "C" struct glm_asr_context* glm_asr_init_from_file(const char* path_model
         backends[n_be++] = ctx->backend_cpu;
     }
     ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-    crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+    stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
     int n_audio_t = 0, n_llm_t = 0;
@@ -524,7 +524,7 @@ extern "C" const char* glm_asr_token_text(struct glm_asr_context* ctx, int id) {
 
 extern "C" int32_t* glm_asr_tokenize(struct glm_asr_context* ctx, const char* text, int* out_n_tokens) {
     // Byte-level BPE (GPT-2 family) + special-token scan, mirroring
-    // qwen3_asr_tokenize. Needs `tokenizer.ggml.merges` in the GGUF; on
+    // cielvox2_asr_tokenize. Needs `tokenizer.ggml.merges` in the GGUF; on
     // older GGUFs without merges only special tokens encode (plain text is
     // dropped) and callers fall back to the baked default instruction.
     if (!ctx || !text || !out_n_tokens)
@@ -633,9 +633,9 @@ static char* glm_asr_transcribe_impl(struct glm_asr_context* ctx, const float* s
     // All windows' valid frames are concatenated into ONE audio-token stream
     // and decoded in ONE LLM pass (processor max_audio_len = 655 s ≈ the
     // 8192-token LLM context). The legacy path truncated everything past the
-    // first 30 s window — restore it with CRISPASR_GLM_ASR_SINGLE_WINDOW=1.
+    // first 30 s window — restore it with STELNETTTS_GLM_ASR_SINGLE_WINDOW=1.
     const bool legacy_single_window = [] {
-        const char* e = getenv("CRISPASR_GLM_ASR_SINGLE_WINDOW");
+        const char* e = getenv("STELNETTTS_GLM_ASR_SINGLE_WINDOW");
         return e && atoi(e) != 0;
     }();
     const int kWindowSamples = 30 * 16000; // feature_extractor.chunk_length
@@ -721,14 +721,14 @@ static char* glm_asr_transcribe_impl(struct glm_asr_context* ctx, const float* s
     //    default_transcription_prompt); the legacy C++ prompt omitted it and
     //    all newlines (glm_asr_tokenize is specials-only and silently drops
     //    plain text — see kDefaultInstruction note). Restore the legacy form
-    //    with CRISPASR_GLM_ASR_LEGACY_PROMPT=1.
+    //    with STELNETTTS_GLM_ASR_LEGACY_PROMPT=1.
     //
     //    kNewline / kDefaultInstruction are the GLM tokenizer's ids for "\n"
     //    and "Please transcribe this audio into text", encoded with the HF
     //    repo's own tokenizer.json (verified against the transformers-5.13
     //    processor dump, tools/kaggle/glm-asr-blueprint-ref).
     const bool legacy_prompt = [] {
-        const char* e = getenv("CRISPASR_GLM_ASR_LEGACY_PROMPT");
+        const char* e = getenv("STELNETTTS_GLM_ASR_LEGACY_PROMPT");
         return e && atoi(e) != 0;
     }();
     static const int32_t kNewline = 10; // "Ċ"
@@ -934,9 +934,9 @@ static char* glm_asr_transcribe_impl(struct glm_asr_context* ctx, const float* s
         }
     }
 
-    // CRISPASR_GLM_ASR_DEBUG=1: dump the raw decode before any framing strip
+    // STELNETTTS_GLM_ASR_DEBUG=1: dump the raw decode before any framing strip
     // (first/last generated ids + text) — decode-path diagnosis.
-    if (const char* dbg = getenv("CRISPASR_GLM_ASR_DEBUG"); dbg && atoi(dbg) != 0) {
+    if (const char* dbg = getenv("STELNETTTS_GLM_ASR_DEBUG"); dbg && atoi(dbg) != 0) {
         fprintf(stderr, "glm_asr[debug]: prompt tail ids:");
         for (size_t ti = ids.size() > 20 ? ids.size() - 20 : 0; ti < ids.size(); ti++)
             fprintf(stderr, " %d", ids[ti]);
@@ -1021,7 +1021,7 @@ extern "C" void glm_asr_set_seed(struct glm_asr_context* ctx, unsigned int seed)
         srand(seed);
 }
 
-// PLAN §90: runtime beam-size setter so crispasr_session_set_beam_size
+// PLAN §90: runtime beam-size setter so stelnettts_session_set_beam_size
 // reaches glm-asr's decoder. Mutates ctx->params.beam_size, which the
 // transcribe path at line 629 then consults to pick greedy vs replay-
 // from-prefix beam search.
@@ -1172,10 +1172,10 @@ extern "C" float* glm_asr_embed_tokens(struct glm_asr_context* ctx, const int32_
     const int d = m.hp.llm_hidden;
 
     // Fast path: single-token lookup avoids graph build + sched overhead.
-    // Gated by CRISPASR_GLM_ASR_EMBED_FAST (default ON).
+    // Gated by STELNETTTS_GLM_ASR_EMBED_FAST (default ON).
     static int use_fast = -1;
     if (use_fast < 0) {
-        const char* e = std::getenv("CRISPASR_GLM_ASR_EMBED_FAST");
+        const char* e = std::getenv("STELNETTTS_GLM_ASR_EMBED_FAST");
         use_fast = (!e || *e != '0') ? 1 : 0;
     }
     if (n_ids == 1 && use_fast && m.llm.token_embd_w) {
@@ -1250,8 +1250,8 @@ extern "C" bool glm_asr_kv_init(struct glm_asr_context* ctx, int max_ctx) {
     // so the scheduler recognizes KV tensors as pre-allocated.
     ggml_init_params ip = {ggml_tensor_overhead() * 4 + 1024, nullptr, true};
     ctx->kv_ctx = ggml_init(ip);
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("glm_asr");
     ctx->kv_k = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.k, hd, max_ctx, n_kv, nl);
     ctx->kv_v = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.v, hd, max_ctx, n_kv, nl);
@@ -1265,7 +1265,7 @@ extern "C" bool glm_asr_kv_init(struct glm_asr_context* ctx, int max_ctx) {
     // and these KV rows are head_dim wide (128), so each q8_0 tensor needs
     // 408 bytes more than nbytes — the hand-sized buffer came up short and
     // ggml_backend_tensor_alloc aborted. f16 is not quantized, so this only
-    // ever fired with CRISPASR_KV_QUANT set, and only on CUDA.
+    // ever fired with STELNETTTS_KV_QUANT set, and only on CUDA.
     ctx->kv_buf = ggml_backend_alloc_ctx_tensors(ctx->kv_ctx, kv_backend);
     if (!ctx->kv_buf) {
         ggml_free(ctx->kv_ctx);

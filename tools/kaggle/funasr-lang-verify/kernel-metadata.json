@@ -1,6 +1,6 @@
 {
-  "id": "chr1str/crispasr-funasr-lang-verify",
-  "title": "CrispASR funasr language flag verify",
+  "id": "chr1str/stelnettts-funasr-lang-verify",
+  "title": "StelnetTTS funasr language flag verify",
   "code_file": "funasr-lang-verify.py",
   "language": "python",
   "kernel_type": "script",

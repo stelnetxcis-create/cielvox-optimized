@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace crispasr_parakeet {
+namespace stelnettts_parakeet {
 
 // True iff the UTF-8 string `s` contains a Japanese-script character:
 // Hiragana/Katakana (U+3040–U+30FF, UTF-8 `E3 [81..83] xx`) or a CJK ideograph
@@ -45,4 +45,4 @@ inline bool vocab_looks_japanese(const std::vector<std::string>& tokens) {
     return total > 0 && ja * 2 > total;
 }
 
-} // namespace crispasr_parakeet
+} // namespace stelnettts_parakeet

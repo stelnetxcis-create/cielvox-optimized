@@ -2,7 +2,7 @@
 
 > **OUTCOME (2026-06-21, §208): BUILT + VALIDATED CORRECT, but a perf DUD —
 > default stays OFF.** Implemented exactly as specced
-> (`CRISPASR_S3GEN_UNET_GALLOCR=1`, single GPU backend, raw `ggml_gallocr`, graph
+> (`STELNETTTS_S3GEN_UNET_GALLOCR=1`, single GPU backend, raw `ggml_gallocr`, graph
 > reused across Euler steps). Correctness is full: per-step `x_rms` matches legacy
 > step-for-step (Δ≤1e-4), log-mag spectral corr **0.999105**, identical ASR, Bug B
 > does **not** recur. **But there is no speedup:** the host work the cached path
@@ -51,7 +51,7 @@ their CFM/UNet build + alloc as the existence proof, **do not copy their code**
 
 ## Why the legacy path can't be cached (don't repeat this)
 
-Two CrispASR sessions (the §205/§207 work and the §206-era graph-cache branch
+Two StelnetTTS sessions (the §205/§207 work and the §206-era graph-cache branch
 `perf/chatterbox-graph-cache`) both tried to cache the legacy `ggml_backend_sched`
 graph and **both failed identically**:
 
@@ -83,7 +83,7 @@ be reused." That is what this task builds.
   `ggml_free(ctx0)` at end. Inputs: `unet_input_b2` (T_mel,320,2), `time_emb`
   (1024), `mask`; output: `denoiser_out_b2` (T,80,2).
 - `build_graph_unet1d(c, T_mel)` (~2248) — the single-pass (batch=1) variant
-  used when `CRISPASR_S3GEN_UNET_CFG_SINGLE=1`.
+  used when `STELNETTTS_S3GEN_UNET_CFG_SINGLE=1`.
 - **`cfm_euler_solve`** (~2443) — the 10-step loop. The b2 branch (~2569+):
   `build_graph_unet1d_b2` → `ggml_backend_sched_reset` →
   `s3gen_maybe_pin_graph_to_cpu` → `ggml_backend_sched_alloc_graph` → set 3
@@ -127,7 +127,7 @@ Add an alternative UNet1D execution path, selected by env, with three pieces:
 1. **A dedicated single GPU backend handle + raw `ggml_gallocr`** for the CFM,
    created at init only when the new path is active and a GPU backend exists.
    Do **not** reuse `c->sched`. Model it on the project's own `ggml_gallocr`
-   pattern (see `docs/` "ggml_gallocr (graph allocator) — CrispASR pattern" and
+   pattern (see `docs/` "ggml_gallocr (graph allocator) — StelnetTTS pattern" and
    e.g. `kyutai_stt.cpp` / `moonshine_streaming.cpp` §176s encoder caches), and
    on gianni's `time_mlp_cache`/gallocr usage as the existence proof.
 
@@ -140,11 +140,11 @@ Add an alternative UNet1D execution path, selected by env, with three pieces:
    in the destructor.
 
 3. **Env gating** (follow `CLAUDE.md` "Env var gating" convention):
-   - `CRISPASR_S3GEN_UNET_GALLOCR=1` → new single-all-GPU raw-gallocr cached
+   - `STELNETTTS_S3GEN_UNET_GALLOCR=1` → new single-all-GPU raw-gallocr cached
      path (this task). `=0`/unset → legacy `ggml_backend_sched` path (default
      until validated).
-   - Keep all existing knobs working: `CRISPASR_S3GEN_UNET_CPU=1` (CPU route),
-     `CRISPASR_S3GEN_UNET_CFG_SINGLE=1` (batch=1), `CRISPASR_CHATTERBOX_SEED`,
+   - Keep all existing knobs working: `STELNETTTS_S3GEN_UNET_CPU=1` (CPU route),
+     `STELNETTTS_S3GEN_UNET_CFG_SINGLE=1` (batch=1), `STELNETTTS_CHATTERBOX_SEED`,
      `--tts-steps N`. The new path only replaces the **b2 GPU compute** inside
      `cfm_euler_solve`; if `UNET_CPU=1` or backend is CPU-only, fall back to
      legacy automatically.
@@ -162,10 +162,10 @@ Use the §207 protocol (fixed seed → only the compute path varies):
 
 1. **Build** the worktree (`CCACHE_DIR=$HOME/.ccache`, Ninja, Release).
 2. **Parity run** vs the legacy path, identical inputs:
-   `CRISPASR_CHATTERBOX_SEED=42 CRISPASR_S3GEN_UNET_GALLOCR=1 CHATTERBOX_BENCH=1 CRISPASR_S3GEN_DUMP=1`
-   `crispasr --backend chatterbox -m <t3-q8> --codec-model <s3gen-q8> --seed 1234 --voice samples/jfk.wav --i-have-rights --no-spoken-disclaimer --tts "The quick brown fox jumps over the lazy dog." --tts-output gallocr.wav`
-   and the same with `CRISPASR_S3GEN_UNET_GALLOCR=0` → `legacy.wav`.
-   Models: `/Volumes/backups/ai/crispasr/chatterbox-{t3,s3gen}-q8_0.gguf`.
+   `STELNETTTS_CHATTERBOX_SEED=42 STELNETTTS_S3GEN_UNET_GALLOCR=1 CHATTERBOX_BENCH=1 STELNETTTS_S3GEN_DUMP=1`
+   `stelnettts --backend chatterbox -m <t3-q8> --codec-model <s3gen-q8> --seed 1234 --voice samples/jfk.wav --i-have-rights --no-spoken-disclaimer --tts "The quick brown fox jumps over the lazy dog." --tts-output gallocr.wav`
+   and the same with `STELNETTTS_S3GEN_UNET_GALLOCR=0` → `legacy.wav`.
+   Models: `/Volumes/backups/ai/stelnettts/chatterbox-{t3,s3gen}-q8_0.gguf`.
 3. **Per-step parity:** `s3gen: CFM step N/10 x_rms=...` must **grow** smoothly
    (1.0 → ~4–11) and **match the legacy run step-for-step** within ~1e-3. A
    frozen `x_rms` = the velocity isn't updating (the alloc-reuse bug); a NaN =
@@ -183,9 +183,9 @@ Use the §207 protocol (fixed seed → only the compute path varies):
 6. **q8 + F16 + Q4_K**, and **base + turbo (meanflow 2-step)** variants must all
    still produce intelligible audio (turbo uses `build_graph_unet1d` single-pass
    / meanflow — confirm the gate handles non-b2 paths or leaves them legacy).
-7. **`crispasr-diff chatterbox`** stages (`cfm_step0_result`, mel) must still
+7. **`stelnettts-diff chatterbox`** stages (`cfm_step0_result`, mel) must still
    pass — the diff harness pins 10 steps; run it with the gallocr path on and
-   confirm no regression. Reference dump: `cstr/chatterbox-GGUF/diff-harness-ref/`
+   confirm no regression. Reference dump: `Xenna/chatterbox-GGUF/diff-harness-ref/`
    (and the local copies under `/Volumes/backups/ai/`).
 
 Acceptance: parity ≥ 0.999 spectral + identical ASR + step-wise x_rms match +
@@ -214,15 +214,15 @@ mechanism).
 - `feedback_no_agents_for_runtime_graphs`, `feedback_diff_alignment`,
   `feedback_tts_validation` (ASR-roundtrip every TTS output).
 - `docs/diff-harness-coverage.md` (chatterbox ref + the `diff-harness-ref/` HF
-  archive), `tools/benchmark_chatterbox.py` (CrispASR-vs-Python bench).
+  archive), `tools/benchmark_chatterbox.py` (StelnetTTS-vs-Python bench).
 - Reference impl (read-only): `/Volumes/backups/code/gianni-chatterbox-cpp`
   (`src/chatterbox_tts.cpp` — gallocr + `time_mlp_cache`; `--cfm-steps` knob).
-- ggml gallocr usage pattern: `docs/` "ggml_gallocr (graph allocator) — CrispASR
+- ggml gallocr usage pattern: `docs/` "ggml_gallocr (graph allocator) — StelnetTTS
   pattern"; §176s encoder caches in `kyutai_stt.cpp` / `moonshine_streaming.cpp`.
 
 ## Env vars (add to PLAN §176 + the backend's section)
 
-- `CRISPASR_S3GEN_UNET_GALLOCR=1` — opt into the single-all-GPU raw-gallocr
+- `STELNETTTS_S3GEN_UNET_GALLOCR=1` — opt into the single-all-GPU raw-gallocr
   cached UNet path (this task). Default off (legacy `ggml_backend_sched`).
-- (existing, keep working) `CRISPASR_S3GEN_UNET_CPU=1`,
-  `CRISPASR_S3GEN_UNET_CFG_SINGLE=1`, `CRISPASR_CHATTERBOX_SEED`, `--tts-steps`.
+- (existing, keep working) `STELNETTTS_S3GEN_UNET_CPU=1`,
+  `STELNETTTS_S3GEN_UNET_CFG_SINGLE=1`, `STELNETTTS_CHATTERBOX_SEED`, `--tts-steps`.

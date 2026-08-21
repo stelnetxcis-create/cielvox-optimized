@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build CrispASR (crispasr) for iOS (xcframework with Metal GPU).
+# Build StelnetTTS (stelnettts) for iOS (xcframework with Metal GPU).
 #
 # Usage:
 #   ./build-ios.sh              # arm64 device + simulator
@@ -12,8 +12,8 @@ BUILD_DIR="$SCRIPT_DIR/build-ios"
 CMAKE_COMMON=(
     -DCMAKE_BUILD_TYPE=Release
     -DBUILD_SHARED_LIBS=OFF
-    -DCRISPASR_BUILD_EXAMPLES=OFF
-    -DCRISPASR_BUILD_TESTS=OFF
+    -DSTELNETTTS_BUILD_EXAMPLES=OFF
+    -DSTELNETTTS_BUILD_TESTS=OFF
     -DGGML_METAL=ON
     -DGGML_METAL_EMBED_LIBRARY=ON
 )
@@ -50,14 +50,14 @@ if [ $DEVICE_ONLY -eq 0 ]; then
     cmake --build "$BUILD_DIR/simulator" --config Release -- -quiet
 
     echo "=== Creating xcframework ==="
-    rm -rf "$BUILD_DIR/CrispASR.xcframework"
+    rm -rf "$BUILD_DIR/StelnetTTS.xcframework"
     xcodebuild -create-xcframework \
         -library "$BUILD_DIR/device/Release-iphoneos/libwhisper.a" \
         -headers "$SCRIPT_DIR/include/whisper.h" \
         -library "$BUILD_DIR/simulator/Release-iphonesimulator/libwhisper.a" \
         -headers "$SCRIPT_DIR/include/whisper.h" \
-        -output "$BUILD_DIR/CrispASR.xcframework"
-    echo "=== Built: $BUILD_DIR/CrispASR.xcframework ==="
+        -output "$BUILD_DIR/StelnetTTS.xcframework"
+    echo "=== Built: $BUILD_DIR/StelnetTTS.xcframework ==="
 fi
 
 echo "Done."

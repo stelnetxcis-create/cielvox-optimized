@@ -9,7 +9,7 @@
 //
 // The reason it shipped is the interesting part, and it is what this file is
 // for. Note what was NOT the reason: ci.yml's `windows` job builds
-// crispasr-cli, which pulls in crispasr_diarize_cli.cpp and therefore this
+// stelnettts-cli, which pulls in stelnettts_diarize_cli.cpp and therefore this
 // header, so the Windows quoter did compile on every push. It compiled green
 // while emitting command lines cmd.exe could not parse.
 //
@@ -26,15 +26,15 @@
 // single-quote unquoter — rather than against hand-written expected strings.
 // Asserting on a literal would only prove the quoter still does what it did;
 // round-tripping proves the receiving process sees the argument we meant.
-#include "crispasr_subprocess.h"
+#include "stelnettts_subprocess.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
 #include <vector>
 
-using crispasr_cli_process::quote_arg_posix;
-using crispasr_cli_process::quote_arg_windows;
+using stelnettts_cli_process::quote_arg_posix;
+using stelnettts_cli_process::quote_arg_windows;
 
 namespace {
 

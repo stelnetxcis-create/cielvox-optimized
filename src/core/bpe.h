@@ -1,7 +1,7 @@
 // src/core/bpe.h — shared GPT-2 byte-level BPE tokenizer.
 //
 // Replaces the per-model copies of the same byte_encoder + bytes_to_unicode
-// + bpe_one + tokenize loop that qwen3_asr.cpp and granite_speech.cpp each
+// + bpe_one + tokenize loop that cielvox2_asr.cpp and granite_speech.cpp each
 // have. Both models use the OpenAI GPT-2 byte-level BPE family
 // (vocab.json + merges.txt loaded into the GGUF as
 // `tokenizer.ggml.tokens` + `tokenizer.ggml.merges`), so the encode side

@@ -10,8 +10,8 @@
 #include "core/attention.h"
 #include "core/ffn.h"
 #include "core/bpe.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml.h"
 #include "ggml-backend.h"
@@ -52,7 +52,7 @@ namespace {
 static bool tada_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_TADA_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_TADA_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -183,7 +183,7 @@ struct tada_context {
     ggml_backend_t backend = nullptr;
     ggml_backend_t backend_cpu = nullptr;
     bool backend_is_vulkan = false;          // backend is a Vulkan device (#192)
-    bool vulkan_native = false;              // CRISPASR_TADA_VULKAN_NATIVE: compute graphs direct (no sched)
+    bool vulkan_native = false;              // STELNETTTS_TADA_VULKAN_NATIVE: compute graphs direct (no sched)
     ggml_gallocr_t ar_step_galloc = nullptr; // direct-compute allocator for talker/embed graphs
     ggml_context* ctx_w = nullptr;
     ggml_backend_buffer_t buf_w = nullptr;
@@ -230,7 +230,7 @@ struct tada_context {
     // eligible floor is gated at runtime (tada_pick_bucket): backend-conditional
     // by default (64 on Metal/CPU where a tighter Lk is a measured byte-identical
     // win, 512 on discrete GPU where it is marginal + not bit-identical), and
-    // CRISPASR_TADA_BUCKET_MIN overrides. On CUDA the 512 floor keeps {64,128,256}
+    // STELNETTTS_TADA_BUCKET_MIN overrides. On CUDA the 512 floor keeps {64,128,256}
     // inert, reproducing the original §176b set byte-for-byte.
     static constexpr int kBucketN = 7;
     static constexpr int kBucketLks[kBucketN] = {64, 128, 256, 512, 1024, 2048, 4096};
@@ -244,7 +244,7 @@ struct tada_context {
     ggml_backend_sched_t fm_step_sched = nullptr;
     ggml_gallocr_t fm_step_galloc = nullptr;
 
-    // B=2 batched CFG FM graph cache (CRISPASR_TADA_FM_B2).
+    // B=2 batched CFG FM graph cache (STELNETTTS_TADA_FM_B2).
     // Batches pos+neg condition in one forward; halves FM graph compute calls.
     ggml_context* fm_b2_ctx = nullptr;
     std::vector<uint8_t> fm_b2_meta;
@@ -1172,7 +1172,7 @@ static float* build_step_embedding(tada_context* c, int32_t token_id, const floa
 // (CUDA/ROCm/Vulkan/WebGPU) -> 512: their parallel reduction ORDER over the masked
 // padding makes the output NOT bit-identical across a bucket-width change (benign
 // FP, still intelligible) and the win is marginal (CUDA A/B 1.02-1.06x), so their
-// default output is left byte-for-byte unchanged. CRISPASR_TADA_BUCKET_MIN overrides.
+// default output is left byte-for-byte unchanged. STELNETTTS_TADA_BUCKET_MIN overrides.
 static int tada_default_bucket_min(tada_context* c) {
     if (!c->backend || core_cpu_backend::is_cpu(c->backend))
         return 64;
@@ -1185,12 +1185,12 @@ static int tada_default_bucket_min(tada_context* c) {
 
 static int tada_pick_bucket(tada_context* c, int needed_lk) {
     // §215b follow-up: smallest ELIGIBLE bucket. Buckets below the floor are gated
-    // out. CRISPASR_TADA_BUCKET_MIN overrides; otherwise the floor is backend-
+    // out. STELNETTTS_TADA_BUCKET_MIN overrides; otherwise the floor is backend-
     // conditional (tada_default_bucket_min). A tighter floor lets a short
     // generation (n_past << 512) use a tighter Lk and waste far less padded
     // attention — masked to -inf, so output-neutral on the deterministic backends.
     static const int s_env_min = []() {
-        const char* e = std::getenv("CRISPASR_TADA_BUCKET_MIN");
+        const char* e = std::getenv("STELNETTTS_TADA_BUCKET_MIN");
         return (e && e[0]) ? atoi(e) : -1;
     }();
     const int floor = (s_env_min >= 0) ? s_env_min : tada_default_bucket_min(c);
@@ -1244,7 +1244,7 @@ static talker_result run_talker_kv_bucket(tada_context* c, const float* embeds, 
         return res;
     // Vulkan native path: direct compute on the backend (no {backend,CPU} sched).
     // This needs a driver with a REPEAT pipeline for the GQA head expansion (RADV
-    // has it; MoltenVK aborts), hence the CRISPASR_TADA_VULKAN_NATIVE gate (#192).
+    // has it; MoltenVK aborts), hence the STELNETTTS_TADA_VULKAN_NATIVE gate (#192).
     ggml_backend_sched_t ss = nullptr;
     if (c->vulkan_native) {
         if (!c->ar_step_galloc)
@@ -1287,11 +1287,11 @@ static talker_result run_talker_kv_bucket(tada_context* c, const float* embeds, 
 static talker_result run_talker_kv(tada_context* c, const float* embeds, int n_tokens, int n_past, bool need_logits,
                                    ggml_tensor* use_kv_k = nullptr, ggml_tensor* use_kv_v = nullptr) {
     // §176b: Lk-bucketed fast path for single-step decode on default KV.
-    // §215b diagnostic: CRISPASR_TADA_NO_BUCKET=1 forces the positive pass through
+    // §215b diagnostic: STELNETTTS_TADA_NO_BUCKET=1 forces the positive pass through
     // the exact-Lk path (same as the CFG negative pass) to isolate how much of the
     // pos/neg per-call asymmetry is the bucket's padded-attention (Lk>=512) width.
     static const bool s_no_bucket = []() {
-        const char* e = std::getenv("CRISPASR_TADA_NO_BUCKET");
+        const char* e = std::getenv("STELNETTTS_TADA_NO_BUCKET");
         return e && e[0] && e[0] != '0';
     }();
     if (!s_no_bucket && n_tokens == 1 && !use_kv_k && !use_kv_v) {
@@ -1686,15 +1686,15 @@ static void fm_euler_solve(tada_context* c, float* speech, const float* cond, in
     // CFG-active step always recomputes. vel_neg persists across iterations, so a skip
     // step simply leaves its last-recomputed value in place — no separate cache. Only
     // active when K>1, so at the default both velocities are recomputed every step and
-    // the result is byte-for-byte the legacy path. Gated CRISPASR_TADA_CFG_INTERVAL.
+    // the result is byte-for-byte the legacy path. Gated STELNETTTS_TADA_CFG_INTERVAL.
     const int cfg_interval = [] {
-        const char* e = std::getenv("CRISPASR_TADA_CFG_INTERVAL");
+        const char* e = std::getenv("STELNETTTS_TADA_CFG_INTERVAL");
         const int k = e ? std::atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
     const bool interval_on = cfg_interval > 1;
     int cfg_active_idx = 0; // counts CFG-active (a_cfg != 1) steps for the every-K test
-    if (interval_on && std::getenv("CRISPASR_TADA_CFG_INTERVAL_DEBUG"))
+    if (interval_on && std::getenv("STELNETTTS_TADA_CFG_INTERVAL_DEBUG"))
         fprintf(stderr, "[tada] interval-CFG K=%d (neg velocity recomputed every %d CFG-active steps; first always)\n",
                 cfg_interval, cfg_interval);
 
@@ -1901,10 +1901,10 @@ static bool fm_solve_rank_candidates(tada_context* c, const float* all_noise, in
     //                    "hello world"/"count" but not "four hours".
     // The cand>1 DEFAULT is duration_median: it repairs the #192 reported case
     // and the FM noise lottery's timing collapse (the whole reason to draw >1),
-    // which is what cand>1 is for. CRISPASR_TADA_SCORER=likelihood|hybrid A/Bs
+    // which is what cand>1 is for. STELNETTTS_TADA_SCORER=likelihood|hybrid A/Bs
     // the others. For guaranteed-best quality, use cand=1 (the default).
     static const int s_scorer = []() {
-        const char* e = std::getenv("CRISPASR_TADA_SCORER");
+        const char* e = std::getenv("STELNETTTS_TADA_SCORER");
         if (e && strcmp(e, "likelihood") == 0)
             return 1;
         if (e && strcmp(e, "hybrid") == 0)
@@ -2093,7 +2093,7 @@ struct tada_context_params tada_context_default_params(void) {
     p.num_acoustic_candidates = 1; // match Python InferenceOptions default
     // Talker text-decoder sampling. Upstream InferenceOptions defaults are
     // do_sample=True/top_p=0.9/top_k=0/rep_penalty=1.1, but the LIBRARY default
-    // stays greedy (text_do_sample=false) so crispasr-diff is deterministic;
+    // stays greedy (text_do_sample=false) so stelnettts-diff is deterministic;
     // the CLI adapter and C ABI enable sampling with the upstream values.
     p.text_do_sample = false;
     p.text_top_p = 0.9f;
@@ -2135,7 +2135,7 @@ struct tada_context* tada_init_from_file(const char* path_model, struct tada_con
         return nullptr;
     }
     core_cpu_backend::set_n_threads(c->backend_cpu, params.n_threads);
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend)
         c->backend = c->backend_cpu;
 
@@ -2150,34 +2150,34 @@ struct tada_context* tada_init_from_file(const char* path_model, struct tada_con
     // RADV (POLARIS10) and MoltenVK.
     //
     // Two opt-in escapes from the default CPU fallback:
-    //   CRISPASR_TADA_VULKAN_NATIVE=1 — keep Vulkan and compute every TADA graph
+    //   STELNETTTS_TADA_VULKAN_NATIVE=1 — keep Vulkan and compute every TADA graph
     //     directly on the backend (no scheduler, no cross-backend split). This is
     //     the real native-Vulkan fix; the FM head is validated correct this way
     //     (speech_rms 426 -> 1.14 on MoltenVK), but the talker path needs a driver
     //     with a REPEAT pipeline (RADV has it; MoltenVK aborts), so it is gated for
     //     validation on real hardware.
-    //   CRISPASR_TADA_ALLOW_VULKAN=1 — keep Vulkan on the (broken) scheduler path,
+    //   STELNETTTS_TADA_ALLOW_VULKAN=1 — keep Vulkan on the (broken) scheduler path,
     //     for debugging only.
     // Metal and CUDA are validated and unaffected by either flag.
     if (c->backend != c->backend_cpu) {
         const char* bname = ggml_backend_name(c->backend);
         const bool is_vulkan = bname && strstr(bname, "Vulkan");
-        const char* native = std::getenv("CRISPASR_TADA_VULKAN_NATIVE");
-        const char* allow = std::getenv("CRISPASR_TADA_ALLOW_VULKAN");
+        const char* native = std::getenv("STELNETTTS_TADA_VULKAN_NATIVE");
+        const char* allow = std::getenv("STELNETTTS_TADA_ALLOW_VULKAN");
         const bool want_native = native && native[0] == '1';
         const bool want_allow = allow && allow[0] == '1';
         if (is_vulkan && want_native) {
             c->backend_is_vulkan = true;
             c->vulkan_native = true;
             if (params.verbosity >= 1)
-                fprintf(stderr, "tada: Vulkan native path ENABLED (CRISPASR_TADA_VULKAN_NATIVE=1) — "
+                fprintf(stderr, "tada: Vulkan native path ENABLED (STELNETTTS_TADA_VULKAN_NATIVE=1) — "
                                 "computing all graphs directly on the backend (#192).\n");
         } else if (is_vulkan && !want_allow) {
             fprintf(stderr,
                     "tada: WARNING: GPU backend '%s' is not yet supported for TADA — its scheduler path "
                     "miscomputes on Vulkan and produces no usable audio (issue #192). Falling back to CPU. "
-                    "Use Metal/CUDA for GPU acceleration, set CRISPASR_TADA_VULKAN_NATIVE=1 to try the "
-                    "native direct-compute path, or CRISPASR_TADA_ALLOW_VULKAN=1 to force the broken path.\n",
+                    "Use Metal/CUDA for GPU acceleration, set STELNETTTS_TADA_VULKAN_NATIVE=1 to try the "
+                    "native direct-compute path, or STELNETTTS_TADA_ALLOW_VULKAN=1 to force the broken path.\n",
                     bname);
             ggml_backend_free(c->backend);
             c->backend = c->backend_cpu;
@@ -2225,10 +2225,10 @@ struct tada_context* tada_init_from_file(const char* path_model, struct tada_con
     }
 
     // FM B=2 batched CFG: enabled by default. On GPU with quantized FM weights,
-    // prefer F16 GPU-resident dequant copies; CRISPASR_TADA_FM_B2=1 forces the
+    // prefer F16 GPU-resident dequant copies; STELNETTTS_TADA_FM_B2=1 forces the
     // native quantized batched path if F16 setup fails.
     {
-        const char* env = std::getenv("CRISPASR_TADA_FM_B2");
+        const char* env = std::getenv("STELNETTTS_TADA_FM_B2");
         bool want = true; // default ON
         bool force_on = false;
         if (env && (env[0] == '0' || env[0] == 'n' || env[0] == 'N'))
@@ -2259,7 +2259,7 @@ struct tada_context* tada_init_from_file(const char* path_model, struct tada_con
                     } else {
                         if (params.verbosity >= 1)
                             fprintf(stderr, "tada: FM B=2 disabled (GPU+quant weights; F16 dequant failed; set "
-                                            "CRISPASR_TADA_FM_B2=1 to force native)\n");
+                                            "STELNETTTS_TADA_FM_B2=1 to force native)\n");
                         want = false;
                     }
                 }
@@ -2297,7 +2297,7 @@ int tada_load_prompt(struct tada_context* ctx, const char* path) {
     gguf_context* meta = core_gguf::open_metadata(path);
     if (!meta)
         return -1;
-    const std::string prompt_text = core_gguf::kv_str(meta, "crispasr.ref.tada_tts_prompt_text", "");
+    const std::string prompt_text = core_gguf::kv_str(meta, "stelnettts.ref.tada_tts_prompt_text", "");
     core_gguf::free_metadata(meta);
 
     core_gguf::WeightLoad wl;
@@ -2705,7 +2705,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
 
     // Prompt text tokens (transcript of reference audio for voice conditioning)
     std::vector<int32_t> prompt_text_ids;
-    const char* prompt_text_env = crispasr_env::get("CRISPASR_TADA_PROMPT_TEXT");
+    const char* prompt_text_env = stelnettts_env::get("STELNETTTS_TADA_PROMPT_TEXT");
     if (prompt_text_env && ctx->n_prompt > 0) {
         prompt_text_ids = tokenize(ctx, tada_normalize_text(std::string(prompt_text_env)));
     } else if (!ctx->prompt_text.empty() && ctx->n_prompt > 0) {
@@ -2770,7 +2770,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     std::vector<int> time_before_list;
     std::vector<tada_fm_dump_record> fm_dump_records;
     const bool dump_fm_steps = []() {
-        const char* path = crispasr_env::get("CRISPASR_TADA_DUMP_FM_STEPS");
+        const char* path = stelnettts_env::get("STELNETTTS_TADA_DUMP_FM_STEPS");
         return path && path[0];
     }();
 
@@ -2818,9 +2818,9 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     //   2. Run a single batched Llama forward (T = prefill_len),
     //   3. memcpy pos KV → neg KV instead of a second Llama pass.
     // This replaces 2×prefill_len separate T=1 graph calls with 1 T=N call.
-    // Disable with CRISPASR_TADA_BATCH_PREFILL=0.
+    // Disable with STELNETTTS_TADA_BATCH_PREFILL=0.
     static const bool s_batch_prefill_env = []() {
-        const char* e = std::getenv("CRISPASR_TADA_BATCH_PREFILL");
+        const char* e = std::getenv("STELNETTTS_TADA_BATCH_PREFILL");
         return !(e && *e == '0');
     }();
     const bool do_batch_prefill = (prefill_len > 1) && s_batch_prefill_env;
@@ -2933,9 +2933,9 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     // over-generating by 5 steps and appending trailing junk frames after the
     // last word (ASR "…four hours" → "…for out").  The real bug it chased was
     // the early EOS-stop below (now removed), not a missing tail.
-    // CRISPASR_TADA_EXTRA_STEPS overrides (default 0 = exact Python).
+    // STELNETTTS_TADA_EXTRA_STEPS overrides (default 0 = exact Python).
     static const int s_extra_steps = []() {
-        const char* e = std::getenv("CRISPASR_TADA_EXTRA_STEPS");
+        const char* e = std::getenv("STELNETTTS_TADA_EXTRA_STEPS");
         return e && e[0] ? atoi(e) : -1;
     }();
     const int extra_steps = (s_extra_steps >= 0) ? s_extra_steps : 0;
@@ -2944,9 +2944,9 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     // §215b STEP-0 instrumentation: measure whether the talker (AR backbone,
     // run twice/step for CFG) is dispatch-bound + a dominant fraction of per-step
     // wall time — the precondition for a batched-CFG (B=2) port paying off.
-    // Gated CRISPASR_TADA_TALKER_TIMING=1 (measurement only, no graph change).
+    // Gated STELNETTTS_TADA_TALKER_TIMING=1 (measurement only, no graph change).
     static const bool s_talker_timing = []() {
-        const char* e = std::getenv("CRISPASR_TADA_TALKER_TIMING");
+        const char* e = std::getenv("STELNETTTS_TADA_TALKER_TIMING");
         return e && e[0] && e[0] != '0';
     }();
     int64_t t_talker_pos_us = 0, t_talker_neg_us = 0, t_loop_us = 0;
@@ -3287,7 +3287,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     }
 
     if (dump_fm_steps) {
-        const char* dump_path = crispasr_env::get("CRISPASR_TADA_DUMP_FM_STEPS");
+        const char* dump_path = stelnettts_env::get("STELNETTTS_TADA_DUMP_FM_STEPS");
         if (FILE* f = fopen(dump_path, "wb")) {
             uint32_t hdr[4] = {(uint32_t)fm_dump_records.size(), (uint32_t)lat, (uint32_t)hp.fm_hidden,
                                (uint32_t)hp.time_dim};
@@ -3367,7 +3367,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     // Use only features from skip_frames onwards
     std::vector<std::vector<float>> decode_feats(acoustic_features.begin() + skip_frames, acoustic_features.end());
 
-    if (const char* dump_acoustic_path = crispasr_env::get("CRISPASR_TADA_DUMP_ACOUSTIC_FEATURES");
+    if (const char* dump_acoustic_path = stelnettts_env::get("STELNETTTS_TADA_DUMP_ACOUSTIC_FEATURES");
         dump_acoustic_path && dump_acoustic_path[0]) {
         if (FILE* f = fopen(dump_acoustic_path, "wb")) {
             uint32_t hdr[2] = {(uint32_t)acoustic_features.size(), (uint32_t)ad};
@@ -3385,7 +3385,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
         }
     }
 
-    if (const char* dump_time_path = crispasr_env::get("CRISPASR_TADA_DUMP_TIME_BEFORE");
+    if (const char* dump_time_path = stelnettts_env::get("STELNETTTS_TADA_DUMP_TIME_BEFORE");
         dump_time_path && dump_time_path[0]) {
         if (FILE* f = fopen(dump_time_path, "wb")) {
             std::vector<float> dump_times;
@@ -3443,7 +3443,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     // of crashing the machine.
     {
         int max_expanded = 16384;
-        if (const char* e = crispasr_env::get("CRISPASR_TADA_MAX_EXPANDED_FRAMES"); e && e[0])
+        if (const char* e = stelnettts_env::get("STELNETTTS_TADA_MAX_EXPANDED_FRAMES"); e && e[0])
             max_expanded = atoi(e);
         if (max_expanded > 0 && n_expanded > max_expanded) {
             fprintf(stderr,
@@ -3484,7 +3484,7 @@ float* tada_synthesize(struct tada_context* ctx, const char* text, int* out_n_sa
     // Optional feature dump for diff harness (TADA_DUMP_FEATURES=/path/to/file).
     // Python side: tools/reference_backends/tada_codec_diff.py --features <path>
     {
-        const char* dump_path = crispasr_env::get("CRISPASR_TADA_DUMP_FEATURES");
+        const char* dump_path = stelnettts_env::get("STELNETTTS_TADA_DUMP_FEATURES");
         if (dump_path && n_expanded > 0) {
             FILE* df = fopen(dump_path, "wb");
             if (df) {

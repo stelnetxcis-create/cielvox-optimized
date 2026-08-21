@@ -16,13 +16,13 @@ tags:
 - gpt2
 - bigvgan
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # IndexTTS-1.5 — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`IndexTeam/IndexTTS-1.5`](https://github.com/index-tts/IndexTTS) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`IndexTeam/IndexTTS-1.5`](https://github.com/index-tts/IndexTTS) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 IndexTTS-1.5 is a zero-shot voice cloning TTS system: reference audio + text → cloned speech at 24 kHz. Architecture: Conformer conditioning encoder (6L, d=512) → Perceiver resampler (2L, 32 latents) → GPT-2 AR decoder (24L, d=1280, 20 heads) → BigVGAN vocoder (6-stage upsample, anti-aliased SnakeBeta activations). ~500M parameters total. Distributed under **Apache-2.0 license**.
 
@@ -43,7 +43,7 @@ All quant levels produce correct speech (ASR roundtrip = "Hello world!"). F16 gi
 
 ```bash
 # Easiest: auto-download (~870 MB on first run)
-./build/bin/crispasr --backend indextts -m auto \
+./build/bin/stelnettts --backend indextts -m auto \
     --voice reference_speaker.wav \
     --tts "Hello world, this is IndexTTS speaking."
 
@@ -53,18 +53,18 @@ All quant levels produce correct speech (ASR roundtrip = "Hello world!"). F16 gi
 Or with explicit paths:
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Pull model files (pick your preferred quant)
-huggingface-cli download cstr/indextts-1.5-GGUF indextts-gpt-q8_0.gguf --local-dir .
-huggingface-cli download cstr/indextts-1.5-GGUF indextts-bigvgan.gguf --local-dir .
+huggingface-cli download Xenna/indextts-1.5-GGUF indextts-gpt-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/indextts-1.5-GGUF indextts-bigvgan.gguf --local-dir .
 
 # 3. Synthesise with voice cloning
-./build/bin/crispasr --backend indextts \
+./build/bin/stelnettts --backend indextts \
     -m indextts-gpt-q8_0.gguf \
     --codec-model indextts-bigvgan.gguf \
     --voice reference_speaker.wav \

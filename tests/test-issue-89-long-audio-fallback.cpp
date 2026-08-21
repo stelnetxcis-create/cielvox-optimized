@@ -11,15 +11,15 @@
 //
 // The fix: when no VAD and no explicit `--chunk-seconds` and the input
 // audio is longer than the safe single-pass window, fall back to fixed
-// chunking. The gate lives in `crispasr_long_audio_fallback.h`; these
+// chunking. The gate lives in `stelnettts_long_audio_fallback.h`; these
 // tests pin it so a refactor can't silently re-introduce the regression.
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_long_audio_fallback.h"
+#include "stelnettts_long_audio_fallback.h"
 
-using crispasr_long_audio::CAP_UNBOUNDED_INPUT_FLAG;
-using crispasr_long_audio::should_auto_chunk_long;
+using stelnettts_long_audio::CAP_UNBOUNDED_INPUT_FLAG;
+using stelnettts_long_audio::should_auto_chunk_long;
 
 namespace {
 // Plausible bitmask for a non-CAP_UNBOUNDED_INPUT backend (whisper-ish).
@@ -27,7 +27,7 @@ constexpr uint32_t kBoundedBackendCaps = 0;
 // CAP_UNBOUNDED_INPUT alone — what parakeet / canary / etc. declare.
 constexpr uint32_t kUnboundedBackendCaps = CAP_UNBOUNDED_INPUT_FLAG;
 constexpr int kSR = 16000;
-constexpr int kThreshold = 30; // matches the 30 s fallback in crispasr_run.cpp
+constexpr int kThreshold = 30; // matches the 30 s fallback in stelnettts_run.cpp
 } // namespace
 
 TEST_CASE("issue #89: 300s parakeet audio with no VAD/--chunk-seconds → fall back to chunked",
@@ -36,7 +36,7 @@ TEST_CASE("issue #89: 300s parakeet audio with no VAD/--chunk-seconds → fall b
     //   - parakeet (CAP_UNBOUNDED_INPUT)
     //   - no --vad, no --vad-model
     //   - no --chunk-seconds → effective_chunk_seconds = 0 after the
-    //     CAP_UNBOUNDED_INPUT-default in crispasr_run.cpp
+    //     CAP_UNBOUNDED_INPUT-default in stelnettts_run.cpp
     //   - 300 s of audio at 16 kHz
     constexpr int n_samples = 300 * kSR;
     REQUIRE(should_auto_chunk_long(0, false, kUnboundedBackendCaps, n_samples, kSR, kThreshold));
@@ -65,7 +65,7 @@ TEST_CASE("explicit --vad/--vad-model bypasses the fallback", "[unit][long-audio
 
 TEST_CASE("explicit --chunk-seconds N>0 bypasses the fallback", "[unit][long-audio][issue-89]") {
     // If the user already set a non-zero chunk size, respect it. The
-    // overlap-save context in crispasr_run.cpp will cover the boundaries.
+    // overlap-save context in stelnettts_run.cpp will cover the boundaries.
     REQUIRE_FALSE(should_auto_chunk_long(30, false, kUnboundedBackendCaps, 300 * kSR, kSR, kThreshold));
     REQUIRE_FALSE(should_auto_chunk_long(120, false, kUnboundedBackendCaps, 300 * kSR, kSR, kThreshold));
 }
@@ -76,12 +76,12 @@ TEST_CASE("explicit --chunk-seconds 0 intent: function still fires, call-site gu
     // stream internally." should_auto_chunk_long(0, …) cannot distinguish
     // this from the implicit effective_chunk_seconds=0 that CAP_UNBOUNDED_INPUT
     // backends get by default, so it returns true (would trigger fallback).
-    // The bypass is enforced one level up in crispasr_run.cpp via the
+    // The bypass is enforced one level up in stelnettts_run.cpp via the
     // `!params.chunk_seconds_explicit` guard added in the #150 follow-up.
     // This test pins the function's own return value so the intent is clear.
     constexpr int n_samples = 300 * kSR;
     REQUIRE(should_auto_chunk_long(0, false, kUnboundedBackendCaps, n_samples, kSR, kThreshold));
-    // ^ returns true here; crispasr_run.cpp does NOT call this when chunk_seconds_explicit=true
+    // ^ returns true here; stelnettts_run.cpp does NOT call this when chunk_seconds_explicit=true
 }
 
 TEST_CASE("non-CAP_UNBOUNDED_INPUT backends never trigger", "[unit][long-audio][issue-89]") {
@@ -123,6 +123,6 @@ TEST_CASE("issue #290: the pre-fix capability set is what silenced the fallback"
     // Documents the regression rather than asserting current behaviour: with
     // CAP_INTERNAL_CHUNKING set, a 10 min clip got NO dispatcher chunking. That is
     // correct ONLY when the backend really chunks internally (parakeet, canary).
-    constexpr uint32_t kBuggyCaps = CAP_UNBOUNDED_INPUT_FLAG | crispasr_long_audio::CAP_INTERNAL_CHUNKING_FLAG;
+    constexpr uint32_t kBuggyCaps = CAP_UNBOUNDED_INPUT_FLAG | stelnettts_long_audio::CAP_INTERNAL_CHUNKING_FLAG;
     REQUIRE_FALSE(should_auto_chunk_long(0, false, kBuggyCaps, 600 * kSR, kSR, kThreshold));
 }

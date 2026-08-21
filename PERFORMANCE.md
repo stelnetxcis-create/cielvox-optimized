@@ -1,4 +1,4 @@
-# CrispASR — Performance benchmarks
+# StelnetTTS — Performance benchmarks
 
 Test audio: jfk.wav (11.0s), Q4_K quantization, greedy decode (`-bs 1`).
 
@@ -6,16 +6,16 @@ Test audio: jfk.wav (11.0s), Q4_K quantization, greedy decode (`-bs 1`).
 
 ## Metal im2col: the v0.17 sync silently dropped the batch-1 occupancy win — restored as kernel_im2col_flat, melotts hifigan back to ~1.85x (Apple M1, 2026-08-06)
 
-The v0.17 ggml sync removed `CRISPASR_METAL_IM2COL_OCC` (upstream reworked
+The v0.17 ggml sync removed `STELNETTTS_METAL_IM2COL_OCC` (upstream reworked
 the dispatch; see `tools/upstream-prs/SYNC-v0.17-CONFLICTS.md` "re-derive if
 regressions appear") — which un-fixed the melotts/piper "P0 hifigan" row
 below: every batch-1 Metal conv went back to KH*KW-thread threadgroups. The
 re-derivation now lives in the shared fork as **`kernel_im2col_flat`**
-(`89a2039d`, branch `sync/upstream-v0.17`; authored against CrispEmbed's
+(`89a2039d`, branch `sync/upstream-v0.17`; authored against StelnetEmbed's
 PP-OCR profile, where the same kernel is 2.3x on the recognizer): one thread
 per dst element from a `(ceil(OW*CHW/256), OH, N)` grid, predicate
 `N*KH*KW < 128 || IC == 1` (also covers the `conv_2d_dw` lowering the OCC
-variant missed), `CRISPASR_METAL_IM2COL_FLAT=0` restores the standard
+variant missed), `STELNETTTS_METAL_IM2COL_FLAT=0` restores the standard
 kernel. A first cut with int64-divmod flat indexing was SLOWER than the
 broken dispatch — Apple GPUs emulate int64 division.
 
@@ -41,7 +41,7 @@ interleaved same-binary pairs:
 The historical OCC numbers in the melotts row below (2–3x hifigan, 1.65x
 moonshine) were measured on the pre-v0.17 variant on a quiet box; today's
 moonshine is closer to neutral because the current decode path spends its
-time elsewhere. CrispEmbed-side evidence (2.3x PP-OCR rec, 1.6x
+time elsewhere. StelnetEmbed-side evidence (2.3x PP-OCR rec, 1.6x
 layout_detect, 18-fixture byte-identity) is in their `PERFORMANCE.md`.
 `tools/upstream-prs/23` should be re-drafted from this kernel for upstream.
 
@@ -65,7 +65,7 @@ and where the gaps are. Last refresh: **2026-05-04** (after PLAN §79 —
 | granite-speech (1B / 4.0 / 4.1 / 4.1-plus / 4.1-nar) | ✓ | ✓ | ✓ | ✓ | gpu |
 | gemma4-e2b (5B effective) | ✓ | ✓ | ✓ | ✓ | gpu (FLIPPED §72) |
 | mimo-asr (1.4B) | ✓ | ✓ | ✓ | ✓ | gpu (FLIPPED §72) |
-| qwen3-asr (0.6B) | ✓ | ✓ | ✓ | ✓ | gpu |
+| cielvox2-asr (0.6B) | ✓ | ✓ | ✓ | ✓ | gpu |
 | glm-asr (1B) | ✓ | ✓ | ✓ | ✓ | gpu |
 | omniasr-llm (300M) | ✓ | ✓ | ✓ | ✓ | gpu |
 | vibevoice (4B ASR mode) | F16 | F16 | F16 | ✓ | gpu |
@@ -75,7 +75,7 @@ and where the gaps are. Last refresh: **2026-05-04** (after PLAN §79 —
 | backend | KV_QUANT | KV_QUANT_K/_V | KV_ON_CPU | N_GPU_LAYERS | notes |
 |---|:-:|:-:|:-:|:-:|---|
 | canary (1B) | ✓ | ✓ | ✓ | · | flash_attn_ext default, -17 % on JFK with q8_0/q4_0 |
-| cohere (2B) | ✓ | ✓ | ✓ | · | cast-on-read default (13 % faster on 30 s chunks); `CRISPASR_COHERE_FLASH=1` for unchunked long-form (-26 % win at 300 s) — see §5 |
+| cohere (2B) | ✓ | ✓ | ✓ | · | cast-on-read default (13 % faster on 30 s chunks); `STELNETTTS_COHERE_FLASH=1` for unchunked long-form (-26 % win at 300 s) — see §5 |
 | kyutai-stt (1B) | ✓ | ✓ | ✓ | · | flash_attn_ext native, quant-safe |
 | firered-asr (900M) | — | — | — | — | inline AED, no exposed transformer KV |
 | moonshine-tiny / streaming | — | — | — | — | tiny decoder, no exposed KV |
@@ -96,7 +96,7 @@ and where the gaps are. Last refresh: **2026-05-04** (after PLAN §79 —
 |---|:-:|:-:|:-:|:-:|---|
 | orpheus (3B + DE / lex-au variants) | ✓ | ✓ | ✓ | ✓ | shared Llama-3 path |
 | chatterbox (T3 + CFG cache) | ✓ | ✓ | ✓ | · | uses kv_self_attn natively |
-| qwen3-tts (0.6B + 1.7B variants) | ✓ talker | ✓ talker | ✓ talker | · | code-predictor cache stays F16 (separate path) |
+| cielvox2-tts (0.6B + 1.7B variants) | ✓ talker | ✓ talker | ✓ talker | · | code-predictor cache stays F16 (separate path) |
 | vibevoice (4B TTS mode) | F16 | F16 | F16 | ✓ | KV migration still pending; layer offload routes `tts_lm.layers.<N>.*` |
 | kokoro | — | — | — | — | non-AR vocoder, no transformer KV |
 
@@ -137,7 +137,7 @@ upload to the GPU backend), then the B=2 matmuls take the correct `mul_mm_f16`
 path. Both GPU-batched paths — s3gen CFM and chatterbox T3 — use this. CPU
 batches quantized weights natively (exact dot), no dequant needed.
 
-**Chatterbox T3 B=2 status (§214, `CRISPASR_CHATTERBOX_T3_CFG_B2=1`, default OFF):**
+**Chatterbox T3 B=2 status (§214, `STELNETTTS_CHATTERBOX_T3_CFG_B2=1`, default OFF):**
 greedy-token bit-identical to the legacy sequential path on CPU (all quants) and
 GPU+F16; GPU+quant fixed via the F16 dequant above (ASR-roundtrips verbatim).
 Also the **first working T3-on-GPU path on Metal** — it rebuilds the step graph
@@ -169,7 +169,7 @@ F16-dequant path. T3 stays CPU-default. See PLAN §214.
    `ggml_flash_attn_ext` port — ~50-80 LOC + F16 mask graph input.
    Layer offload (`N_GPU_LAYERS`) is independently shipped and works
    on F16 K/V; the migration only unlocks quant K/V on top.
-3. **qwen3-tts code-predictor cache**. Talker KV is fully covered via
+3. **cielvox2-tts code-predictor cache**. Talker KV is fully covered via
    `core_attn::kv_self_attn`; the secondary code-predictor path
    doesn't go through that helper, so its cache stays F16. Lower-
    priority since the talker dominates per-frame cost.
@@ -177,7 +177,7 @@ F16-dequant path. T3 stays CPU-default. See PLAN §214.
    gemma4-e2b 2.2x speedups were measured on Apple Silicon Metal.
    dGPU should be even more favourable; deferred until a CUDA host
    is available. If a platform regresses, gate via env
-   (`CRISPASR_FORCE_CPU_WEIGHTS=1`).
+   (`STELNETTTS_FORCE_CPU_WEIGHTS=1`).
 5. **Cohere flash_attn_ext: crossover confirmed (PLAN #73 closeout,
    2026-06-04).** Long-form rerun on FLEURS EN, VPS x86 CPU, 2
    threads, `cohere-transcribe-q4_k.gguf`:
@@ -192,7 +192,7 @@ F16-dequant path. T3 stays CPU-default. See PLAN §214.
    But with default 30 s auto-chunking, each decode pass is short-form.
    **Recommendation:** cast-on-read is now the cohere default (13%
    faster on the chunked path that all normal users hit). For unchunked
-   long-form, set `CRISPASR_COHERE_FLASH=1`.
+   long-form, set `STELNETTTS_COHERE_FLASH=1`.
 
 ### Stacking the four knobs
 
@@ -200,18 +200,18 @@ Each addresses an independent bottleneck:
 
 | knob | addresses | when to use |
 |---|---|---|
-| `CRISPASR_KV_QUANT_K=q8_0 / _V=q4_0` | KV size in VRAM | always reasonable for LLM-decode ASR; quartered V cache on long context |
-| `CRISPASR_KV_ON_CPU=1` | KV doesn't fit in VRAM at all | very long context with a tight VRAM budget |
-| `CRISPASR_N_GPU_LAYERS=N` | model itself doesn't fit in VRAM | model size > VRAM; spill the last (total-N) layers |
-| `CRISPASR_FORCE_CPU_WEIGHTS=1` (proposed) | platform regressed on §72 GPU residency | not yet wired — none seen on Apple Silicon |
+| `STELNETTTS_KV_QUANT_K=q8_0 / _V=q4_0` | KV size in VRAM | always reasonable for LLM-decode ASR; quartered V cache on long context |
+| `STELNETTTS_KV_ON_CPU=1` | KV doesn't fit in VRAM at all | very long context with a tight VRAM budget |
+| `STELNETTTS_N_GPU_LAYERS=N` | model itself doesn't fit in VRAM | model size > VRAM; spill the last (total-N) layers |
+| `STELNETTTS_FORCE_CPU_WEIGHTS=1` (proposed) | platform regressed on §72 GPU residency | not yet wired — none seen on Apple Silicon |
 
 ```bash
 # Maximum-memory-savings combo for a VRAM-tight host
-CRISPASR_N_GPU_LAYERS=10 \
-  CRISPASR_KV_ON_CPU=1 \
-  CRISPASR_KV_QUANT_K=q8_0 \
-  CRISPASR_KV_QUANT_V=q4_0 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f long.wav
+STELNETTTS_N_GPU_LAYERS=10 \
+  STELNETTTS_KV_ON_CPU=1 \
+  STELNETTTS_KV_QUANT_K=q8_0 \
+  STELNETTTS_KV_QUANT_V=q4_0 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f long.wav
 ```
 
 See [`docs/cli.md`](docs/cli.md) "Memory footprint" for the full env-
@@ -242,10 +242,10 @@ the §232 campaign. Verified against current code, not carried from this doc.
 - **chatterbox flash "stub"** — false: `chatterbox.cpp:1806,2662`, default ON.
 - **tada "two sequential B=1 FM passes"** — false: opt-in B=2 graph exists
   (`tada_tts.cpp:238`).
-- **Batched TDT/RNNT decode (`CRISPASR_TDT_BATCH` / `CRISPASR_RNNT_BATCH`,
+- **Batched TDT/RNNT decode (`STELNETTTS_TDT_BATCH` / `STELNETTTS_RNNT_BATCH`,
   default OFF) is a MEASURED CPU LOSS for parakeet TDT — keep it OFF, do NOT
   flip.** The "370 sgemv → 26 sgemm" framing predicted a CPU win; the #81 A/B on
-  a clean Kaggle CPU (P100 box, `chr1str/crispasr-issue81-onnx-bench`,
+  a clean Kaggle CPU (P100 box, `chr1str/stelnettts-issue81-onnx-bench`,
   2026-07-18) measured the opposite on parakeet-tdt-0.6b, transcript
   byte-identical in both arms:
 
@@ -268,9 +268,9 @@ the §232 campaign. Verified against current code, not carried from this doc.
   `build_decode_graph`, and a `core_hifigan::forward`/`conv1d` overload, so
   codec/vocoder backends kill the per-graph F16→F32 conv cast from ONE
   implementation. Wired + A/B-verified (byte-identical, seed-isolated), all
-  default ON: omnivoice, irodori (`CRISPASR_IRODORI_FASTCONV`), zonos
-  (`CRISPASR_ZONOS_FASTCONV`), **speecht5 (`CRISPASR_SPEECHT5_FASTCONV`, 74 F16
-  kernels)**, **chatterbox_s3gen (`CRISPASR_S3GEN_FASTCONV`, 275 F16 kernels,
+  default ON: omnivoice, irodori (`STELNETTTS_IRODORI_FASTCONV`), zonos
+  (`STELNETTTS_ZONOS_FASTCONV`), **speecht5 (`STELNETTTS_SPEECHT5_FASTCONV`, 74 F16
+  kernels)**, **chatterbox_s3gen (`STELNETTTS_S3GEN_FASTCONV`, 275 F16 kernels,
   split-load-aware pointer-swap; ON vs OFF @seed42 = 0/32768)**. Model-free unit
   test `test-fastconv` (210 assertions).
   - ⚠ **Coverage triage (GGUF-parsed, don't trust the doc):** FASTCONV only
@@ -285,7 +285,7 @@ the §232 campaign. Verified against current code, not carried from this doc.
     trick (a further win beyond cast-kill), but it changes reduction order so it
     needs its own A/B on the drift-prone GPU path — deferred.
 - **§232 TTS campaign** (persistent sched-free graph + batched CFG cond+uncond +
-  device KV + FASTCONV codec) has landed for qwen3-tts, voxtral-tts, omnivoice,
+  device KV + FASTCONV codec) has landed for cielvox2-tts, voxtral-tts, omnivoice,
   tada, chatterbox. Un-migrated: f5, dots, kugelaudio, pocket (natural next
   targets — same levers).
 - **omnivoice codec FASTCONV actually landed 2026-07-15** (`6a1b1903b`) — its DAC
@@ -303,7 +303,7 @@ the §232 campaign. Verified against current code, not carried from this doc.
   the single-shot whitelist (masked-iterative → whole span in one pass, like the
   reference). M1 A/B: net faster even here (decode 9.1 s vs 23.7 s from 1 vs 3 decode
   graph builds outweighs +6% gen O(T²)); on CUDA the gen graph-reuse is a bigger win.
-  Escape hatch `CRISPASR_OMNIVOICE_CHUNK=1` restores chunking. Interval-CFG
+  Escape hatch `STELNETTTS_OMNIVOICE_CHUNK=1` restores chunking. Interval-CFG
   (`OMNIVOICE_CFG_INTERVAL=K`) recomputes uncond every K steps — K=2 ≈ −30% stage0,
   opt-in/approximate.
 - **omnivoice fused stage0 step graph (2026-07-16, default ON):** the residual #254
@@ -335,7 +335,7 @@ the §232 campaign. Verified against current code, not carried from this doc.
 | P | Area | Gap | Impact |
 |---|---|---|---|
 | **P0** | firered_asr | Decoder self-attention has **no KV cache** — growing vector, O(T²) recompute (`firered_asr.cpp:2697`) | Highest-impact ASR gap |
-| ~~P0 relpos~~ → ~~P0 hifigan~~ → **RESOLVED ~2× (im2col batch-1 occupancy)** | melotts / piper | relpos is a MEASURED DUD (`2026-07-11`): already GEMM'd, ~1.5% of synthesis. **hifigan_decode is 73–92%**. The prior "99.7% GPU-compute-bound, no cheap lever, do not fund without a new kernel insight" verdict was based on the IDEAL roofline (im2col ≈ 1%) — **wrong**. Per-node profiling (new `CRISPASR_METAL_PROFILE=2`) on a **quiet** M1 (`2026-07-11`) showed **IM2COL = 58%**, CONT 22%, MUL_MAT only 12% (the earlier 4.02e6 gpu_us was ~2× load-inflated; true quiet ≈ 1.75e6 = 13× off roofline). **Root cause:** `ggml-metal-ops.cpp` sized im2col thread-dim0 from batch N — at inference **N=1**, threadgroups ran only KH·KW (3–11) threads = ~10–34% of one simdgroup → im2col ~40× below BW. **Fix (ggml fork, `CRISPASR_METAL_IM2COL_OCC`, auto-on N==1):** block OW across thread-dim0 → threadgroups fill. **Bit-exact** (moonshine ASR occ-on==occ-off byte-identical; melotts ASR roundtrip valid), **~2–3× on hifigan** (gpu 1.88→0.83 s quiet) + **1.65× moonshine, no regression across paraformer/melotts**. A general batch-1 Metal conv win (whisper/all vocoders); CUDA unaffected (parallelizes threads over IC·KH·KW, not N). The existing `ggml_conv_2d_direct` is a **dud** (2.25× slower, naive scalar). Teardown assert FIXED (`119ec75a`). | Was "compute floor"; the floor was a Metal occupancy bug — fixed |
+| ~~P0 relpos~~ → ~~P0 hifigan~~ → **RESOLVED ~2× (im2col batch-1 occupancy)** | melotts / piper | relpos is a MEASURED DUD (`2026-07-11`): already GEMM'd, ~1.5% of synthesis. **hifigan_decode is 73–92%**. The prior "99.7% GPU-compute-bound, no cheap lever, do not fund without a new kernel insight" verdict was based on the IDEAL roofline (im2col ≈ 1%) — **wrong**. Per-node profiling (new `STELNETTTS_METAL_PROFILE=2`) on a **quiet** M1 (`2026-07-11`) showed **IM2COL = 58%**, CONT 22%, MUL_MAT only 12% (the earlier 4.02e6 gpu_us was ~2× load-inflated; true quiet ≈ 1.75e6 = 13× off roofline). **Root cause:** `ggml-metal-ops.cpp` sized im2col thread-dim0 from batch N — at inference **N=1**, threadgroups ran only KH·KW (3–11) threads = ~10–34% of one simdgroup → im2col ~40× below BW. **Fix (ggml fork, `STELNETTTS_METAL_IM2COL_OCC`, auto-on N==1):** block OW across thread-dim0 → threadgroups fill. **Bit-exact** (moonshine ASR occ-on==occ-off byte-identical; melotts ASR roundtrip valid), **~2–3× on hifigan** (gpu 1.88→0.83 s quiet) + **1.65× moonshine, no regression across paraformer/melotts**. A general batch-1 Metal conv win (whisper/all vocoders); CUDA unaffected (parallelizes threads over IC·KH·KW, not N). The existing `ggml_conv_2d_direct` is a **dud** (2.25× slower, naive scalar). Teardown assert FIXED (`119ec75a`). | Was "compute floor"; the floor was a Metal occupancy bug — fixed |
 | **P0** | voxcpm2_tts | CPU-only (Metal SIGSEGV), manual per-step host KV re-upload (`voxcpm2_tts.cpp:106-111`) | GPU-locked-out |
 | ~~P0~~ | openvoice2 | STFT scalar O(bins·win) DFT → shared radix-2 FFT: **1182 ms → 10.7 ms** (110×, ~26% of convert) `2026-07-11`. WaveNet already GEMM'd (§176d); ref-enc is 4% one-time. **Remaining: hifigan_decode is 67% of convert** — next target | STFT fixed; vocoder dominant |
 | **P1** | voxtral/voxtral4b enc, mimo LLM decoder | Attention not on flash_attn_ext (O(T²) manual softmax) | Enc mem+dispatch; mimo dispatch-bound |
@@ -345,8 +345,8 @@ the §232 campaign. Verified against current code, not carried from this doc.
 | **P1** | granite/moss Metal decode | Per-op dispatch ~100ms/step; ggml-metal has no ICB replay | Dominant Metal decode cost |
 | **P2** | Scalar CPU hotpaths | RNN-T LSTM pred+joint; granite cpu_linear+depthwise; paraformer CIF; rvq encode; istft IRFFT; titanet mel front-end; diarize `apply_xcorr` | Per-token/frame scalar loops |
 | ~~P2~~ **CLOSED** | parakeet | Batched TDT decode validated on Kaggle CPU (#81, 2026-07-18): **0.73–0.80× = SLOWER**, byte-identical → keep default OFF, do NOT flip | Predicted win, measured a loss |
-| **OPEN** | parakeet CPU vs onnx-asr | crispasr parakeet-tdt CPU 4.0×/3.0× vs onnx-asr int8 8.6×/5.8× ⇒ **~2.1× slower on CPU** (the real #81 residual). Needs a CPU BLAS/kernel lever — batched decode is ruled out | GPU is fine (P100 36.9×/50.9×) |
-| **P2** | align_wav2vec2_ctc | **Reloads the 300MB–1GB model every call** (`crispasr_aligner.cpp:315`) — missing the §176e ctx-cache | Concrete single-file win |
+| **OPEN** | parakeet CPU vs onnx-asr | stelnettts parakeet-tdt CPU 4.0×/3.0× vs onnx-asr int8 8.6×/5.8× ⇒ **~2.1× slower on CPU** (the real #81 residual). Needs a CPU BLAS/kernel lever — batched decode is ruled out | GPU is fine (P100 36.9×/50.9×) |
+| **P2** | align_wav2vec2_ctc | **Reloads the 300MB–1GB model every call** (`stelnettts_aligner.cpp:315`) — missing the §176e ctx-cache | Concrete single-file win |
 | **P2** | paraformer / voxcpm2 | CPU-only, no GPU backend (paraformer leaks 256MB buffer) | GPU offload available |
 | **P3** | Threading | Hardcoded default 4 threads in ~90 sites; only whisper-core caps to `min(4, hw)` | Idle cores on big hosts |
 | **P3** | Misc | pyannote per-slice not once-over-audio (#107); RNNoise recreates state+resamplers/call; glm mel padded to 3000 always | Localized |
@@ -384,7 +384,7 @@ and compare decoded output, not only process exit status. Do not quantize the
 DiT tensors to F16 or increase the memory footprint as an optimization.
 
 1. **Lk-bucketed decode-step graph caching** generalized to the 30+ decoders
-   that rebuild per step — templates: qwen3-tts (5 buckets), granite §210
+   that rebuild per step — templates: cielvox2-tts (5 buckets), granite §210
    gallocr, mimo `step_t1_gf`. Cache the *decode-step* graph, not the encoder.
 2. **ggml-metal ICB replay** — the Apple-side equivalent of CUDA-graph capture;
    decode is per-op-dispatch bound.
@@ -403,10 +403,10 @@ Do **not** re-enable encoder-graph caching (#235 UAF + measured dud), and do
 ## Kaggle GPU — full backend sweep — 2026-06-20
 
 Platform: Kaggle GPU worker (CUDA), `tools/kaggle-benchmark-all-backends.py`
-(kernel `chr1s4/crispasr-full-backend-sweep`). Commit: latest `main`. **First
+(kernel `chr1s4/stelnettts-full-backend-sweep`). Commit: latest `main`. **First
 full-coverage sweep** — every ASR + TTS backend plus the two text-MT backends,
 59 entries — with **per-backend results streamed live to an HF dataset**
-(`cstr/crispasr-kaggle-progress/full-backend-sweep/latest/`, resumable). Audio:
+(`Xenna/stelnettts-kaggle-progress/full-backend-sweep/latest/`, resumable). Audio:
 jfk.wav (11 s). TTS phrase: "The quick brown fox…".
 
 **Headline: ASR 33/35 pass · TTS 14/22 pass · MT 2/2 pass.** (Per-backend JSON +
@@ -452,7 +452,7 @@ fixed-subset re-test (run tag `voicefix-retest`) gives:
 
 | ✓ pass (first pass) | ✓ recovered by voicefix | ✗ genuine fail (with correct args) |
 |---|---|---|
-| piper, kokoro, pocket-tts, bark, csm, parler-tts, dia, qwen3-tts-customvoice, indextts, zonos, melotts, outetts, tada, voxcpm2-tts | **vibevoice-1.5b** (was run as ASR), **vibevoice-tts** (was no-voice) | speecht5, fastpitch, orpheus, chatterbox, cosyvoice3, kugelaudio · **f5-tts** = runs-but-timeout (pending ≥240 s confirm) |
+| piper, kokoro, pocket-tts, bark, csm, parler-tts, dia, cielvox2-tts-customvoice, indextts, zonos, melotts, outetts, tada, voxcpm2-tts | **vibevoice-1.5b** (was run as ASR), **vibevoice-tts** (was no-voice) | speecht5, fastpitch, orpheus, chatterbox, cosyvoice3, kugelaudio · **f5-tts** = runs-but-timeout (pending ≥240 s confirm) |
 
 ### MT — 2/2 pass
 
@@ -520,7 +520,7 @@ fun-asr-mlt-nano, voxtral4b.
 - **mimo-asr (0.2x RT):** still CPU-forced (PLAN #115 option A). GPU fix
   landed in `3ef9f87e` (June 2) — needs validation run to flip default.
 - **fun-asr-mlt-nano (0.1x RT):** running F16 (~2 GB) on CPU. Q8_0 quant
-  exists on HF (`cstr/funasr-mlt-nano-GGUF/funasr-mlt-nano-2512-q8_0.gguf`)
+  exists on HF (`Xenna/funasr-mlt-nano-GGUF/funasr-mlt-nano-2512-q8_0.gguf`)
   and should be GPU-safe; switching would recover 5-10x speed.
 ### TTS benchmark (same run, P100 GPU)
 
@@ -614,7 +614,7 @@ sensevoice, paraformer, mega-asr, granite-4.1, funasr, mimo-asr.
   affected by Q4_K model refreshes since April.
 - Two non-fatal HF pre-download `401`s (the Kaggle Secrets API was
   flaking, so no HF token) fell back to the C++ downloader; all models are
-  public `cstr/*` so downloads still succeeded.
+  public `Xenna/*` so downloads still succeeded.
 
 ---
 
@@ -650,7 +650,7 @@ Commit: `b9fd8eb`. **All 19 backends pass.**
 | Canary 1B | 1B | 672 | 0.0% | 6.2x | 1.8s | GPU enc+dec, 32+8 layers |
 | Cohere Transcribe | 2B | 1440 | 0.0% | 5.2x | 2.1s | GPU enc, AED dec |
 | Kyutai STT 1B | 1B | 636 | 4.5% | 1.4x | 7.7s | 24-layer Mimi decoder |
-| FireRed ASR2 AED | 900M | 918 | 0.0% | 0.6x | 19.0s | CPU Q4_K SIMD dec (60ms/step greedy; beam batched through Q4_K mul_mat, 16.8s→3.1s at beam=3, §224); enc.* split-loaded to GPU by DEFAULT with use_gpu (transcript-identical, enc 2.2-2.3x on Metal/Vulkan/CUDA-P100, §224; CRISPASR_FIRERED_ENC_CPU=1 opts out) |
+| FireRed ASR2 AED | 900M | 918 | 0.0% | 0.6x | 19.0s | CPU Q4_K SIMD dec (60ms/step greedy; beam batched through Q4_K mul_mat, 16.8s→3.1s at beam=3, §224); enc.* split-loaded to GPU by DEFAULT with use_gpu (transcript-identical, enc 2.2-2.3x on Metal/Vulkan/CUDA-P100, §224; STELNETTTS_FIRERED_ENC_CPU=1 opts out) |
 
 #### Encoder-LLM (autoregressive, language model decoder)
 
@@ -811,7 +811,7 @@ M1 Q4_K JFK 11 s baseline, all variants bit-exact-batch:
 
 **Final**: first-text-token 2674ms → **650ms (4.1× faster)**;
 sequential live decode (phase 3); decoder thread for non-blocking
-feed (phase 4, gated on `CRISPASR_VOXTRAL4B_STREAM_DECODER_THREAD=1`).
+feed (phase 4, gated on `STELNETTTS_VOXTRAL4B_STREAM_DECODER_THREAD=1`).
 
 The remaining ~410ms gap to the model's ≤240ms target is the
 architectural floor: 8 streaming-pad warmup steps × 50.4ms + LLM
@@ -820,11 +820,11 @@ faster Q4_K Metal kernel or a model with a different prompt
 convention (no streaming-pad warmup).
 
 Cross-backend portability of the fused-QKV Q4_K pattern:
-- qwen3-asr Q4_K: default-on (transcript correct; perf within
+- cielvox2-asr Q4_K: default-on (transcript correct; perf within
   noise on JFK's short-decode shape)
-- voxtral 3B Q4_K: opt-in (`CRISPASR_VOXTRAL_FUSED_QKV=1`); A/B
+- voxtral 3B Q4_K: opt-in (`STELNETTTS_VOXTRAL_FUSED_QKV=1`); A/B
   showed no measurable speedup on JFK
-- qwen3-tts: opt-in (existing convention)
+- cielvox2-tts: opt-in (existing convention)
 
 ---
 
@@ -832,14 +832,14 @@ Cross-backend portability of the fused-QKV Q4_K pattern:
 
 ```bash
 # Per-backend timing
-CRISPASR_VERBOSE=1 crispasr --backend firered-asr -m auto -f jfk.wav -v -bs 1
+STELNETTTS_VERBOSE=1 stelnettts --backend firered-asr -m auto -f jfk.wav -v -bs 1
 
 # wav2vec2 phase breakdown
-WAV2VEC2_VERBOSE=1 crispasr --backend wav2vec2 -m auto -f jfk.wav -v
+WAV2VEC2_VERBOSE=1 stelnettts --backend wav2vec2 -m auto -f jfk.wav -v
 
 # Full Kaggle benchmark (all 19 backends)
 # See tools/kaggle-benchmark-all-backends.py or gist:
-# https://gist.github.com/CrispStrobe/c15f7a64878d93907a8a4a51b193b806
+# https://gist.github.com/Cyna/c15f7a64878d93907a8a4a51b193b806
 ```
 
 
@@ -873,9 +873,9 @@ needs a per-stage look).
 
 | measurement | x-RT |
 |---|---|
-| CrispASR parakeet-ctc Q8_0, manual attn, warm in-process, jfk×5 55 s | **153×** (11 s: 116×) |
+| StelnetTTS parakeet-ctc Q8_0, manual attn, warm in-process, jfk×5 55 s | **153×** (11 s: 116×) |
 | same, flash-with-CPU-fallback (old default) | 48× (11 s: 61×) |
-| CrispASR parakeet-ctc Q8_0, manual attn, **134 s varied, load-excl (honest)** | **137×** (tdt 49.5×) |
+| StelnetTTS parakeet-ctc Q8_0, manual attn, **134 s varied, load-excl (honest)** | **137×** (tdt 49.5×) |
 | onnx-asr parakeet-ctc CUDA fp32, 134 s varied speech, in-process | **214×** (tdt 121×) |
 | onnx-asr parakeet-ctc CPU int8, 134 s varied | 5.8× (tdt 5.7×) |
 
@@ -892,19 +892,19 @@ varied-audio comparison against onnx.)
 
 **VPS 4-core x86 re-bench (2026-07-12, DONE)**: parakeet-ctc-0.6b q8_0,
 jfk 11 s, same-box A/B (load ~2.5) — new defaults **5.43 s (2.0× RT)**
-vs legacy (`CRISPASR_FC_PW_Q8=0 CRISPASR_FC_FUSED_QKV=0
-CRISPASR_FC_ATTN_CONT=1`) 6.30 s (1.7×); q4_k new 6.24 s. FC-perf gain
+vs legacy (`STELNETTTS_FC_PW_Q8=0 STELNETTTS_FC_FUSED_QKV=0
+STELNETTTS_FC_ATTN_CONT=1`) 6.30 s (1.7×); q4_k new 6.24 s. FC-perf gain
 on x86 is **~14%** (vs M1's 35%) — OpenBLAS already handles the F16
 conv-pw GEMM well, so the Q8 repack recovers less than on ggml's ARM
 CPU F16 path. Still beats onnx-CPU int8 (5.8× above). The re-quantized
 GGUF would not change this load-excluded inference RTF — it only saves
 one-time load (skips the runtime repack).
 
-Gates: `CRISPASR_FC_PW_Q8` (auto-on for quantized models) ·
-`CRISPASR_FC_FUSED_QKV` (on) · `CRISPASR_FC_ATTN_CONT=1` legacy conts ·
-`CRISPASR_FC_GPU_MANUAL_ATTN` (auto = CUDA only) · `CRISPASR_FC_BUCKET`
+Gates: `STELNETTTS_FC_PW_Q8` (auto-on for quantized models) ·
+`STELNETTTS_FC_FUSED_QKV` (on) · `STELNETTTS_FC_ATTN_CONT=1` legacy conts ·
+`STELNETTTS_FC_GPU_MANUAL_ATTN` (auto = CUDA only) · `STELNETTTS_FC_BUCKET`
 (opt-in bucketed persistent graph, output-equivalent) ·
-`CRISPASR_FC_PROFILE=1` per-node profiler · `CRISPASR_FC_MAX_LAYERS=N`
+`STELNETTTS_FC_PROFILE=1` per-node profiler · `STELNETTTS_FC_MAX_LAYERS=N`
 bisection. Kernels: `tools/kaggle/fc-unified-graph-ab` (CUDA A/B),
 `tools/kaggle/fc-pw-requant` (fleet requant),
 `tools/kaggle/issue81-onnx-bench` (onnx head-to-head).
@@ -934,11 +934,11 @@ not missing content. Blueprint comparison on the same audio: NeMo 2.7.3
 plain transcribe 11 %, local-attn [128,128] 46 % (both char-identical to our
 port — bit-faithfulness check), buffered BatchedFrameASRTDT 15-51 %.
 Gap-fill cost: one extra short encode per recovered gap (~1.3-2× wall on
-gap-heavy clips); `CRISPASR_GAP_FILL=0` restores single-pass-per-slice.
+gap-heavy clips); `STELNETTTS_GAP_FILL=0` restores single-pass-per-slice.
 Reproduce: `tools/asr_coverage_score.py <whisper-ref> <hyp> --strip-latin
 --reading` (scorer) and `tools/nemo_parakeet_blueprint.py` (NeMo modes).
 
-## Long-form single-pass — qwen3-asr / glm-asr (#218, 2026-07-10)
+## Long-form single-pass — cielvox2-asr / glm-asr (#218, 2026-07-10)
 
 Platforms: Apple M1 16 GB Metal + Kaggle T4 CUDA validation
 (`tools/kaggle/qwen3-family-rebake/`). Canonical clip: the reporter's
@@ -949,15 +949,15 @@ PLAN "#218 …" sections; the performance-relevant facts:
 
 Sub-8-bit `audio.*` towers flip greedy LLM decode into loops/empty output
 on long audio — a behavioral step function, not gradual WER loss.
-`crispasr-quantize` now floors qwen3-asr `audio.*` at Q8_0 (opt-out
-`CRISPASR_QWEN3ASR_QUANT_AUDIO=1`):
+`stelnettts-quantize` now floors cielvox2-asr `audio.*` at Q8_0 (opt-out
+`STELNETTTS_CIELVOX2ASR_QUANT_AUDIO=1`):
 
 | model | q4_k size | encoder cos_mean vs F16 | un-chunked 145 s |
 |---|---|---|---|
-| qwen3-asr-0.6b, old tower Q4 | 540 MB | 0.9716 (cos_min 0.75 @1885 fr) | loops / "language none" |
-| qwen3-asr-0.6b, Q8 tower | 631 MB | 0.9997 (cos_min 0.992) | clean+complete, raw (loop-fix off) |
-| qwen3-asr-1.7b, old tower Q4 (#240) | 1334 MB | 0.9913 (cos_min 0.963 @jfk 143 fr!) | empty on Metal |
-| qwen3-asr-1.7b, Q8 tower (#240) | 1490 MB | 0.9998 (cos_min 0.9989) | fixed |
+| cielvox2-asr-0.6b, old tower Q4 | 540 MB | 0.9716 (cos_min 0.75 @1885 fr) | loops / "language none" |
+| cielvox2-asr-0.6b, Q8 tower | 631 MB | 0.9997 (cos_min 0.992) | clean+complete, raw (loop-fix off) |
+| cielvox2-asr-1.7b, old tower Q4 (#240) | 1334 MB | 0.9913 (cos_min 0.963 @jfk 143 fr!) | empty on Metal |
+| cielvox2-asr-1.7b, Q8 tower (#240) | 1490 MB | 0.9998 (cos_min 0.9989) | fixed |
 | 1.7b-ja-anime, Q8 tower | 1421 MB (was 1334) | — | 1024 chars, max run 1 |
 | mega-asr, Q8 tower | not shipped | — | still loops at bf16 too — LoRA-inherent, chunked-only |
 
@@ -966,7 +966,7 @@ even with a Q8 tower, and a long-form-recalibrated imatrix still drifts
 (tested + rejected) — plain `-q4_k`/`-q8_0` are the long-form
 recommendation; imatrix variants are for short clips.
 
-### Memory: full vs windowed encoder attention (qwen3-asr)
+### Memory: full vs windowed encoder attention (cielvox2-asr)
 
 Default full self-attention is O(T²) in the audio tower: 145 s
 (1885 frames) fits easily on 16 GB; beyond ~10 min un-chunked it OOMs.
@@ -1017,7 +1017,7 @@ Test audio: first 60 s of the issue #89 reporter's exact YouTube clip
 ### Issue #89 fix verification — parakeet-tdt-0.6b-ja
 
 **Final state — streamed encoding is always on (default
-`CRISPASR_PARAKEET_STREAM_THRESHOLD=0`, see commit "always route
+`STELNETTTS_PARAKEET_STREAM_THRESHOLD=0`, see commit "always route
 parakeet through streamed encode").**
 
 Global z-norm + overlapping 8 s encoder chunks + single TDT decode pass.
@@ -1056,7 +1056,7 @@ perturbations don't amplify and the decoder runs to the end.
 - The old 30 s independent-chunk approach (pre-fix) lost content due
   to TDT decoder cold-start on each chunk (each chunk reset the LSTM
   state).
-- **Recommendation for Japanese:** just run `crispasr -m
+- **Recommendation for Japanese:** just run `stelnettts -m
   parakeet-tdt-0.6b-ja.gguf -f audio.wav -osrt` — the default routes
   through streamed and handles any duration on any audio source.
 
@@ -1431,7 +1431,7 @@ decoder's hidden-state stack growing past the available memory.
 | voxtral-mini-3b                | streamed (this PR — Mistral `apply_transcription_request` shape) | 100 % coverage at 60-300 s, single LLM context, denser segmentation; default-chunked + opt-out (`6fef8790`) also lands at 100 % |
 | cohere-transcribe              | default chunking + opt-out (`dc2295b2`)         | 96-98 % at 60-300 s; `--vad` available but no longer required for coverage |
 | canary-1b-v2                   | fix lang-prompt bug first; then streamed-encode port | currently broken at all durations on JA; long-audio fix on hold |
-| qwen3-asr / granite-speech / mimo-asr | post-opt-out default chunking (audit pending) | LLM-AR class — opt-out gate is `glm-asr` / `gemma4-e2b` / `kyutai-stt` (`46f6848d`, `eaee2319`); voxtral-style streamed is a follow-up improvement, not a coverage fix |
+| cielvox2-asr / granite-speech / mimo-asr | post-opt-out default chunking (audit pending) | LLM-AR class — opt-out gate is `glm-asr` / `gemma4-e2b` / `kyutai-stt` (`46f6848d`, `eaee2319`); voxtral-style streamed is a follow-up improvement, not a coverage fix |
 | fastconformer-ctc / wav2vec2 / firered-asr | current single-pass (CTC is robust) | no observed failure; defer streamed port until reported |
 | sensevoice-small               | `--vad`                                          | already the recommendation; matrix v1 confirms 99 %+ at 120 s |
 | whisper                        | unchanged                                        | internal 30 s seek handles long audio by design |
@@ -1452,10 +1452,10 @@ Both scripts in this commit. Audio: `/mnt/akademie_storage/yt_{60,120,300,600}s.
 
 ## Beam search — quality vs speed (2026-05-23, PLAN #90)
 
-**Knob:** `--beam-size N` (CLI) / `CRISPASR_BEAM_SIZE=N` (env) /
-`crispasr_session_set_beam_size(session, N)` (C API).
+**Knob:** `--beam-size N` (CLI) / `STELNETTTS_BEAM_SIZE=N` (env) /
+`stelnettts_session_set_beam_size(session, N)` (C API).
 Default N=1 (greedy). N > 1 activates beam search on supported backends.
-LLM-decoder backends (qwen3-asr, granite-speech, voxtral, gemma4-e2b) use
+LLM-decoder backends (cielvox2-asr, granite-speech, voxtral, gemma4-e2b) use
 `core_beam_decode::run_with_probs` (replay-from-prefix). Encoder-decoder
 backends (canary, cohere) use `core_beam_decode::run_with_probs_branched`
 (KV snapshots). Transducer backends (parakeet) use a dedicated TDT/RNNT
@@ -1469,7 +1469,7 @@ Benchmark script: `tools/benchmark_vitw_beam.py` — runs against
 
 | backend | beam=1 | beam=2 | beam=4 |
 |---|---|---|---|
-| qwen3-asr 0.6B Q4_K | 3.67 s (1×) | 8.20 s (2.2×) | 14.75 s (4.0×) |
+| cielvox2-asr 0.6B Q4_K | 3.67 s (1×) | 8.20 s (2.2×) | 14.75 s (4.0×) |
 | granite-speech 4.1 2B Q4_K | 18.39 s (1×) | 27.59 s (1.5×) | 33.17 s (1.8×) |
 | voxtral mini 3B Q4_K | ~70 s (1×) | ~56 s (0.8×)† | ~77 s (1.1×) |
 
@@ -1477,7 +1477,7 @@ Benchmark script: `tools/benchmark_vitw_beam.py` — runs against
 of its time in the audio encoder; decoder token count for JFK is
 small enough that OS jitter dominates.
 
-### WER by condition (qwen3-asr, Voices-in-the-Wild-Bench, 8 EN samples each)
+### WER by condition (cielvox2-asr, Voices-in-the-Wild-Bench, 8 EN samples each)
 
 | condition | beam=1 | beam=2 | beam=4 | beam=2 cost | beam=4 cost |
 |---|---|---|---|---|---|
@@ -1502,7 +1502,7 @@ small enough that OS jitter dominates.
   (WER≈0.42, badly degraded audio) just produces a different confabulation
   at beam=4; the model is guessing regardless of beam width.
 - **This dataset skews easy.** Most samples are TTS speech with layered
-  acoustic corruption; qwen3-asr is near-ceiling on greedy. Real
+  acoustic corruption; cielvox2-asr is near-ceiling on greedy. Real
   spontaneous noisy speech with disfluencies and rare words would expose
   more beam-search-recoverable errors.
 
@@ -1532,11 +1532,11 @@ search that's more efficient than the label-looping beam above. It processes
 one encoder frame at a time with up to N adaptive non-blank expansions per
 frame, using gamma-threshold pruning to kill low-probability branches.
 
-**Knob:** `CRISPASR_PARAKEET_MAES=1` + `--beam-size N` (CLI), or
+**Knob:** `STELNETTTS_PARAKEET_MAES=1` + `--beam-size N` (CLI), or
 `--parakeet-decoder maes` + `--beam-size N`, or
 `parakeet_set_maes(ctx, true, num_steps, gamma, beta)` (C API).
-Config: `CRISPASR_MAES_NUM_STEPS` (default 2), `CRISPASR_MAES_GAMMA` (2.3),
-`CRISPASR_MAES_BETA` (2).
+Config: `STELNETTTS_MAES_NUM_STEPS` (default 2), `STELNETTTS_MAES_GAMMA` (2.3),
+`STELNETTTS_MAES_BETA` (2).
 
 Supports both TDT (Token-and-Duration Transducer) and pure RNNT models.
 
@@ -1719,9 +1719,9 @@ section. Default mode includes the `e1904a1e` per-model chunk default
 | Mode | v3 + EN 60s | v3 + DE 60s | v3 + JA 60s | ja + JA 60s |
 |---|---|---|---|---|
 | **default** (backend streamed, c=auto) | 520 | 679 | 605 | **1674** |
-| `CRISPASR_PARAKEET_STREAM_CHUNK=8` forced | 187 | 503 | 375 | **1674** |
-| `CRISPASR_PARAKEET_STREAM_CHUNK=30` forced | 520 | 679 | 605 | 508 |
-| `CRISPASR_PARAKEET_STREAM_THRESHOLD=999` (single-pass) | **626** | 621 | 599 | 271 |
+| `STELNETTTS_PARAKEET_STREAM_CHUNK=8` forced | 187 | 503 | 375 | **1674** |
+| `STELNETTTS_PARAKEET_STREAM_CHUNK=30` forced | 520 | 679 | 605 | 508 |
+| `STELNETTTS_PARAKEET_STREAM_THRESHOLD=999` (single-pass) | **626** | 621 | 599 | 271 |
 | `--vad --vad-model silero` | 368 | **709** | 637 | 1627 |
 | `--chunk-seconds 30 --chunk-overlap 0` (no LCS) | 713 | 689 | 608 | 1413 |
 | `--chunk-seconds 30 --chunk-overlap 3` (LCS) | **755** | 665 | **660** | **1942** |
@@ -1761,7 +1761,7 @@ linearly.
 
 Wall time on M1 Metal: 300 s EN now takes ~86 s (was ~30 s) — 3.5×
 realtime. Acceptable for the quality gains; users can still pass
-`CRISPASR_PARAKEET_STREAM_THRESHOLD=99999` to force the older
+`STELNETTTS_PARAKEET_STREAM_THRESHOLD=99999` to force the older
 single-pass path if the wall-time matters more than coverage.
 
 ### Headline finding: dispatcher-side `--chunk-seconds 30 --chunk-overlap 3` wins on 3 of 4 cases (original 4-trial sweep)
@@ -1787,7 +1787,7 @@ path applies global mel-norm first then splits).
 | JA model on JA long-form | `--chunk-seconds 30 --chunk-overlap 3` OR default | Both recover most content; LCS edges default by 16 % on the tested clip |
 | Short audio (< 30 s) | default | Single backend call, no dispatcher overhead |
 | Speech-with-long-silences | `--vad --vad-model silero` | VAD trims silences and feeds the backend with bounded slices; can outperform chunking when speech density is uneven |
-| Reference parity / debugging | `CRISPASR_PARAKEET_STREAM_THRESHOLD=999` | Forces `parakeet_transcribe_ex`, the bit-exact single-pass path |
+| Reference parity / debugging | `STELNETTTS_PARAKEET_STREAM_THRESHOLD=999` | Forces `parakeet_transcribe_ex`, the bit-exact single-pass path |
 
 ### Caveats
 
@@ -1804,15 +1804,15 @@ path applies global mel-norm first then splits).
 - Single-pass occasionally wins (v3 + EN 60s: 626 chars vs 520
   internal-streamed default) — for clips that comfortably fit a single
   encoder forward pass on the model's hardware, the streamed wrapper
-  is overhead. `CRISPASR_PARAKEET_STREAM_THRESHOLD=99999` makes
+  is overhead. `STELNETTTS_PARAKEET_STREAM_THRESHOLD=99999` makes
   single-pass the default.
 
 ### Reproduce
 
 ```
-B=build/bin/crispasr
-V3=/Volumes/backups/ai/crispasr/parakeet-tdt-0.6b-v3-q4_k.gguf
-JA=/Volumes/backups/ai/crispasr/parakeet-tdt-0.6b-ja-q4_k.gguf
+B=build/bin/stelnettts
+V3=/Volumes/backups/ai/stelnettts/parakeet-tdt-0.6b-v3-q4_k.gguf
+JA=/Volumes/backups/ai/stelnettts/parakeet-tdt-0.6b-ja-q4_k.gguf
 EN60=/Volumes/backups/code/audio_samples/en/fleurs_60s.wav
 DE60=/Volumes/backups/code/audio_samples/de/fleurs_60s.wav
 JA60=/Volumes/backups/ai/long-clips/yt_60s.wav
@@ -1903,7 +1903,7 @@ core infrastructure.
 | **voxtral4b** | Has (quant) | Partial (enc gap) | Has | Gap | — | Has | Has |
 | **glm-asr** | Has (quant) | Has | — | Gap | — | Has (LLM) | Has (replay) |
 | **granite-speech** | Has (quant) | Has (LLM) | — | Gap | — | Has | Has |
-| **qwen3-asr** | Has (quant) | — | Has | Gap | — | Has | — |
+| **cielvox2-asr** | Has (quant) | — | Has | Gap | — | Has | — |
 | **omniasr** | Has (quant) | Has | — | Gap | — | Has | Has (replay) |
 | **mimo-asr** | Has (quant) | Has (audio) | Has | Has (T=1) | — | Has | Has |
 | **moss-audio** | Has | Gap (enc) | Gap | Gap | — | Gap | Has |
@@ -1924,7 +1924,7 @@ core infrastructure.
 | **fastpitch** | — (NAR) | Has | Has | — | — | — | — |
 | **zonos** | Has (quant) | Gap | Has | Gap | Gap | Gap | — |
 | **vibevoice** | Has (F16) | Has | — | Partial | Gap | Has | — |
-| **qwen3-tts** | Has (quant) | Has | Has | Has (5-bucket) | Has | Partial | — |
+| **cielvox2-tts** | Has (quant) | Has | Has | Has (5-bucket) | Has | Partial | — |
 | **cosyvoice3** | Has | Gap | — | Gap | Gap | Gap | — |
 | **tada** | Has (quant) | Gap | — | Gap | Gap | Gap | — |
 | **voxcpm2** | Has (host) | Gap | — | Gap | — | Gap (CPU only) | — |
@@ -2100,8 +2100,8 @@ core infrastructure.
   **once** via a persistent `ggml_gallocr` on the single GPU backend and reused
   every step (`granite_dec_use_gallocr`), skipping the per-step
   `ggml_backend_sched_reset`+`sched_alloc_graph` that capture requires.
-  Default-on; opt out with `CRISPASR_GRANITE_DEC_GALLOCR=0`.
-  Measured on M1 Metal (granite-4.1-2b Q4_K, `CRISPASR_GRANITE_DEC_PROFILE=1`):
+  Default-on; opt out with `STELNETTTS_GRANITE_DEC_GALLOCR=0`.
+  Measured on M1 Metal (granite-4.1-2b Q4_K, `STELNETTTS_GRANITE_DEC_PROFILE=1`):
   per-step sched alloc ≈3 ms quiet (balloons to 68–236 ms under memory
   pressure) → gallocr drops it to ~0.02 ms; n_cb (1/2/4) makes no difference.
   The dominant per-step cost (~100 ms on this box) is **Metal per-op dispatch**
@@ -2110,7 +2110,7 @@ core infrastructure.
   Metal gallocr is a modest quiet-machine win + a large robustness/variance win
   under load; the real remaining lever is ICB graph replay.
 
-**Qwen3 ASR** (`qwen3_asr.cpp`):
+**Qwen3 ASR** (`cielvox2_asr.cpp`):
 - Has: KV cache, lazy crisp_audio init, optional fused QKV, layer offload,
   sinusoidal PE at load, batched conv for audio chunking, thread-local
   FFT scratch, forced-aligner variant auto-detect, chunked windowed
@@ -2204,11 +2204,11 @@ core infrastructure.
 - Has: T5 encoder cached after set_description, cross-KV pre-projected
   once (24 layers, F16 §176i), pre-permuted DAC ConvT weights, prefill
   in single step, delay pattern, top-k+temperature, all_eos early exit
-- §176b+c (opt-in `CRISPASR_PARLER_BUCKET=1`): Lk-bucketed decode graph
+- §176b+c (opt-in `STELNETTTS_PARLER_BUCKET=1`): Lk-bucketed decode graph
   cache (no per-step rebuild), device-resident self-attn + cross-attn KV
   (`ggml_set_rows` write, no per-step re-upload, no growing `ggml_concat`),
   dedicated sched reused across steps. ~1.2–1.9× faster than the legacy
-  default on M1 Metal (F16); crispasr-diff parity 108/108 vs F32 ground
+  default on M1 Metal (F16); stelnettts-diff parity 108/108 vs F32 ground
   truth. Default stays the legacy path (byte-identical); CUDA unvalidated.
 - Gap: legacy default path still rebuilds the graph per step / re-uploads
   growing KV; flash_attn unused; read_embed_row per codebook per step.
@@ -2285,7 +2285,7 @@ core infrastructure.
   pred head graph rebuilt per DPM step, no CPU embd cache, DPM schedule
   coefficients recomputed per call
 
-**Qwen3 TTS** (`qwen3_tts.cpp`):
+**Qwen3 TTS** (`cielvox2_tts.cpp`):
 - Has: **CP_DIRECT sched-free code predictor** (§232, default ON GPU /
   OFF CPU — two persistent gallocr graphs, no scheduler; −11 % CUDA,
   ~3× under Metal load, md5-identical; supersedes O15 and fixes its #56
@@ -2369,12 +2369,12 @@ core infrastructure.
 
 #### VAD
 
-**Silero VAD** (`crispasr_vad.cpp`):
+**Silero VAD** (`stelnettts_vad.cpp`):
 - Has: static cached context (avoids 70× init/free regression),
   energy-minima splitting, binary search timestamp remap
 - Gap: caching is Silero-specific (other VAD engines not cached)
 
-**WhisperEncDec VAD** (`crispasr_vad_encdec.cpp`):
+**WhisperEncDec VAD** (`stelnettts_vad_encdec.cpp`):
 - Has: flash attn, fused QKV, thread-local FFT scratch, F16 K/V cast,
   30s windowed processing, auto-threshold lowering
 - Gap: no context caching, CPU-only hardcoded, KV rebuilt per call
@@ -2394,7 +2394,7 @@ core infrastructure.
   graphs, LSTM input projections batched per layer/dir as one mul_mat, the
   sequential recurrence dual-threaded (one thread per direction). 4.38 s →
   0.55 s on 31.5 s audio (M1), output frame-identical.
-  `CRISPASR_PYANNOTE_LEGACY=1` restores the scalar path (A/B ground truth).
+  `STELNETTTS_PYANNOTE_LEGACY=1` restores the scalar path (A/B ground truth).
 - Gap: no context caching; recurrence R@h still plain (autovec) loops
 
 #### LID
@@ -2404,7 +2404,7 @@ core infrastructure.
   head in-graph (§224, titanet-style). Inverse-default: in-graph WITHOUT
   Accelerate (scalar head was ~3.0 s of a 4.5 s detect → in-graph removes it);
   WITH Accelerate the GEMM head (57 ms) stays default.
-  CRISPASR_ECAPA_ASP_GGML=1 / CRISPASR_ECAPA_ASP_CPU=1 force either way.
+  STELNETTTS_ECAPA_ASP_GGML=1 / STELNETTTS_ECAPA_ASP_CPU=1 force either way.
 - Gap: trunk graph ~1.3 s dominates on M1 (profile Metal residency); BN not
   pre-folded
 
@@ -2413,7 +2413,7 @@ core infrastructure.
   sched encoder (GPU on Metal/CUDA; auto-routed to CPU on Vulkan pending an
   upstream mul_mat fix), 30 s slice cap. 103 ms Metal / 183 ms CPU-ggml vs
   241 ms Accelerate / 1014 ms scalar legacy (11 s audio, M1).
-  `CRISPASR_SILERO_LID_LEGACY=1` restores the scalar path.
+  `STELNETTTS_SILERO_LID_LEGACY=1` restores the scalar path.
 - Gap: Vulkan GPU blocked on the ggml-vulkan FFN MUL_MAT miscompute
 
 **FireRed LID** (`firered_lid.cpp`):
@@ -2428,7 +2428,7 @@ core infrastructure.
   cos=1.000000 vs legacy. Inverse-default: ggml is default WITHOUT Accelerate
   (scalar was 106–131 s/embed on M1 → 3.4 s ggml, ~35×); WITH Accelerate the
   legacy AMX GEMM path stays default (0.7 s vs 3.4 s ggml).
-  `CRISPASR_TITANET_GGML=1` / `CRISPASR_TITANET_LEGACY=1` force either way.
+  `STELNETTTS_TITANET_GGML=1` / `STELNETTTS_TITANET_LEGACY=1` force either way.
 - Gap: ggml F32 matmul ≪ AMX on Apple (F16 weights would halve bandwidth);
   segments not batched
 
@@ -2456,7 +2456,7 @@ core infrastructure.
 - Gap: graph rebuilt per call, LSTM concat chain O(T) nodes, no
   streaming/chunking
 
-**RNNoise Enhancement** (`crispasr_enhance.cpp`):
+**RNNoise Enhancement** (`stelnettts_enhance.cpp`):
 - Has: miniaudio resample, zero-fill guarantee
 - Gap: resampler init/destroy per call, DenoiseState created per call,
   linear resampler quality
@@ -2472,7 +2472,7 @@ core infrastructure.
   UTF-8 codepoint-aware, lowercase fallback
 - Gap: log-softmax over entire [T×V], backpointer T separate heap allocs
 
-**Diarization** (`crispasr_diarize.cpp`):
+**Diarization** (`stelnettts_diarize.cpp`):
 - Has: 4-method dispatch, overlap-class speaker accumulation, silence
   gating, per-slice offset mapping
 - Gap: Xcorr is O(seg×2×MAX_LAG) — FFT-based would be O(N log N),
@@ -2607,11 +2607,11 @@ Ordered by estimated breadth × depth of impact across the project:
 
 15. **embed_tokens micro-graph elimination — MOSTLY DONE.** FunASR,
     GLM-ASR, MOSS-Audio, Qwen3-ASR, Gemma4-E2B shipped with direct CPU
-    dequant (`CRISPASR_XXX_EMBED_FAST`). Orpheus/OuteTTS already had it.
+    dequant (`STELNETTTS_XXX_EMBED_FAST`). Orpheus/OuteTTS already had it.
     ~1.6× embed step. Only granite-speech remains.
 
 16. **read_tensor_f32 weight pre-cache — DONE (piper 14%, melotts 16%).**
-    `CRISPASR_PIPER_WEIGHT_CACHE` / `CRISPASR_MELOTTS_WEIGHT_CACHE`.
+    `STELNETTTS_PIPER_WEIGHT_CACHE` / `STELNETTTS_MELOTTS_WEIGHT_CACHE`.
 
 ### VPS bench data (2026-06-20, 4-core CPU, Q4_K/F16, JFK 11s)
 

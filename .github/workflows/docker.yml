@@ -107,7 +107,7 @@ jobs:
           file: ${{ matrix.config.dockerfile }}
           # Surface SHA + ref + build date to the image so users hitting
           # GPU-init failures can answer "which build am I on?" via
-          # `docker run --rm <image> crispasr --version` (#31).
+          # `docker run --rm <image> stelnettts --version` (#31).
           build-args: |
             GIT_SHA=${{ github.sha }}
             GIT_REF=${{ github.ref_name }}

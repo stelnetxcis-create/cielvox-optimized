@@ -25,16 +25,16 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake g++ libopenblas-dev
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_OPENBLAS=ON -DCRISPASR_BUILD_TESTS=OFF -DGGML_NATIVE=OFF
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_OPENBLAS=ON -DSTELNETTTS_BUILD_TESTS=OFF -DGGML_NATIVE=OFF
 
       - name: Build
-        run: cmake --build build --target crispasr-cli crispasr-diff crispasr-quantize -j $(nproc)
+        run: cmake --build build --target stelnettts-cli stelnettts-diff stelnettts-quantize -j $(nproc)
 
       - name: Smoke test - help
-        run: ./build/bin/crispasr --help
+        run: ./build/bin/stelnettts --help
 
       - name: Smoke test - list backends
-        run: ./build/bin/crispasr --list-backends
+        run: ./build/bin/stelnettts --list-backends
 
       # Guards the drift docs/contributing.md warns about: a backend reachable
       # from the CLI factory but missing from the c_api dispatch, the
@@ -44,7 +44,7 @@ jobs:
       # Linux deliberately: the script's Go cgo-LDFLAGS drift check is unreliable
       # on macOS, where Metal/BLAS default on and pollute the linux link line.
       - name: Backend wiring audit
-        run: python3 tools/check-backend-wiring.py --crispasr ./build/bin/crispasr
+        run: python3 tools/check-backend-wiring.py --stelnettts ./build/bin/stelnettts
 
   # ===========================================================================
   # Linux x86_64 — AMR opencore FetchContent static build (opt-in gate guard)
@@ -90,7 +90,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DGGML_NATIVE=OFF
           -DGGML_OPENBLAS=ON
-          -DCRISPASR_BUILD_TESTS=ON
+          -DSTELNETTTS_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build -j $(nproc)
@@ -101,7 +101,7 @@ jobs:
         run: ctest --test-dir build -L unit -E live --output-on-failure --timeout 300
 
   # ===========================================================================
-  # The -DCRISPASR_AMR_FETCH=ON path compiles opencore-amr from source (for
+  # The -DSTELNETTTS_AMR_FETCH=ON path compiles opencore-amr from source (for
   # platforms without a system libopencore-amr). It is OFF by default, so the
   # rest of the matrix never exercises it — and it silently broke once (§219):
   # an over-inclusive common/src glob pulled in files upstream excludes
@@ -142,10 +142,10 @@ jobs:
           cmake -S . -B build-amr \
             -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_BUILD_TYPE=Release -DGGML_OPENBLAS=ON -DGGML_NATIVE=OFF \
-            -DCRISPASR_BUILD_TESTS=ON -DCRISPASR_AMR=ON -DCRISPASR_AMR_FETCH=ON \
+            -DSTELNETTTS_BUILD_TESTS=ON -DSTELNETTTS_AMR=ON -DSTELNETTTS_AMR_FETCH=ON \
             2>&1 | tee cfg.log
           grep -q "AMR via FetchContent" cfg.log || {
-            echo "::error::CRISPASR_AMR_FETCH did not enable — the AMR static gate is not actually being tested (would give a false green)";
+            echo "::error::STELNETTTS_AMR_FETCH did not enable — the AMR static gate is not actually being tested (would give a false green)";
             exit 1;
           }
 
@@ -158,7 +158,7 @@ jobs:
   # ===========================================================================
   # Linux x86_64 — Opus FetchContent static build (opt-in gate guard)
   # ===========================================================================
-  # Sibling of linux-amr-fetch: -DCRISPASR_OPUS_FETCH=ON statically builds
+  # Sibling of linux-amr-fetch: -DSTELNETTTS_OPUS_FETCH=ON statically builds
   # ogg + opus + opusfile (for platforms without a system opusfile). OFF by
   # default, so nothing else in the matrix compiles it — same rot risk as the
   # AMR path (opusfile is autotools-only, so its sources are hand-listed in
@@ -180,10 +180,10 @@ jobs:
         run: |
           cmake -S . -B build-opus \
             -DCMAKE_BUILD_TYPE=Release -DGGML_OPENBLAS=ON -DGGML_NATIVE=OFF \
-            -DCRISPASR_BUILD_TESTS=ON -DCRISPASR_OPUS=ON -DCRISPASR_OPUS_FETCH=ON \
+            -DSTELNETTTS_BUILD_TESTS=ON -DSTELNETTTS_OPUS=ON -DSTELNETTTS_OPUS_FETCH=ON \
             2>&1 | tee cfg.log
           grep -q "\.opus via FetchContent static" cfg.log || {
-            echo "::error::CRISPASR_OPUS_FETCH did not enable — the Opus static gate is not actually being tested (would give a false green)";
+            echo "::error::STELNETTTS_OPUS_FETCH did not enable — the Opus static gate is not actually being tested (would give a false green)";
             exit 1;
           }
 
@@ -196,10 +196,10 @@ jobs:
   # ===========================================================================
   # Linux x86_64 — ASan/UBSan on the audio-format decoders (untrusted input)
   # ===========================================================================
-  # crispasr_audio_load parses untrusted file bytes with hand-rolled decoders
+  # stelnettts_audio_load parses untrusted file bytes with hand-rolled decoders
   # (EBML/WebM demux, MP4 box parser, Sun-AU header). The default matrix builds
   # them only in Release, so a heap overflow / UB in that attack surface would
-  # not surface. Build the audio-format tests with CRISPASR_SANITIZE_ADDRESS +
+  # not surface. Build the audio-format tests with STELNETTTS_SANITIZE_ADDRESS +
   # _UNDEFINED and decode the committed samples under the sanitizer. Also guards
   # the sanitizer build gate itself from rotting. (Scoped to the audio decoders
   # — the fuzzable surface — which keeps the job fast; broaden to the full unit
@@ -219,9 +219,9 @@ jobs:
           cmake -S . -B build-asan
           -DCMAKE_BUILD_TYPE=Debug
           -DGGML_NATIVE=OFF
-          -DCRISPASR_BUILD_TESTS=ON
-          -DCRISPASR_SANITIZE_ADDRESS=ON
-          -DCRISPASR_SANITIZE_UNDEFINED=ON
+          -DSTELNETTTS_BUILD_TESTS=ON
+          -DSTELNETTTS_SANITIZE_ADDRESS=ON
+          -DSTELNETTTS_SANITIZE_UNDEFINED=ON
 
       - name: Build audio-format tests under sanitizers
         run: cmake --build build-asan --target test-audio-formats -j $(nproc)
@@ -233,7 +233,7 @@ jobs:
         run: ./build-asan/bin/test-audio-formats "[audio]"
 
   # ===========================================================================
-  # Linux x86_64 — libFuzzer smoke run over crispasr_audio_load (untrusted input)
+  # Linux x86_64 — libFuzzer smoke run over stelnettts_audio_load (untrusted input)
   # ===========================================================================
   # tests/fuzz/fuzz_audio_load.cpp fuzzes the one entry point that reaches every
   # hand-rolled audio parser (AU/AMR/WebM/MP4 + miniaudio). Build it with clang
@@ -258,13 +258,13 @@ jobs:
           cmake -S . -B build-fuzz
           -DCMAKE_BUILD_TYPE=Debug
           -DGGML_NATIVE=OFF
-          -DCRISPASR_BUILD_TESTS=ON
-          -DCRISPASR_FUZZ=ON
-          -DCRISPASR_SANITIZE_ADDRESS=ON
-          -DCRISPASR_SANITIZE_UNDEFINED=ON
+          -DSTELNETTTS_BUILD_TESTS=ON
+          -DSTELNETTTS_FUZZ=ON
+          -DSTELNETTTS_SANITIZE_ADDRESS=ON
+          -DSTELNETTTS_SANITIZE_UNDEFINED=ON
 
       - name: Build the fuzz harness
-        run: cmake --build build-fuzz --target crispasr-fuzz-audio -j $(nproc)
+        run: cmake --build build-fuzz --target stelnettts-fuzz-audio -j $(nproc)
 
       - name: Smoke fuzz (seeded from samples/, ~45s; a crash fails CI)
         env:
@@ -283,7 +283,7 @@ jobs:
           # crash only by luck — replaying these makes each fixed bug a
           # deterministic gate instead of a coin flip.
           cp tests/fuzz/regressions/*.ogg fuzz-corpus/ 2>/dev/null || true
-          ./build-fuzz/bin/crispasr-fuzz-audio -max_total_time=45 -max_len=1048576 \
+          ./build-fuzz/bin/stelnettts-fuzz-audio -max_total_time=45 -max_len=1048576 \
              -rss_limit_mb=4096 -artifact_prefix=fuzz-artifacts/ fuzz-corpus
 
       # Without this the crash input dies with the runner and all you have is a
@@ -320,13 +320,13 @@ jobs:
           sudo apt-get install -y cmake g++ libvulkan-dev spirv-headers shaderc
 
       - name: Configure with Vulkan
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON -DCRISPASR_BUILD_TESTS=OFF
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON -DSTELNETTTS_BUILD_TESTS=OFF
 
       - name: Build
-        run: cmake --build build --target crispasr-cli -j $(nproc)
+        run: cmake --build build --target stelnettts-cli -j $(nproc)
 
       - name: Smoke test
-        run: ./build/bin/crispasr --list-backends
+        run: ./build/bin/stelnettts --list-backends
 
   # ===========================================================================
   # macOS (Apple Silicon / x86_64)
@@ -339,13 +339,13 @@ jobs:
           submodules: recursive
 
       - name: Configure with Metal
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON -DCRISPASR_BUILD_TESTS=OFF
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON -DSTELNETTTS_BUILD_TESTS=OFF
 
       - name: Build
-        run: cmake --build build --target crispasr-cli -j $(sysctl -n hw.logicalcpu)
+        run: cmake --build build --target stelnettts-cli -j $(sysctl -n hw.logicalcpu)
 
       - name: Smoke test
-        run: ./build/bin/crispasr --list-backends
+        run: ./build/bin/stelnettts --list-backends
 
   # ===========================================================================
   # Windows (MSVC)
@@ -357,24 +357,24 @@ jobs:
         with:
           submodules: recursive
 
-      # CRISPASR_BUILD_TESTS stays ON here (unlike the other smoke-only
+      # STELNETTTS_BUILD_TESTS stays ON here (unlike the other smoke-only
       # platform jobs) so the speaker-db unit tests below actually run.
       # This is the only CI leg that exercises the .spkr v2 Windows write
       # path (CreateDirectoryA branch in src/speaker_db.cpp) and the
       # tests/test-speaker-db.cpp _WIN32 make_temp_dir() path.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCRISPASR_BUILD_TESTS=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_BUILD_TESTS=ON
 
       - name: Build
-        run: cmake --build build --config Release --target crispasr-cli -j $env:NUMBER_OF_PROCESSORS
+        run: cmake --build build --config Release --target stelnettts-cli -j $env:NUMBER_OF_PROCESSORS
 
       - name: Smoke test
-        run: .\build\bin\Release\crispasr.exe --list-backends
+        run: .\build\bin\Release\stelnettts.exe --list-backends
 
       # Scoped, low-risk unit-test leg: build only the speaker-db-related
       # Catch2 targets (not the full, never-Windows-tested tests/ suite) and
       # filter ctest to just their test cases. test-params/test-speaker-db/
-      # test-speaker-cluster are self-contained (Catch2 + crispasr-lib only,
+      # test-speaker-cluster are self-contained (Catch2 + stelnettts-lib only,
       # test-params also links `common`); no POSIX-only helpers are compiled
       # into them. Untouched targets elsewhere in tests/CMakeLists.txt are
       # configured but never built, so their (OPTIONAL) ctest discovery
@@ -404,10 +404,10 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DGGML_METAL=OFF \
             -DBUILD_SHARED_LIBS=OFF \
-            -DCRISPASR_BUILD_TESTS=OFF
+            -DSTELNETTTS_BUILD_TESTS=OFF
 
       - name: Build
-        run: cmake --build build-ios --target crispasr-lib -j $(sysctl -n hw.logicalcpu)
+        run: cmake --build build-ios --target stelnettts-lib -j $(sysctl -n hw.logicalcpu)
 
   # ===========================================================================
   # Android (cross-compile gate — no runtime test)
@@ -431,7 +431,7 @@ jobs:
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-24 \
             -DBUILD_SHARED_LIBS=OFF \
-            -DCRISPASR_BUILD_TESTS=OFF
+            -DSTELNETTTS_BUILD_TESTS=OFF
 
       - name: Build
-        run: cmake --build build-android --target crispasr-lib -j $(nproc)
+        run: cmake --build build-android --target stelnettts-lib -j $(nproc)

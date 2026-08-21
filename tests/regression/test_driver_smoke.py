@@ -4,7 +4,7 @@ No model downloads, no binary invocations, no network. Just:
 
   - manifest.json schema and shape (every backend has the required
     keys, types are right, no obvious typos).
-  - parse_diff_stdout()       — feed it canned crispasr-diff output,
+  - parse_diff_stdout()       — feed it canned stelnettts-diff output,
                                  assert it pulls cos_min for each stage.
   - evaluate_stage_thresholds() — the threshold-compare logic that
                                  decides per-stage PASS/FAIL/missing.
@@ -35,11 +35,11 @@ sys.path.insert(0, str(HERE))  # so `import run_one` works
 import run_one  # noqa: E402
 
 
-# Sample crispasr-diff stdout — actual capture from the parakeet JA seed,
-# with ANSI codes stripped. Tweak when crispasr-diff's output format
+# Sample stelnettts-diff stdout — actual capture from the parakeet JA seed,
+# with ANSI codes stripped. Tweak when stelnettts-diff's output format
 # changes.
 SAMPLE_DIFF_STDOUT = """\
-crispasr-diff: audio 224964 samples (14.06s), reference /path/ref.gguf, backend parakeet
+stelnettts-diff: audio 224964 samples (14.06s), reference /path/ref.gguf, backend parakeet
 [FAIL] mel_spectrogram        shape=[80,1407]        cos_min=0.951084  cos_mean=0.999388  max_abs=2.23e+00  rms=3.67e-02
 [PASS] encoder_output         shape=[1024,176]       cos_min=0.999594  cos_mean=0.999975  max_abs=3.13e-02  rms=1.56e-03
 [PASS] encoder_output_ref_mel shape=[1024,176]       cos_min=0.999807  cos_mean=0.999988  max_abs=2.28e-02  rms=1.08e-03
@@ -131,10 +131,10 @@ class ManifestSchemaTests(unittest.TestCase):
                 # to a full diff entry once the ref dump is baked).
                 self.assertNotIn("diff_thresholds", entry,
                     f"{entry['name']}: skip_diff=true but diff_thresholds is also set — "
-                    f"remove skip_diff once the ref dump is in cstr/crispasr-regression-fixtures")
+                    f"remove skip_diff once the ref dump is in Xenna/stelnettts-regression-fixtures")
                 self.assertNotIn("fixture_ref_path", entry,
                     f"{entry['name']}: skip_diff=true but fixture_ref_path is also set — "
-                    f"remove skip_diff once the ref dump is in cstr/crispasr-regression-fixtures")
+                    f"remove skip_diff once the ref dump is in Xenna/stelnettts-regression-fixtures")
 
             # Optional transcript_tolerance block — opt-in WER/CER bar
             # for backends whose decoder ties on punctuation/case
@@ -181,7 +181,7 @@ class ManifestSchemaTests(unittest.TestCase):
 
 
 class DiffParserTests(unittest.TestCase):
-    """parse_diff_stdout() — given a captured crispasr-diff stdout,
+    """parse_diff_stdout() — given a captured stelnettts-diff stdout,
     pull cos_min per stage. Don't care about [PASS]/[FAIL] verdict
     (we apply manifest thresholds separately).
     """

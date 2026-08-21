@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert OpenMOSS-Team/MOSS-TTS-v1.5 (MossTTSDelay) to GGUF for CrispASR.
+"""Convert OpenMOSS-Team/MOSS-TTS-v1.5 (MossTTSDelay) to GGUF for StelnetTTS.
 
 Architecture (verified against config.json + pwilkin/openmoss, 2026-07-12):
 
@@ -13,10 +13,10 @@ Architecture (verified against config.json + pwilkin/openmoss, 2026-07-12):
               pure-transformer RVQ codec (32 codebooks, dim 8, rvq 512, out 768,
               4 ProjectedTransformer decoder stages, hop 1920 -> 24 kHz).
 
-Output layout (CrispASR convention, mirrors qwen3-tts talker + companion codec):
+Output layout (StelnetTTS convention, mirrors cielvox2-tts talker + companion codec):
 
   <output>.gguf            backbone GGUF, arch "moss-tts":
-      llm.*                Qwen3 backbone (quantizable by crispasr-quantize)
+      llm.*                Qwen3 backbone (quantizable by stelnettts-quantize)
       moss.audio_embed.{i} 32 audio embedding tables      (kept F16)
       moss.audio_head.{i}  32 audio LM heads              (kept F16)
       moss_tts.llm.* KV    backbone hparams
@@ -42,7 +42,7 @@ Usage:
         --output moss-tts-v1.5-f16.gguf
 
     # Then quantize the backbone (codec stays F16):
-    crispasr-quantize moss-tts-v1.5-f16.gguf moss-tts-v1.5-q4_k.gguf q4_k
+    stelnettts-quantize moss-tts-v1.5-f16.gguf moss-tts-v1.5-q4_k.gguf q4_k
 """
 
 import argparse
@@ -407,7 +407,7 @@ def write_codec_gguf(codec_dir: Path, config: dict, out_path: Path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Convert MOSS-TTS-v1.5 to GGUF for CrispASR")
+    ap = argparse.ArgumentParser(description="Convert MOSS-TTS-v1.5 to GGUF for StelnetTTS")
     ap.add_argument("--input", required=True,
                     help="HF id or local dir of MOSS-TTS-v1.5 (OpenMOSS-Team/MOSS-TTS-v1.5)")
     ap.add_argument("--codec", default=None,

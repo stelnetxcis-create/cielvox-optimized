@@ -16,7 +16,7 @@ pipeline_tag: token-classification
 
 # FireRedPunc (GGUF)
 
-GGUF conversion of [FireRedTeam/FireRedPunc](https://huggingface.co/FireRedTeam/FireRedPunc) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [FireRedTeam/FireRedPunc](https://huggingface.co/FireRedTeam/FireRedPunc) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 Adds punctuation to unpunctuated ASR output using a BERT-based token classifier.
 
@@ -31,14 +31,14 @@ Adds punctuation to unpunctuated ASR output using a BERT-based token classifier.
 - **Languages**: Chinese + English
 - **License**: Apache 2.0
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Add punctuation to any ASR backend's output
-crispasr --backend wav2vec2 -m wav2vec2.gguf --punc-model fireredpunc-q8_0.gguf -f audio.wav
+stelnettts --backend wav2vec2 -m wav2vec2.gguf --punc-model fireredpunc-q8_0.gguf -f audio.wav
 
 # Works with all backends
-crispasr --backend omniasr -m omniasr-ctc-1b-q4_k.gguf --punc-model fireredpunc-q8_0.gguf -f audio.wav
+stelnettts --backend omniasr -m omniasr-ctc-1b-q4_k.gguf --punc-model fireredpunc-q8_0.gguf -f audio.wav
 ```
 
 ## Available Files

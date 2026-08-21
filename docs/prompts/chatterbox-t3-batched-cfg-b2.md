@@ -34,10 +34,10 @@ Single-token T3 decode is **weight-bandwidth + dispatch bound** (1 token, the fu
 weight **once** for both passes and halves the dispatch count — that is the win.
 
 **Already ruled out this campaign (don't repeat):**
-- **CFM single-GPU `ggml_gallocr` graph cache** (§208, `CRISPASR_S3GEN_UNET_GALLOCR`):
+- **CFM single-GPU `ggml_gallocr` graph cache** (§208, `STELNETTTS_S3GEN_UNET_GALLOCR`):
   correct (parity 0.999) but a perf DUD — graph-rebuild is ~0.3 % of the
   compute-bound CFM per-step. See HISTORY/LEARNINGS §208.
-- **Cached uncond T3 graph** (§212, `CRISPASR_CHATTERBOX_T3_CFG_BUCKET`): the uncond
+- **Cached uncond T3 graph** (§212, `STELNETTTS_CHATTERBOX_T3_CFG_BUCKET`): the uncond
   pass wasn't bucket-cached (it rebuilt its graph each token); adding a parallel
   bucket cache is bit-identical but **no win** — same §208 lesson (rebuild is
   negligible on compute-bound decode). Kept gated default-OFF.
@@ -146,12 +146,12 @@ Pick whichever you can get to **bit-parity** fastest.
 
 ## Validation — MANDATORY (correctness-critical: this drives the sampler)
 
-1. **Greedy token parity is the gate.** Force greedy with `CRISPASR_CHATTERBOX_TEMP=0`
+1. **Greedy token parity is the gate.** Force greedy with `STELNETTTS_CHATTERBOX_TEMP=0`
    (deterministic argmax — removes multinomial sensitivity). Fixed seed. The B=2 path
    must emit the **exact same speech-token sequence** as the legacy sequential path.
    Compare the full token list (bump verbosity / use `CHATTERBOX_DEBUG` — note the
    `step=N tok=M` log caps at step<32; print the full `valid` list or dump tokens).
-2. **Per-pass logit parity** (debugging): `CRISPASR_CHATTERBOX_DUMP_LOGITS_AT=<n_past>`
+2. **Per-pass logit parity** (debugging): `STELNETTTS_CHATTERBOX_DUMP_LOGITS_AT=<n_past>`
    prints the first 8 cond logits; compare B=2 batch-0 vs legacy cond, batch-1 vs
    legacy uncond, within ~1e-4.
 3. **End-to-end:** ASR-roundtrip both outputs (`--backend moonshine -m
@@ -164,7 +164,7 @@ Pick whichever you can get to **bit-parity** fastest.
 5. **q8 + F16 + Q4_K** T3 must all still produce intelligible audio and pass token
    parity. (Q4_K T3 takes the `mul_mv_q4_K_q8_K` PREC_F32 path — make sure the
    batched mul_mat still hits it; check `ggml-metal-ops.cpp` ~2093.)
-6. **`crispasr-diff chatterbox`** T3 stages (`t3_text_tokens`, logits) must still pass
+6. **`stelnettts-diff chatterbox`** T3 stages (`t3_text_tokens`, logits) must still pass
    with the env OFF (legacy bit-unchanged) — and ideally ON.
 
 Acceptance: identical greedy tokens (q8+F16+Q4_K) + identical ASR + measurable
@@ -197,14 +197,14 @@ then propose flipping the default; keep the gate + legacy path forever.
   `build_step_graph_mtl_b2` / `build_prompt_graph_mtl_b2`, `eval_step_mtl`; gate
   `use_b2 = !meanflow && cfg_rate != 0 && !is_cpu`. Their README §3.21 has the −42 %
   numbers. **Study as existence proof; don't copy their namespace.**
-- Models: `/Volumes/backups/ai/crispasr/chatterbox-{t3,s3gen}-q8_0.gguf` (+ `-q4_k`,
+- Models: `/Volumes/backups/ai/stelnettts/chatterbox-{t3,s3gen}-q8_0.gguf` (+ `-q4_k`,
   `-f16`). ggml is vendored in-tree (MIT) — Metal kernel changes go in
-  `ggml/src/ggml-metal/` with `// CrispASR patch` markers + a paired entry in
+  `ggml/src/ggml-metal/` with `// StelnetTTS patch` markers + a paired entry in
   `tools/upstream-prs/`.
 
 ## Env vars (add to PLAN §176 + the backend's section)
-- `CRISPASR_CHATTERBOX_T3_CFG_B2=1` — opt into the batched-CFG B=2 T3 decode (this
+- `STELNETTTS_CHATTERBOX_T3_CFG_B2=1` — opt into the batched-CFG B=2 T3 decode (this
   task). Default off (legacy sequential cond+uncond) until validated.
-- (existing, keep working) `CRISPASR_CHATTERBOX_TEMP` (0 = greedy parity gate),
-  `CRISPASR_CHATTERBOX_THREADS`, `CRISPASR_CHATTERBOX_SEED`,
-  `CRISPASR_CHATTERBOX_T3_CFG_BUCKET` (§212, separate gated path).
+- (existing, keep working) `STELNETTTS_CHATTERBOX_TEMP` (0 = greedy parity gate),
+  `STELNETTTS_CHATTERBOX_THREADS`, `STELNETTTS_CHATTERBOX_SEED`,
+  `STELNETTTS_CHATTERBOX_T3_CFG_BUCKET` (§212, separate gated path).

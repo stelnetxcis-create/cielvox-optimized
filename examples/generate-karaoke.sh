@@ -3,7 +3,7 @@
 # Simple tool to record audio from the microphone and generate a karaoke video
 # Usage:
 #
-#  cd crispasr
+#  cd stelnettts
 #  make
 #
 #  ./examples/generate-karaoke.sh [model] [step_ms]
@@ -11,7 +11,7 @@
 # Press Ctrl+C to stop recording
 #
 
-executable="./build/bin/crispasr"
+executable="./build/bin/stelnettts"
 model="base.en"
 model_path="models/ggml-$model.bin"
 

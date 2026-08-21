@@ -5,11 +5,11 @@ set -euo pipefail
 
 THREADS="${1:-4}"
 AUDIO="samples/jfk.wav"
-BIN="./build/bin/crispasr"
+BIN="./build/bin/stelnettts"
 DIR="/mnt/akademie_storage/test_cohere"
 
 echo "================================================================"
-echo "CrispASR Systematic Benchmark"
+echo "StelnetTTS Systematic Benchmark"
 echo "Audio: $AUDIO (11.0s), Threads: $THREADS"
 echo "Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "================================================================"
@@ -30,7 +30,7 @@ declare -A MODELS=(
     ["parakeet"]="$DIR/parakeet-tdt-0.6b-v3-q4_k.gguf"
     ["canary"]="$DIR/canary-1b-v2-q4_k.gguf"
     ["cohere"]="$DIR/cohere-transcribe-q4_k.gguf"
-    ["qwen3"]="$DIR/qwen3-asr-0.6b-q4_k.gguf"
+    ["qwen3"]="$DIR/cielvox2-asr-0.6b-q4_k.gguf"
     ["glm-asr"]="$DIR/glm-asr-nano-q4_k.gguf"
     ["kyutai-stt"]="$DIR/kyutai-stt-1b-q4_k.gguf"
     ["firered-asr"]="$DIR/firered-asr2-aed-q4_k.gguf"

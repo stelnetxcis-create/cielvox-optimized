@@ -27,13 +27,13 @@ def log(msg):
 log("Kernel started")
 
 try:
-    # ── Clone CrispASR ──
-    _CRISPASR_DIR = Path("/tmp/CrispASR")
-    if not _CRISPASR_DIR.exists():
-        log("Cloning CrispASR...")
+    # ── Clone StelnetTTS ──
+    _STELNETTTS_DIR = Path("/tmp/StelnetTTS")
+    if not _STELNETTTS_DIR.exists():
+        log("Cloning StelnetTTS...")
         subprocess.check_call(["git", "clone", "--depth", "1",
-            "https://github.com/CrispStrobe/CrispASR.git", str(_CRISPASR_DIR)])
-    sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+            "https://github.com/Cyna/StelnetTTS.git", str(_STELNETTTS_DIR)])
+    sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
 
     import kaggle_harness as kh
     kh.init_progress()
@@ -43,22 +43,22 @@ try:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
                            "gguf", "safetensors", "huggingface_hub"])
 
-    # ── Build crispasr-quantize ──
+    # ── Build stelnettts-quantize ──
     log("Installing build toolchain...")
     kh.install_build_toolchain()
-    log("Building crispasr-quantize...")
-    build_dir = _CRISPASR_DIR / "build"
+    log("Building stelnettts-quantize...")
+    build_dir = _STELNETTTS_DIR / "build"
     cmake_env = os.environ.copy()
     cmake_env["CCACHE_DIR"] = "/kaggle/working/.ccache"
-    subprocess.run(["cmake", "-G", "Ninja", "-B", str(build_dir), "-S", str(_CRISPASR_DIR),
+    subprocess.run(["cmake", "-G", "Ninja", "-B", str(build_dir), "-S", str(_STELNETTTS_DIR),
         "-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_BUILD_TYPE=Release"], capture_output=True, env=cmake_env,
-        cwd=str(_CRISPASR_DIR), timeout=120)
+        cwd=str(_STELNETTTS_DIR), timeout=120)
     n_jobs = kh.safe_build_jobs(gpu=True)
-    subprocess.run(["cmake", "--build", str(build_dir), "--target", "crispasr-quantize",
-        f"-j{n_jobs}"], capture_output=True, env=cmake_env, cwd=str(_CRISPASR_DIR), timeout=600)
-    quantize_bin = build_dir / "bin" / "crispasr-quantize"
-    log(f"crispasr-quantize: {'OK' if quantize_bin.exists() else 'MISSING'}")
+    subprocess.run(["cmake", "--build", str(build_dir), "--target", "stelnettts-quantize",
+        f"-j{n_jobs}"], capture_output=True, env=cmake_env, cwd=str(_STELNETTTS_DIR), timeout=600)
+    quantize_bin = build_dir / "bin" / "stelnettts-quantize"
+    log(f"stelnettts-quantize: {'OK' if quantize_bin.exists() else 'MISSING'}")
 
     # ── HF token ──
     hf_token = kh.resolve_hf_token()
@@ -71,7 +71,7 @@ try:
     log(f"Model at: {model_dir}")
 
     # ── Re-convert core GGUF with fixed tokenizer ──
-    convert_script = _CRISPASR_DIR / "models" / "convert-dots-tts-to-gguf.py"
+    convert_script = _STELNETTTS_DIR / "models" / "convert-dots-tts-to-gguf.py"
     out_dir = WORK / "gguf_output"
     out_dir.mkdir(exist_ok=True)
 
@@ -121,7 +121,7 @@ try:
     # ── Upload all to HF ──
     log("\nUploading to HuggingFace...")
     api = HfApi(token=hf_token if hf_token else None)
-    repo_id = "cstr/dots-tts-soar-GGUF"
+    repo_id = "Xenna/dots-tts-soar-GGUF"
 
     for f in sorted(out_dir.iterdir()):
         if f.suffix == ".gguf" and f.stat().st_size > 0:

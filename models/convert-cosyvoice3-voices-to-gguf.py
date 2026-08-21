@@ -25,7 +25,7 @@ Usage:
   python models/convert-cosyvoice3-voices-to-gguf.py \\
       --manifest voices.json \\
       --upstream-base /Volumes/backups/code/cosyvoice3-stash/CosyVoice-upstream \\
-      --output /Volumes/backups/ai/crispasr-models/cosyvoice3-0.5b-2512/cosyvoice3-voices.gguf
+      --output /Volumes/backups/ai/stelnettts-models/cosyvoice3-0.5b-2512/cosyvoice3-voices.gguf
 """
 
 import argparse
@@ -292,7 +292,7 @@ def main():
     ap.add_argument("--manifest", help="JSON list of voice entries; omit for built-in default")
     ap.add_argument("--upstream-base", required=True,
                     help="Path to CosyVoice upstream clone (provides asset/*.wav and on-disk onnxes)")
-    ap.add_argument("--onnx-cache", default=os.path.expanduser("~/.cache/crispasr/cosyvoice3-onnx"),
+    ap.add_argument("--onnx-cache", default=os.path.expanduser("~/.cache/stelnettts/cosyvoice3-onnx"),
                     help="Where to stash campplus.onnx + speech_tokenizer_v3.onnx if not on disk")
     ap.add_argument("--output", required=True, help="Output voices.gguf path")
     ap.add_argument("--i-have-rights", dest="i_have_rights", action="store_true",
@@ -339,7 +339,7 @@ def main():
     names = [v["name"] for v in manifest]
     writer.add_array("voice.names", names)
 
-    # Voice-clone provenance — see examples/cli/crispasr_voice_clone_policy.h.
+    # Voice-clone provenance — see examples/cli/stelnettts_voice_clone_policy.h.
     #
     # This is a BANK: --voice selects an entry by name, so the runtime gate never
     # sees a file it can inspect and has to read the answer out of this bundle.
@@ -347,14 +347,14 @@ def main():
     # absent per-voice key mean "preset" instead of "baked before the stamp
     # existed" — without it the gate falls back to the producer architecture and
     # treats every entry as a clone.
-    writer.add_bool("crispasr.voice.bank_stamped", True)
+    writer.add_bool("stelnettts.voice.bank_stamped", True)
     # Every entry here is baked from a WAV, so every entry is a clone. Stamped
     # per voice anyway: a later bundle may legitimately mix a synthetic preset
     # in, and a bank-wide flag would have to gate it or free the clones.
     for name in names:
-        writer.add_bool(f"crispasr.voice.{name}.cloned_from_recording", True)
+        writer.add_bool(f"stelnettts.voice.{name}.cloned_from_recording", True)
     if args.consent_attestation:
-        writer.add_string("crispasr.voice.consent_attestation", args.consent_attestation)
+        writer.add_string("stelnettts.voice.consent_attestation", args.consent_attestation)
 
     for v in manifest:
         name = v["name"]

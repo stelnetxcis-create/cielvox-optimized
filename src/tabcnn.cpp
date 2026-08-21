@@ -190,7 +190,7 @@ struct tabcnn_context* tabcnn_init(const char* model_path, int n_threads) {
         return nullptr;
     auto* ctx = new tabcnn_context();
     ctx->n_threads = n_threads > 0 ? n_threads : 4;
-    ctx->debug = getenv("CRISPASR_TABCNN_DEBUG") != nullptr;
+    ctx->debug = getenv("STELNETTTS_TABCNN_DEBUG") != nullptr;
 
     gguf_context* gctx = core_gguf::open_metadata(model_path);
     if (!gctx) {
@@ -218,8 +218,8 @@ struct tabcnn_context* tabcnn_init(const char* model_path, int n_threads) {
     }
     core_gguf::free_metadata(gctx);
 
-    if (getenv("CRISPASR_TABCNN_NO_GPU") == nullptr)
-        ctx->backend = crispasr_init_gpu_backend();
+    if (getenv("STELNETTTS_TABCNN_NO_GPU") == nullptr)
+        ctx->backend = stelnettts_init_gpu_backend();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     if (!ctx->backend) {
@@ -286,7 +286,7 @@ void tabcnn_free(struct tabcnn_context* ctx) {
 namespace {
 
 // Whole pipeline up to the softmax. `probs` receives [T][strings][classes].
-// Optionally captures one named intermediate for crispasr-diff.
+// Optionally captures one named intermediate for stelnettts-diff.
 int run_model(tabcnn_context* ctx, const float* pcm, int n_samples, int sample_rate, std::vector<float>& probs,
               const char* want_stage, std::vector<float>* stage_out) {
     if (!ctx || !pcm || n_samples <= 0 || sample_rate <= 0)
@@ -459,7 +459,7 @@ int tabcnn_extract_stage(struct tabcnn_context* ctx, const float* pcm, int n_sam
 }
 
 // ---------------------------------------------------------------------------
-// crispasr-diff entry point
+// stelnettts-diff entry point
 // ---------------------------------------------------------------------------
 //
 // Runs from the WAVEFORM stored in the reference archive, not from replayed

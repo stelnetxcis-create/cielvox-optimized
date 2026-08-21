@@ -1,5 +1,5 @@
 #!/bin/bash
-# CrispASR WASM Build Script — all backends for browser use.
+# StelnetTTS WASM Build Script — all backends for browser use.
 #
 # Usage:
 #   ./build-wasm.sh                    # default build
@@ -38,8 +38,8 @@ while [[ $# -gt 0 ]]; do
         --simd)        SIMD=ON; shift ;;
         --no-simd)     SIMD=OFF; shift ;;
         --single-file) SINGLE_FILE=ON; shift ;;
-        --single-thread) CMAKE_EXTRA+=("-DCRISPASR_WASM_SINGLE_THREAD=ON"); shift ;;
-        --proxy-to-pthread) CMAKE_EXTRA+=("-DCRISPASR_WASM_PROXY_TO_PTHREAD=ON"); shift ;;
+        --single-thread) CMAKE_EXTRA+=("-DSTELNETTTS_WASM_SINGLE_THREAD=ON"); shift ;;
+        --proxy-to-pthread) CMAKE_EXTRA+=("-DSTELNETTTS_WASM_PROXY_TO_PTHREAD=ON"); shift ;;
         --c2pa)        C2PA=ON; shift ;;   # opt-in: bundle C2PA signing (+~10 MB, needs wasm-EH)
         --)            shift; CMAKE_EXTRA+=("$@"); break ;;
         *)             CMAKE_EXTRA+=("$1"); shift ;;
@@ -54,7 +54,7 @@ if ! command -v emcc &>/dev/null; then
 fi
 
 echo "============================================"
-echo "  CrispASR - WASM Build (all backends)"
+echo "  StelnetTTS - WASM Build (all backends)"
 echo "============================================"
 
 # Check ggml submodule
@@ -84,14 +84,14 @@ fi
 # which is provided ONLY by `-fwasm-exceptions` (native wasm EH) — NOT
 # `-fexceptions` (JS-based EH) — so the whole module must use -fwasm-exceptions
 # or the link fails `undefined symbol: __cpp_exception`. We also switch longjmp
-# to the wasm-EH-compatible impl (-sSUPPORT_LONGJMP=wasm) since CrispASR uses
+# to the wasm-EH-compatible impl (-sSUPPORT_LONGJMP=wasm) since StelnetTTS uses
 # setjmp/longjmp. Needs a browser with the wasm-EH proposal (all modern, 2023+).
 # Without --c2pa the module is unchanged and Module.c2paSign() returns empty.
 C2PA_FETCH_FLAG=""
 C2PA_WASM_FLAGS=""
 C2PA_WASM_LINK_FLAGS=""
 if [ "$C2PA" = "ON" ]; then
-    C2PA_FETCH_FLAG="-DCRISPASR_C2PA_FETCH=ON"
+    C2PA_FETCH_FLAG="-DSTELNETTTS_C2PA_FETCH=ON"
     C2PA_WASM_FLAGS="-fwasm-exceptions"
     C2PA_WASM_LINK_FLAGS="-fwasm-exceptions -sSUPPORT_LONGJMP=wasm"
     echo "[INFO] C2PA signing enabled in wasm (+~10 MB, needs wasm-EH browser)"
@@ -114,16 +114,16 @@ emcmake cmake -S . -B "$BUILD_DIR" $GENERATOR \
     -DGGML_BLAS=OFF \
     -DGGML_LLAMAFILE=OFF \
     -DGGML_OPENMP=OFF \
-    -DCRISPASR_BUILD_TESTS=OFF \
-    -DCRISPASR_BUILD_EXAMPLES=OFF \
-    -DCRISPASR_BUILD_SERVER=OFF \
-    -DCRISPASR_SDL2=OFF \
-    -DCRISPASR_CURL=OFF \
-    -DCRISPASR_OPUS_FETCH=ON \
+    -DSTELNETTTS_BUILD_TESTS=OFF \
+    -DSTELNETTTS_BUILD_EXAMPLES=OFF \
+    -DSTELNETTTS_BUILD_SERVER=OFF \
+    -DSTELNETTTS_SDL2=OFF \
+    -DSTELNETTTS_CURL=OFF \
+    -DSTELNETTTS_OPUS_FETCH=ON \
     -DOPUS_DISABLE_INTRINSICS=ON \
     $C2PA_FETCH_FLAG \
-    -DCRISPASR_WASM_SINGLE_FILE="$SINGLE_FILE" \
-    -DCRISPASR_WASM=ON \
+    -DSTELNETTTS_WASM_SINGLE_FILE="$SINGLE_FILE" \
+    -DSTELNETTTS_WASM=ON \
     -DCMAKE_C_FLAGS="$SIMD_FLAGS $C2PA_WASM_FLAGS" \
     -DCMAKE_CXX_FLAGS="$SIMD_FLAGS $C2PA_WASM_FLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$C2PA_WASM_LINK_FLAGS" \

@@ -48,7 +48,7 @@ struct orpheus_context_params orpheus_context_default_params(void);
 // `models/convert-orpheus-to-gguf.py`).
 struct orpheus_context* orpheus_init_from_file(const char* path_model, struct orpheus_context_params params);
 
-// Point the runtime at the SNAC codec GGUF (cstr/snac-24khz-GGUF — to
+// Point the runtime at the SNAC codec GGUF (Xenna/snac-24khz-GGUF — to
 // be published; for now the SNAC codec runs from the canonical
 // hubertsiuzdak/snac_24khz cache directory at the Python-reference
 // rate). Required before the first orpheus_synthesize call. Returns 0

@@ -24,7 +24,7 @@ all original tensors plus the new ones, and atomically renames into place.
 Usage:
     python tools/extend_chatterbox_ref_si_stages.py \\
         --ref /Volumes/backups/ai/chatterbox-ref.gguf \\
-        --s3gen /Volumes/backups/ai/crispasr/chatterbox-s3gen-q8_0.gguf
+        --s3gen /Volumes/backups/ai/stelnettts/chatterbox-s3gen-q8_0.gguf
 
 Pass --dry-run to print what would be written without modifying anything.
 """

@@ -27,7 +27,7 @@ base_model: mistralai/Voxtral-4B-TTS-2603
 
 # Voxtral-4B-TTS-2603 — GGUF
 
-GGUF / ggml conversions of [`mistralai/Voxtral-4B-TTS-2603`](https://huggingface.co/mistralai/Voxtral-4B-TTS-2603) for use with the `voxtral-tts` backend of **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)** — one C++ binary, no Python.
+GGUF / ggml conversions of [`mistralai/Voxtral-4B-TTS-2603`](https://huggingface.co/mistralai/Voxtral-4B-TTS-2603) for use with the `voxtral-tts` backend of **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)** — one C++ binary, no Python.
 
 Text-to-speech across 9 languages (en, fr, de, es, it, pt, nl, ar, hi) with 20 preset voices, 24 kHz output.
 
@@ -53,7 +53,7 @@ The semantic VQ codebook (`codec.semantic_cb.weight`) and preset voice embedding
 
 ```bash
 # auto-downloads the Q4_K on first run
-crispasr --backend voxtral-tts -m auto --auto-download \
+stelnettts --backend voxtral-tts -m auto --auto-download \
     --tts "Bonjour le monde." --voice fr_female --tts-output out.wav
 ```
 

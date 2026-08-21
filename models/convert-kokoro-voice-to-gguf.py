@@ -9,7 +9,7 @@ ships ``max_phon = 510``). The runtime indexes it by phoneme length L:
 
 The HF ``hexgrad/Kokoro-82M`` repo bundles voice files alongside the
 model; we treat them as a separate artefact so a single base model can
-serve many voices (matches how vibevoice and qwen3-tts handle voice
+serve many voices (matches how vibevoice and cielvox2-tts handle voice
 caches).
 
 Usage:

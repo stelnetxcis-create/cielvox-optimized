@@ -1,7 +1,7 @@
 // test-core-mel-parallel.cpp — core/mel.cpp §176f parallel-STFT correctness.
 //
 // The OpenMP-parallel STFT frame loop (Params::allow_parallel_stft /
-// CRISPASR_MEL_PARALLEL) must be BIT-IDENTICAL to the serial path: each frame's
+// STELNETTTS_MEL_PARALLEL) must be BIT-IDENTICAL to the serial path: each frame's
 // FFT writes only its own row of the power spectrum and uses thread-private
 // scratch, so threading must not perturb a single bit. This is the regression
 // gate for that invariant — it runs the exact same input through compute() with

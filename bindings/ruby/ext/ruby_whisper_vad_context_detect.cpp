@@ -1,5 +1,5 @@
 #include "ruby_whisper.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 #include <string>
 #include <vector>
 

@@ -1,7 +1,7 @@
 // Unit + live tests for core/snac.h — SNAC 24kHz decoder.
 //
 // Unit tests verify API surface compiles and links (no model needed).
-// Live tests require CRISPASR_MODEL_SNAC pointing to snac-24khz.gguf.
+// Live tests require STELNETTTS_MODEL_SNAC pointing to snac-24khz.gguf.
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -35,13 +35,13 @@ TEST_CASE("snac: free accepts null", "[unit][snac]") {
 }
 
 // ---------------------------------------------------------------------------
-// Live tests — need CRISPASR_MODEL_SNAC
+// Live tests — need STELNETTTS_MODEL_SNAC
 // ---------------------------------------------------------------------------
 
 TEST_CASE("snac: load + query metadata", "[live][snac]") {
-    const char* path = std::getenv("CRISPASR_MODEL_SNAC");
+    const char* path = std::getenv("STELNETTTS_MODEL_SNAC");
     if (!path || !*path)
-        SKIP("CRISPASR_MODEL_SNAC not set");
+        SKIP("STELNETTTS_MODEL_SNAC not set");
 
     snac_decoder_params p = snac_decoder_default_params();
     p.verbosity = 0;
@@ -62,9 +62,9 @@ TEST_CASE("snac: load + query metadata", "[live][snac]") {
 }
 
 TEST_CASE("snac: decode zeros produces non-null output", "[live][snac]") {
-    const char* path = std::getenv("CRISPASR_MODEL_SNAC");
+    const char* path = std::getenv("STELNETTTS_MODEL_SNAC");
     if (!path || !*path)
-        SKIP("CRISPASR_MODEL_SNAC not set");
+        SKIP("STELNETTTS_MODEL_SNAC not set");
 
     snac_decoder_params p = snac_decoder_default_params();
     p.verbosity = 0;
@@ -96,9 +96,9 @@ TEST_CASE("snac: decode zeros produces non-null output", "[live][snac]") {
 }
 
 TEST_CASE("snac: decode rejects mismatched lengths", "[live][snac]") {
-    const char* path = std::getenv("CRISPASR_MODEL_SNAC");
+    const char* path = std::getenv("STELNETTTS_MODEL_SNAC");
     if (!path || !*path)
-        SKIP("CRISPASR_MODEL_SNAC not set");
+        SKIP("STELNETTTS_MODEL_SNAC not set");
 
     snac_decoder_params p = snac_decoder_default_params();
     p.verbosity = 0;

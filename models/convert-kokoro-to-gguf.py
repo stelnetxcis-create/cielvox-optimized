@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert hexgrad/Kokoro-82M (and yl4579/StyleTTS2-LJSpeech, which shares
-the same module architecture) to GGUF F16 for the CrispASR ``kokoro``
+the same module architecture) to GGUF F16 for the StelnetTTS ``kokoro``
 TTS backend.
 
 Architecture — confirmed against the public config.json/config.yml

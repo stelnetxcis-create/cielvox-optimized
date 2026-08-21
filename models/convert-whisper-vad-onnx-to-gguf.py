@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert TransWithAI/Whisper-Vad-EncDec-ASMR-onnx to GGUF for CrispASR.
+"""Convert TransWithAI/Whisper-Vad-EncDec-ASMR-onnx to GGUF for StelnetTTS.
 
 Architecture: whisper-base encoder (6L, 512d, 8h, fine-tuned) +
 2-layer TransformerDecoder (cross-attn to encoder) + frame_classifier(512->1).

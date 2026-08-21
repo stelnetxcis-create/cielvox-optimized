@@ -1,4 +1,4 @@
-"""F5-TTS reference dump backend for crispasr-diff.
+"""F5-TTS reference dump backend for stelnettts-diff.
 
 Captures per-stage activations from the SWivid/F5-TTS DiT-based
 flow-matching TTS model, including the Vocos mel-24khz vocoder,

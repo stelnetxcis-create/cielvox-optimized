@@ -41,7 +41,7 @@ void ark_asr_set_ask(struct ark_asr_context* ctx, const char* instruction);
 
 void ark_asr_free(struct ark_asr_context* ctx);
 
-// ---- diff-harness stage extraction (CRISPASR_ARKASR_* debug paths) ----
+// ---- diff-harness stage extraction (STELNETTTS_ARKASR_* debug paths) ----
 // Compute the mel spectrogram. Returns malloc'd (n_mels, T_mel) row-major.
 float* ark_asr_compute_mel(struct ark_asr_context* ctx, const float* pcm, int n_samples, int* out_n_mels,
                            int* out_T_mel);

@@ -188,7 +188,7 @@ rvc_svc_context* rvc_svc_init_from_file(const char* model_path, rvc_svc_params p
         return nullptr;
     }
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
 

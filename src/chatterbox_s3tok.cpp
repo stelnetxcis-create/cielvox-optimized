@@ -11,7 +11,7 @@
 
 #include "core/fft.h"
 #include "core/mel.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml.h"
@@ -38,7 +38,7 @@ namespace chatterbox_s3tok {
 static bool cb_s3tok_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CB_S3TOK_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CB_S3TOK_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;

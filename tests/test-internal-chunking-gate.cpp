@@ -2,16 +2,16 @@
 // gate in the long-audio fallback (issue #89 follow-up).
 //
 // Backends with CAP_INTERNAL_CHUNKING (parakeet, canary, fastconformer-ctc)
-// handle their own long-audio chunking internally — the crispasr_run.cpp
+// handle their own long-audio chunking internally — the stelnettts_run.cpp
 // auto-chunk fallback must NOT fire for them. These tests pin that invariant.
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_long_audio_fallback.h"
+#include "stelnettts_long_audio_fallback.h"
 
-using crispasr_long_audio::CAP_INTERNAL_CHUNKING_FLAG;
-using crispasr_long_audio::CAP_UNBOUNDED_INPUT_FLAG;
-using crispasr_long_audio::should_auto_chunk_long;
+using stelnettts_long_audio::CAP_INTERNAL_CHUNKING_FLAG;
+using stelnettts_long_audio::CAP_UNBOUNDED_INPUT_FLAG;
+using stelnettts_long_audio::should_auto_chunk_long;
 
 namespace {
 constexpr int kSR = 16000;
@@ -53,7 +53,7 @@ TEST_CASE("CAP_INTERNAL_CHUNKING: VAD bypasses regardless", "[unit][internal-chu
     REQUIRE_FALSE(should_auto_chunk_long(0, true, kUnbounded, n_samples, kSR, kThreshold));
 }
 
-TEST_CASE("CAP_INTERNAL_CHUNKING flag value matches crispasr_backend.h", "[unit][internal-chunking]") {
+TEST_CASE("CAP_INTERNAL_CHUNKING flag value matches stelnettts_backend.h", "[unit][internal-chunking]") {
     // The flag is duplicated in the header for dependency-light unit testing.
     // This test pins the value so a refactor can't silently change one copy.
     REQUIRE(CAP_INTERNAL_CHUNKING_FLAG == (1u << 20));

@@ -93,10 +93,10 @@ std::vector<float> kv_f32_array(gguf_context* gctx, const char* key);
 
 // CROSS-REPO TENSOR-MAP CONTRACT (read before changing the map type!)
 // ------------------------------------------------------------------
-// `core/gguf_loader.{h,cpp}` exists in BOTH CrispASR and CrispEmbed. When
-// CrispEmbed builds, it compiles CrispASR's `crisp_audio`/`crisp_lid` sources
-// against CrispEmbed's copy of this header (they link `crispembed-core`).
-// CrispASR standalone prefers `std::map`; CrispEmbed prefers
+// `core/gguf_loader.{h,cpp}` exists in BOTH StelnetTTS and StelnetEmbed. When
+// StelnetEmbed builds, it compiles StelnetTTS's `crisp_audio`/`crisp_lid` sources
+// against StelnetEmbed's copy of this header (they link `crispembed-core`).
+// StelnetTTS standalone prefers `std::map`; StelnetEmbed prefers
 // `std::unordered_map` (faster). A consumer doing
 // `ctx.tensors = std::move(wl.tensors)` needs its field to be the SAME type as
 // `WeightLoad::tensors` — but that type differs per repo. Hard-coding either
@@ -175,7 +175,7 @@ bool load_weights_split(const char* path, ggml_backend_t gpu_backend, ggml_backe
 // PLAN #69a — generic predicate for the "<prefix><N>." tensor naming
 // used by every LLM-decode backend in src/. Each backend has its own
 // prefix:
-//   "blk."          (voxtral, voxtral4b, qwen3_asr, granite_speech, gemma4_e2b, mimo_asr)
+//   "blk."          (voxtral, voxtral4b, cielvox2_asr, granite_speech, gemma4_e2b, mimo_asr)
 //   "llm.blk."      (glm_asr)
 //   "talker.blk."   (orpheus)
 //   "dec."          (omniasr)
@@ -233,7 +233,7 @@ void free_weights(WeightLoad& wl);
 // accessed in random order (e.g., the per-layer KV revisit pattern of
 // decode steps), and that readahead is therefore wasted IO. No-op if
 // the buffer wasn't allocated through one of our mmap paths (e.g.,
-// when `CRISPASR_GGUF_MMAP=0` opts out of the default mmap loader).
+// when `STELNETTTS_GGUF_MMAP=0` opts out of the default mmap loader).
 // Safe to call multiple times.
 //
 // Recommended use: after prefill completes, before entering the decode

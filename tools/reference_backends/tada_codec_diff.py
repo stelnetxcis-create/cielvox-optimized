@@ -6,9 +6,9 @@ comparison against C++'s dump_* tensors printed to stderr.
 
 Usage
 -----
-# 1. Build crispasr with TADA enabled and run to dump features:
+# 1. Build stelnettts with TADA enabled and run to dump features:
 #    TADA_DUMP_FEATURES=/mnt/volume1/tmp-overflow/tada_features.bin \
-#      ./build/crispasr-cli --model tada-tts-3b-ml-q4_k.gguf \
+#      ./build/stelnettts-cli --model tada-tts-3b-ml-q4_k.gguf \
 #        --model-codec tada-codec-f16.gguf --synth "Please call Stella."
 #
 # 2. Run this script on the VPS:

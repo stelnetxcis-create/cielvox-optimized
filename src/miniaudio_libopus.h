@@ -3,8 +3,8 @@ Vendored from mackron/miniaudio extras/decoders/libopus/miniaudio_libopus.{h,c}
 (miniaudio is dual-licensed Public Domain / MIT-0). Only change vs upstream: the
 include path points at the sibling miniaudio.h in this directory. Provides a
 miniaudio custom decoding backend for .opus (Ogg/Opus) via libopus + opusfile
-(BSD-3-Clause). Compiled into crispasr_audio.cpp only when CRISPASR_HAVE_OPUS is
-defined (CMake CRISPASR_OPUS). See src/crispasr_audio.cpp + src/CMakeLists.txt.
+(BSD-3-Clause). Compiled into stelnettts_audio.cpp only when STELNETTTS_HAVE_OPUS is
+defined (CMake STELNETTTS_OPUS). See src/stelnettts_audio.cpp + src/CMakeLists.txt.
 
 This implements a data source that decodes Opus streams via libopus + libopusfile
 

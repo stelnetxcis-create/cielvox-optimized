@@ -9,7 +9,7 @@ if (WIN32)
 endif()
 
 
-if (CRISPASR_ALL_WARNINGS)
+if (STELNETTTS_ALL_WARNINGS)
     if (NOT MSVC)
         list(APPEND WARNING_FLAGS -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function)
         list(APPEND C_FLAGS       -Wshadow -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes
@@ -28,24 +28,24 @@ if (CRISPASR_ALL_WARNINGS)
     endif()
 endif()
 
-if (CRISPASR_COREML)
+if (STELNETTTS_COREML)
     find_library(FOUNDATION_FRAMEWORK Foundation)
     find_library(COREML_FRAMEWORK CoreML)
 
     if (COREML_FRAMEWORK)
         message(STATUS "CoreML framework found")
 
-        set(CRISPASR_EXTRA_FLAGS ${CRISPASR_EXTRA_FLAGS} -DCRISPASR_USE_COREML)
+        set(STELNETTTS_EXTRA_FLAGS ${STELNETTTS_EXTRA_FLAGS} -DSTELNETTTS_USE_COREML)
     else()
         message(FATAL_ERROR "CoreML framework not found")
     endif()
 
-    if (CRISPASR_COREML_ALLOW_FALLBACK)
-        set(CRISPASR_EXTRA_FLAGS ${CRISPASR_EXTRA_FLAGS} -DCRISPASR_COREML_ALLOW_FALLBACK)
+    if (STELNETTTS_COREML_ALLOW_FALLBACK)
+        set(STELNETTTS_EXTRA_FLAGS ${STELNETTTS_EXTRA_FLAGS} -DSTELNETTTS_COREML_ALLOW_FALLBACK)
     endif()
 endif()
 
-if (CRISPASR_OPENVINO)
+if (STELNETTTS_OPENVINO)
     find_package(OpenVINO REQUIRED COMPONENTS Runtime)
 endif()
 
@@ -53,10 +53,10 @@ endif()
 # libraries
 #
 
-# crispasr.coreml
+# stelnettts.coreml
 
-if (CRISPASR_COREML)
-    set(TARGET crispasr.coreml)
+if (STELNETTTS_COREML)
+    set(TARGET stelnettts.coreml)
 
     add_library(${TARGET}
         coreml/whisper-compat.m
@@ -83,8 +83,8 @@ if (CRISPASR_COREML)
     install(TARGETS ${TARGET} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
-if (CRISPASR_OPENVINO)
-    set(TARGET crispasr.openvino)
+if (STELNETTTS_OPENVINO)
+    set(TARGET stelnettts.openvino)
 
     add_library(${TARGET} OBJECT
         openvino/whisper-openvino-encoder.h
@@ -96,89 +96,89 @@ if (CRISPASR_OPENVINO)
         )
 
     set_property(TARGET ${TARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)
-    set(CRISPASR_EXTRA_FLAGS ${CRISPASR_EXTRA_FLAGS} -DCRISPASR_USE_OPENVINO)
+    set(STELNETTTS_EXTRA_FLAGS ${STELNETTTS_EXTRA_FLAGS} -DSTELNETTTS_USE_OPENVINO)
 
     target_link_libraries(${TARGET} PRIVATE ggml openvino::runtime)
     set_target_properties(${TARGET} PROPERTIES FOLDER "libs")
 endif()
 
-# crispasr-lib (formerly whisper)
+# stelnettts-lib (formerly whisper)
 
-add_library(crispasr-lib
-            ../include/crispasr.h
-            crispasr-arch.h
-            crispasr.cpp
-            # C-ABI shared by every CrispASR consumer (CLI, Dart, Python,
-            # Rust). Declared extern "C" with `crispasr_*` prefixes so they
-            # don't collide with upstream crispasr.h identifiers.
-            crispasr_c_api.cpp
+add_library(stelnettts-lib
+            ../include/stelnettts.h
+            stelnettts-arch.h
+            stelnettts.cpp
+            # C-ABI shared by every StelnetTTS consumer (CLI, Dart, Python,
+            # Rust). Declared extern "C" with `stelnettts_*` prefixes so they
+            # don't collide with upstream stelnettts.h identifiers.
+            stelnettts_c_api.cpp
             # Audio file decoder (WAV / MP3 / FLAC via miniaudio).
-            # Lets language wrappers feed `crispasr_session_transcribe`
+            # Lets language wrappers feed `stelnettts_session_transcribe`
             # any audio format without bundling an external ffmpeg.
-            crispasr_audio.cpp
+            stelnettts_audio.cpp
             # Library-level mic capture (PLAN #62d) — wraps miniaudio
             # ma_device for cross-platform live PCM. Symbols share the
-            # MINIAUDIO_IMPLEMENTATION already linked from crispasr_audio.cpp.
-            crispasr_mic.cpp
+            # MINIAUDIO_IMPLEMENTATION already linked from stelnettts_audio.cpp.
+            stelnettts_mic.cpp
             # Local speaker playback (issue #173) — miniaudio ma_device
-            # playback mode, mirrors crispasr_mic.cpp. Used by the CLI's
+            # playback mode, mirrors stelnettts_mic.cpp. Used by the CLI's
             # --tts-play flag; server mode routes audio via HTTP.
-            crispasr_speaker.cpp
+            stelnettts_speaker.cpp
             # CPU instruction-set self-check (#261). Compares the compile-time
             # ISA baseline (AVX2/FMA/F16C ...) against runtime cpuid so callers
             # can fail fast / soft-degrade instead of SIGILL-crashing on a CPU
             # that lacks an instruction the ggml kernels emit.
-            crispasr_cpu_isa.cpp
-            # Silero-VAD-driven segmentation + crispasr.cpp-style stitching.
-            # Consumed by the CLI and by the C-ABI `crispasr_session_transcribe_vad`
+            stelnettts_cpu_isa.cpp
+            # Silero-VAD-driven segmentation + stelnettts.cpp-style stitching.
+            # Consumed by the CLI and by the C-ABI `stelnettts_session_transcribe_vad`
             # wrapper so every language binding benefits without re-implementing.
-            crispasr_vad.cpp
+            stelnettts_vad.cpp
             # Shared diarization methods (energy, xcorr, vad-turns, pyannote).
-            # Consumed by the CLI and by the C-ABI `crispasr_diarize_segments`.
+            # Consumed by the CLI and by the C-ABI `stelnettts_diarize_segments`.
             # The sherpa-ONNX subprocess method stays in the CLI shim.
-            crispasr_diarize.cpp
-            # Shared language identification (crispasr-tiny + native silero).
+            stelnettts_diarize.cpp
+            # Shared language identification (stelnettts-tiny + native silero).
             # Consumed by the CLI and by the C-ABI
-            # `crispasr_detect_language_pcm`. The sherpa-ONNX subprocess
+            # `stelnettts_detect_language_pcm`. The sherpa-ONNX subprocess
             # method stays in the CLI shim.
-            crispasr_lid.cpp
-            # Shared CTC / qwen3-fa forced alignment. Consumed by the CLI
-            # and by the C-ABI `crispasr_align_words_abi`. Both canary-ctc
-            # and qwen3-forced-aligner paths route through one call.
-            crispasr_aligner.cpp
+            stelnettts_lid.cpp
+            # Shared CTC / cielvox2-fa forced alignment. Consumed by the CLI
+            # and by the C-ABI `stelnettts_align_words_abi`. Both canary-ctc
+            # and cielvox2-forced-aligner paths route through one call.
+            stelnettts_aligner.cpp
             # Built-in G2P phonemizers (EN/DE/FR/ES) live in the kokoro
             # target (phonemizer.cpp) — only kokoro calls them.
-            # HF download + filesystem cache (`crispasr_cache.cpp`) lives in
-            # crispasr-core, NOT here — kokoro's phonemizer.cpp calls
-            # crispasr_cache::ensure_cached_file (#316 CMUdict auto-download) and
-            # only links crispasr-core, so a static build (BUILD_SHARED_LIBS=OFF)
-            # left crispasr-diff's link unresolved when it lived here (#316 AUR).
+            # HF download + filesystem cache (`stelnettts_cache.cpp`) lives in
+            # stelnettts-core, NOT here — kokoro's phonemizer.cpp calls
+            # stelnettts_cache::ensure_cached_file (#316 CMUdict auto-download) and
+            # only links stelnettts-core, so a static build (BUILD_SHARED_LIBS=OFF)
+            # left stelnettts-diff's link unresolved when it lived here (#316 AUR).
             # Known-model registry lookup (backend → canonical GGUF URL).
             # CLI keeps the TTY prompting shim; the library does the
             # non-interactive resolve.
-            crispasr_model_registry.cpp
+            stelnettts_model_registry.cpp
             # Pluggable speaker-embedding interface + concrete adapters
             # (TitaNet, IndexTTS-ECAPA) and agglomerative cosine
             # clustering, shared between the CLI's --diarize-embedder
-            # path and the C ABI's crispasr_speaker_embedder_* surface
+            # path and the C ABI's stelnettts_speaker_embedder_* surface
             # (#107 P6). The adapters depend on the lib-local titanet
             # + indextts_voc runtimes also compiled in here.
-            crispasr_speaker_embedder.cpp
-            crispasr_speaker_cluster.cpp
+            stelnettts_speaker_embedder.cpp
+            stelnettts_speaker_cluster.cpp
             # Tiron (#295): promote window-local <|speakerN|> indices to
             # meeting-level ids by clustering group voiceprints (reuses the
             # embedder + agglomerative clusterer above).
             tiron_link.cpp
             # Text-LLM chat C ABI (docs/prompts/chat-abi.md). Calls into
-            # the private crispasr-llama-core static lib; the public
-            # surface lives in include/crispasr_chat.h and exposes only
+            # the private stelnettts-llama-core static lib; the public
+            # surface lives in include/stelnettts_chat.h and exposes only
             # POD structs + opaque handles — no llama.h types leak out.
             chat.cpp
-            ../include/crispasr_chat.h
+            ../include/stelnettts_chat.h
             # GBNF grammar parser — moved out of examples/ so the library
             # can expose grammar-constrained sampling via
-            # `crispasr_session_set_grammar_text`. The CLI examples now
-            # depend on libcrispasr for grammar parsing too instead of
+            # `stelnettts_session_set_grammar_text`. The CLI examples now
+            # depend on libstelnettts for grammar parsing too instead of
             # building their own copy.
             grammar-parser.h
             grammar-parser.cpp
@@ -187,9 +187,9 @@ add_library(crispasr-lib
 # RNNoise uses C99 VLAs and M_PI — both unsupported by MSVC out of the box.
 # Exclude the whole feature on Windows rather than patching vendored sources.
 if (NOT MSVC)
-    target_sources(crispasr-lib PRIVATE
-        crispasr_enhance.h
-        crispasr_enhance.cpp
+    target_sources(stelnettts-lib PRIVATE
+        stelnettts_enhance.h
+        stelnettts_enhance.cpp
         rnnoise/rnnoise.h
         rnnoise/denoise.c
         rnnoise/rnn.c
@@ -198,7 +198,7 @@ if (NOT MSVC)
         rnnoise/celt_lpc.c
         rnnoise/kiss_fft.c
     )
-    target_compile_definitions(crispasr-lib PRIVATE CRISPASR_RNNOISE=1)
+    target_compile_definitions(stelnettts-lib PRIVATE STELNETTTS_RNNOISE=1)
 endif()
 
 # RNNoise's C sources predate the strict implicit-decl errors that
@@ -212,84 +212,84 @@ if (NOT MSVC)
             COMPILE_FLAGS "-Wno-implicit-function-declaration -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-variable"
     )
 endif()
-add_library(whisper ALIAS crispasr-lib)
+add_library(whisper ALIAS stelnettts-lib)
 
 # miniaudio.h on Apple includes <AVFoundation/AVFoundation.h> which
 # contains ObjC syntax (@class, @protocol). When compiling as pure
 # C++ this fails on visionOS/tvOS/iOS xcframework builds. Setting the
 # source language to OBJCXX lets clang accept the ObjC headers.
 if(APPLE)
-    set_source_files_properties(crispasr_audio.cpp crispasr_mic.cpp crispasr_speaker.cpp
+    set_source_files_properties(stelnettts_audio.cpp stelnettts_mic.cpp stelnettts_speaker.cpp
         PROPERTIES LANGUAGE OBJCXX)
 endif()
 
 # Downstream bundlers can rebrand the shipped library file name (the C API
-# symbols are unchanged). Defaults to the historical "crispasr".
-set(CRISPASR_LIB_OUTPUT_NAME "crispasr" CACHE STRING "Base file name for the built library")
-set_target_properties(crispasr-lib PROPERTIES
+# symbols are unchanged). Defaults to the historical "stelnettts".
+set(STELNETTTS_LIB_OUTPUT_NAME "stelnettts" CACHE STRING "Base file name for the built library")
+set_target_properties(stelnettts-lib PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${SOVERSION}
-    OUTPUT_NAME ${CRISPASR_LIB_OUTPUT_NAME}
+    OUTPUT_NAME ${STELNETTTS_LIB_OUTPUT_NAME}
 )
 
-target_include_directories(crispasr-lib PUBLIC . ../include)
+target_include_directories(stelnettts-lib PUBLIC . ../include)
 
 # C2PA (Content Credentials) signing in the core C API — so wasm / bindings /
 # server get provenance too, not just the CLI. No-op when C2PA isn't available.
-crispasr_enable_c2pa(crispasr-lib)
+stelnettts_enable_c2pa(stelnettts-lib)
 
 # Native pure-C++ C2PA signer (uECC ES256 + hand-built CBOR/JUMBF/COSE). Small,
 # permissively licensed (BSD-2 micro-ecc), zero external deps — always compiled
 # in so WAV provenance works on EVERY platform (desktop/mobile/wasm) without the
-# c2pa-rs Rust lib. Built as its own C++17 static lib so the C++11 crispasr-lib
-# language contract is untouched. Set CRISPASR_NO_C2PA_NATIVE=ON to opt out.
-option(CRISPASR_NO_C2PA_NATIVE "Disable the built-in pure-C++ C2PA WAV signer" OFF)
-if (CRISPASR_NO_C2PA_NATIVE)
-    target_compile_definitions(crispasr-lib PUBLIC CRISPASR_NO_C2PA_NATIVE)
+# c2pa-rs Rust lib. Built as its own C++17 static lib so the C++11 stelnettts-lib
+# language contract is untouched. Set STELNETTTS_NO_C2PA_NATIVE=ON to opt out.
+option(STELNETTTS_NO_C2PA_NATIVE "Disable the built-in pure-C++ C2PA WAV signer" OFF)
+if (STELNETTTS_NO_C2PA_NATIVE)
+    target_compile_definitions(stelnettts-lib PUBLIC STELNETTTS_NO_C2PA_NATIVE)
 else()
     # Sources vendored from the standalone c2pa-audio repo (git submodule).
     set(_c2pa_audio_dir ${CMAKE_SOURCE_DIR}/third_party/c2pa-audio)
-    add_library(crispasr_c2pa_native STATIC
+    add_library(stelnettts_c2pa_native STATIC
         ${_c2pa_audio_dir}/src/c2pa_native.cpp
         ${_c2pa_audio_dir}/third_party/uecc/uECC.c)
-    # src/ is PUBLIC — the shim headers (src/core/crispasr_c2pa_native.h etc.)
-    # and crispasr_c2pa.h include the submodule's c2pa_native.h / sha256.h, so
-    # every consumer that links crispasr_c2pa_native needs it on the path. uecc
+    # src/ is PUBLIC — the shim headers (src/core/stelnettts_c2pa_native.h etc.)
+    # and stelnettts_c2pa.h include the submodule's c2pa_native.h / sha256.h, so
+    # every consumer that links stelnettts_c2pa_native needs it on the path. uecc
     # is PRIVATE (only the .cpp needs it).
-    target_include_directories(crispasr_c2pa_native PUBLIC ${_c2pa_audio_dir}/src)
-    target_include_directories(crispasr_c2pa_native PRIVATE ${_c2pa_audio_dir}/third_party/uecc)
-    # Vendored micro-ecc — silence its warnings so CRISPASR_FATAL_WARNINGS builds
+    target_include_directories(stelnettts_c2pa_native PUBLIC ${_c2pa_audio_dir}/src)
+    target_include_directories(stelnettts_c2pa_native PRIVATE ${_c2pa_audio_dir}/third_party/uecc)
+    # Vendored micro-ecc — silence its warnings so STELNETTTS_FATAL_WARNINGS builds
     # don't trip on third-party code we don't modify.
     if (NOT MSVC)
         set_source_files_properties(${_c2pa_audio_dir}/third_party/uecc/uECC.c
             PROPERTIES COMPILE_OPTIONS "-w")
     endif()
-    target_compile_features(crispasr_c2pa_native PRIVATE cxx_std_17)
-    set_target_properties(crispasr_c2pa_native PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_link_libraries(crispasr-lib PUBLIC crispasr_c2pa_native)
+    target_compile_features(stelnettts_c2pa_native PRIVATE cxx_std_17)
+    set_target_properties(stelnettts_c2pa_native PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(stelnettts-lib PUBLIC stelnettts_c2pa_native)
 endif()
 
-set(CRISPASR_LIB_CXX_STANDARD cxx_std_11)
+set(STELNETTTS_LIB_CXX_STANDARD cxx_std_11)
 if (GGML_CUDA AND CUDAToolkit_VERSION VERSION_GREATER_EQUAL "13.0")
-    set(CRISPASR_LIB_CXX_STANDARD cxx_std_17)
+    set(STELNETTTS_LIB_CXX_STANDARD cxx_std_17)
 endif()
-target_compile_features   (crispasr-lib PUBLIC ${CRISPASR_LIB_CXX_STANDARD}) # don't bump
+target_compile_features   (stelnettts-lib PUBLIC ${STELNETTTS_LIB_CXX_STANDARD}) # don't bump
 
-# ── Optional .opus (Ogg/Opus) decode in crispasr_audio.cpp ──────────────────
+# ── Optional .opus (Ogg/Opus) decode in stelnettts_audio.cpp ──────────────────
 # Adds Opus to the miniaudio decoder path (custom backend in
-# src/miniaudio_libopus.c) so crispasr_audio_load handles .opus alongside
+# src/miniaudio_libopus.c) so stelnettts_audio_load handles .opus alongside
 # WAV/MP3/FLAC/OGG — no ffmpeg. libopus + opusfile + libogg are BSD-3-Clause.
 # Primary: system libs via pkg-config (macOS/Linux). Fallback for platforms
 # without system libs (Windows/iOS/Android/WASM): build them statically via
-# FetchContent. Disable entirely with -DCRISPASR_OPUS=OFF; force the static
-# build (also used to validate the fallback locally) with -DCRISPASR_OPUS_FETCH=ON.
-option(CRISPASR_OPUS       "Decode .opus (Ogg/Opus) via libopus + opusfile" ON)
-option(CRISPASR_OPUS_FETCH "Skip system pkg-config; build opus/ogg/opusfile statically via FetchContent" OFF)
+# FetchContent. Disable entirely with -DSTELNETTTS_OPUS=OFF; force the static
+# build (also used to validate the fallback locally) with -DSTELNETTTS_OPUS_FETCH=ON.
+option(STELNETTTS_OPUS       "Decode .opus (Ogg/Opus) via libopus + opusfile" ON)
+option(STELNETTTS_OPUS_FETCH "Skip system pkg-config; build opus/ogg/opusfile statically via FetchContent" OFF)
 
-if (CRISPASR_OPUS)
-    set(_crispasr_opus_ok OFF)
+if (STELNETTTS_OPUS)
+    set(_stelnettts_opus_ok OFF)
 
-    if (NOT CRISPASR_OPUS_FETCH)
+    if (NOT STELNETTTS_OPUS_FETCH)
         find_package(PkgConfig QUIET)
         if (PkgConfig_FOUND)
             pkg_check_modules(OPUSFILE QUIET IMPORTED_TARGET opusfile)
@@ -301,23 +301,23 @@ if (CRISPASR_OPUS)
                 # `/usr/lib/libopusfile.so` passed to the linker.
                 # Using `PkgConfig::OPUSFILE` was also populating compiler flags. So we append
                 # those separately now.
-                target_compile_options(crispasr-lib PRIVATE ${OPUSFILE_CFLAGS})
+                target_compile_options(stelnettts-lib PRIVATE ${OPUSFILE_CFLAGS})
                 # The bare `-l` names above carry no search path, so on prefixes
                 # the linker doesn't scan by default (Homebrew /opt/homebrew/lib,
                 # MacPorts, custom roots) the link fails with "library 'opusfile'
                 # not found". Add pkg-config's library dirs so they resolve.
-                target_link_directories(crispasr-lib PRIVATE ${OPUSFILE_STATIC_LIBRARY_DIRS})
-                target_link_libraries(crispasr-lib PRIVATE ${OPUSFILE_STATIC_LIBRARIES})
-                set(_crispasr_opus_ok ON)
-                message(STATUS "CrispASR: .opus via system opusfile ${OPUSFILE_VERSION} (pkg-config)")
+                target_link_directories(stelnettts-lib PRIVATE ${OPUSFILE_STATIC_LIBRARY_DIRS})
+                target_link_libraries(stelnettts-lib PRIVATE ${OPUSFILE_STATIC_LIBRARIES})
+                set(_stelnettts_opus_ok ON)
+                message(STATUS "StelnetTTS: .opus via system opusfile ${OPUSFILE_VERSION} (pkg-config)")
             endif()
         endif()
     endif()
 
-    if (NOT _crispasr_opus_ok AND CRISPASR_OPUS_FETCH)
+    if (NOT _stelnettts_opus_ok AND STELNETTTS_OPUS_FETCH)
         # Static fallback — ONLY when explicitly requested. opusfile is left
         # unavailable (build proceeds without .opus) when it is neither found via
-        # pkg-config nor force-built via -DCRISPASR_OPUS_FETCH=ON, so a missing
+        # pkg-config nor force-built via -DSTELNETTTS_OPUS_FETCH=ON, so a missing
         # system opusfile never fails the build or triggers a surprise network
         # fetch. libogg + libopus ship upstream CMake; opusfile is autotools-only,
         # so compile its (HTTP-free) core sources directly.
@@ -326,9 +326,9 @@ if (CRISPASR_OPUS)
         # BUILD_TESTING that CTest relies on (include(CTest) runs later
         # and needs BUILD_TESTING to default to ON).
         if (DEFINED CACHE{BUILD_TESTING})
-            set(_crispasr_save_build_testing "$CACHE{BUILD_TESTING}")
+            set(_stelnettts_save_build_testing "$CACHE{BUILD_TESTING}")
         else()
-            set(_crispasr_save_build_testing "__UNSET__")
+            set(_stelnettts_save_build_testing "__UNSET__")
         endif()
         set(BUILD_TESTING       OFF CACHE BOOL "" FORCE)
         set(OPUS_BUILD_TESTING  OFF CACHE BOOL "" FORCE)
@@ -337,17 +337,17 @@ if (CRISPASR_OPUS)
         # FetchContent_MakeAvailable and honour the INHERITED BUILD_SHARED_LIBS,
         # so a parent configured with -DBUILD_SHARED_LIBS=ON (every official
         # shared-lib release job) silently built them as DYLIBS instead. That
-        # gave libcrispasr @rpath/libogg.0.dylib + @rpath/libopus.0.dylib
+        # gave libstelnettts @rpath/libogg.0.dylib + @rpath/libopus.0.dylib
         # dependencies which the release tarball never packaged, so the shipped
         # macOS bundle would not dlopen standalone (reported against v0.8.17).
         # It also made THIRD_PARTY_NOTICES.txt's "statically compiled into
-        # libcrispasr ... all official release binaries" untrue.
+        # libstelnettts ... all official release binaries" untrue.
         # opusfile is already an explicit STATIC add_library below; this makes
         # its two dependencies match.
-        set(_crispasr_save_shared "${BUILD_SHARED_LIBS}")
+        set(_stelnettts_save_shared "${BUILD_SHARED_LIBS}")
         set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
         # Forcing them STATIC (above) is only half the story: a static library
-        # defaults to NON-PIC, and crispasr-lib is frequently a shared object.
+        # defaults to NON-PIC, and stelnettts-lib is frequently a shared object.
         # Linking non-PIC objects into a .so is a hard ld error on Linux/ELF —
         #   relocation R_X86_64_PC32 against `silk_LBRR_flags_iCDF_ptr'
         #   can not be used when making a shared object; recompile with -fPIC
@@ -357,7 +357,7 @@ if (CRISPASR_OPUS)
         # opusfile below already sets POSITION_INDEPENDENT_CODE explicitly; ogg
         # and opus arrive via FetchContent_MakeAvailable and need the directory
         # default set before that call.
-        set(_crispasr_save_pic "${CMAKE_POSITION_INDEPENDENT_CODE}")
+        set(_stelnettts_save_pic "${CMAKE_POSITION_INDEPENDENT_CODE}")
         set(CMAKE_POSITION_INDEPENDENT_CODE ON)
         # Emscripten: Opus cmake auto-detects x86 and enables AVX2/FMA sources
         # that fail under wasm32 clang. Disable all intrinsics.
@@ -367,91 +367,91 @@ if (CRISPASR_OPUS)
         # libogg/opus ship pre-3.5 cmake_minimum_required, which CMake >= 4.0
         # rejects outright; loosen the floor just for these vendored subbuilds.
         set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
-        FetchContent_Declare(crispasr_ogg  GIT_REPOSITORY https://github.com/xiph/ogg.git  GIT_TAG v1.3.5  GIT_SHALLOW TRUE)
-        FetchContent_Declare(crispasr_opus GIT_REPOSITORY https://github.com/xiph/opus.git GIT_TAG v1.5.2 GIT_SHALLOW TRUE)
-        FetchContent_Declare(crispasr_opusfile GIT_REPOSITORY https://github.com/xiph/opusfile.git GIT_TAG v0.12 GIT_SHALLOW TRUE)
-        FetchContent_MakeAvailable(crispasr_ogg crispasr_opus)
-        FetchContent_GetProperties(crispasr_opusfile)
-        if (NOT crispasr_opusfile_POPULATED)
-            FetchContent_Populate(crispasr_opusfile)
+        FetchContent_Declare(stelnettts_ogg  GIT_REPOSITORY https://github.com/xiph/ogg.git  GIT_TAG v1.3.5  GIT_SHALLOW TRUE)
+        FetchContent_Declare(stelnettts_opus GIT_REPOSITORY https://github.com/xiph/opus.git GIT_TAG v1.5.2 GIT_SHALLOW TRUE)
+        FetchContent_Declare(stelnettts_opusfile GIT_REPOSITORY https://github.com/xiph/opusfile.git GIT_TAG v0.12 GIT_SHALLOW TRUE)
+        FetchContent_MakeAvailable(stelnettts_ogg stelnettts_opus)
+        FetchContent_GetProperties(stelnettts_opusfile)
+        if (NOT stelnettts_opusfile_POPULATED)
+            FetchContent_Populate(stelnettts_opusfile)
         endif()
-        add_library(crispasr_opusfile STATIC
-            ${crispasr_opusfile_SOURCE_DIR}/src/info.c
-            ${crispasr_opusfile_SOURCE_DIR}/src/internal.c
-            ${crispasr_opusfile_SOURCE_DIR}/src/opusfile.c
-            ${crispasr_opusfile_SOURCE_DIR}/src/stream.c)
-        target_include_directories(crispasr_opusfile PUBLIC ${crispasr_opusfile_SOURCE_DIR}/include)
-        target_compile_definitions(crispasr_opusfile PRIVATE OP_DISABLE_HTTP)      # no openssl
-        target_link_libraries(crispasr_opusfile PUBLIC Ogg::ogg Opus::opus)
-        set_target_properties(crispasr_opusfile PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        target_link_libraries(crispasr-lib PRIVATE crispasr_opusfile)
-        set(_crispasr_opus_ok ON)
-        message(STATUS "CrispASR: .opus via FetchContent static opus/ogg/opusfile")
+        add_library(stelnettts_opusfile STATIC
+            ${stelnettts_opusfile_SOURCE_DIR}/src/info.c
+            ${stelnettts_opusfile_SOURCE_DIR}/src/internal.c
+            ${stelnettts_opusfile_SOURCE_DIR}/src/opusfile.c
+            ${stelnettts_opusfile_SOURCE_DIR}/src/stream.c)
+        target_include_directories(stelnettts_opusfile PUBLIC ${stelnettts_opusfile_SOURCE_DIR}/include)
+        target_compile_definitions(stelnettts_opusfile PRIVATE OP_DISABLE_HTTP)      # no openssl
+        target_link_libraries(stelnettts_opusfile PUBLIC Ogg::ogg Opus::opus)
+        set_target_properties(stelnettts_opusfile PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_link_libraries(stelnettts-lib PRIVATE stelnettts_opusfile)
+        set(_stelnettts_opus_ok ON)
+        message(STATUS "StelnetTTS: .opus via FetchContent static opus/ogg/opusfile")
         # Restore BUILD_TESTING so include(CTest) in the root CMakeLists
         # defaults correctly (it checks the cache variable).
         # Restore the parent's BUILD_SHARED_LIBS before anything else is
         # declared — leaving it OFF would silently make every later target
         # static too.
-        set(BUILD_SHARED_LIBS "${_crispasr_save_shared}" CACHE BOOL "" FORCE)
-        set(CMAKE_POSITION_INDEPENDENT_CODE "${_crispasr_save_pic}")
+        set(BUILD_SHARED_LIBS "${_stelnettts_save_shared}" CACHE BOOL "" FORCE)
+        set(CMAKE_POSITION_INDEPENDENT_CODE "${_stelnettts_save_pic}")
 
-        if (_crispasr_save_build_testing STREQUAL "__UNSET__")
+        if (_stelnettts_save_build_testing STREQUAL "__UNSET__")
             unset(BUILD_TESTING CACHE)
         else()
-            set(BUILD_TESTING "${_crispasr_save_build_testing}" CACHE BOOL "" FORCE)
+            set(BUILD_TESTING "${_stelnettts_save_build_testing}" CACHE BOOL "" FORCE)
         endif()
     endif()
 
-    if (_crispasr_opus_ok)
+    if (_stelnettts_opus_ok)
         # The custom miniaudio backend, compiled as a separate C TU and linked
         # against this lib's MINIAUDIO_IMPLEMENTATION. opusfile.h comes from the
         # linked opusfile target; miniaudio.h is the src/ sibling.
-        target_sources(crispasr-lib PRIVATE miniaudio_libopus.c)
-        target_compile_definitions(crispasr-lib PRIVATE CRISPASR_HAVE_OPUS=1)
-    elseif (NOT CRISPASR_OPUS_FETCH)
-        message(STATUS "CrispASR: .opus disabled — opusfile not found (set -DCRISPASR_OPUS_FETCH=ON to build it)")
+        target_sources(stelnettts-lib PRIVATE miniaudio_libopus.c)
+        target_compile_definitions(stelnettts-lib PRIVATE STELNETTTS_HAVE_OPUS=1)
+    elseif (NOT STELNETTTS_OPUS_FETCH)
+        message(STATUS "StelnetTTS: .opus disabled — opusfile not found (set -DSTELNETTTS_OPUS_FETCH=ON to build it)")
     endif()
 endif()
 
-# ── Optional AMR-NB/WB decode in crispasr_audio.cpp ──────────────────────────
+# ── Optional AMR-NB/WB decode in stelnettts_audio.cpp ──────────────────────────
 # Telephony / voicemail speech via opencore-amr (Apache-2.0). AMR-NB (8 kHz)
 # and AMR-WB (16 kHz) are the standard codecs for mobile voice recordings and
 # voicemail. Decoded PCM is resampled to 16 kHz via miniaudio.
-# Disable with -DCRISPASR_AMR=OFF; force static build with -DCRISPASR_AMR_FETCH=ON.
-option(CRISPASR_AMR       "Decode AMR-NB/WB via opencore-amr" ON)
-option(CRISPASR_AMR_FETCH "Skip system pkg-config; build opencore-amr statically via FetchContent" OFF)
+# Disable with -DSTELNETTTS_AMR=OFF; force static build with -DSTELNETTTS_AMR_FETCH=ON.
+option(STELNETTTS_AMR       "Decode AMR-NB/WB via opencore-amr" ON)
+option(STELNETTTS_AMR_FETCH "Skip system pkg-config; build opencore-amr statically via FetchContent" OFF)
 
-if (CRISPASR_AMR)
-    set(_crispasr_amr_ok OFF)
+if (STELNETTTS_AMR)
+    set(_stelnettts_amr_ok OFF)
 
-    if (NOT CRISPASR_AMR_FETCH)
+    if (NOT STELNETTTS_AMR_FETCH)
         find_package(PkgConfig QUIET)
         if (PkgConfig_FOUND)
             pkg_check_modules(OPENCORE_AMRNB QUIET IMPORTED_TARGET opencore-amrnb)
             pkg_check_modules(OPENCORE_AMRWB QUIET IMPORTED_TARGET opencore-amrwb)
             if (OPENCORE_AMRNB_FOUND AND OPENCORE_AMRWB_FOUND)
-                target_link_libraries(crispasr-lib PRIVATE PkgConfig::OPENCORE_AMRNB PkgConfig::OPENCORE_AMRWB)
-                set(_crispasr_amr_ok ON)
-                message(STATUS "CrispASR: AMR via system opencore-amr (pkg-config)")
+                target_link_libraries(stelnettts-lib PRIVATE PkgConfig::OPENCORE_AMRNB PkgConfig::OPENCORE_AMRWB)
+                set(_stelnettts_amr_ok ON)
+                message(STATUS "StelnetTTS: AMR via system opencore-amr (pkg-config)")
             endif()
         endif()
     endif()
 
-    if (NOT _crispasr_amr_ok AND CRISPASR_AMR_FETCH)
-        # Static fallback (opt-in via -DCRISPASR_AMR_FETCH=ON): build
-        # opencore-amr decoder from CrispStrobe/opencore-amr (fork of
+    if (NOT _stelnettts_amr_ok AND STELNETTTS_AMR_FETCH)
+        # Static fallback (opt-in via -DSTELNETTTS_AMR_FETCH=ON): build
+        # opencore-amr decoder from Cyna/opencore-amr (fork of
         # feuvan/opencore-amr-iOS v0.1.6 + OSCL shim headers in oscl/).
         include(FetchContent)
-        FetchContent_Declare(crispasr_opencore_amr
-            GIT_REPOSITORY https://github.com/CrispStrobe/opencore-amr.git
+        FetchContent_Declare(stelnettts_opencore_amr
+            GIT_REPOSITORY https://github.com/Cyna/opencore-amr.git
             GIT_TAG v0.1.7
             GIT_SHALLOW TRUE)
-        FetchContent_GetProperties(crispasr_opencore_amr)
-        if (NOT crispasr_opencore_amr_POPULATED)
-            FetchContent_Populate(crispasr_opencore_amr)
+        FetchContent_GetProperties(stelnettts_opencore_amr)
+        if (NOT stelnettts_opencore_amr_POPULATED)
+            FetchContent_Populate(stelnettts_opencore_amr)
         endif()
 
-        set(_amr_src "${crispasr_opencore_amr_SOURCE_DIR}")
+        set(_amr_src "${stelnettts_opencore_amr_SOURCE_DIR}")
         # The fork ships oscl/ shim headers and amrnb/amrwb wrappers.
         # Create symlinks for system-style <opencore-amrnb/...> includes.
         if (NOT EXISTS "${_amr_src}/opencore-amrnb")
@@ -517,22 +517,22 @@ if (CRISPASR_AMR)
         # CXX-only via a generator expression — these targets also compile .c
         # sources, where clang rejects the flag as "valid for C++ but not C".
         include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("-Wregister"            CRISPASR_HAVE_WREGISTER)
-        check_cxx_compiler_flag("-Wdeprecated-register" CRISPASR_HAVE_WDEPRECATED_REGISTER)
+        check_cxx_compiler_flag("-Wregister"            STELNETTTS_HAVE_WREGISTER)
+        check_cxx_compiler_flag("-Wdeprecated-register" STELNETTTS_HAVE_WDEPRECATED_REGISTER)
         set(_amr_legacy_flags "")
-        if (CRISPASR_HAVE_WREGISTER)
+        if (STELNETTTS_HAVE_WREGISTER)
             list(APPEND _amr_legacy_flags "$<$<COMPILE_LANGUAGE:CXX>:-Wno-register>")
         endif()
-        if (CRISPASR_HAVE_WDEPRECATED_REGISTER)
+        if (STELNETTTS_HAVE_WDEPRECATED_REGISTER)
             list(APPEND _amr_legacy_flags "$<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-register>")
         endif()
 
         if (_amrnb_srcs AND _amrwb_srcs AND EXISTS "${_amr_src}/amrnb/wrapper.cpp")
-            add_library(crispasr_amrnb STATIC
+            add_library(stelnettts_amrnb STATIC
                 "${_amr_src}/amrnb/wrapper.cpp" ${_amrnb_srcs})
-            target_compile_options(crispasr_amrnb PRIVATE ${_amr_legacy_flags})
-            target_compile_definitions(crispasr_amrnb PRIVATE DISABLE_AMRNB_ENCODER)
-            target_include_directories(crispasr_amrnb SYSTEM PUBLIC
+            target_compile_options(stelnettts_amrnb PRIVATE ${_amr_legacy_flags})
+            target_compile_definitions(stelnettts_amrnb PRIVATE DISABLE_AMRNB_ENCODER)
+            target_include_directories(stelnettts_amrnb SYSTEM PUBLIC
                 "${_amr_src}" "${_amr_src}/amrnb" "${_amr_src}/oscl"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/src"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/amr_nb/dec/include"
@@ -540,30 +540,30 @@ if (CRISPASR_AMR)
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/amr_nb/enc/include"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/amr_nb/common/include"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/common/dec/include")
-            set_target_properties(crispasr_amrnb PROPERTIES POSITION_INDEPENDENT_CODE ON)
+            set_target_properties(stelnettts_amrnb PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-            add_library(crispasr_amrwb STATIC
+            add_library(stelnettts_amrwb STATIC
                 "${_amr_src}/amrwb/wrapper.cpp" ${_amrwb_srcs})
-            target_compile_options(crispasr_amrwb PRIVATE ${_amr_legacy_flags})
-            target_include_directories(crispasr_amrwb SYSTEM PUBLIC
+            target_compile_options(stelnettts_amrwb PRIVATE ${_amr_legacy_flags})
+            target_include_directories(stelnettts_amrwb SYSTEM PUBLIC
                 "${_amr_src}" "${_amr_src}/amrwb" "${_amr_src}/oscl"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/src"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/amr_wb/dec/include"
                 "${_amr_src}/opencore/codecs_v2/audio/gsm_amr/common/dec/include")
-            set_target_properties(crispasr_amrwb PROPERTIES POSITION_INDEPENDENT_CODE ON)
+            set_target_properties(stelnettts_amrwb PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-            target_link_libraries(crispasr-lib PRIVATE crispasr_amrnb crispasr_amrwb)
-            set(_crispasr_amr_ok ON)
-            message(STATUS "CrispASR: AMR via FetchContent CrispStrobe/opencore-amr v0.1.7")
+            target_link_libraries(stelnettts-lib PRIVATE stelnettts_amrnb stelnettts_amrwb)
+            set(_stelnettts_amr_ok ON)
+            message(STATUS "StelnetTTS: AMR via FetchContent Cyna/opencore-amr v0.1.7")
         else()
-            message(STATUS "CrispASR: AMR disabled (FetchContent: source layout not recognized)")
+            message(STATUS "StelnetTTS: AMR disabled (FetchContent: source layout not recognized)")
         endif()
     endif()
 
-    if (_crispasr_amr_ok)
-        target_compile_definitions(crispasr-lib PRIVATE CRISPASR_HAVE_AMR=1)
+    if (_stelnettts_amr_ok)
+        target_compile_definitions(stelnettts-lib PRIVATE STELNETTTS_HAVE_AMR=1)
     else()
-        message(STATUS "CrispASR: AMR disabled — opencore-amr not found (install libopencore-amrnb-dev libopencore-amrwb-dev, or set -DCRISPASR_AMR_FETCH=ON)")
+        message(STATUS "StelnetTTS: AMR disabled — opencore-amr not found (install libopencore-amrnb-dev libopencore-amrwb-dev, or set -DSTELNETTTS_AMR_FETCH=ON)")
     endif()
 endif()
 
@@ -577,87 +577,87 @@ if (NOT APPLE)
     if (PkgConfig_FOUND)
         pkg_check_modules(_FDK_AAC_CHECK QUIET fdk-aac)
         if (_FDK_AAC_CHECK_FOUND)
-            message(STATUS "CrispASR: AAC/M4A — libfdk-aac ${_FDK_AAC_CHECK_VERSION} found (will dlopen at runtime)")
+            message(STATUS "StelnetTTS: AAC/M4A — libfdk-aac ${_FDK_AAC_CHECK_VERSION} found (will dlopen at runtime)")
         else()
-            message(STATUS "CrispASR: AAC/M4A — libfdk-aac not found (install libfdk-aac-dev for M4A/AAC decode)")
+            message(STATUS "StelnetTTS: AAC/M4A — libfdk-aac not found (install libfdk-aac-dev for M4A/AAC decode)")
         endif()
     endif()
 endif()
 
 # Apple: AudioToolbox ExtAudioFile decodes AAC / M4A / ALAC / CAF — formats the
-# permissive miniaudio path can't — with no ffmpeg and no GPL (crispasr_audio.cpp
+# permissive miniaudio path can't — with no ffmpeg and no GPL (stelnettts_audio.cpp
 # falls back to it under __APPLE__). miniaudio's own CoreAudio backend dlopen's
 # its frameworks, but our direct ExtAudioFile calls must be linked.
 if (APPLE)
     # PUBLIC so consumers (tests, CLI, xcframework) transitively pick up the
     # framework linkage — PRIVATE breaks the Xcode/iOS all-targets build.
-    target_link_libraries(crispasr-lib PUBLIC
+    target_link_libraries(stelnettts-lib PUBLIC
         "-framework AudioToolbox" "-framework CoreFoundation" "-framework CoreAudio")
 endif()
 
 if (CMAKE_CXX_BYTE_ORDER STREQUAL "BIG_ENDIAN")
-    target_compile_definitions(crispasr-lib PRIVATE CRISPASR_BIG_ENDIAN)
+    target_compile_definitions(stelnettts-lib PRIVATE STELNETTTS_BIG_ENDIAN)
 endif()
 
-if (CRISPASR_EXTRA_FLAGS)
-    target_compile_options(crispasr-lib PRIVATE ${CRISPASR_EXTRA_FLAGS})
+if (STELNETTTS_EXTRA_FLAGS)
+    target_compile_options(stelnettts-lib PRIVATE ${STELNETTTS_EXTRA_FLAGS})
 endif()
 
 find_package(Threads REQUIRED)
-target_link_libraries(crispasr-lib PUBLIC ggml Threads::Threads audioseal crispasr-core snac ${CMAKE_DL_LIBS})
+target_link_libraries(stelnettts-lib PUBLIC ggml Threads::Threads audioseal stelnettts-core snac ${CMAKE_DL_LIBS})
 
-# glint — in-tree clean-room codec suite. crispasr_audio.cpp uses its AAC-LC
+# glint — in-tree clean-room codec suite. stelnettts_audio.cpp uses its AAC-LC
 # decoder for cross-platform raw-ADTS (.aac) input (glint target is defined
 # later via add_subdirectory(glint); CMake resolves the link at generate time).
 # PUBLIC so every consumer (CLI, server, bindings) inherits the static link.
-target_link_libraries(crispasr-lib PUBLIC glint)
+target_link_libraries(stelnettts-lib PUBLIC glint)
 
-# `crispasr_cache.cpp` calls WinHTTP for HF auto-download on Windows. MSVC
+# `stelnettts_cache.cpp` calls WinHTTP for HF auto-download on Windows. MSVC
 # auto-links winhttp.lib via `#pragma comment(lib, "winhttp.lib")` inside
 # the .cpp, but MinGW / GCC ignore that pragma — so any downstream test or
-# executable that links libcrispasr.a (and therefore pulls in
-# crispasr_cache.cpp.obj) needs winhttp on its link line. Propagate it as
+# executable that links libstelnettts.a (and therefore pulls in
+# stelnettts_cache.cpp.obj) needs winhttp on its link line. Propagate it as
 # PUBLIC here so every consumer transitively picks it up, and individual
 # tests don't have to remember to add it. Mirrors how Threads::Threads
 # already flows through.
 if (WIN32)
-    # mfplat/mfreadwrite/mfuuid: Media Foundation AAC decoder in crispasr_audio.cpp
+    # mfplat/mfreadwrite/mfuuid: Media Foundation AAC decoder in stelnettts_audio.cpp
     # ole32: CoInitializeEx for MF
-    # (winhttp for crispasr_cache.cpp now flows from crispasr-core — it moved there.)
+    # (winhttp for stelnettts_cache.cpp now flows from stelnettts-core — it moved there.)
     # MSVC auto-links via #pragma comment(lib,...) but MinGW/Clang/lld ignores those.
-    target_link_libraries(crispasr-lib PUBLIC mfplat mfreadwrite mfuuid ole32)
+    target_link_libraries(stelnettts-lib PUBLIC mfplat mfreadwrite mfuuid ole32)
 endif()
 
-if (ANDROID AND CRISPASR_MEDIA_NDK)
-    # mediandk: AMediaExtractor/AMediaCodec NDK API used by crispasr_audio.cpp
+if (ANDROID AND STELNETTTS_MEDIA_NDK)
+    # mediandk: AMediaExtractor/AMediaCodec NDK API used by stelnettts_audio.cpp
     # for hardware-accelerated AAC/MP3 decode (API 21+).
     # Not available on Termux — auto-detect the library before linking.
     include(CheckLibraryExists)
     check_library_exists(mediandk AMediaExtractor_new "" HAVE_MEDIANDK)
     if (HAVE_MEDIANDK)
-        target_link_libraries(crispasr-lib PUBLIC mediandk)
-        target_compile_definitions(crispasr-lib PUBLIC CRISPASR_HAVE_MEDIA_NDK)
+        target_link_libraries(stelnettts-lib PUBLIC mediandk)
+        target_compile_definitions(stelnettts-lib PUBLIC STELNETTTS_HAVE_MEDIA_NDK)
         message(STATUS "Android Media NDK: enabled (libmediandk found)")
     else()
         message(STATUS "Android Media NDK: disabled (libmediandk not found — Termux?)")
     endif()
 endif()
 
-if (CRISPASR_COREML)
-    target_link_libraries(crispasr-lib PRIVATE crispasr.coreml)
+if (STELNETTTS_COREML)
+    target_link_libraries(stelnettts-lib PRIVATE stelnettts.coreml)
 endif()
 
-if (CRISPASR_OPENVINO)
-    target_link_libraries(crispasr-lib PRIVATE crispasr.openvino)
+if (STELNETTTS_OPENVINO)
+    target_link_libraries(stelnettts-lib PRIVATE stelnettts.openvino)
 endif()
 
-if (CRISPASR_MKL)
-    target_link_libraries(crispasr-lib PRIVATE MKL::MKL)
+if (STELNETTTS_MKL)
+    target_link_libraries(stelnettts-lib PRIVATE MKL::MKL)
 endif()
 
 if (BUILD_SHARED_LIBS)
-    set_target_properties(crispasr-lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_compile_definitions(crispasr-lib PRIVATE CRISPASR_SHARED CRISPASR_BUILD)
+    set_target_properties(stelnettts-lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_definitions(stelnettts-lib PRIVATE STELNETTTS_SHARED STELNETTTS_BUILD)
 endif()
 
 # Prefer a standalone libcblas (reference/Netlib BLAS splits the C interface
@@ -666,7 +666,7 @@ endif()
 # to find_package(BLAS) for OpenBLAS/MKL/Accelerate, which bundle the cblas
 # symbols. Sets BLAS_FOUND / BLAS_LIBRARIES for the caller. Pass QUIET to
 # suppress the "found" message. Header (cblas.h) discovery stays at call sites.
-macro(crispasr_prefer_cblas)
+macro(stelnettts_prefer_cblas)
     find_package(CBLAS ${ARGN})
     if(CBLAS_FOUND)
         set(BLAS_FOUND ON)
@@ -696,8 +696,8 @@ else()
     # If COHERE_MKL=ON the parent CMakeLists.txt sets BLA_VENDOR=Intel10_64lp
     # so this find_package(BLAS) call is steered toward MKL automatically.
     # cohere.cpp also does a bare `#include <cblas.h>` under HAVE_BLAS — gate on
-    # the header being reachable (see crispasr-core note above re: MSYS2).
-    crispasr_prefer_cblas()
+    # the header being reachable (see stelnettts-core note above re: MSYS2).
+    stelnettts_prefer_cblas()
     find_path(CBLAS_INCLUDE_DIR cblas.h PATH_SUFFIXES openblas)
     if(BLAS_FOUND AND CBLAS_INCLUDE_DIR)
         target_link_libraries(cohere PUBLIC ${BLAS_LIBRARIES})
@@ -722,21 +722,21 @@ else()
 endif()
 # FFT: self-contained Cooley-Tukey in cohere.cpp — no external FFT library required.
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(cohere PUBLIC ggml ggml-base Threads::Threads OpenMP::OpenMP_CXX crispasr-core)
+    target_link_libraries(cohere PUBLIC ggml ggml-base Threads::Threads OpenMP::OpenMP_CXX stelnettts-core)
     target_compile_options(cohere PRIVATE -O3)
 else()
-    target_link_libraries(cohere PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+    target_link_libraries(cohere PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
     target_compile_options(cohere PRIVATE -O3)
 endif()
 # Metal backend (macOS / Apple Silicon)
 if(GGML_METAL)
     target_compile_definitions(cohere PRIVATE GGML_USE_METAL)
-    target_link_libraries(cohere PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(cohere PUBLIC stelnettts_link_ggml_metal)
 endif()
 # CUDA backend
 if(GGML_CUDA)
     target_compile_definitions(cohere PRIVATE GGML_USE_CUDA)
-    target_link_libraries(cohere PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(cohere PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -749,17 +749,17 @@ add_library(canary STATIC
 target_include_directories(canary PUBLIC . ../include)
 target_compile_features   (canary PUBLIC cxx_std_17)
 set_target_properties(canary PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (canary PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (canary PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(canary PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(canary PRIVATE GGML_USE_METAL)
-    target_link_libraries(canary PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(canary PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(canary PRIVATE GGML_USE_CUDA)
-    target_link_libraries(canary PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(canary PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -772,17 +772,17 @@ add_library(canary_qwen STATIC
 target_include_directories(canary_qwen PUBLIC . ../include)
 target_compile_features   (canary_qwen PUBLIC cxx_std_17)
 set_target_properties(canary_qwen PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (canary_qwen PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (canary_qwen PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(canary_qwen PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(canary_qwen PRIVATE GGML_USE_METAL)
-    target_link_libraries(canary_qwen PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(canary_qwen PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(canary_qwen PRIVATE GGML_USE_CUDA)
-    target_link_libraries(canary_qwen PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(canary_qwen PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -796,7 +796,7 @@ add_library(canary_ctc STATIC
 target_include_directories(canary_ctc PUBLIC . ../include)
 target_compile_features   (canary_ctc PUBLIC cxx_std_17)
 set_target_properties(canary_ctc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (canary_ctc PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (canary_ctc PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(canary_ctc PRIVATE -O3)
 endif()
@@ -812,17 +812,17 @@ add_library(lfm2_audio STATIC
 target_include_directories(lfm2_audio PUBLIC . ../include)
 target_compile_features   (lfm2_audio PUBLIC cxx_std_17)
 set_target_properties(lfm2_audio PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (lfm2_audio PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (lfm2_audio PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(lfm2_audio PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(lfm2_audio PRIVATE GGML_USE_METAL)
-    target_link_libraries(lfm2_audio PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(lfm2_audio PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(lfm2_audio PRIVATE GGML_USE_CUDA)
-    target_link_libraries(lfm2_audio PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(lfm2_audio PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -833,7 +833,7 @@ endif()
 find_package(OpenMP QUIET)
 
 # ---------------------------------------------------------------------------
-# crispasr-core — shared primitives used by multiple model implementations.
+# stelnettts-core — shared primitives used by multiple model implementations.
 #
 # This is the first piece of the model-level DRY refactor: one log-mel
 # spectrogram helper (src/core/mel.{h,cpp}) that replaces what were 9
@@ -841,7 +841,7 @@ find_package(OpenMP QUIET)
 # (gguf_loader, ffn, attention, greedy_decode) will land here in
 # subsequent commits as we peel off more duplicated patterns.
 # ---------------------------------------------------------------------------
-add_library(crispasr-core STATIC
+add_library(stelnettts-core STATIC
             core/mel.h
             core/mel.cpp
             core/ffn.h
@@ -857,7 +857,7 @@ add_library(crispasr-core STATIC
             core/kaldi_fbank.h
             core/kaldi_fbank.cpp
             # Speaker-count estimation + spectral clustering (#324). Lives in
-            # crispasr-core because both the diarizer and its unit tests use it
+            # stelnettts-core because both the diarizer and its unit tests use it
             # and it depends on nothing but the standard library.
             core/spectral_diarize.h
             core/spectral_diarize.cpp
@@ -868,78 +868,78 @@ add_library(crispasr-core STATIC
             core/audio_resample.h
             core/audio_resample.cpp
             # Importance-matrix (imatrix) activation-stats collector. Lives in
-            # crispasr-core because backends call crispasr_imatrix_install()
+            # stelnettts-core because backends call stelnettts_imatrix_install()
             # from their decode-sched setup, so the symbol must resolve
-            # wherever a backend static lib is linked (not just crispasr-lib).
-            # No-op unless CRISPASR_IMATRIX_OUT is set (see docs/quantize.md).
-            crispasr_imatrix.h
-            crispasr_imatrix.cpp
-            # HF download + filesystem cache. Lives HERE (not crispasr-lib) for
+            # wherever a backend static lib is linked (not just stelnettts-lib).
+            # No-op unless STELNETTTS_IMATRIX_OUT is set (see docs/quantize.md).
+            stelnettts_imatrix.h
+            stelnettts_imatrix.cpp
+            # HF download + filesystem cache. Lives HERE (not stelnettts-lib) for
             # the same reason as imatrix: backend static libs call it — kokoro's
-            # phonemizer.cpp uses crispasr_cache::ensure_cached_file (#316 CMUdict
-            # auto-download) and links only crispasr-core, so a static build must
-            # find the symbol in the leaf lib, not the higher crispasr-lib (#316).
-            crispasr_cache.h
-            crispasr_cache.cpp
+            # phonemizer.cpp uses stelnettts_cache::ensure_cached_file (#316 CMUdict
+            # auto-download) and links only stelnettts-core, so a static build must
+            # find the symbol in the leaf lib, not the higher stelnettts-lib (#316).
+            stelnettts_cache.h
+            stelnettts_cache.cpp
             )
-target_include_directories(crispasr-core PUBLIC . ../include)
+target_include_directories(stelnettts-core PUBLIC . ../include)
 if (WIN32)
-    # crispasr_cache.cpp's HF auto-download uses WinHTTP. MSVC auto-links via
+    # stelnettts_cache.cpp's HF auto-download uses WinHTTP. MSVC auto-links via
     # #pragma comment(lib,"winhttp.lib"); MinGW/Clang/lld ignore that, so link it
-    # explicitly here now that crispasr_cache lives in crispasr-core. PUBLIC so any
-    # target that links crispasr-core (backend static libs, tests) inherits it.
-    target_link_libraries(crispasr-core PUBLIC winhttp)
+    # explicitly here now that stelnettts_cache lives in stelnettts-core. PUBLIC so any
+    # target that links stelnettts-core (backend static libs, tests) inherits it.
+    target_link_libraries(stelnettts-core PUBLIC winhttp)
 endif()
 # PLAN #51a: gguf_loader uses ggml_backend_buffer_init from
 # ggml-backend-impl.h to register a custom mmap-owning CPU buffer. The
 # header lives in ggml/src/ rather than ggml/include/, so we expose it
 # here as a private include path for this target only.
-target_include_directories(crispasr-core PRIVATE ../ggml/src)
-target_compile_features   (crispasr-core PUBLIC cxx_std_17)
-target_link_libraries     (crispasr-core PUBLIC ggml-base ggml)
+target_include_directories(stelnettts-core PRIVATE ../ggml/src)
+target_compile_features   (stelnettts-core PUBLIC cxx_std_17)
+target_link_libraries     (stelnettts-core PUBLIC ggml-base ggml)
 # §176f: the STFT frame loop in core/mel.cpp is OpenMP-parallel (each frame's
 # FFT is independent → bit-identical output). Link OpenMP when available; the
 # pragma is #ifdef _OPENMP-guarded so non-OMP builds keep the serial path.
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(crispasr-core PUBLIC OpenMP::OpenMP_CXX)
+    target_link_libraries(stelnettts-core PUBLIC OpenMP::OpenMP_CXX)
 endif()
 if(NOT MSVC)
-    target_compile_options(crispasr-core PRIVATE -O3)
+    target_compile_options(stelnettts-core PRIVATE -O3)
 endif()
-set_target_properties(crispasr-core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(stelnettts-core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # §176f: BLAS for mel filterbank SGEMM (cblas_sgemm) — affects all 40+ backends.
-# Default ON. Consumers that link libcrispasr-core.a via raw -l flags rather than
+# Default ON. Consumers that link libstelnettts-core.a via raw -l flags rather than
 # CMake target propagation (e.g. the cgo Go bindings) can't pull in the PRIVATE
 # BLAS dependency and would hit 'undefined reference to cblas_sgemm'; they set
-# -DCRISPASR_MEL_BLAS=OFF to compile the scalar mel projection (same output,
+# -DSTELNETTTS_MEL_BLAS=OFF to compile the scalar mel projection (same output,
 # slightly slower). MSVC has no portable cblas wired here.
-option(CRISPASR_MEL_BLAS "Use cblas_sgemm for the mel filterbank projection (§176f)" ON)
-if(CRISPASR_MEL_BLAS AND NOT MSVC)
+option(STELNETTTS_MEL_BLAS "Use cblas_sgemm for the mel filterbank projection (§176f)" ON)
+if(STELNETTTS_MEL_BLAS AND NOT MSVC)
     if(APPLE)
         find_library(ACCELERATE_LIB Accelerate REQUIRED)
-        target_link_libraries     (crispasr-core PRIVATE ${ACCELERATE_LIB})
-        target_compile_definitions(crispasr-core PRIVATE HAVE_BLAS ACCELERATE_NEW_LAPACK)
+        target_link_libraries     (stelnettts-core PRIVATE ${ACCELERATE_LIB})
+        target_compile_definitions(stelnettts-core PRIVATE HAVE_BLAS ACCELERATE_NEW_LAPACK)
     else()
         # mel.cpp's BLAS path does a bare `#include <cblas.h>`. find_package(BLAS)
         # locates the library but NOT the header, and on some toolchains (MSYS2
         # OpenBLAS) cblas.h lives under an `openblas/` subdir not on the default
         # include path — so only enable HAVE_BLAS when cblas.h is actually
         # reachable, otherwise fall back to the scalar mel projection.
-        crispasr_prefer_cblas(QUIET)
+        stelnettts_prefer_cblas(QUIET)
         find_path(CBLAS_INCLUDE_DIR cblas.h PATH_SUFFIXES openblas)
         if(BLAS_FOUND AND CBLAS_INCLUDE_DIR)
-            target_link_libraries     (crispasr-core PRIVATE ${BLAS_LIBRARIES})
-            target_include_directories(crispasr-core PRIVATE ${CBLAS_INCLUDE_DIR})
-            target_compile_definitions(crispasr-core PRIVATE HAVE_BLAS)
+            target_link_libraries     (stelnettts-core PRIVATE ${BLAS_LIBRARIES})
+            target_include_directories(stelnettts-core PRIVATE ${CBLAS_INCLUDE_DIR})
+            target_compile_definitions(stelnettts-core PRIVATE HAVE_BLAS)
         else()
             find_library(OPENBLAS_LIB openblas QUIET)
             if(OPENBLAS_LIB AND CBLAS_INCLUDE_DIR)
-                target_link_libraries     (crispasr-core PRIVATE ${OPENBLAS_LIB})
-                target_include_directories(crispasr-core PRIVATE ${CBLAS_INCLUDE_DIR})
-                target_compile_definitions(crispasr-core PRIVATE HAVE_BLAS)
+                target_link_libraries     (stelnettts-core PRIVATE ${OPENBLAS_LIB})
+                target_include_directories(stelnettts-core PRIVATE ${CBLAS_INCLUDE_DIR})
+                target_compile_definitions(stelnettts-core PRIVATE HAVE_BLAS)
             else()
-                message(STATUS "crispasr-core: cblas.h not found — using scalar mel projection")
+                message(STATUS "stelnettts-core: cblas.h not found — using scalar mel projection")
             endif()
         endif()
     endif()
@@ -952,29 +952,29 @@ add_library(snac STATIC core/snac.h core/snac.cpp)
 set_target_properties(snac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(snac PUBLIC .)
 target_compile_features   (snac PUBLIC cxx_std_17)
-target_link_libraries     (snac PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (snac PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(snac PRIVATE -O3)
 endif()
 
 # ---------------------------------------------------------------------------
-# crispasr-llama-core — vendored llama.cpp built as a private STATIC lib
-# so the chat / text-LLM C-ABI (src/chat.cpp, include/crispasr_chat.h) can
+# stelnettts-llama-core — vendored llama.cpp built as a private STATIC lib
+# so the chat / text-LLM C-ABI (src/chat.cpp, include/stelnettts_chat.h) can
 # call into it without exposing `llama.h` types in the public surface and
 # without pulling a second copy of ggml.
 #
 # Sources live under `examples/talk-llama/` (they originally landed there
-# only to power the SDL2-gated `crispasr-talk-llama` example). The example
+# only to power the SDL2-gated `stelnettts-talk-llama` example). The example
 # now consumes this lib too — one source set, two targets — see
 # examples/talk-llama/CMakeLists.txt.
 #
-# Audio-LLM backends (voxtral / qwen3_asr / granite_speech / …) ship their
+# Audio-LLM backends (voxtral / cielvox2_asr / granite_speech / …) ship their
 # own hand-rolled ggml graph builders and intentionally do NOT link this
 # target; they stay free of the per-architecture llama-model code.
 # ---------------------------------------------------------------------------
 set(LLAMA_CORE_DIR ${CMAKE_SOURCE_DIR}/examples/talk-llama)
 file(GLOB LLAMA_CORE_MODELS CONFIGURE_DEPENDS ${LLAMA_CORE_DIR}/models/*.cpp)
-add_library(crispasr-llama-core STATIC
+add_library(stelnettts-llama-core STATIC
             ${LLAMA_CORE_DIR}/llama.cpp
             ${LLAMA_CORE_DIR}/llama-adapter.cpp
             ${LLAMA_CORE_DIR}/llama-arch.cpp
@@ -1004,26 +1004,26 @@ add_library(crispasr-llama-core STATIC
             ${LLAMA_CORE_DIR}/unicode-data.cpp
             ${LLAMA_CORE_MODELS})
 # Headers live next to the .cpp files. PUBLIC so src/chat.cpp (built into
-# libcrispasr) sees llama.h, but the header is NOT installed — only the
-# `crispasr_chat_*` ABI in include/crispasr_chat.h is.
-target_include_directories(crispasr-llama-core PUBLIC ${LLAMA_CORE_DIR})
-target_compile_features   (crispasr-llama-core PUBLIC cxx_std_17)
-target_link_libraries     (crispasr-llama-core PUBLIC ggml ggml-base Threads::Threads)
-set_target_properties(crispasr-llama-core PROPERTIES
+# libstelnettts) sees llama.h, but the header is NOT installed — only the
+# `stelnettts_chat_*` ABI in include/stelnettts_chat.h is.
+target_include_directories(stelnettts-llama-core PUBLIC ${LLAMA_CORE_DIR})
+target_compile_features   (stelnettts-llama-core PUBLIC cxx_std_17)
+target_link_libraries     (stelnettts-llama-core PUBLIC ggml ggml-base Threads::Threads)
+set_target_properties(stelnettts-llama-core PROPERTIES
     POSITION_INDEPENDENT_CODE ON
-    # Hide llama.cpp's C ABI from libcrispasr's export table — chat.cpp
+    # Hide llama.cpp's C ABI from libstelnettts's export table — chat.cpp
     # calls into it INTERNALLY via the static-archive link, but external
-    # consumers of libcrispasr.dylib only see the crispasr_chat_* surface.
+    # consumers of libstelnettts.dylib only see the stelnettts_chat_* surface.
     # Without this, hundreds of llama_* / ggml_* symbols leak and could
     # collide with another llama.cpp linked into the same process.
     CXX_VISIBILITY_PRESET hidden
     C_VISIBILITY_PRESET   hidden
     VISIBILITY_INLINES_HIDDEN ON)
 if(NOT MSVC)
-    target_compile_options(crispasr-llama-core PRIVATE -O3)
+    target_compile_options(stelnettts-llama-core PRIVATE -O3)
     # Vendored upstream code — silence the strict warnings we apply to
     # our own sources so a ggml/llama.cpp bump doesn't break CI lint.
-    target_compile_options(crispasr-llama-core PRIVATE
+    target_compile_options(stelnettts-llama-core PRIVATE
         -Wno-cast-qual
         -Wno-unused-function
         -Wno-unused-parameter
@@ -1036,7 +1036,7 @@ if(NOT MSVC)
 endif()
 if(WIN32)
     # llama-mmap.cpp uses PrefetchVirtualMemory which needs Win 8.1+.
-    target_compile_definitions(crispasr-llama-core PRIVATE _WIN32_WINNT=0x0602)
+    target_compile_definitions(stelnettts-llama-core PRIVATE _WIN32_WINNT=0x0602)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1049,17 +1049,17 @@ add_library(nemotron STATIC
 target_include_directories(nemotron PUBLIC . ../include)
 target_compile_features   (nemotron PUBLIC cxx_std_17)
 set_target_properties(nemotron PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (nemotron PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (nemotron PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(nemotron PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(nemotron PRIVATE GGML_USE_METAL)
-    target_link_libraries(nemotron PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(nemotron PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(nemotron PRIVATE GGML_USE_CUDA)
-    target_link_libraries(nemotron PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(nemotron PUBLIC stelnettts_link_ggml_cuda)
 endif()
 # §176d: Accelerate cblas_sgemv for LSTM predictor + joint head.
 if(APPLE)
@@ -1080,17 +1080,17 @@ add_library(gigaam STATIC
 target_include_directories(gigaam PUBLIC . ../include)
 target_compile_features   (gigaam PUBLIC cxx_std_17)
 set_target_properties(gigaam PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (gigaam PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (gigaam PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(gigaam PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(gigaam PRIVATE GGML_USE_METAL)
-    target_link_libraries(gigaam PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(gigaam PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(gigaam PRIVATE GGML_USE_CUDA)
-    target_link_libraries(gigaam PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(gigaam PUBLIC stelnettts_link_ggml_cuda)
 endif()
 # Accelerate cblas_sgemv for the LSTM predictor + joint head (same rationale
 # as nemotron: the transducer steps are tiny per-token GEMVs).
@@ -1112,17 +1112,17 @@ add_library(wespeaker STATIC
 target_include_directories(wespeaker PUBLIC . ../include)
 target_compile_features   (wespeaker PUBLIC cxx_std_17)
 set_target_properties(wespeaker PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (wespeaker PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (wespeaker PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(wespeaker PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(wespeaker PRIVATE GGML_USE_METAL)
-    target_link_libraries(wespeaker PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(wespeaker PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(wespeaker PRIVATE GGML_USE_CUDA)
-    target_link_libraries(wespeaker PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(wespeaker PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1137,17 +1137,17 @@ add_library(parakeet STATIC
 target_include_directories(parakeet PUBLIC . ../include)
 target_compile_features   (parakeet PUBLIC cxx_std_17)
 set_target_properties(parakeet PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (parakeet PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (parakeet PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(parakeet PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(parakeet PRIVATE GGML_USE_METAL)
-    target_link_libraries(parakeet PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(parakeet PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(parakeet PRIVATE GGML_USE_CUDA)
-    target_link_libraries(parakeet PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(parakeet PUBLIC stelnettts_link_ggml_cuda)
 endif()
 if(APPLE)
     # §194 Accelerate cblas_sgemv for LSTM predictor + joint head (§176d).
@@ -1161,24 +1161,24 @@ endif()
 # ---------------------------------------------------------------------------
 # Qwen3-ASR — Qwen/Qwen3-ASR-0.6B (Whisper-style audio encoder + Qwen3 LLM)
 # ---------------------------------------------------------------------------
-add_library(qwen3_asr STATIC
-            qwen3_asr.h
-            qwen3_asr.cpp
+add_library(cielvox2_asr STATIC
+            cielvox2_asr.h
+            cielvox2_asr.cpp
             )
-target_include_directories(qwen3_asr PUBLIC . ../include)
-target_compile_features   (qwen3_asr PUBLIC cxx_std_17)
-set_target_properties(qwen3_asr PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (qwen3_asr PUBLIC ggml ggml-base Threads::Threads crispasr-core crisp_audio)
+target_include_directories(cielvox2_asr PUBLIC . ../include)
+target_compile_features   (cielvox2_asr PUBLIC cxx_std_17)
+set_target_properties(cielvox2_asr PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries     (cielvox2_asr PUBLIC ggml ggml-base Threads::Threads stelnettts-core crisp_audio)
 if(NOT MSVC)
-    target_compile_options(qwen3_asr PRIVATE -O3)
+    target_compile_options(cielvox2_asr PRIVATE -O3)
 endif()
 if(GGML_METAL)
-    target_compile_definitions(qwen3_asr PRIVATE GGML_USE_METAL)
-    target_link_libraries(qwen3_asr PUBLIC crispasr_link_ggml_metal)
+    target_compile_definitions(cielvox2_asr PRIVATE GGML_USE_METAL)
+    target_link_libraries(cielvox2_asr PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
-    target_compile_definitions(qwen3_asr PRIVATE GGML_USE_CUDA)
-    target_link_libraries(qwen3_asr PUBLIC crispasr_link_ggml_cuda)
+    target_compile_definitions(cielvox2_asr PRIVATE GGML_USE_CUDA)
+    target_link_libraries(cielvox2_asr PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1192,17 +1192,17 @@ add_library(funasr STATIC
 target_include_directories(funasr PUBLIC . ../include)
 target_compile_features   (funasr PUBLIC cxx_std_17)
 set_target_properties(funasr PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (funasr PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (funasr PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(funasr PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(funasr PRIVATE GGML_USE_METAL)
-    target_link_libraries(funasr PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(funasr PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(funasr PRIVATE GGML_USE_CUDA)
-    target_link_libraries(funasr PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(funasr PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 add_library(paraformer STATIC
@@ -1212,17 +1212,17 @@ add_library(paraformer STATIC
 target_include_directories(paraformer PUBLIC . ../include)
 target_compile_features   (paraformer PUBLIC cxx_std_17)
 set_target_properties(paraformer PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (paraformer PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (paraformer PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(paraformer PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(paraformer PRIVATE GGML_USE_METAL)
-    target_link_libraries(paraformer PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(paraformer PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(paraformer PRIVATE GGML_USE_CUDA)
-    target_link_libraries(paraformer PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(paraformer PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1237,17 +1237,17 @@ add_library(sensevoice STATIC
 target_include_directories(sensevoice PUBLIC . ../include)
 target_compile_features   (sensevoice PUBLIC cxx_std_17)
 set_target_properties(sensevoice PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (sensevoice PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (sensevoice PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(sensevoice PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(sensevoice PRIVATE GGML_USE_METAL)
-    target_link_libraries(sensevoice PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(sensevoice PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(sensevoice PRIVATE GGML_USE_CUDA)
-    target_link_libraries(sensevoice PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(sensevoice PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # Sidon speech restoration (w2v-BERT predictor + continuous 48 kHz DAC)
@@ -1255,13 +1255,13 @@ add_library(sidon STATIC sidon.h sidon.cpp)
 target_include_directories(sidon PUBLIC . ../include)
 target_compile_features(sidon PUBLIC cxx_std_17)
 set_target_properties(sidon PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(sidon PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu Threads::Threads)
+target_link_libraries(sidon PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu Threads::Threads)
 if(NOT MSVC)
     target_compile_options(sidon PRIVATE -O3)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(sidon PRIVATE GGML_USE_CUDA)
-    target_link_libraries(sidon PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(sidon PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1274,17 +1274,17 @@ add_library(voxtral STATIC
 target_include_directories(voxtral PUBLIC . ../include)
 target_compile_features   (voxtral PUBLIC cxx_std_17)
 set_target_properties(voxtral PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (voxtral PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (voxtral PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(voxtral PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(voxtral PRIVATE GGML_USE_METAL)
-    target_link_libraries(voxtral PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(voxtral PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(voxtral PRIVATE GGML_USE_CUDA)
-    target_link_libraries(voxtral PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(voxtral PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 add_library(voxtral4b STATIC
@@ -1294,17 +1294,17 @@ add_library(voxtral4b STATIC
 target_include_directories(voxtral4b PUBLIC . ../include)
 target_compile_features   (voxtral4b PUBLIC cxx_std_17)
 set_target_properties(voxtral4b PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (voxtral4b PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (voxtral4b PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(voxtral4b PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(voxtral4b PRIVATE GGML_USE_METAL)
-    target_link_libraries(voxtral4b PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(voxtral4b PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(voxtral4b PRIVATE GGML_USE_CUDA)
-    target_link_libraries(voxtral4b PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(voxtral4b PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 add_library(voxtral_tts STATIC
@@ -1314,17 +1314,17 @@ add_library(voxtral_tts STATIC
 target_include_directories(voxtral_tts PUBLIC . ../include)
 target_compile_features   (voxtral_tts PUBLIC cxx_std_17)
 set_target_properties(voxtral_tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (voxtral_tts PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+target_link_libraries     (voxtral_tts PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 if(NOT MSVC)
     target_compile_options(voxtral_tts PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(voxtral_tts PRIVATE GGML_USE_METAL)
-    target_link_libraries(voxtral_tts PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(voxtral_tts PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(voxtral_tts PRIVATE GGML_USE_CUDA)
-    target_link_libraries(voxtral_tts PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(voxtral_tts PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 add_library(higgs_stt STATIC
@@ -1334,17 +1334,17 @@ add_library(higgs_stt STATIC
 target_include_directories(higgs_stt PUBLIC . ../include)
 target_compile_features   (higgs_stt PUBLIC cxx_std_17)
 set_target_properties(higgs_stt PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries     (higgs_stt PUBLIC ggml ggml-base Threads::Threads crispasr-core crisp_audio)
+target_link_libraries     (higgs_stt PUBLIC ggml ggml-base Threads::Threads stelnettts-core crisp_audio)
 if(NOT MSVC)
     target_compile_options(higgs_stt PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(higgs_stt PRIVATE GGML_USE_METAL)
-    target_link_libraries(higgs_stt PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(higgs_stt PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(higgs_stt PRIVATE GGML_USE_CUDA)
-    target_link_libraries(higgs_stt PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(higgs_stt PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 add_library(granite_speech STATIC
@@ -1358,20 +1358,20 @@ set_target_properties(granite_speech PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # encoder hot loops can land without a CMake change. Adding the pragmas
 # themselves is a follow-up — see TODO.md → "Per-model follow-ups → granite".
 if(OpenMP_CXX_FOUND)
-    target_link_libraries (granite_speech PUBLIC ggml ggml-base Threads::Threads OpenMP::OpenMP_CXX crispasr-core)
+    target_link_libraries (granite_speech PUBLIC ggml ggml-base Threads::Threads OpenMP::OpenMP_CXX stelnettts-core)
 else()
-    target_link_libraries (granite_speech PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+    target_link_libraries (granite_speech PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 endif()
 if(NOT MSVC)
     target_compile_options(granite_speech PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(granite_speech PRIVATE GGML_USE_METAL)
-    target_link_libraries(granite_speech PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(granite_speech PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(granite_speech PRIVATE GGML_USE_CUDA)
-    target_link_libraries(granite_speech PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(granite_speech PUBLIC stelnettts_link_ggml_cuda)
 endif()
 # §176d: Accelerate cblas_sgemm for cpu_linear.
 if(APPLE)
@@ -1396,20 +1396,20 @@ target_include_directories(granite_nle PUBLIC . ../include)
 target_compile_features   (granite_nle PUBLIC cxx_std_17)
 set_target_properties(granite_nle PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(OpenMP_CXX_FOUND)
-    target_link_libraries (granite_nle PUBLIC ggml ggml-base Threads::Threads OpenMP::OpenMP_CXX crispasr-core)
+    target_link_libraries (granite_nle PUBLIC ggml ggml-base Threads::Threads OpenMP::OpenMP_CXX stelnettts-core)
 else()
-    target_link_libraries (granite_nle PUBLIC ggml ggml-base Threads::Threads crispasr-core)
+    target_link_libraries (granite_nle PUBLIC ggml ggml-base Threads::Threads stelnettts-core)
 endif()
 if(NOT MSVC)
     target_compile_options(granite_nle PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(granite_nle PRIVATE GGML_USE_METAL)
-    target_link_libraries(granite_nle PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(granite_nle PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(granite_nle PRIVATE GGML_USE_CUDA)
-    target_link_libraries(granite_nle PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(granite_nle PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1421,7 +1421,7 @@ add_library(glm-asr STATIC glm_asr.h glm_asr.cpp)
 set_target_properties(glm-asr PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(glm-asr PUBLIC .)
 target_compile_features   (glm-asr PUBLIC cxx_std_17)
-target_link_libraries     (glm-asr PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (glm-asr PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(glm-asr PRIVATE -O3)
 endif()
@@ -1433,7 +1433,7 @@ add_library(mini-omni2 STATIC mini_omni2.h mini_omni2.cpp)
 set_target_properties(mini-omni2 PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mini-omni2 PUBLIC .)
 target_compile_features   (mini-omni2 PUBLIC cxx_std_17)
-target_link_libraries     (mini-omni2 PUBLIC crispasr-core snac ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (mini-omni2 PUBLIC stelnettts-core snac ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(mini-omni2 PRIVATE -O3)
 endif()
@@ -1445,7 +1445,7 @@ add_library(kyutai-stt STATIC kyutai_stt.h kyutai_stt.cpp)
 set_target_properties(kyutai-stt PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(kyutai-stt PUBLIC .)
 target_compile_features   (kyutai-stt PUBLIC cxx_std_17)
-target_link_libraries     (kyutai-stt PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (kyutai-stt PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(kyutai-stt PRIVATE -O3)
 endif()
@@ -1461,7 +1461,7 @@ add_library(moonshine_tokenizer STATIC moonshine-tokenizer.h moonshine-tokenizer
 set_target_properties(moonshine_tokenizer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moonshine_tokenizer PUBLIC .)
 target_compile_features   (moonshine_tokenizer PUBLIC cxx_std_17)
-target_link_libraries     (moonshine_tokenizer PUBLIC ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (moonshine_tokenizer PUBLIC ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(moonshine_tokenizer PRIVATE -O3)
 endif()
@@ -1471,7 +1471,7 @@ add_library(moonshine STATIC moonshine.h moonshine.cpp moonshine-impl.h
 set_target_properties(moonshine PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moonshine PUBLIC .)
 target_compile_features   (moonshine PUBLIC cxx_std_17)
-target_link_libraries     (moonshine PUBLIC ggml ggml-base crispasr_link_ggml_cpu moonshine_tokenizer)
+target_link_libraries     (moonshine PUBLIC ggml ggml-base stelnettts_link_ggml_cpu moonshine_tokenizer)
 if(NOT MSVC)
     target_compile_options(moonshine PRIVATE -O3)
 endif()
@@ -1480,7 +1480,7 @@ add_library(moonshine_streaming STATIC moonshine_streaming.h moonshine_streaming
 set_target_properties(moonshine_streaming PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moonshine_streaming PUBLIC .)
 target_compile_features   (moonshine_streaming PUBLIC cxx_std_17)
-target_link_libraries     (moonshine_streaming PUBLIC ggml ggml-base crispasr_link_ggml_cpu moonshine_tokenizer)
+target_link_libraries     (moonshine_streaming PUBLIC ggml ggml-base stelnettts_link_ggml_cpu moonshine_tokenizer)
 if(NOT MSVC)
     target_compile_options(moonshine_streaming PRIVATE -O3)
 endif()
@@ -1492,7 +1492,7 @@ add_library(gemma4_e2b STATIC gemma4_e2b.h gemma4_e2b.cpp)
 set_target_properties(gemma4_e2b PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(gemma4_e2b PUBLIC .)
 target_compile_features   (gemma4_e2b PUBLIC cxx_std_17)
-target_link_libraries     (gemma4_e2b PUBLIC ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (gemma4_e2b PUBLIC ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(gemma4_e2b PRIVATE -O3)
 endif()
@@ -1504,7 +1504,7 @@ add_library(mimo_tokenizer STATIC mimo_tokenizer.h mimo_tokenizer.cpp)
 set_target_properties(mimo_tokenizer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mimo_tokenizer PUBLIC .)
 target_compile_features   (mimo_tokenizer PUBLIC cxx_std_17)
-target_link_libraries     (mimo_tokenizer PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (mimo_tokenizer PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(mimo_tokenizer PRIVATE -O3)
 endif()
@@ -1516,7 +1516,7 @@ add_library(mimo_asr STATIC mimo_asr.h mimo_asr.cpp)
 set_target_properties(mimo_asr PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mimo_asr PUBLIC .)
 target_compile_features   (mimo_asr PUBLIC cxx_std_17)
-target_link_libraries     (mimo_asr PUBLIC crispasr-core mimo_tokenizer ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (mimo_asr PUBLIC stelnettts-core mimo_tokenizer ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(mimo_asr PRIVATE -O3)
 endif()
@@ -1528,7 +1528,7 @@ add_library(ark_asr STATIC ark_asr.h ark_asr.cpp)
 set_target_properties(ark_asr PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(ark_asr PUBLIC .)
 target_compile_features   (ark_asr PUBLIC cxx_std_17)
-target_link_libraries     (ark_asr PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (ark_asr PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(ark_asr PRIVATE -O3)
 endif()
@@ -1540,7 +1540,7 @@ add_library(moss_audio STATIC moss_audio.h moss_audio.cpp)
 set_target_properties(moss_audio PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moss_audio PUBLIC .)
 target_compile_features   (moss_audio PUBLIC cxx_std_17)
-target_link_libraries     (moss_audio PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (moss_audio PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(moss_audio PRIVATE -O3)
 endif()
@@ -1553,17 +1553,17 @@ add_library(moss_tts STATIC moss_tts.h moss_tts.cpp moss_tts_codec.h moss_tts_co
 set_target_properties(moss_tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moss_tts PUBLIC .)
 target_compile_features   (moss_tts PUBLIC cxx_std_17)
-target_link_libraries     (moss_tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (moss_tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(moss_tts PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(moss_tts PRIVATE GGML_USE_METAL)
-    target_link_libraries(moss_tts PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(moss_tts PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(moss_tts PRIVATE GGML_USE_CUDA)
-    target_link_libraries(moss_tts PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(moss_tts PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1576,17 +1576,17 @@ add_library(moss_tts_local STATIC moss_tts_local.h moss_tts_local.cpp
 set_target_properties(moss_tts_local PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moss_tts_local PUBLIC .)
 target_compile_features   (moss_tts_local PUBLIC cxx_std_17)
-target_link_libraries     (moss_tts_local PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (moss_tts_local PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(moss_tts_local PRIVATE -O3)
 endif()
 if(GGML_METAL)
     target_compile_definitions(moss_tts_local PRIVATE GGML_USE_METAL)
-    target_link_libraries(moss_tts_local PUBLIC crispasr_link_ggml_metal)
+    target_link_libraries(moss_tts_local PUBLIC stelnettts_link_ggml_metal)
 endif()
 if(GGML_CUDA)
     target_compile_definitions(moss_tts_local PRIVATE GGML_USE_CUDA)
-    target_link_libraries(moss_tts_local PUBLIC crispasr_link_ggml_cuda)
+    target_link_libraries(moss_tts_local PUBLIC stelnettts_link_ggml_cuda)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1596,7 +1596,7 @@ add_library(moss_transcribe STATIC moss_transcribe.h moss_transcribe.cpp)
 set_target_properties(moss_transcribe PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moss_transcribe PUBLIC .)
 target_compile_features   (moss_transcribe PUBLIC cxx_std_17)
-target_link_libraries     (moss_transcribe PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (moss_transcribe PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(moss_transcribe PRIVATE -O3)
 endif()
@@ -1608,21 +1608,21 @@ add_library(moss_transcribe_diarize STATIC moss_transcribe_diarize.h moss_transc
 set_target_properties(moss_transcribe_diarize PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(moss_transcribe_diarize PUBLIC .)
 target_compile_features   (moss_transcribe_diarize PUBLIC cxx_std_17)
-target_link_libraries     (moss_transcribe_diarize PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (moss_transcribe_diarize PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(moss_transcribe_diarize PRIVATE -O3)
 endif()
 
 # ---------------------------------------------------------------------------
-# qwen3_tts — Qwen/Qwen3-TTS (Qwen3 talker + 16-codebook RVQ output)
+# cielvox2_tts — Qwen/Qwen3-TTS (Qwen3 talker + 16-codebook RVQ output)
 # ---------------------------------------------------------------------------
-add_library(qwen3_tts STATIC qwen3_tts.h qwen3_tts.cpp)
-set_target_properties(qwen3_tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(qwen3_tts PUBLIC .)
-target_compile_features   (qwen3_tts PUBLIC cxx_std_17)
-target_link_libraries     (qwen3_tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+add_library(cielvox2_tts STATIC cielvox2_tts.h cielvox2_tts.cpp)
+set_target_properties(cielvox2_tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(cielvox2_tts PUBLIC .)
+target_compile_features   (cielvox2_tts PUBLIC cxx_std_17)
+target_link_libraries     (cielvox2_tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
-    target_compile_options(qwen3_tts PRIVATE -O3)
+    target_compile_options(cielvox2_tts PRIVATE -O3)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1632,7 +1632,7 @@ add_library(miotts STATIC miotts.h miotts.cpp)
 set_target_properties(miotts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(miotts PUBLIC .)
 target_compile_features   (miotts PUBLIC cxx_std_17)
-target_link_libraries     (miotts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (miotts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(miotts PRIVATE -O3)
 endif()
@@ -1643,7 +1643,7 @@ add_library(miocodec STATIC miocodec.h miocodec.cpp)
 set_target_properties(miocodec PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(miocodec PUBLIC .)
 target_compile_features   (miocodec PUBLIC cxx_std_17)
-target_link_libraries     (miocodec PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (miocodec PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ---------------------------------------------------------------------------
 # omnivoice — k2-fsa/OmniVoice (Qwen3 + masked iterative multi-codebook TTS)
@@ -1652,7 +1652,7 @@ add_library(omnivoice STATIC omnivoice.h omnivoice.cpp)
 set_target_properties(omnivoice PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(omnivoice PUBLIC .)
 target_compile_features   (omnivoice PUBLIC cxx_std_17)
-target_link_libraries     (omnivoice PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (omnivoice PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(omnivoice PRIVATE -O3)
 endif()
@@ -1664,7 +1664,7 @@ add_library(orpheus STATIC orpheus.h orpheus.cpp)
 set_target_properties(orpheus PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(orpheus PUBLIC .)
 target_compile_features   (orpheus PUBLIC cxx_std_17)
-target_link_libraries     (orpheus PUBLIC crispasr-core snac ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (orpheus PUBLIC stelnettts-core snac ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(orpheus PRIVATE -O3)
 endif()
@@ -1676,7 +1676,7 @@ add_library(piano-transcription STATIC piano_transcription.h piano_transcription
 set_target_properties(piano-transcription PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(piano-transcription PUBLIC .)
 target_compile_features   (piano-transcription PUBLIC cxx_std_17)
-target_link_libraries     (piano-transcription PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (piano-transcription PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(piano-transcription PRIVATE -O3)
 endif()
@@ -1688,7 +1688,7 @@ add_library(audioseal STATIC audioseal.h audioseal.cpp)
 set_target_properties(audioseal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(audioseal PUBLIC .)
 target_compile_features   (audioseal PUBLIC cxx_std_17)
-target_link_libraries     (audioseal PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (audioseal PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(audioseal PRIVATE -O3)
 endif()
@@ -1703,7 +1703,7 @@ add_library(chatterbox STATIC chatterbox.h chatterbox.cpp chatterbox_s3gen.h cha
 set_target_properties(chatterbox PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(chatterbox PUBLIC .)
 target_compile_features   (chatterbox PUBLIC cxx_std_17)
-target_link_libraries     (chatterbox PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (chatterbox PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(chatterbox PRIVATE -O3)
 endif()
@@ -1716,8 +1716,8 @@ set_target_properties(tada-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(tada-tts PUBLIC .)
 target_compile_features   (tada-tts PUBLIC cxx_std_17)
 # tada-encoder (declared below) provides the in-memory make-ref path (#201:
-# tada_make_ref_from_pcm). PUBLIC so crispasr-lib picks it up transitively.
-target_link_libraries     (tada-tts PUBLIC tada-codec tada-encoder crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+# tada_make_ref_from_pcm). PUBLIC so stelnettts-lib picks it up transitively.
+target_link_libraries     (tada-tts PUBLIC tada-codec tada-encoder stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(tada-tts PRIVATE -O3)
 endif()
@@ -1727,7 +1727,7 @@ add_library(tada-encoder STATIC tada_encoder.h tada_encoder.cpp)
 set_target_properties(tada-encoder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(tada-encoder PUBLIC .)
 target_compile_features   (tada-encoder PUBLIC cxx_std_17)
-target_link_libraries     (tada-encoder PUBLIC wav2vec2-ggml crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (tada-encoder PUBLIC wav2vec2-ggml stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(tada-encoder PRIVATE -O3)
 endif()
@@ -1737,7 +1737,7 @@ add_library(tada-codec STATIC tada_codec.h tada_codec.cpp)
 set_target_properties(tada-codec PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(tada-codec PUBLIC .)
 target_compile_features   (tada-codec PUBLIC cxx_std_17)
-target_link_libraries     (tada-codec PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (tada-codec PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(tada-codec PRIVATE -O3)
 endif()
@@ -1749,7 +1749,7 @@ add_library(indextts STATIC indextts.h indextts.cpp indextts_voc.h indextts_voc.
 set_target_properties(indextts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(indextts PUBLIC .)
 target_compile_features   (indextts PUBLIC cxx_std_17)
-target_link_libraries     (indextts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (indextts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(indextts PRIVATE -O3)
 endif()
@@ -1761,7 +1761,7 @@ add_library(m2m100 STATIC m2m100.h m2m100.cpp)
 set_target_properties(m2m100 PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(m2m100 PUBLIC .)
 target_compile_features   (m2m100 PUBLIC cxx_std_17)
-target_link_libraries     (m2m100 PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (m2m100 PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(m2m100 PRIVATE -O3)
 endif()
@@ -1773,7 +1773,7 @@ add_library(t5_translate STATIC t5_translate.h t5_translate.cpp)
 set_target_properties(t5_translate PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(t5_translate PUBLIC .)
 target_compile_features   (t5_translate PUBLIC cxx_std_17)
-target_link_libraries     (t5_translate PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (t5_translate PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(t5_translate PRIVATE -O3)
 endif()
@@ -1785,7 +1785,7 @@ add_library(omniasr STATIC omniasr.h omniasr.cpp)
 set_target_properties(omniasr PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(omniasr PUBLIC .)
 target_compile_features   (omniasr PUBLIC cxx_std_17)
-target_link_libraries     (omniasr PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (omniasr PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(omniasr PUBLIC OpenMP::OpenMP_CXX)
 endif()
@@ -1797,7 +1797,7 @@ add_library(ecapa-lid STATIC ecapa_lid.h ecapa_lid.cpp)
 set_target_properties(ecapa-lid PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(ecapa-lid PUBLIC .)
 target_compile_features   (ecapa-lid PUBLIC cxx_std_17)
-target_link_libraries     (ecapa-lid PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (ecapa-lid PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(APPLE)
     # Accelerate cblas_sgemm for the ASP pooling head (the CPU-scalar hotspot).
     if(NOT ACCELERATE_LIB)
@@ -1820,7 +1820,7 @@ add_library(titanet STATIC titanet.h titanet.cpp speaker_db.h speaker_db.cpp)
 set_target_properties(titanet PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(titanet PUBLIC .)
 target_compile_features   (titanet PUBLIC cxx_std_17)
-target_link_libraries     (titanet PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (titanet PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(APPLE)
     # Accelerate cblas_sgemm for the (CPU-scalar) speaker-embedding forward.
     if(NOT ACCELERATE_LIB)
@@ -1837,7 +1837,7 @@ add_library(vibevoice STATIC vibevoice.h vibevoice.cpp)
 set_target_properties(vibevoice PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(vibevoice PUBLIC .)
 target_compile_features   (vibevoice PUBLIC cxx_std_17)
-target_link_libraries     (vibevoice PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (vibevoice PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ---------------------------------------------------------------------------
 # kugelaudio — KugelAudio-0-Open TTS (Qwen2.5-7B + DiT diffusion + VAE)
@@ -1846,7 +1846,7 @@ add_library(kugelaudio STATIC kugelaudio.h kugelaudio.cpp)
 set_target_properties(kugelaudio PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(kugelaudio PUBLIC .)
 target_compile_features   (kugelaudio PUBLIC cxx_std_17)
-target_link_libraries     (kugelaudio PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (kugelaudio PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ---------------------------------------------------------------------------
 # voxcpm2_tts — openbmb/VoxCPM2 (diffusion AR TTS, 30 languages, 48kHz)
@@ -1855,7 +1855,7 @@ add_library(voxcpm2_tts STATIC voxcpm2_tts.h voxcpm2_vae.h voxcpm2_tts.cpp)
 set_target_properties(voxcpm2_tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(voxcpm2_tts PUBLIC .)
 target_compile_features   (voxcpm2_tts PUBLIC cxx_std_17)
-target_link_libraries     (voxcpm2_tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (voxcpm2_tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(OpenMP_FOUND)
     target_link_libraries     (voxcpm2_tts PUBLIC OpenMP::OpenMP_CXX)
 endif()
@@ -1878,7 +1878,7 @@ add_library(cosyvoice3_tts STATIC cosyvoice3_tts.h cosyvoice3_tts.cpp)
 set_target_properties(cosyvoice3_tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cosyvoice3_tts PUBLIC .)
 target_compile_features   (cosyvoice3_tts PUBLIC cxx_std_17)
-target_link_libraries     (cosyvoice3_tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (cosyvoice3_tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(cosyvoice3_tts PRIVATE -O3)
 endif()
@@ -1891,29 +1891,29 @@ add_library(kokoro STATIC kokoro.h kokoro.cpp phonemizer.cpp phonemizer.h)
 set_target_properties(kokoro PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # #316: enable the G2P dictionary auto-download in phonemizer.cpp.
 #
-# CRISPASR_HAS_CACHE was referenced there but DEFINED NOWHERE, so every
+# STELNETTTS_HAS_CACHE was referenced there but DEFINED NOWHERE, so every
 # auto-download in that file — CMUdict included — was dead code. A user without
-# a pre-seeded ~/.cache/crispasr/cmudict.dict silently got no English dictionary
+# a pre-seeded ~/.cache/stelnettts/cmudict.dict silently got no English dictionary
 # at all and fell through to the letter-to-sound rules ("this" -> θˈɪs), which
 # is a large part of what #316 sounded like.
 #
-# The gate is CRISPASR_BUILD, which guards both the #include and the
-# CRISPASR_HAS_CACHE define — and it was only ever set on crispasr-lib, and only
+# The gate is STELNETTTS_BUILD, which guards both the #include and the
+# STELNETTTS_HAS_CACHE define — and it was only ever set on stelnettts-lib, and only
 # under BUILD_SHARED_LIBS, so it was never true where phonemizer.cpp is
 # compiled.
 #
-# crispasr_cache.cpp now lives in crispasr-core (the leaf lib kokoro already
-# links), NOT crispasr-lib. Originally it was in crispasr-lib and the reference
+# stelnettts_cache.cpp now lives in stelnettts-core (the leaf lib kokoro already
+# links), NOT stelnettts-lib. Originally it was in stelnettts-lib and the reference
 # was left for the final executable to resolve — but a static build
-# (BUILD_SHARED_LIBS=OFF) links crispasr-lib BEFORE kokoro, so the linker
-# discarded crispasr_cache.o before phonemizer.o referenced it and crispasr-diff
-# failed to link (#316 AUR report). Moving the symbol to crispasr-core — which
+# (BUILD_SHARED_LIBS=OFF) links stelnettts-lib BEFORE kokoro, so the linker
+# discarded stelnettts_cache.o before phonemizer.o referenced it and stelnettts-diff
+# failed to link (#316 AUR report). Moving the symbol to stelnettts-core — which
 # every backend static lib depends on — resolves it in all link configs with no
-# cycle (mirrors crispasr_imatrix).
-target_compile_definitions(kokoro PRIVATE CRISPASR_BUILD)
+# cycle (mirrors stelnettts_imatrix).
+target_compile_definitions(kokoro PRIVATE STELNETTTS_BUILD)
 target_include_directories(kokoro PUBLIC .)
 target_compile_features   (kokoro PUBLIC cxx_std_17)
-target_link_libraries     (kokoro PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (kokoro PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(kokoro PRIVATE -O3)
 endif()
@@ -1932,16 +1932,16 @@ endif()
 #   library at runtime via dlopen. Falls back to popen(espeak-ng) subprocess.
 # ON:  link libespeak-ng at build time (makes the binary GPLv3).
 # OFF: disable completely — popen(espeak-ng) only.
-set(CRISPASR_WITH_ESPEAK_NG "AUTO" CACHE STRING
+set(STELNETTTS_WITH_ESPEAK_NG "AUTO" CACHE STRING
     "espeak-ng phonemization: AUTO=dlopen at runtime, ON=link at build time (GPLv3!), OFF=popen only")
-set_property(CACHE CRISPASR_WITH_ESPEAK_NG PROPERTY STRINGS "AUTO" "ON" "OFF")
+set_property(CACHE STELNETTTS_WITH_ESPEAK_NG PROPERTY STRINGS "AUTO" "ON" "OFF")
 
-if(NOT CRISPASR_WITH_ESPEAK_NG STREQUAL "OFF")
+if(NOT STELNETTTS_WITH_ESPEAK_NG STREQUAL "OFF")
     set(_espeak_found FALSE)
     set(_espeak_include "")
     set(_espeak_lib "")
 
-    if(CRISPASR_WITH_ESPEAK_NG STREQUAL "ON")
+    if(STELNETTTS_WITH_ESPEAK_NG STREQUAL "ON")
         # --- Explicit build-time linking (user accepts GPLv3) ---
         find_package(PkgConfig QUIET)
         if(PkgConfig_FOUND)
@@ -1965,13 +1965,13 @@ if(NOT CRISPASR_WITH_ESPEAK_NG STREQUAL "OFF")
             endif()
         endif()
         if(NOT _espeak_found)
-            message(FATAL_ERROR "CRISPASR_WITH_ESPEAK_NG=ON but libespeak-ng not found. Install espeak-ng or set AUTO/OFF.")
+            message(FATAL_ERROR "STELNETTTS_WITH_ESPEAK_NG=ON but libespeak-ng not found. Install espeak-ng or set AUTO/OFF.")
         endif()
     endif()
 
     if(_espeak_found)
         # Build-time linking path (GPLv3)
-        target_compile_definitions(kokoro PRIVATE CRISPASR_HAVE_ESPEAK_NG=1)
+        target_compile_definitions(kokoro PRIVATE STELNETTTS_HAVE_ESPEAK_NG=1)
         target_include_directories(kokoro PRIVATE ${_espeak_include})
         if(_espeak_libdir)
             target_link_directories(kokoro PRIVATE ${_espeak_libdir})
@@ -1980,9 +1980,9 @@ if(NOT CRISPASR_WITH_ESPEAK_NG STREQUAL "OFF")
         message(STATUS "kokoro: libespeak-ng linked (in-process phonemizer) — binary is GPLv3!")
     else()
         # AUTO mode: dlopen at runtime (MIT-clean binary).
-        # Define CRISPASR_ESPEAK_DLOPEN so the runtime uses dlopen/dlsym
+        # Define STELNETTTS_ESPEAK_DLOPEN so the runtime uses dlopen/dlsym
         # instead of direct function calls.
-        target_compile_definitions(kokoro PRIVATE CRISPASR_ESPEAK_DLOPEN=1)
+        target_compile_definitions(kokoro PRIVATE STELNETTTS_ESPEAK_DLOPEN=1)
         message(STATUS "kokoro: espeak-ng via dlopen at runtime (MIT-clean)")
     endif()
 endif()
@@ -1995,7 +1995,7 @@ add_library(outetts STATIC outetts.h outetts.cpp outetts_wavtok.h outetts_wavtok
 set_target_properties(outetts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(outetts PUBLIC .)
 target_compile_features   (outetts PUBLIC cxx_std_17)
-target_link_libraries     (outetts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (outetts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(outetts PRIVATE -O3)
 endif()
@@ -2008,7 +2008,7 @@ add_library(irodori-tts STATIC irodori_tts.h irodori_tts.cpp)
 set_target_properties(irodori-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(irodori-tts PUBLIC .)
 target_compile_features   (irodori-tts PUBLIC cxx_std_17)
-target_link_libraries     (irodori-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (irodori-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 # Link libsentencepiece for exact SP tokenization (optional — falls back to custom Viterbi)
 find_library(SENTENCEPIECE_LIB sentencepiece)
 if(SENTENCEPIECE_LIB)
@@ -2029,7 +2029,7 @@ add_library(f5-tts STATIC f5_tts.h f5_tts.cpp)
 set_target_properties(f5-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(f5-tts PUBLIC .)
 target_compile_features   (f5-tts PUBLIC cxx_std_17)
-target_link_libraries     (f5-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (f5-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(APPLE)
     # Accelerate provides cblas_sgemm for the Vocos vocoder pointwise Linears
     # (PLAN §182). Falls back to the scalar loops on non-Apple.
@@ -2051,7 +2051,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/csm_tts.cpp")
     set_target_properties(csm-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(csm-tts PUBLIC .)
     target_compile_features   (csm-tts PUBLIC cxx_std_17)
-    target_link_libraries     (csm-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+    target_link_libraries     (csm-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
     if(NOT MSVC)
         target_compile_options(csm-tts PRIVATE -O3)
     endif()
@@ -2064,7 +2064,7 @@ add_library(pocket-tts STATIC pocket_tts.h pocket_tts.cpp)
 set_target_properties(pocket-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(pocket-tts PUBLIC .)
 target_compile_features   (pocket-tts PUBLIC cxx_std_17)
-target_link_libraries     (pocket-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (pocket-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(pocket-tts PRIVATE -O3)
 endif()
@@ -2077,7 +2077,7 @@ add_library(parler-tts STATIC parler_tts.h parler_tts.cpp)
 set_target_properties(parler-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(parler-tts PUBLIC .)
 target_compile_features   (parler-tts PUBLIC cxx_std_17)
-target_link_libraries     (parler-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (parler-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(parler-tts PRIVATE -O3)
 endif()
@@ -2091,7 +2091,7 @@ add_library(zonos-tts STATIC zonos_tts.h zonos_tts.cpp)
 set_target_properties(zonos-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(zonos-tts PUBLIC .)
 target_compile_features   (zonos-tts PUBLIC cxx_std_17)
-target_link_libraries     (zonos-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (zonos-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(zonos-tts PRIVATE -O3)
 endif()
@@ -2104,7 +2104,7 @@ add_library(bark-tts STATIC bark_tts.h bark_tts.cpp)
 set_target_properties(bark-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(bark-tts PUBLIC .)
 target_compile_features   (bark-tts PUBLIC cxx_std_17)
-target_link_libraries     (bark-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (bark-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(bark-tts PRIVATE -O3)
 endif()
@@ -2116,7 +2116,7 @@ add_library(dia-tts STATIC dia_tts.h dia_tts.cpp)
 set_target_properties(dia-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dia-tts PUBLIC .)
 target_compile_features   (dia-tts PUBLIC cxx_std_17)
-target_link_libraries     (dia-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (dia-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(dia-tts PRIVATE -O3)
 endif()
@@ -2128,7 +2128,7 @@ add_library(dots-tts STATIC dots_tts.h dots_tts.cpp)
 set_target_properties(dots-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dots-tts PUBLIC .)
 target_compile_features   (dots-tts PUBLIC cxx_std_17)
-target_link_libraries     (dots-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (dots-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(dots-tts PRIVATE -O3)
 endif()
@@ -2140,7 +2140,7 @@ add_library(bananamind-tts STATIC bananamind_tts.h bananamind_tts.cpp)
 set_target_properties(bananamind-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(bananamind-tts PUBLIC .)
 target_compile_features   (bananamind-tts PUBLIC cxx_std_17)
-target_link_libraries     (bananamind-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (bananamind-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(bananamind-tts PRIVATE -O3)
 endif()
@@ -2152,7 +2152,7 @@ add_library(fastpitch-tts STATIC fastpitch_tts.h fastpitch_tts.cpp)
 set_target_properties(fastpitch-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(fastpitch-tts PUBLIC .)
 target_compile_features   (fastpitch-tts PUBLIC cxx_std_17)
-target_link_libraries     (fastpitch-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (fastpitch-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(fastpitch-tts PRIVATE -O3)
 endif()
@@ -2163,7 +2163,7 @@ add_library(bert-encoder STATIC bert_encoder.h bert_encoder.cpp)
 set_target_properties(bert-encoder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(bert-encoder PUBLIC .)
 target_compile_features   (bert-encoder PUBLIC cxx_std_17)
-target_link_libraries     (bert-encoder PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (bert-encoder PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(bert-encoder PRIVATE -O3)
 endif()
@@ -2174,7 +2174,7 @@ add_library(melotts STATIC melotts.h melotts.cpp)
 set_target_properties(melotts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(melotts PUBLIC .)
 target_compile_features   (melotts PUBLIC cxx_std_17)
-target_link_libraries     (melotts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu bert-encoder)
+target_link_libraries     (melotts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu bert-encoder)
 if(NOT MSVC)
     target_compile_options(melotts PRIVATE -O3)
 endif()
@@ -2193,7 +2193,7 @@ add_library(openvoice2 STATIC openvoice2.h openvoice2.cpp)
 set_target_properties(openvoice2 PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(openvoice2 PUBLIC .)
 target_compile_features   (openvoice2 PUBLIC cxx_std_17)
-target_link_libraries     (openvoice2 PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (openvoice2 PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(APPLE)
     # Accelerate cblas_sgemm for the (CPU-scalar) WaveNet voice-conversion forward.
     if(NOT ACCELERATE_LIB)
@@ -2212,7 +2212,7 @@ add_library(piper-tts STATIC piper_tts.h piper_tts.cpp)
 set_target_properties(piper-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(piper-tts PUBLIC .)
 target_compile_features   (piper-tts PUBLIC cxx_std_17)
-target_link_libraries     (piper-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (piper-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(piper-tts PRIVATE -O3)
 endif()
@@ -2227,15 +2227,15 @@ endif()
 
 # Piper reuses the same espeak-ng integration as kokoro.
 if(_espeak_found)
-    target_compile_definitions(piper-tts PRIVATE CRISPASR_HAVE_ESPEAK_NG=1)
+    target_compile_definitions(piper-tts PRIVATE STELNETTTS_HAVE_ESPEAK_NG=1)
     target_include_directories(piper-tts PRIVATE ${_espeak_include})
     if(_espeak_libdir)
         target_link_directories(piper-tts PRIVATE ${_espeak_libdir})
     endif()
     target_link_libraries(piper-tts PRIVATE ${_espeak_lib})
     message(STATUS "piper-tts: libespeak-ng linked — binary is GPLv3!")
-elseif(NOT CRISPASR_WITH_ESPEAK_NG STREQUAL "OFF")
-    target_compile_definitions(piper-tts PRIVATE CRISPASR_ESPEAK_DLOPEN=1)
+elseif(NOT STELNETTTS_WITH_ESPEAK_NG STREQUAL "OFF")
+    target_compile_definitions(piper-tts PRIVATE STELNETTTS_ESPEAK_DLOPEN=1)
     message(STATUS "piper-tts: espeak-ng via dlopen at runtime (MIT-clean)")
 endif()
 
@@ -2245,7 +2245,7 @@ add_library(speecht5-tts STATIC speecht5_tts.h speecht5_tts.cpp)
 set_target_properties(speecht5-tts PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(speecht5-tts PUBLIC .)
 target_compile_features   (speecht5-tts PUBLIC cxx_std_17)
-target_link_libraries     (speecht5-tts PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (speecht5-tts PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(speecht5-tts PRIVATE -O3)
 endif()
@@ -2257,7 +2257,7 @@ add_library(firered-vad STATIC firered_vad.h firered_vad.cpp)
 set_target_properties(firered-vad PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(firered-vad PUBLIC .)
 target_compile_features   (firered-vad PUBLIC cxx_std_17)
-target_link_libraries     (firered-vad PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (firered-vad PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(APPLE)
     # §193 Accelerate cblas_sgemm for DFSMN linear layers (§176d).
     if(NOT ACCELERATE_LIB)
@@ -2272,14 +2272,14 @@ add_library(marblenet-vad STATIC marblenet_vad.h marblenet_vad.cpp)
 set_target_properties(marblenet-vad PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(marblenet-vad PUBLIC .)
 target_compile_features   (marblenet-vad PUBLIC cxx_std_17)
-target_link_libraries     (marblenet-vad PUBLIC ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (marblenet-vad PUBLIC ggml ggml-base stelnettts_link_ggml_cpu)
 
-# crispasr-vad-encdec — Whisper-encoder + TransformerDecoder VAD
-add_library(crispasr-vad-encdec STATIC crispasr_vad_encdec.h crispasr_vad_encdec.cpp)
-set_target_properties(crispasr-vad-encdec PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(crispasr-vad-encdec PUBLIC .)
-target_compile_features   (crispasr-vad-encdec PUBLIC cxx_std_17)
-target_link_libraries     (crispasr-vad-encdec PUBLIC ggml ggml-base crispasr_link_ggml_cpu)
+# stelnettts-vad-encdec — Whisper-encoder + TransformerDecoder VAD
+add_library(stelnettts-vad-encdec STATIC stelnettts_vad_encdec.h stelnettts_vad_encdec.cpp)
+set_target_properties(stelnettts-vad-encdec PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(stelnettts-vad-encdec PUBLIC .)
+target_compile_features   (stelnettts-vad-encdec PUBLIC cxx_std_17)
+target_link_libraries     (stelnettts-vad-encdec PUBLIC ggml ggml-base stelnettts_link_ggml_cpu)
 
 # webrtc-vad — WebRTC GMM-based VAD (no model file, pure algorithmic)
 set(_webrtc_vad_dir ${CMAKE_SOURCE_DIR}/third_party/webrtc)
@@ -2312,7 +2312,7 @@ add_library(firered-lid STATIC firered_lid.h firered_lid.cpp)
 set_target_properties(firered-lid PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(firered-lid PUBLIC .)
 target_compile_features   (firered-lid PUBLIC cxx_std_17)
-target_link_libraries     (firered-lid PUBLIC firered-asr crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (firered-lid PUBLIC firered-asr stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
@@ -2322,14 +2322,14 @@ target_link_libraries     (firered-lid PUBLIC firered-asr crispasr-core ggml ggm
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../crisp_lid/CMakeLists.txt" AND NOT TARGET crisp_lid)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../crisp_lid
                      ${CMAKE_BINARY_DIR}/crisp_lid)
-    message(STATUS "crispasr: using shared crisp_lid library")
+    message(STATUS "stelnettts: using shared crisp_lid library")
 else()
     # Local fallback: lid-fasttext
     add_library(lid-fasttext STATIC lid_fasttext.h lid_fasttext.cpp)
     set_target_properties(lid-fasttext PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(lid-fasttext PUBLIC .)
     target_compile_features   (lid-fasttext PUBLIC cxx_std_17)
-    target_link_libraries     (lid-fasttext PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+    target_link_libraries     (lid-fasttext PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
     if(NOT MSVC)
         target_compile_options(lid-fasttext PRIVATE -O3)
     endif()
@@ -2342,7 +2342,7 @@ add_library(firered-asr STATIC firered_asr.h firered_asr.cpp)
 set_target_properties(firered-asr PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(firered-asr PUBLIC .)
 target_compile_features   (firered-asr PUBLIC cxx_std_17)
-target_link_libraries     (firered-asr PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (firered-asr PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 # firered_asr.cpp's CPU decoder/encoder matmuls (cpu_matmul_bt) are
 # `#pragma omp parallel for`, but the target never linked OpenMP — so the
 # pragmas were no-ops and the AED beam decoder ran single-threaded
@@ -2358,7 +2358,7 @@ endif()
 add_library(wav2vec2-ggml STATIC wav2vec2-ggml.h wav2vec2-ggml.cpp)
 target_include_directories(wav2vec2-ggml PUBLIC .)
 target_compile_features   (wav2vec2-ggml PUBLIC cxx_std_17)
-target_link_libraries     (wav2vec2-ggml PUBLIC ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (wav2vec2-ggml PUBLIC ggml ggml-base stelnettts_link_ggml_cpu)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(wav2vec2-ggml PUBLIC OpenMP::OpenMP_CXX)
 endif()
@@ -2374,7 +2374,7 @@ add_library(pyannote-seg STATIC pyannote_seg.h pyannote_seg.cpp)
 set_target_properties(pyannote-seg PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(pyannote-seg PUBLIC .)
 target_compile_features   (pyannote-seg PUBLIC cxx_std_17)
-target_link_libraries     (pyannote-seg PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (pyannote-seg PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 set_target_properties(pyannote-seg PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(NOT MSVC)
     target_compile_options(pyannote-seg PRIVATE -O3)
@@ -2387,7 +2387,7 @@ add_library(silero-lid STATIC silero_lid.h silero_lid.cpp)
 set_target_properties(silero-lid PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(silero-lid PUBLIC .)
 target_compile_features   (silero-lid PUBLIC cxx_std_17)
-target_link_libraries     (silero-lid PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (silero-lid PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 set_target_properties(silero-lid PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(APPLE)
     # Accelerate cblas_sgemm for the (CPU-scalar) LID forward.
@@ -2407,7 +2407,7 @@ if(NOT TARGET crisp_lid)
     set_target_properties(lid-cld3 PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(lid-cld3 PUBLIC .)
     target_compile_features   (lid-cld3 PUBLIC cxx_std_17)
-    target_link_libraries     (lid-cld3 PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+    target_link_libraries     (lid-cld3 PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
     if(NOT MSVC)
         target_compile_options(lid-cld3 PRIVATE -O3)
     endif()
@@ -2422,8 +2422,8 @@ if(NOT TARGET crisp_lid)
     set_target_properties(text-lid-dispatch PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(text-lid-dispatch PUBLIC .)
     target_compile_features   (text-lid-dispatch PUBLIC cxx_std_17)
-    target_compile_definitions(text-lid-dispatch PRIVATE CRISPASR_BUILD)
-    target_link_libraries     (text-lid-dispatch PUBLIC crispasr-core lid-fasttext lid-cld3)
+    target_compile_definitions(text-lid-dispatch PRIVATE STELNETTTS_BUILD)
+    target_link_libraries     (text-lid-dispatch PUBLIC stelnettts-core lid-fasttext lid-cld3)
     if(NOT MSVC)
         target_compile_options(text-lid-dispatch PRIVATE -O3)
     endif()
@@ -2436,14 +2436,14 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../crisp_punc/CMakeLists.txt" AND NOT TARGET crisp_punc)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../crisp_punc
                      ${CMAKE_BINARY_DIR}/crisp_punc)
-    message(STATUS "crispasr: using shared crisp_punc library")
+    message(STATUS "stelnettts: using shared crisp_punc library")
 else()
     # Local fallback: fireredpunc
     add_library(fireredpunc STATIC fireredpunc.h fireredpunc.cpp)
     set_target_properties(fireredpunc PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(fireredpunc PUBLIC .)
     target_compile_features   (fireredpunc PUBLIC cxx_std_17)
-    target_link_libraries     (fireredpunc PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+    target_link_libraries     (fireredpunc PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
     if(NOT MSVC)
         target_compile_options(fireredpunc PRIVATE -O3)
     endif()
@@ -2456,7 +2456,7 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../crisp_truecase/CMakeLists.txt" AND NOT TARGET crisp_truecase)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../crisp_truecase
                      ${CMAKE_BINARY_DIR}/crisp_truecase)
-    message(STATUS "crispasr: using shared crisp_truecase library")
+    message(STATUS "stelnettts: using shared crisp_truecase library")
 else()
     add_library(truecaser STATIC truecaser.h truecaser.cpp)
     set_target_properties(truecaser PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -2492,7 +2492,7 @@ if(NOT TARGET crisp_punc)
     set_target_properties(pcs PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(pcs PUBLIC .)
     target_compile_features   (pcs PUBLIC cxx_std_17)
-    target_link_libraries     (pcs PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+    target_link_libraries     (pcs PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
     if(NOT MSVC)
         target_compile_options(pcs PRIVATE -O3)
     endif()
@@ -2515,9 +2515,9 @@ add_library(htdemucs STATIC htdemucs.h htdemucs.cpp)
 set_target_properties(htdemucs PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(htdemucs PUBLIC .)
 target_compile_features   (htdemucs PUBLIC cxx_std_17)
-target_link_libraries     (htdemucs PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (htdemucs PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 # The CrossTransformer is ~86% of htdemucs runtime (measured with
-# CRISPASR_HTDEMUCS_PROFILE=1). Link Accelerate so its projections and attention
+# STELNETTTS_HTDEMUCS_PROFILE=1). Link Accelerate so its projections and attention
 # run through cblas_sgemm instead of scalar loops.
 if(APPLE)
     if(NOT ACCELERATE_LIB)
@@ -2537,7 +2537,7 @@ add_library(beat-this STATIC beat_this.h beat_this.cpp)
 set_target_properties(beat-this PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(beat-this PUBLIC .)
 target_compile_features   (beat-this PUBLIC cxx_std_17)
-target_link_libraries     (beat-this PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (beat-this PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(beat-this PRIVATE -O3)
 endif()
@@ -2549,7 +2549,7 @@ add_library(rvc-svc STATIC rvc_svc.h rvc_svc.cpp)
 set_target_properties(rvc-svc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(rvc-svc PUBLIC .)
 target_compile_features   (rvc-svc PUBLIC cxx_std_17)
-target_link_libraries     (rvc-svc PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (rvc-svc PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(rvc-svc PRIVATE -O3)
 endif()
@@ -2561,7 +2561,7 @@ add_library(beatrice-pitch STATIC beatrice_pitch.h beatrice_pitch.cpp beatrice_p
 set_target_properties(beatrice-pitch PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(beatrice-pitch PUBLIC .)
 target_compile_features   (beatrice-pitch PUBLIC cxx_std_17)
-target_link_libraries     (beatrice-pitch PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (beatrice-pitch PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(beatrice-pitch PRIVATE -O3)
 endif()
@@ -2575,7 +2575,7 @@ add_library(btc-chords STATIC btc_chords.h btc_chords.cpp)
 set_target_properties(btc-chords PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(btc-chords PUBLIC .)
 target_compile_features   (btc-chords PUBLIC cxx_std_17)
-target_link_libraries     (btc-chords PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (btc-chords PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(btc-chords PRIVATE -O3)
 endif()
@@ -2586,7 +2586,7 @@ add_library(tabcnn STATIC tabcnn.h tabcnn.cpp)
 set_target_properties(tabcnn PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(tabcnn PUBLIC .)
 target_compile_features   (tabcnn PUBLIC cxx_std_17)
-target_link_libraries     (tabcnn PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (tabcnn PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(tabcnn PRIVATE -O3)
 endif()
@@ -2595,7 +2595,7 @@ add_library(crepe STATIC crepe.h crepe.cpp)
 set_target_properties(crepe PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(crepe PUBLIC .)
 target_compile_features   (crepe PUBLIC cxx_std_17)
-target_link_libraries     (crepe PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (crepe PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(crepe PRIVATE -O3)
 endif()
@@ -2607,7 +2607,7 @@ add_library(mel-band-roformer STATIC mel_band_roformer.h mel_band_roformer.cpp)
 set_target_properties(mel-band-roformer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(mel-band-roformer PUBLIC .)
 target_compile_features   (mel-band-roformer PUBLIC cxx_std_17)
-target_link_libraries     (mel-band-roformer PUBLIC crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries     (mel-band-roformer PUBLIC stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 if(NOT MSVC)
     target_compile_options(mel-band-roformer PRIVATE -O3)
 endif()
@@ -2620,18 +2620,18 @@ endif()
 # #296 (the real fix): route linear() through cblas_sgemm — the forward is
 # ~264 GFLOP of matmul, fast on macOS/Accelerate but a ~24-min scalar loop
 # elsewhere. Link a BLAS the same way cohere does (Accelerate on Apple,
-# OpenBLAS/MKL via crispasr_prefer_cblas elsewhere); HAVE_BLAS gates the fast path.
+# OpenBLAS/MKL via stelnettts_prefer_cblas elsewhere); HAVE_BLAS gates the fast path.
 if(APPLE)
     if(NOT ACCELERATE_LIB)
         find_library(ACCELERATE_LIB Accelerate REQUIRED)
     endif()
     target_link_libraries(mel-band-roformer PUBLIC ${ACCELERATE_LIB})
     target_compile_definitions(mel-band-roformer PRIVATE HAVE_BLAS ACCELERATE_NEW_LAPACK)
-elseif(CRISPASR_MEL_BLAS)
-    # Gated on CRISPASR_MEL_BLAS (default ON) — the same switch the mel filterbank
+elseif(STELNETTTS_MEL_BLAS)
+    # Gated on STELNETTTS_MEL_BLAS (default ON) — the same switch the mel filterbank
     # uses. OFF (e.g. the Go bindings build, which links a hand-maintained cgo lib
     # list with no external BLAS) compiles the scalar linear()/attention() fallback
-    # so no unresolved cblas_sgemm is referenced. Prefer OpenBLAS EXPLICITLY: crispasr_prefer_cblas() / find_package(CBLAS)
+    # so no unresolved cblas_sgemm is referenced. Prefer OpenBLAS EXPLICITLY: stelnettts_prefer_cblas() / find_package(CBLAS)
     # happily returns the reference Netlib libcblas.so, whose sgemm is a naive
     # scalar loop — measured as slow as no BLAS at all (#296 validation). OpenBLAS
     # exports the cblas symbols too and is 10-50x faster, so look for it first.
@@ -2640,13 +2640,13 @@ elseif(CRISPASR_MEL_BLAS)
     if(MBR_OPENBLAS AND CBLAS_INCLUDE_DIR)
         target_link_libraries(mel-band-roformer PUBLIC ${MBR_OPENBLAS})
         target_include_directories(mel-band-roformer PRIVATE ${CBLAS_INCLUDE_DIR})
-        # CRISPASR_MBR_OPENBLAS: OpenBLAS specifically is linked, so
+        # STELNETTTS_MBR_OPENBLAS: OpenBLAS specifically is linked, so
         # openblas_set_num_threads is guaranteed present (portable, no weak symbol).
-        target_compile_definitions(mel-band-roformer PRIVATE HAVE_BLAS CRISPASR_MBR_OPENBLAS)
+        target_compile_definitions(mel-band-roformer PRIVATE HAVE_BLAS STELNETTTS_MBR_OPENBLAS)
         message(STATUS "mel-band-roformer: linking OpenBLAS ${MBR_OPENBLAS}")
     else()
         # Fall back to whatever cblas exists (reference is slow but correct).
-        crispasr_prefer_cblas(QUIET)
+        stelnettts_prefer_cblas(QUIET)
         if(BLAS_FOUND AND CBLAS_INCLUDE_DIR)
             target_link_libraries(mel-band-roformer PUBLIC ${BLAS_LIBRARIES})
             target_include_directories(mel-band-roformer PRIVATE ${CBLAS_INCLUDE_DIR})
@@ -2657,13 +2657,13 @@ elseif(CRISPASR_MEL_BLAS)
         endif()
     endif()
 else()
-    message(STATUS "mel-band-roformer: CRISPASR_MEL_BLAS=OFF — scalar fallback (slow separation)")
+    message(STATUS "mel-band-roformer: STELNETTTS_MEL_BLAS=OFF — scalar fallback (slow separation)")
 endif()
 
 # Standalone front-end diff probe (§248 Phase 1). Opt-in so it doesn't add to
-# the default build: cmake -DCRISPASR_BUILD_MBR_PROBE=ON.
-option(CRISPASR_BUILD_MBR_PROBE "Build the mel-band-roformer diff probe" OFF)
-if(CRISPASR_BUILD_MBR_PROBE)
+# the default build: cmake -DSTELNETTTS_BUILD_MBR_PROBE=ON.
+option(STELNETTTS_BUILD_MBR_PROBE "Build the mel-band-roformer diff probe" OFF)
+if(STELNETTTS_BUILD_MBR_PROBE)
     add_executable(mbr-diff-probe ${CMAKE_CURRENT_SOURCE_DIR}/../tools/mbr_diff_probe.cpp)
     target_link_libraries(mbr-diff-probe PRIVATE mel-band-roformer)
 endif()
@@ -2671,193 +2671,193 @@ endif()
 # ---------------------------------------------------------------------------
 # Multi-backend linkage (consumed by CLI + Dart + Python + Rust)
 #
-# Non-Whisper CrispASR backends become reachable through the `crispasr_*`
-# C-ABI wrappers in crispasr_c_api.cpp. Each backend header is #included
+# Non-Whisper StelnetTTS backends become reachable through the `stelnettts_*`
+# C-ABI wrappers in stelnettts_c_api.cpp. Each backend header is #included
 # under `#if __has_include(...)`, and when the corresponding CMake target
-# exists we PUBLIC-link it into libcrispasr so the resulting shared library
+# exists we PUBLIC-link it into libstelnettts so the resulting shared library
 # carries a DT_NEEDED on its sibling dylib. Consumers only have to open
-# libcrispasr; the platform loader pulls the rest automatically.
+# libstelnettts; the platform loader pulls the rest automatically.
 #
 # Adding a new backend is a three-line change here: (1) build the
 # backend target as usual elsewhere in this file, (2) add
-# `target_link_libraries(crispasr-lib PUBLIC <target>)` below, (3) add the
-# `crispasr_<backend>_*` wrappers to crispasr_c_api.cpp.
+# `target_link_libraries(stelnettts-lib PUBLIC <target>)` below, (3) add the
+# `stelnettts_<backend>_*` wrappers to stelnettts_c_api.cpp.
 # ---------------------------------------------------------------------------
 if (TARGET gigaam)
-    target_link_libraries(crispasr-lib PUBLIC gigaam)
+    target_link_libraries(stelnettts-lib PUBLIC gigaam)
 endif()
 if (TARGET wespeaker)
-    target_link_libraries(crispasr-lib PUBLIC wespeaker)
+    target_link_libraries(stelnettts-lib PUBLIC wespeaker)
 endif()
 if (TARGET nemotron)
-    target_link_libraries(crispasr-lib PUBLIC nemotron)
+    target_link_libraries(stelnettts-lib PUBLIC nemotron)
 endif()
 if (TARGET parakeet)
-    target_link_libraries(crispasr-lib PUBLIC parakeet)
+    target_link_libraries(stelnettts-lib PUBLIC parakeet)
 endif()
 if (TARGET canary)
-    target_link_libraries(crispasr-lib PUBLIC canary)
+    target_link_libraries(stelnettts-lib PUBLIC canary)
 endif()
 if (TARGET canary_qwen)
-    target_link_libraries(crispasr-lib PUBLIC canary_qwen)
+    target_link_libraries(stelnettts-lib PUBLIC canary_qwen)
 endif()
 if (TARGET lfm2_audio)
-    target_link_libraries(crispasr-lib PUBLIC lfm2_audio)
+    target_link_libraries(stelnettts-lib PUBLIC lfm2_audio)
 endif()
-if (TARGET qwen3_asr)
-    target_link_libraries(crispasr-lib PUBLIC qwen3_asr)
+if (TARGET cielvox2_asr)
+    target_link_libraries(stelnettts-lib PUBLIC cielvox2_asr)
 endif()
 if (TARGET higgs_stt)
-    target_link_libraries(crispasr-lib PUBLIC higgs_stt)
+    target_link_libraries(stelnettts-lib PUBLIC higgs_stt)
 endif()
 if (TARGET cohere)
-    target_link_libraries(crispasr-lib PUBLIC cohere)
+    target_link_libraries(stelnettts-lib PUBLIC cohere)
 endif()
 if (TARGET granite_speech)
-    target_link_libraries(crispasr-lib PUBLIC granite_speech)
+    target_link_libraries(stelnettts-lib PUBLIC granite_speech)
 endif()
 if (TARGET granite_nle)
-    target_link_libraries(crispasr-lib PUBLIC granite_nle)
+    target_link_libraries(stelnettts-lib PUBLIC granite_nle)
 endif()
 if (TARGET canary_ctc)
-    target_link_libraries(crispasr-lib PUBLIC canary_ctc)
+    target_link_libraries(stelnettts-lib PUBLIC canary_ctc)
 endif()
 if (TARGET voxtral)
-    target_link_libraries(crispasr-lib PUBLIC voxtral)
+    target_link_libraries(stelnettts-lib PUBLIC voxtral)
 endif()
 if (TARGET higgs_stt)
-    target_link_libraries(crispasr-lib PUBLIC higgs_stt)
+    target_link_libraries(stelnettts-lib PUBLIC higgs_stt)
 endif()
 if (TARGET voxtral4b)
-    target_link_libraries(crispasr-lib PUBLIC voxtral4b)
+    target_link_libraries(stelnettts-lib PUBLIC voxtral4b)
 endif()
 if (TARGET voxtral_tts)
-    target_link_libraries(crispasr-lib PUBLIC voxtral_tts)
+    target_link_libraries(stelnettts-lib PUBLIC voxtral_tts)
 endif()
 if (TARGET wav2vec2-ggml)
-    target_link_libraries(crispasr-lib PUBLIC wav2vec2-ggml)
+    target_link_libraries(stelnettts-lib PUBLIC wav2vec2-ggml)
 endif()
 if (TARGET ctc-align)
-    target_link_libraries(crispasr-lib PUBLIC ctc-align)
+    target_link_libraries(stelnettts-lib PUBLIC ctc-align)
 endif()
 if (TARGET glm-asr)
-    target_link_libraries(crispasr-lib PUBLIC glm-asr)
+    target_link_libraries(stelnettts-lib PUBLIC glm-asr)
 endif()
 if (TARGET htdemucs)
-    target_link_libraries(crispasr-lib PUBLIC htdemucs)
+    target_link_libraries(stelnettts-lib PUBLIC htdemucs)
 endif()
-# miotts: crispasr_c_api.cpp calls miotts_init_from_file / _free /
-# _context_default_params, but the library was never linked, so libcrispasr
+# miotts: stelnettts_c_api.cpp calls miotts_init_from_file / _free /
+# _context_default_params, but the library was never linked, so libstelnettts
 # failed to link with undefined _miotts_* symbols.
 if (TARGET miotts)
-    target_link_libraries(crispasr-lib PUBLIC miotts)
+    target_link_libraries(stelnettts-lib PUBLIC miotts)
 endif()
 if (TARGET mini-omni2)
-    target_link_libraries(crispasr-lib PUBLIC mini-omni2)
+    target_link_libraries(stelnettts-lib PUBLIC mini-omni2)
 endif()
 if (TARGET sidon)
-    target_link_libraries(crispasr-lib PUBLIC sidon)
+    target_link_libraries(stelnettts-lib PUBLIC sidon)
 endif()
 if (TARGET kyutai-stt)
-    target_link_libraries(crispasr-lib PUBLIC kyutai-stt)
+    target_link_libraries(stelnettts-lib PUBLIC kyutai-stt)
 endif()
 if (TARGET firered-asr)
-    target_link_libraries(crispasr-lib PUBLIC firered-asr)
+    target_link_libraries(stelnettts-lib PUBLIC firered-asr)
 endif()
 if (TARGET firered-vad)
-    target_link_libraries(crispasr-lib PUBLIC firered-vad)
+    target_link_libraries(stelnettts-lib PUBLIC firered-vad)
 endif()
 if (TARGET marblenet-vad)
-    target_link_libraries(crispasr-lib PUBLIC marblenet-vad)
+    target_link_libraries(stelnettts-lib PUBLIC marblenet-vad)
 endif()
-if (TARGET crispasr-vad-encdec)
-    target_link_libraries(crispasr-lib PUBLIC crispasr-vad-encdec)
+if (TARGET stelnettts-vad-encdec)
+    target_link_libraries(stelnettts-lib PUBLIC stelnettts-vad-encdec)
 endif()
 if (TARGET webrtc-vad)
-    target_link_libraries(crispasr-lib PUBLIC webrtc-vad)
+    target_link_libraries(stelnettts-lib PUBLIC webrtc-vad)
 endif()
 if (TARGET firered-lid)
-    target_link_libraries(crispasr-lib PUBLIC firered-lid)
+    target_link_libraries(stelnettts-lib PUBLIC firered-lid)
 endif()
 if (TARGET crisp_lid)
-    target_link_libraries(crispasr-lib PUBLIC crisp_lid)
+    target_link_libraries(stelnettts-lib PUBLIC crisp_lid)
 elseif (TARGET lid-fasttext)
-    target_link_libraries(crispasr-lib PUBLIC lid-fasttext)
+    target_link_libraries(stelnettts-lib PUBLIC lid-fasttext)
 endif()
 if (TARGET omniasr)
-    target_link_libraries(crispasr-lib PUBLIC omniasr)
+    target_link_libraries(stelnettts-lib PUBLIC omniasr)
 endif()
 if (TARGET vibevoice)
-    target_link_libraries(crispasr-lib PUBLIC vibevoice)
+    target_link_libraries(stelnettts-lib PUBLIC vibevoice)
 endif()
 if (TARGET piano-transcription)
-    target_link_libraries(crispasr-lib PUBLIC piano-transcription)
+    target_link_libraries(stelnettts-lib PUBLIC piano-transcription)
 endif()
 if (TARGET kugelaudio)
-    target_link_libraries(crispasr-lib PUBLIC kugelaudio)
+    target_link_libraries(stelnettts-lib PUBLIC kugelaudio)
 endif()
 if (TARGET ecapa-lid)
-    target_link_libraries(crispasr-lib PUBLIC ecapa-lid)
+    target_link_libraries(stelnettts-lib PUBLIC ecapa-lid)
 endif()
 if (TARGET titanet)
-    target_link_libraries(crispasr-lib PUBLIC titanet)
+    target_link_libraries(stelnettts-lib PUBLIC titanet)
 endif()
 if (TARGET moonshine)
-    target_link_libraries(crispasr-lib PUBLIC moonshine)
+    target_link_libraries(stelnettts-lib PUBLIC moonshine)
 endif()
 if (TARGET moonshine_streaming)
-    target_link_libraries(crispasr-lib PUBLIC moonshine_streaming)
+    target_link_libraries(stelnettts-lib PUBLIC moonshine_streaming)
 endif()
 if (TARGET gemma4_e2b)
-    target_link_libraries(crispasr-lib PUBLIC gemma4_e2b)
+    target_link_libraries(stelnettts-lib PUBLIC gemma4_e2b)
 endif()
 if (TARGET mimo_tokenizer)
-    target_link_libraries(crispasr-lib PUBLIC mimo_tokenizer)
+    target_link_libraries(stelnettts-lib PUBLIC mimo_tokenizer)
 endif()
 if (TARGET ark_asr)
-    target_link_libraries(crispasr-lib PUBLIC ark_asr)
+    target_link_libraries(stelnettts-lib PUBLIC ark_asr)
 endif()
 if (TARGET mimo_asr)
-    target_link_libraries(crispasr-lib PUBLIC mimo_asr)
+    target_link_libraries(stelnettts-lib PUBLIC mimo_asr)
 endif()
 if (TARGET moss_audio)
-    target_link_libraries(crispasr-lib PUBLIC moss_audio)
+    target_link_libraries(stelnettts-lib PUBLIC moss_audio)
 endif()
 if (TARGET moss_tts)
-    target_link_libraries(crispasr-lib PUBLIC moss_tts)
+    target_link_libraries(stelnettts-lib PUBLIC moss_tts)
 endif()
 if (TARGET moss_tts_local)
-    target_link_libraries(crispasr-lib PUBLIC moss_tts_local)
+    target_link_libraries(stelnettts-lib PUBLIC moss_tts_local)
 endif()
 if (TARGET moss_transcribe)
-    target_link_libraries(crispasr-lib PUBLIC moss_transcribe)
+    target_link_libraries(stelnettts-lib PUBLIC moss_transcribe)
 endif()
 if (TARGET moss_transcribe_diarize)
-    target_link_libraries(crispasr-lib PUBLIC moss_transcribe_diarize)
+    target_link_libraries(stelnettts-lib PUBLIC moss_transcribe_diarize)
 endif()
-if (TARGET qwen3_tts)
-    target_link_libraries(crispasr-lib PUBLIC qwen3_tts)
+if (TARGET cielvox2_tts)
+    target_link_libraries(stelnettts-lib PUBLIC cielvox2_tts)
 endif()
 if (TARGET omnivoice)
-    target_link_libraries(crispasr-lib PUBLIC omnivoice)
+    target_link_libraries(stelnettts-lib PUBLIC omnivoice)
 endif()
 if (TARGET orpheus)
-    target_link_libraries(crispasr-lib PUBLIC orpheus)
+    target_link_libraries(stelnettts-lib PUBLIC orpheus)
 endif()
 if (TARGET tada-tts)
-    target_link_libraries(crispasr-lib PUBLIC tada-tts)
+    target_link_libraries(stelnettts-lib PUBLIC tada-tts)
 endif()
 if (TARGET chatterbox)
-    # libcrispasr.so calls chatterbox_set_temperature / set_top_p /
+    # libstelnettts.so calls chatterbox_set_temperature / set_top_p /
     # set_min_p / set_repetition_penalty / set_max_speech_tokens from
-    # crispasr_c_api.cpp. With BUILD_SHARED_LIBS=ON on Linux (the
+    # stelnettts_c_api.cpp. With BUILD_SHARED_LIBS=ON on Linux (the
     # default the Docker Smoke build hits), ld leaves those refs
-    # unresolved in libcrispasr.so because chatterbox.cpp.o that
+    # unresolved in libstelnettts.so because chatterbox.cpp.o that
     # defines them wasn't being pulled in from libchatterbox.a at
     # SO-link time. Static archive members after a shared library on
     # the executable link line can't satisfy the shared library's
     # externals, so the exec link then errored:
-    #   "libcrispasr.so.0.6.2: undefined reference to chatterbox_set_temperature"
+    #   "libstelnettts.so.0.6.2: undefined reference to chatterbox_set_temperature"
     # (Docker Smoke failure on ff7bcc50 → d0d95e48 attempted fix.)
     #
     # The d0d95e48 attempt was `-Wl,--whole-archive chatterbox -Wl,--no-whole-archive`,
@@ -2871,120 +2871,120 @@ if (TARGET chatterbox)
     # add_dependencies() restores the build-order edge the generator
     # expression alone wouldn't establish.
     if (UNIX AND NOT APPLE AND BUILD_SHARED_LIBS)
-        target_link_libraries(crispasr-lib PUBLIC
+        target_link_libraries(stelnettts-lib PUBLIC
             "-Wl,--whole-archive"
             "$<TARGET_FILE:chatterbox>"
             "-Wl,--no-whole-archive")
-        add_dependencies(crispasr-lib chatterbox)
+        add_dependencies(stelnettts-lib chatterbox)
     else()
-        target_link_libraries(crispasr-lib PUBLIC chatterbox)
+        target_link_libraries(stelnettts-lib PUBLIC chatterbox)
     endif()
 endif()
 if (TARGET indextts)
-    target_link_libraries(crispasr-lib PUBLIC indextts)
+    target_link_libraries(stelnettts-lib PUBLIC indextts)
 endif()
 if (TARGET m2m100)
-    target_link_libraries(crispasr-lib PUBLIC m2m100)
+    target_link_libraries(stelnettts-lib PUBLIC m2m100)
 endif()
 if (TARGET t5_translate)
-    target_link_libraries(crispasr-lib PUBLIC t5_translate)
+    target_link_libraries(stelnettts-lib PUBLIC t5_translate)
 endif()
 if (TARGET voxcpm2_tts)
-    target_link_libraries(crispasr-lib PUBLIC voxcpm2_tts)
+    target_link_libraries(stelnettts-lib PUBLIC voxcpm2_tts)
 endif()
 if (TARGET cosyvoice3_tts)
-    target_link_libraries(crispasr-lib PUBLIC cosyvoice3_tts)
+    target_link_libraries(stelnettts-lib PUBLIC cosyvoice3_tts)
 endif()
 if (TARGET csm-tts)
-    target_link_libraries(crispasr-lib PUBLIC csm-tts)
+    target_link_libraries(stelnettts-lib PUBLIC csm-tts)
 endif()
 if (TARGET bark-tts)
-    target_link_libraries(crispasr-lib PUBLIC bark-tts)
+    target_link_libraries(stelnettts-lib PUBLIC bark-tts)
 endif()
 if (TARGET dia-tts)
-    target_link_libraries(crispasr-lib PUBLIC dia-tts)
+    target_link_libraries(stelnettts-lib PUBLIC dia-tts)
 endif()
 if (TARGET dots-tts)
-    target_link_libraries(crispasr-lib PUBLIC dots-tts)
+    target_link_libraries(stelnettts-lib PUBLIC dots-tts)
 endif()
 if (TARGET irodori-tts)
-    target_link_libraries(crispasr-lib PUBLIC irodori-tts)
+    target_link_libraries(stelnettts-lib PUBLIC irodori-tts)
 endif()
 if (TARGET fastpitch-tts)
-    target_link_libraries(crispasr-lib PUBLIC fastpitch-tts)
+    target_link_libraries(stelnettts-lib PUBLIC fastpitch-tts)
 endif()
 if (TARGET bananamind-tts)
-    target_link_libraries(crispasr-lib PUBLIC bananamind-tts)
+    target_link_libraries(stelnettts-lib PUBLIC bananamind-tts)
 endif()
 if (TARGET parler-tts)
-    target_link_libraries(crispasr-lib PUBLIC parler-tts)
+    target_link_libraries(stelnettts-lib PUBLIC parler-tts)
 endif()
 if (TARGET speecht5-tts)
-    target_link_libraries(crispasr-lib PUBLIC speecht5-tts)
+    target_link_libraries(stelnettts-lib PUBLIC speecht5-tts)
 endif()
 if (TARGET kokoro)
-    target_link_libraries(crispasr-lib PUBLIC kokoro)
+    target_link_libraries(stelnettts-lib PUBLIC kokoro)
 endif()
 if (TARGET outetts)
-    target_link_libraries(crispasr-lib PUBLIC outetts)
+    target_link_libraries(stelnettts-lib PUBLIC outetts)
 endif()
 if (TARGET zonos-tts)
-    target_link_libraries(crispasr-lib PUBLIC zonos-tts)
+    target_link_libraries(stelnettts-lib PUBLIC zonos-tts)
 endif()
 if (TARGET f5-tts)
-    target_link_libraries(crispasr-lib PUBLIC f5-tts)
+    target_link_libraries(stelnettts-lib PUBLIC f5-tts)
 endif()
 if (TARGET pocket-tts)
-    target_link_libraries(crispasr-lib PUBLIC pocket-tts)
+    target_link_libraries(stelnettts-lib PUBLIC pocket-tts)
 endif()
 if (TARGET bert-encoder)
-    target_link_libraries(crispasr-lib PUBLIC bert-encoder)
+    target_link_libraries(stelnettts-lib PUBLIC bert-encoder)
 endif()
 if (TARGET melotts)
-    target_link_libraries(crispasr-lib PUBLIC melotts)
+    target_link_libraries(stelnettts-lib PUBLIC melotts)
 endif()
 if (TARGET openvoice2)
-    target_link_libraries(crispasr-lib PUBLIC openvoice2)
+    target_link_libraries(stelnettts-lib PUBLIC openvoice2)
 endif()
 if (TARGET piper-tts)
-    target_link_libraries(crispasr-lib PUBLIC piper-tts)
+    target_link_libraries(stelnettts-lib PUBLIC piper-tts)
 endif()
 if (TARGET funasr)
-    target_link_libraries(crispasr-lib PUBLIC funasr)
+    target_link_libraries(stelnettts-lib PUBLIC funasr)
 endif()
 if (TARGET paraformer)
-    target_link_libraries(crispasr-lib PUBLIC paraformer)
+    target_link_libraries(stelnettts-lib PUBLIC paraformer)
 endif()
 if (TARGET sensevoice)
-    target_link_libraries(crispasr-lib PUBLIC sensevoice)
+    target_link_libraries(stelnettts-lib PUBLIC sensevoice)
 endif()
 if (TARGET crisp_punc)
-    target_link_libraries(crispasr-lib PUBLIC crisp_punc)
+    target_link_libraries(stelnettts-lib PUBLIC crisp_punc)
 elseif (TARGET fireredpunc)
-    target_link_libraries(crispasr-lib PUBLIC fireredpunc)
+    target_link_libraries(stelnettts-lib PUBLIC fireredpunc)
 endif()
 if (TARGET truecaser AND NOT TARGET crisp_truecase)
-    target_link_libraries(crispasr-lib PUBLIC truecaser)
+    target_link_libraries(stelnettts-lib PUBLIC truecaser)
 endif()
 if (TARGET crisp_truecase)
-    target_link_libraries(crispasr-lib PUBLIC crisp_truecase)
+    target_link_libraries(stelnettts-lib PUBLIC crisp_truecase)
 else()
     if (TARGET truecaser_crf)
-        target_link_libraries(crispasr-lib PUBLIC truecaser_crf)
+        target_link_libraries(stelnettts-lib PUBLIC truecaser_crf)
     endif()
     if (TARGET truecaser_lstm)
-        target_link_libraries(crispasr-lib PUBLIC truecaser_lstm)
+        target_link_libraries(stelnettts-lib PUBLIC truecaser_lstm)
     endif()
 endif()
 if (TARGET pcs AND NOT TARGET crisp_punc)
-    target_link_libraries(crispasr-lib PUBLIC pcs)
+    target_link_libraries(stelnettts-lib PUBLIC pcs)
 endif()
 
 # crisp_punc / crisp_truecase / crisp_lid are pulled in via add_subdirectory
-# from sibling dirs and define crispasr_c_api.cpp's fireredpunc_*/pcs_*/
+# from sibling dirs and define stelnettts_c_api.cpp's fireredpunc_*/pcs_*/
 # truecaser_lstm_*/text_lid_* symbols. Under the Xcode generator the
 # target_link_libraries() dependency above is NOT honored as a hard build-order
-# constraint: the ios-xcode-build job's Ld of libcrispasr.dylib started ~9 ms
+# constraint: the ios-xcode-build job's Ld of libstelnettts.dylib started ~9 ms
 # after `Libtool libcrisp_punc.a` *began*, i.e. it linked the archive before it
 # finished writing → those exact 12 symbols came up undefined (even with
 # -force_load, which then just force-loaded an empty archive).
@@ -2994,108 +2994,108 @@ endif()
 if(APPLE)
     foreach(_force_lib crisp_punc crisp_truecase crisp_lid)
         if(TARGET ${_force_lib})
-            add_dependencies(crispasr-lib ${_force_lib})
-            target_link_options(crispasr-lib PRIVATE
+            add_dependencies(stelnettts-lib ${_force_lib})
+            target_link_options(stelnettts-lib PRIVATE
                 "LINKER:-force_load,$<TARGET_FILE:${_force_lib}>")
         endif()
     endforeach()
 endif()
 
 # Pyannote segmentation is not a backend; it's consumed by
-# crispasr_diarize.cpp for the "pyannote" method. Still needs linking in
-# so the native diarizer's symbols resolve at libcrispasr load time.
+# stelnettts_diarize.cpp for the "pyannote" method. Still needs linking in
+# so the native diarizer's symbols resolve at libstelnettts load time.
 if (TARGET pyannote-seg)
-    target_link_libraries(crispasr-lib PUBLIC pyannote-seg)
+    target_link_libraries(stelnettts-lib PUBLIC pyannote-seg)
 endif()
-# WeSpeaker is likewise not a backend — crispasr_diarize.cpp consumes it for
+# WeSpeaker is likewise not a backend — stelnettts_diarize.cpp consumes it for
 # the "foxnose" method (#324).
 if (TARGET wespeaker)
-    target_link_libraries(crispasr-lib PUBLIC wespeaker)
+    target_link_libraries(stelnettts-lib PUBLIC wespeaker)
 endif()
-# Silero LID engine used by crispasr_lid.cpp's native Silero path.
+# Silero LID engine used by stelnettts_lid.cpp's native Silero path.
 if (TARGET silero-lid)
-    target_link_libraries(crispasr-lib PUBLIC silero-lid)
+    target_link_libraries(stelnettts-lib PUBLIC silero-lid)
 endif()
 # CLD3 text-LID — sibling of lid-fasttext, routed via the auto-routing
 # text-LID dispatcher in src/text_lid_dispatch.cpp.
 if (TARGET lid-cld3 AND NOT TARGET crisp_lid)
-    target_link_libraries(crispasr-lib PUBLIC lid-cld3)
+    target_link_libraries(stelnettts-lib PUBLIC lid-cld3)
 endif()
 # Text-LID dispatcher — selects between fastText and CLD3 by GGUF arch.
-# crispasr-lib (the main library) and crispasr-lid both go through this.
+# stelnettts-lib (the main library) and stelnettts-lid both go through this.
 if (TARGET text-lid-dispatch AND NOT TARGET crisp_lid)
-    target_link_libraries(crispasr-lib PUBLIC text-lid-dispatch)
+    target_link_libraries(stelnettts-lib PUBLIC text-lid-dispatch)
 endif()
 
 # §248 source-separation backends — driven by the --separate CLI dispatcher
-# (examples/cli/crispasr_separate_cli.cpp), arch auto-detected from the GGUF.
+# (examples/cli/stelnettts_separate_cli.cpp), arch auto-detected from the GGUF.
 if (TARGET mel-band-roformer)
-    target_link_libraries(crispasr-lib PUBLIC mel-band-roformer)
+    target_link_libraries(stelnettts-lib PUBLIC mel-band-roformer)
 endif()
 if (TARGET htdemucs)
-    target_link_libraries(crispasr-lib PUBLIC htdemucs)
+    target_link_libraries(stelnettts-lib PUBLIC htdemucs)
 endif()
 
 # Pitch (F0) estimation — driven by the --pitch CLI dispatcher
-# (examples/cli/crispasr_pitch_cli.cpp), arch auto-detected from the GGUF.
+# (examples/cli/stelnettts_pitch_cli.cpp), arch auto-detected from the GGUF.
 if (TARGET crepe)
-    target_link_libraries(crispasr-lib PUBLIC crepe)
+    target_link_libraries(stelnettts-lib PUBLIC crepe)
 endif()
 if (TARGET btc-chords)
-    target_link_libraries(crispasr-lib PUBLIC btc-chords)
+    target_link_libraries(stelnettts-lib PUBLIC btc-chords)
 endif()
 if (TARGET tabcnn)
-    target_link_libraries(crispasr-lib PUBLIC tabcnn)
+    target_link_libraries(stelnettts-lib PUBLIC tabcnn)
 endif()
 if (TARGET beatrice-pitch)
-    target_link_libraries(crispasr-lib PUBLIC beatrice-pitch)
+    target_link_libraries(stelnettts-lib PUBLIC beatrice-pitch)
 endif()
 if (TARGET rvc-svc)
-    target_link_libraries(crispasr-lib PUBLIC rvc-svc)
+    target_link_libraries(stelnettts-lib PUBLIC rvc-svc)
 endif()
 if (TARGET beat-this)
-    target_link_libraries(crispasr-lib PUBLIC beat-this)
+    target_link_libraries(stelnettts-lib PUBLIC beat-this)
 endif()
 
 # Text-LLM chat backend — PRIVATE link: llama.h identifiers are
-# absorbed into libcrispasr and don't bleed into the public surface.
-# Symbols downstream consumers see are only the `crispasr_chat_*` ABI
-# from include/crispasr_chat.h. See docs/prompts/chat-abi.md.
-if (TARGET crispasr-llama-core)
-    target_link_libraries(crispasr-lib PRIVATE crispasr-llama-core)
+# absorbed into libstelnettts and don't bleed into the public surface.
+# Symbols downstream consumers see are only the `stelnettts_chat_*` ABI
+# from include/stelnettts_chat.h. See docs/prompts/chat-abi.md.
+if (TARGET stelnettts-llama-core)
+    target_link_libraries(stelnettts-lib PRIVATE stelnettts-llama-core)
 endif()
 
-install(TARGETS crispasr-lib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/crispasr_chat.h
+install(TARGETS stelnettts-lib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../include/stelnettts_chat.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Convenience alias: produce `libwhisper.{dylib,so,dll}` as a symlink (or
-# copy on Windows) next to `libcrispasr`, pointing at the same file. Lets
-# legacy consumers that know the project as crispasr — not as
-# CrispASR — open the library under its old name.
+# copy on Windows) next to `libstelnettts`, pointing at the same file. Lets
+# legacy consumers that know the project as stelnettts — not as
+# StelnetTTS — open the library under its old name.
 if (BUILD_SHARED_LIBS)
-    set_target_properties(crispasr-lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_compile_definitions(crispasr-lib PRIVATE CRISPASR_SHARED CRISPASR_BUILD)
+    set_target_properties(stelnettts-lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_definitions(stelnettts-lib PRIVATE STELNETTTS_SHARED STELNETTTS_BUILD)
     if (APPLE)
-        add_custom_command(TARGET crispasr-lib POST_BUILD
+        add_custom_command(TARGET stelnettts-lib POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink
-                $<TARGET_FILE_NAME:crispasr-lib>
-                $<TARGET_FILE_DIR:crispasr-lib>/libwhisper.dylib
-            COMMENT "Creating libwhisper.dylib -> $<TARGET_FILE_NAME:crispasr-lib> alias"
+                $<TARGET_FILE_NAME:stelnettts-lib>
+                $<TARGET_FILE_DIR:stelnettts-lib>/libwhisper.dylib
+            COMMENT "Creating libwhisper.dylib -> $<TARGET_FILE_NAME:stelnettts-lib> alias"
         )
     elseif (UNIX)
-        add_custom_command(TARGET crispasr-lib POST_BUILD
+        add_custom_command(TARGET stelnettts-lib POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink
-                $<TARGET_FILE_NAME:crispasr-lib>
-                $<TARGET_FILE_DIR:crispasr-lib>/libwhisper.so
-            COMMENT "Creating libwhisper.so -> $<TARGET_FILE_NAME:crispasr-lib> alias"
+                $<TARGET_FILE_NAME:stelnettts-lib>
+                $<TARGET_FILE_DIR:stelnettts-lib>/libwhisper.so
+            COMMENT "Creating libwhisper.so -> $<TARGET_FILE_NAME:stelnettts-lib> alias"
         )
     elseif (WIN32)
-        add_custom_command(TARGET crispasr-lib POST_BUILD
+        add_custom_command(TARGET stelnettts-lib POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_FILE:crispasr-lib>
-                $<TARGET_FILE_DIR:crispasr-lib>/whisper.dll
-            COMMENT "Copying $<TARGET_FILE:crispasr-lib> to whisper.dll alias"
+                $<TARGET_FILE:stelnettts-lib>
+                $<TARGET_FILE_DIR:stelnettts-lib>/whisper.dll
+            COMMENT "Copying $<TARGET_FILE:stelnettts-lib> to whisper.dll alias"
         )
     endif()
 endif()

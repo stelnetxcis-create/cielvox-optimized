@@ -1,11 +1,11 @@
-# SVC handoff — feature/F0 record shapes (CrispASR ↔ CometBeat)
+# SVC handoff — feature/F0 record shapes (StelnetTTS ↔ CometBeat)
 
 **Status: CONFIRMED 2026-07-20 by the CometBeat voice-svc side. No longer
 blocking their freeze — see PLAN.md §CB1.** Every `[OPEN]` below is resolved;
 the resolutions are recorded inline as **[AGREED]**. Two API additions they
 asked for are in §10.
 
-CometBeat asked CrispASR to port the real-time-critical vocoders (RVC
+CometBeat asked StelnetTTS to port the real-time-critical vocoders (RVC
 NSF-HiFi-GAN, Beatrice v2) behind a `CrispasrSession.convert(...)` seam, with
 CometBeat supplying ContentVec features + F0 + speaker id. They keep the
 HuBERT/ContentVec encoder, Harvest F0, and the DDSP-SVC fallback in pure Dart.
@@ -32,7 +32,7 @@ Primary sources:
 ## 1. What crosses the boundary
 
 ```
-CometBeat (Dart)                          CrispASR (native)
+CometBeat (Dart)                          StelnetTTS (native)
 ─────────────────                         ─────────────────
 ContentVec encoder  ──► features ─┐
 RMVPE F0            ──► f0        ─┼──►  convert() ──► converted audio (PCM)
@@ -67,7 +67,7 @@ Consequences for the contract:
 - **F0 is native at 100 Hz.** It does NOT need resampling to meet the features;
   the features are brought up to meet it.
 - **[AGREED]** *who does the 2x duplication*:
-  **CometBeat sends ContentVec at its native 50 Hz and CrispASR duplicates**,
+  **CometBeat sends ContentVec at its native 50 Hz and StelnetTTS duplicates**,
   with F0 sent at its native 100 Hz. Their pure-Dart RVC fallback already does
   the duplication internally, so both paths agree.
   because the duplication is part of the model's input contract and belongs
@@ -90,7 +90,7 @@ by a frame, and the reference silently takes the shorter. Match the reference.
 | dims | **v1: 256**, **v2: 768** | `hubert.py` — v1 returns `final_proj(hidden_states[9])`, v2 returns `last_hidden_state` |
 | layer | **v1: hidden_states[9] then `final_proj`**; **v2: final (12th) layer, no projection** | `hubert.py`, code confirmed (not just its docstring) |
 | native rate | **50 Hz (20 ms)**, duplicated 2x to 100 Hz | §2 |
-| layout | `Float32List`, frame-major flat (`n_frames * n_dims`) **[OPEN]** | our choice; matches `crispasr_session_pitch_frames` / `_chords_spans` |
+| layout | `Float32List`, frame-major flat (`n_frames * n_dims`) **[OPEN]** | our choice; matches `stelnettts_session_pitch_frames` / `_chords_spans` |
 | normalisation | raw encoder output — RVC applies none before the generator | `pipeline.py` `vc()` |
 
 **[AGREED] Both.** CometBeat supports v1 (256 = vec-256-layer-9) and v2
@@ -127,7 +127,7 @@ f0_mel[f0_mel > 255] = 255
 f0_coarse = np.rint(f0_mel).astype(np.int32)
 ```
 
-**Contract: CometBeat sends Hz only; CrispASR derives the coarse form.** The
+**Contract: CometBeat sends Hz only; StelnetTTS derives the coarse form.** The
 constants above are model-side, and replicating them in Dart guarantees drift.
 
 | field | proposal |
@@ -150,7 +150,7 @@ itself — so a separate voicing array is **not required**. Keep it optional.
 — `sid` is a plain **integer index** into the checkpoint's speaker table.
 
 Proposal: `int32` plus a `convert_n_speakers()` accessor, mirroring the existing
-`crispasr_session_set_speaker` / `_n_speakers` pair used by the multi-speaker
+`stelnettts_session_set_speaker` / `_n_speakers` pair used by the multi-speaker
 TTS backends. No new concept needed.
 
 ---
@@ -233,7 +233,7 @@ nothing. **Proposal: omit it until index retrieval lands**, then add it with the
 
 `change_rms(data1, sr1, data2, sr2, rate)` takes **data1 = the source waveform
 at 16 kHz** and blends its RMS envelope into the output. Our seam receives
-ContentVec FEATURES, not audio — so CrispASR structurally cannot compute it.
+ContentVec FEATURES, not audio — so StelnetTTS structurally cannot compute it.
 
 Three options, in order of preference:
 

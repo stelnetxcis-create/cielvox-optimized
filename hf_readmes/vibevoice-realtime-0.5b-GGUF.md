@@ -16,7 +16,7 @@ tags:
 - text-to-speech
 - vibevoice
 - gguf
-- crispasr
+- stelnettts
 - voice-pack
 - multilingual
 base_model: microsoft/VibeVoice-Realtime-0.5B
@@ -26,7 +26,7 @@ library_name: ggml
 
 # VibeVoice-Realtime-0.5B — GGUF
 
-GGUF conversion of [microsoft/VibeVoice-Realtime-0.5B](https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [microsoft/VibeVoice-Realtime-0.5B](https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model variants
 
@@ -45,7 +45,7 @@ GGUF conversion of [microsoft/VibeVoice-Realtime-0.5B](https://huggingface.co/mi
 
 ## Voice prompts
 
-A voice prompt is **required** for TTS. Each `.gguf` voice pack ships pre-computed KV caches that establish a fixed speaker identity (the realtime variant is *not* WAV-cloning — for runtime cloning, use [`cstr/vibevoice-1.5b-GGUF`](https://huggingface.co/cstr/vibevoice-1.5b-GGUF) instead).
+A voice prompt is **required** for TTS. Each `.gguf` voice pack ships pre-computed KV caches that establish a fixed speaker identity (the realtime variant is *not* WAV-cloning — for runtime cloning, use [`Xenna/vibevoice-1.5b-GGUF`](https://huggingface.co/Xenna/vibevoice-1.5b-GGUF) instead).
 
 This repo bundles all 25 demo voices from [`microsoft/VibeVoice@main demo/voices/streaming_model/`](https://github.com/microsoft/VibeVoice/tree/main/demo/voices/streaming_model) — same MIT license as the model.
 
@@ -78,29 +78,29 @@ This repo bundles all 25 demo voices from [`microsoft/VibeVoice@main demo/voices
 | `vibevoice-voice-sp-Spk0_woman.gguf`     | Spk0   (F)  | Spanish |
 | `vibevoice-voice-sp-Spk1_man.gguf`       | Spk1   (M)  | Spanish |
 
-Each voice pack is ~2-6 MB. The `vibevoice-voice-emma.gguf` filename is kept as the legacy default (referenced by `crispasr -m auto --backend vibevoice-tts` in CrispASR's auto-download manifest); `vibevoice-voice-en-Emma_woman.gguf` is the canonical upstream-named copy.
+Each voice pack is ~2-6 MB. The `vibevoice-voice-emma.gguf` filename is kept as the legacy default (referenced by `stelnettts -m auto --backend vibevoice-tts` in StelnetTTS's auto-download manifest); `vibevoice-voice-en-Emma_woman.gguf` is the canonical upstream-named copy.
 
 ## Usage
 
 ```bash
 # English with Emma
-crispasr --backend vibevoice-tts \
+stelnettts --backend vibevoice-tts \
     -m vibevoice-realtime-0.5b-q4_k.gguf \
     --voice vibevoice-voice-emma.gguf \
     --tts "Hello, how are you today?" \
     --tts-output hello.wav
 
 # Japanese with jp-Spk1_woman
-crispasr --backend vibevoice-tts \
+stelnettts --backend vibevoice-tts \
     -m vibevoice-realtime-0.5b-q4_k.gguf \
     --voice vibevoice-voice-jp-Spk1_woman.gguf \
     --tts "こんにちは、これは日本語の音声テストです。" \
     --tts-output jp.wav
 ```
 
-Output: 24 kHz mono WAV. Use `crispasr -m auto --backend vibevoice-tts` to auto-download the model + the default Emma voice.
+Output: 24 kHz mono WAV. Use `stelnettts -m auto --backend vibevoice-tts` to auto-download the model + the default Emma voice.
 
-Runtime note: CrispASR keeps the initial sigma-VAE decoder samples for the
+Runtime note: StelnetTTS keeps the initial sigma-VAE decoder samples for the
 realtime model. Builds after 2026-06-18 also avoid spread-spectrum watermark
 boundary amplification, fixing the earlier start-click artifact seen in some
 short generated WAVs.
@@ -142,7 +142,7 @@ python models/convert-vibevoice-to-gguf.py \
     --output vibevoice-realtime-0.5b-tts-f16.gguf \
     --include-decoder
 
-build/bin/crispasr-quantize vibevoice-realtime-0.5b-tts-f16.gguf \
+build/bin/stelnettts-quantize vibevoice-realtime-0.5b-tts-f16.gguf \
     vibevoice-realtime-0.5b-q4_k.gguf q4_k
 ```
 
@@ -157,7 +157,7 @@ python models/convert-vibevoice-voice-to-gguf.py \
 
 - **Original model:** [`microsoft/VibeVoice-Realtime-0.5B`](https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B) (MIT) — Microsoft Research.
 - **Voice packs:** demo voices from [`microsoft/VibeVoice@main`](https://github.com/microsoft/VibeVoice/tree/main/demo/voices/streaming_model) (MIT).
-- **GGUF + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR) — see `src/vibevoice.cpp`, `models/convert-vibevoice-to-gguf.py`, and `models/convert-vibevoice-voice-to-gguf.py`.
+- **GGUF + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS) — see `src/vibevoice.cpp`, `models/convert-vibevoice-to-gguf.py`, and `models/convert-vibevoice-voice-to-gguf.py`.
 
 ## License
 

@@ -1,7 +1,7 @@
 """Google Gemma-4-E2B reference dump backend.
 
 Loads `google/gemma-4-E2B-it` via HuggingFace Transformers and captures
-mel features and encoder output for crispasr-diff comparison against the
+mel features and encoder output for stelnettts-diff comparison against the
 C++ runtime.
 
 Memory note: the full Gemma4ForConditionalGeneration model is ~9.6 GB
@@ -11,7 +11,7 @@ audio_tower submodule (~1 GB in bf16) and the feature extractor — that
 fits comfortably and produces the activations the audio-side diff
 actually needs.
 
-Set CRISPASR_REF_FULL=1 to load the full model and capture LLM hidden
+Set STELNETTTS_REF_FULL=1 to load the full model and capture LLM hidden
 states as well (only useful on machines with ≥16 GB RAM or after the
 diff harness verifies the encoder is correct).
 
@@ -81,7 +81,7 @@ def _dump_audio_only(model_dir: Path, audio: np.ndarray, stages: Set[str]) -> Di
     text_cfg = full_cfg.text_config
 
     # Allocate the audio_tower + the audio→LLM adapter only.
-    dtype = torch.bfloat16 if os.environ.get("CRISPASR_REF_DTYPE", "bf16") in ("bf16", "bfloat16") else torch.float32
+    dtype = torch.bfloat16 if os.environ.get("STELNETTTS_REF_DTYPE", "bf16") in ("bf16", "bfloat16") else torch.float32
     audio_tower = Gemma4AudioModel(audio_cfg)
     embed_audio = Gemma4MultimodalEmbedder(audio_cfg, text_cfg)
 
@@ -219,7 +219,7 @@ def _dump_full(model_dir: Path, audio: np.ndarray, stages: Set[str], max_new_tok
     from transformers import AutoProcessor, AutoModelForImageTextToText
 
     pretrained = str(model_dir)
-    dtype = torch.bfloat16 if os.environ.get("CRISPASR_REF_DTYPE", "bf16") in ("bf16", "bfloat16") else torch.float32
+    dtype = torch.bfloat16 if os.environ.get("STELNETTTS_REF_DTYPE", "bf16") in ("bf16", "bfloat16") else torch.float32
     print(f"  loading full Gemma-4-E2B (dtype={dtype}) from {pretrained}")
     processor = AutoProcessor.from_pretrained(pretrained, trust_remote_code=True)
     model = AutoModelForImageTextToText.from_pretrained(
@@ -316,10 +316,10 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
          max_new_tokens: int) -> Dict[str, np.ndarray]:
     """Run Gemma-4-E2B reference forward and return stage captures.
 
-    Defaults to audio-only (fits on 8 GB RAM). Set CRISPASR_REF_FULL=1
+    Defaults to audio-only (fits on 8 GB RAM). Set STELNETTTS_REF_FULL=1
     to load the full model and capture LLM hidden states.
     """
     import os
-    if os.environ.get("CRISPASR_REF_FULL", "0") == "1":
+    if os.environ.get("STELNETTTS_REF_FULL", "0") == "1":
         return _dump_full(model_dir, audio, stages, max_new_tokens)
     return _dump_audio_only(model_dir, audio, stages)

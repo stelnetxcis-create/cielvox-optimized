@@ -21,7 +21,7 @@ CANARY_V2_LANGS = frozenset({
 
 class TestCanaryLangWhitelist(unittest.TestCase):
     def test_whitelist_matches_v2_model_card(self) -> None:
-        src = (ROOT / "examples/cli/crispasr_backend_canary.cpp").read_text(encoding="utf-8")
+        src = (ROOT / "examples/cli/stelnettts_backend_canary.cpp").read_text(encoding="utf-8")
         m = re.search(
             r'static\s+const\s+char\*\s+kSupportedLangs\[\]\s*=\s*\{([^}]+)\}',
             src,

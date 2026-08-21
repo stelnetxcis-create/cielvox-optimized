@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push the CrispASR re-bake notebook to Kaggle.
+# Push the StelnetTTS re-bake notebook to Kaggle.
 #
 # Sibling to ../push.sh — same pattern, different kernel id.
 # `kaggle kernels push` uploads + immediately runs. First run on a
@@ -14,15 +14,15 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # source of truth (easier to diff, edit, lint); regenerate the
 # .ipynb on every push so they don't drift.
 echo "jupytext .py → .ipynb"
-jupytext --to ipynb "$DIR/crispasr-rebake.py" \
-  --output "$DIR/crispasr-rebake.ipynb"
+jupytext --to ipynb "$DIR/stelnettts-rebake.py" \
+  --output "$DIR/stelnettts-rebake.ipynb"
 
 # Inject the kernelspec metadata papermill (Kaggle's notebook
 # runner) requires. jupytext doesn't add this by default, and
 # without it papermill bails with
 #   ValueError: No kernel name found in notebook and no override
 #   provided.
-python - <<'PY' "$DIR/crispasr-rebake.ipynb"
+python - <<'PY' "$DIR/stelnettts-rebake.ipynb"
 import json, sys
 p = sys.argv[1]
 nb = json.load(open(p))

@@ -10,8 +10,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_cache.h"
-#include "crispasr_model_registry.h"
+#include "stelnettts_cache.h"
+#include "stelnettts_model_registry.h"
 
 #include <cerrno>
 #include <cstdio>
@@ -29,7 +29,7 @@ static std::string make_temp_dir() {
     std::string base = buf;
     if (!base.empty() && (base.back() == '\\' || base.back() == '/'))
         base.pop_back();
-    std::string dir = base + "/crispasr_companion_test_" + std::to_string(_getpid());
+    std::string dir = base + "/stelnettts_companion_test_" + std::to_string(_getpid());
     _mkdir(dir.c_str());
     return dir;
 }
@@ -39,10 +39,10 @@ static void remove_dir(const std::string& path) { _rmdir(path.c_str()); }
 #  include <sys/stat.h>
 #  include <unistd.h>
 static std::string make_temp_dir() {
-    const char* env = std::getenv("CRISPASR_SCRATCH_DIR");
+    const char* env = std::getenv("STELNETTTS_SCRATCH_DIR");
     std::string base = (env && *env) ? env : ".scratch";
     mkdir(base.c_str(), 0755);
-    std::string pattern = base + "/crispasr_companion_XXXXXX";
+    std::string pattern = base + "/stelnettts_companion_XXXXXX";
     std::string writable = pattern;
     char* buf = writable.data();
     return mkdtemp(buf) ? std::string(buf) : base;
@@ -76,7 +76,7 @@ TEST_CASE("companion: sibling file found next to model skips resolve", "[unit][c
 
     // Simulate the dispatcher's sibling check.
     CrispasrRegistryEntry entry;
-    REQUIRE(crispasr_registry_lookup("mimo-asr", entry));
+    REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
     bool companion_found = false;
     {
@@ -101,7 +101,7 @@ TEST_CASE("companion: sibling file absent triggers resolve path", "[unit][compan
     write_dummy(model_path);
 
     CrispasrRegistryEntry entry;
-    REQUIRE(crispasr_registry_lookup("mimo-asr", entry));
+    REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
     bool companion_found = false;
     {
@@ -120,7 +120,7 @@ TEST_CASE("companion: sibling file absent triggers resolve path", "[unit][compan
 // ── Cache-directory probe ────────────────────────────────────────────
 //
 // When no sibling is found, the dispatcher probes the cache dir via
-// crispasr_cache::probe_cached_file before triggering resolve.
+// stelnettts_cache::probe_cached_file before triggering resolve.
 
 TEST_CASE("companion: cached companion in cache_dir skips resolve", "[unit][companion]") {
     const std::string cache_dir = make_temp_dir();
@@ -130,9 +130,9 @@ TEST_CASE("companion: cached companion in cache_dir skips resolve", "[unit][comp
     write_dummy(cached_companion);
 
     CrispasrRegistryEntry entry;
-    REQUIRE(crispasr_registry_lookup("mimo-asr", entry));
+    REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
-    const std::string found = crispasr_cache::probe_cached_file(entry.companion_filename, cache_dir);
+    const std::string found = stelnettts_cache::probe_cached_file(entry.companion_filename, cache_dir);
     REQUIRE(!found.empty());
 
     remove_file(cached_companion);
@@ -143,9 +143,9 @@ TEST_CASE("companion: empty cache_dir means companion not found", "[unit][compan
     const std::string cache_dir = make_temp_dir();
 
     CrispasrRegistryEntry entry;
-    REQUIRE(crispasr_registry_lookup("mimo-asr", entry));
+    REQUIRE(stelnettts_registry_lookup("mimo-asr", entry));
 
-    const std::string found = crispasr_cache::probe_cached_file(entry.companion_filename, cache_dir);
+    const std::string found = stelnettts_cache::probe_cached_file(entry.companion_filename, cache_dir);
     REQUIRE(found.empty());
 
     remove_dir(cache_dir);
@@ -158,21 +158,21 @@ TEST_CASE("companion: empty cache_dir means companion not found", "[unit][compan
 
 TEST_CASE("companion: mimo-asr companion size is ~395 MB, not ~4.2 GB (#148)", "[unit][companion]") {
     CrispasrRegistryEntry e;
-    REQUIRE(crispasr_registry_lookup("mimo-asr", e));
+    REQUIRE(stelnettts_registry_lookup("mimo-asr", e));
     REQUIRE(e.companion_approx_size == "~395 MB");
     REQUIRE(e.approx_size == "~4.2 GB"); // LM size, for contrast
 }
 
-TEST_CASE("companion: qwen3-tts companion size is ~60 MB, not ~986 MB (#146)", "[unit][companion]") {
+TEST_CASE("companion: cielvox2-tts companion size is ~60 MB, not ~986 MB (#146)", "[unit][companion]") {
     CrispasrRegistryEntry e;
-    REQUIRE(crispasr_registry_lookup("qwen3-tts", e));
+    REQUIRE(stelnettts_registry_lookup("cielvox2-tts", e));
     REQUIRE(e.companion_approx_size == "~60 MB");
     REQUIRE(e.approx_size == "~986 MB");
 }
 
 TEST_CASE("companion: lookup_by_filename shows companion size in approx_size (#146)", "[unit][companion]") {
     CrispasrRegistryEntry e;
-    REQUIRE(crispasr_registry_lookup_by_filename("mimo-tokenizer-q4_k.gguf", e));
+    REQUIRE(stelnettts_registry_lookup_by_filename("mimo-tokenizer-q4_k.gguf", e));
     // When resolving a companion by filename, approx_size should be the
     // companion's own size — this is what the "Available for download"
     // message prints.
@@ -181,13 +181,13 @@ TEST_CASE("companion: lookup_by_filename shows companion size in approx_size (#1
 
 TEST_CASE("companion: snac-24khz lookup_by_filename shows codec size", "[unit][companion]") {
     CrispasrRegistryEntry e;
-    REQUIRE(crispasr_registry_lookup_by_filename("snac-24khz.gguf", e));
+    REQUIRE(stelnettts_registry_lookup_by_filename("snac-24khz.gguf", e));
     REQUIRE(e.approx_size == "~80 MB");
     REQUIRE(e.approx_size.find("GB") == std::string::npos);
 }
 
 TEST_CASE("companion: chatterbox-s3gen lookup_by_filename shows vocoder size", "[unit][companion]") {
     CrispasrRegistryEntry e;
-    REQUIRE(crispasr_registry_lookup_by_filename("chatterbox-s3gen-q8_0.gguf", e));
+    REQUIRE(stelnettts_registry_lookup_by_filename("chatterbox-s3gen-q8_0.gguf", e));
     REQUIRE(e.approx_size == "~627 MB");
 }

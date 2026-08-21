@@ -1,6 +1,6 @@
-# Guitar tablature in CrispASR — model scoping + integration spec (§GT1)
+# Guitar tablature in StelnetTTS — model scoping + integration spec (§GT1)
 
-Scoping pass for a `--tab` task surface, answering a caller who wants CrispASR
+Scoping pass for a `--tab` task surface, answering a caller who wants StelnetTTS
 to ship an **emission scorer** — a model that emits per-note or per-frame
 `(string, fret)` scores — while their Viterbi/DP decoder applies the hard
 constraints (one note per string, fret range, capo) and picks the path.
@@ -285,7 +285,7 @@ smoothing/decoding to a downstream step. The caller's Viterbi consuming those
 emissions is a strict improvement over the published argmax.
 
 ```
-CrispASR                                   caller
+StelnetTTS                                   caller
 ────────────────────────────────────────   ──────────────────────────────
 audio ──► CQT ──► TabCNN ──► [T, 6, 21]    ──► Viterbi/DP over the same
                              log-probs          matrix, applying:
@@ -426,8 +426,8 @@ per-stage diff, then a real-music acceptance run:
    cosine and peak-bin match are **scale-invariant**, so assert on the median
    per-bin magnitude ratio too (`core/cqt.h` shipped a 152× scale bug that
    correlation could not see).
-2. **Per-stage diff** — `crispasr-diff tabcnn` against a dumped reference,
-   registered in `crispasr_diff_main.cpp`. Per the voxcpm2-vae finding: a
+2. **Per-stage diff** — `stelnettts-diff tabcnn` against a dumped reference,
+   registered in `stelnettts_diff_main.cpp`. Per the voxcpm2-vae finding: a
    reference dumper with **no C++ consumer is dead code that looks like
    coverage** — wire both halves or neither.
 3. **Real-music acceptance** — GuitarSet 6-fold is the training protocol, so it
@@ -464,19 +464,19 @@ decoder (0-3).
 Mirrors the `--pitch` / `--chords` / `--beats` task-shaped precedent
 (`docs/contributing.md` §7 — a task surface, not a `transcribe()` overload):
 
-- `CAP_TAB` bit; both capability-name tables in `crispasr_backend.cpp`
-- `examples/cli/crispasr_tab_cli.{h,cpp}` early dispatcher, called from
-  `crispasr_run_backend()` **and** from `cli.cpp` before any transcribe backend
-- redirect shim `crispasr_backend_tabcnn.cpp` so `--list-backends` knows it
-- **both** detect passes — `crispasr_backend.cpp` *and*
-  `crispasr_detect_backend_from_gguf()` in `src/crispasr_c_api.cpp`
-- session C ABI `crispasr_session_tab*`: a run call returning a count, an `n_*`
+- `CAP_TAB` bit; both capability-name tables in `stelnettts_backend.cpp`
+- `examples/cli/stelnettts_tab_cli.{h,cpp}` early dispatcher, called from
+  `stelnettts_run_backend()` **and** from `cli.cpp` before any transcribe backend
+- redirect shim `stelnettts_backend_tabcnn.cpp` so `--list-backends` knows it
+- **both** detect passes — `stelnettts_backend.cpp` *and*
+  `stelnettts_detect_backend_from_gguf()` in `src/stelnettts_c_api.cpp`
+- session C ABI `stelnettts_session_tab*`: a run call returning a count, an `n_*`
   accessor, and a **flat all-float view** (a mixed int/float struct read through
   a float view misreads the int lanes)
 - registry entry with a `license` field — and see §2.3: if the corpus provenance
   cannot be named, there is nothing to gate on and it should not ship
 - `python tools/gen-feature-matrix.py` (never hand-edit the matrix)
-- `python tools/check-backend-wiring.py --crispasr ./build/bin/crispasr`
+- `python tools/check-backend-wiring.py --stelnettts ./build/bin/stelnettts`
 
 Emission-scorer contract at the ABI: `[T, 6, 21]` **log-probabilities**, plus
 the frame hop in seconds so the caller can align to its own grid. The caller

@@ -1,4 +1,4 @@
-"""IndexTTS-1.5 reference dump backend for crispasr-diff.
+"""IndexTTS-1.5 reference dump backend for stelnettts-diff.
 
 Captures per-stage activations from the IndexTTS-1.5 PyTorch model so
 the C++ implementation can be validated tensor-by-tensor.

@@ -13,8 +13,8 @@
 //   Delay    : MossTTSDelay staggered-emit state machine (see delay logic).
 //   Codec    : transformer RVQ codec (Phase 4; loaded from the companion GGUF).
 //
-// The backbone graph mirrors qwen3_asr's Qwen3 KV path but additionally exposes
-// the per-token last hidden state (fed to the 32 audio heads), as qwen3_tts does.
+// The backbone graph mirrors cielvox2_asr's Qwen3 KV path but additionally exposes
+// the per-token last hidden state (fed to the 32 audio heads), as cielvox2_tts does.
 
 #pragma once
 

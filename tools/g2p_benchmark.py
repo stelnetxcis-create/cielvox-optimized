@@ -22,7 +22,7 @@ Usage:
   # Or compare using the C++ binary directly:
   python3 tools/g2p_benchmark.py compare-binary \
       --truth tools/g2p_ground_truth_en.tsv \
-      --binary build/bin/crispasr \
+      --binary build/bin/stelnettts \
       --model /mnt/storage/piper/piper-en_US-lessac-medium-f16.gguf
 """
 
@@ -214,7 +214,7 @@ def main():
 
     cmp = sub.add_parser("compare", help="Compare CMUdict path against ground truth")
     cmp.add_argument("--truth", required=True, help="Ground truth TSV")
-    cmp.add_argument("--cmudict", default=os.path.expanduser("~/.cache/crispasr/cmudict.dict"))
+    cmp.add_argument("--cmudict", default=os.path.expanduser("~/.cache/stelnettts/cmudict.dict"))
     cmp.add_argument("--output", default="/tmp/g2p_failures.tsv")
 
     args = parser.parse_args()

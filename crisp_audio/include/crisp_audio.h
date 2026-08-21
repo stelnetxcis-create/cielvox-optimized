@@ -1,8 +1,8 @@
 // crisp_audio.h — shared C++ audio-encoder library.
 //
 // Models multimodal audio embedding paths used in many speech models —
-// BidirLM-Omni (CrispEmbed), Qwen3-ASR + Voxtral + Whisper-derivatives
-// (CrispASR), and most other Conv-stem + Transformer-encoder topologies
+// BidirLM-Omni (StelnetEmbed), Qwen3-ASR + Voxtral + Whisper-derivatives
+// (StelnetTTS), and most other Conv-stem + Transformer-encoder topologies
 // in current use.
 //
 // Architectural variation is handled by a small config (stem type, pos
@@ -41,7 +41,7 @@ struct crisp_audio_context;
 enum crisp_audio_dialect {
     CRISP_AUDIO_DIALECT_AUTO = 0,      // resolve from GGUF
     CRISP_AUDIO_DIALECT_QWEN_OMNI = 1, // Conv2D-3x s=2 + sinusoidal + pre-LN + proj1/GELU/proj2
-    // Future: CRISPASR_CLASSIC, MOONSHINE, MODERNBERT_AUDIO, ...
+    // Future: STELNETTTS_CLASSIC, MOONSHINE, MODERNBERT_AUDIO, ...
 };
 
 // Hyper-parameters caller can override at runtime. Static model params
@@ -52,11 +52,11 @@ struct crisp_audio_params {
     int verbosity; // 0=silent 1=normal 2=verbose
     bool use_gpu;
 
-    // Tensor-name prefix in the GGUF (e.g. "audio." for qwen3-asr,
+    // Tensor-name prefix in the GGUF (e.g. "audio." for cielvox2-asr,
     // "audio_tower." for BidirLM). NULL → "audio.".
     const char* tensor_prefix;
 
-    // Metadata-key prefix for hparams (e.g. "qwen3asr.audio." or
+    // Metadata-key prefix for hparams (e.g. "cielvox2asr.audio." or
     // "bidirlm.audio."). NULL → "crisp_audio.".
     const char* meta_prefix;
 

@@ -2,7 +2,7 @@
 """
 Kaggle kernel: end-to-end dots.tts synthesis test on GPU.
 
-Builds CrispASR with CUDA, downloads Q4_K GGUFs, runs synthesis,
+Builds StelnetTTS with CUDA, downloads Q4_K GGUFs, runs synthesis,
 validates output WAV.
 """
 
@@ -26,19 +26,19 @@ def log(msg):
 log("Kernel started")
 
 try:
-    # ── Clone CrispASR ──
-    _CRISPASR_DIR = Path("/tmp/CrispASR")
-    if not _CRISPASR_DIR.exists():
-        log("Cloning CrispASR...")
+    # ── Clone StelnetTTS ──
+    _STELNETTTS_DIR = Path("/tmp/StelnetTTS")
+    if not _STELNETTTS_DIR.exists():
+        log("Cloning StelnetTTS...")
         subprocess.check_call(["git", "clone", "--depth", "1",
-            "https://github.com/CrispStrobe/CrispASR.git", str(_CRISPASR_DIR)])
-    sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+            "https://github.com/Cyna/StelnetTTS.git", str(_STELNETTTS_DIR)])
+    sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
 
     import kaggle_harness as kh
     kh.init_progress()
     log("kaggle_harness imported OK")
 
-    # ── Build CrispASR with CUDA ──
+    # ── Build StelnetTTS with CUDA ──
     log("Installing build toolchain...")
     kh.install_build_toolchain()
 
@@ -50,14 +50,14 @@ try:
     cache_flags = kh.cache_and_link_flags()
     n_jobs = kh.safe_build_jobs(gpu=True)
 
-    build_dir = _CRISPASR_DIR / "build"
+    build_dir = _STELNETTTS_DIR / "build"
     cmake_env = os.environ.copy()
     cmake_env["CCACHE_DIR"] = "/kaggle/working/.ccache"
 
     # Configure
     log("CMake configure...")
     cmake_args = [
-        "cmake", "-G", "Ninja", "-B", str(build_dir), "-S", str(_CRISPASR_DIR),
+        "cmake", "-G", "Ninja", "-B", str(build_dir), "-S", str(_STELNETTTS_DIR),
         "-DCMAKE_BUILD_TYPE=Release",
     ]
     # Add cache/link flags
@@ -73,27 +73,27 @@ try:
 
     log(f"cmake args: {cmake_args}")
     r = subprocess.run(cmake_args, capture_output=True, text=True, env=cmake_env,
-                       cwd=str(_CRISPASR_DIR), timeout=120)
+                       cwd=str(_STELNETTTS_DIR), timeout=120)
     log(f"CMake rc={r.returncode}")
     if r.returncode != 0:
         log(f"stderr: {r.stderr[-800:]}")
 
     # Build just the shared library (not the full CLI — that takes 20+ min)
-    log(f"Building crispasr-lib + dots-tts with {n_jobs} jobs...")
+    log(f"Building stelnettts-lib + dots-tts with {n_jobs} jobs...")
     with kh.build_heartbeat("dots-tts CUDA build"):
         r2 = subprocess.run(
-            ["cmake", "--build", str(build_dir), "--target", "crispasr-lib", f"-j{n_jobs}"],
-            capture_output=True, text=True, env=cmake_env, cwd=str(_CRISPASR_DIR), timeout=1800)
+            ["cmake", "--build", str(build_dir), "--target", "stelnettts-lib", f"-j{n_jobs}"],
+            capture_output=True, text=True, env=cmake_env, cwd=str(_STELNETTTS_DIR), timeout=1800)
     log(f"Build rc={r2.returncode}")
     if r2.returncode != 0:
         log(f"Build stderr (last 800): {r2.stderr[-800:]}")
 
     # Check that the shared library exists
     import glob
-    libs = glob.glob(str(build_dir / "src" / "libcrispasr*"))
+    libs = glob.glob(str(build_dir / "src" / "libstelnettts*"))
     log(f"Built libs: {libs}")
     if not libs:
-        log("ERROR: libcrispasr not found")
+        log("ERROR: libstelnettts not found")
         sys.exit(1)
     log("Library built OK")
 
@@ -112,7 +112,7 @@ try:
     ]
     for fname in files:
         log(f"Downloading {fname}...")
-        hf_hub_download("cstr/dots-tts-soar-GGUF", fname,
+        hf_hub_download("Xenna/dots-tts-soar-GGUF", fname,
                        local_dir=str(model_dir), token=hf_token if hf_token else None)
         log(f"  {fname}: {(model_dir / fname).stat().st_size / (1024*1024):.1f} MB")
 
@@ -127,24 +127,24 @@ try:
     log("\n=== Synthesis via ctypes ===")
     try:
         import ctypes
-        lib_path = glob.glob(str(build_dir / "src" / "libcrispasr.so*"))[0]
+        lib_path = glob.glob(str(build_dir / "src" / "libstelnettts.so*"))[0]
         log(f"Loading {lib_path}")
         lib = ctypes.CDLL(lib_path)
 
-        # Use session API (correct names from crispasr_session.h)
-        lib.crispasr_session_open_explicit.restype = ctypes.c_void_p
-        lib.crispasr_session_open_explicit.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
-        lib.crispasr_session_synthesize.restype = ctypes.POINTER(ctypes.c_float)
-        lib.crispasr_session_synthesize.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int)]
-        lib.crispasr_session_close.argtypes = [ctypes.c_void_p]
-        lib.crispasr_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        # Use session API (correct names from stelnettts_session.h)
+        lib.stelnettts_session_open_explicit.restype = ctypes.c_void_p
+        lib.stelnettts_session_open_explicit.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+        lib.stelnettts_session_synthesize.restype = ctypes.POINTER(ctypes.c_float)
+        lib.stelnettts_session_synthesize.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int)]
+        lib.stelnettts_session_close.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
 
         os.environ["DOTS_TTS_BENCH"] = "1"
-        os.environ["CRISPASR_DOTS_TTS_DEBUG"] = "1"
+        os.environ["STELNETTTS_DOTS_TTS_DEBUG"] = "1"
 
         log(f"Opening session: {core_model}")
         t0 = time.time()
-        sess = lib.crispasr_session_open_explicit(core_model.encode(), b"dots-tts", 4)
+        sess = lib.stelnettts_session_open_explicit(core_model.encode(), b"dots-tts", 4)
         if not sess:
             log("ERROR: session open failed")
         else:
@@ -154,7 +154,7 @@ try:
             log(f"Synthesizing: '{text}'")
             t0 = time.time()
             n_samples = ctypes.c_int(0)
-            pcm = lib.crispasr_session_synthesize(sess, text.encode(), ctypes.byref(n_samples))
+            pcm = lib.stelnettts_session_synthesize(sess, text.encode(), ctypes.byref(n_samples))
             elapsed = time.time() - t0
 
             if pcm and n_samples.value > 0:
@@ -180,11 +180,11 @@ try:
                     wf.writeframes(pcm_i16)
                 log(f"  Saved WAV: {output_wav} ({output_wav.stat().st_size / 1024:.1f} KB)")
 
-                lib.crispasr_pcm_free(pcm)
+                lib.stelnettts_pcm_free(pcm)
             else:
                 log(f"Synthesis returned null/empty ({elapsed:.1f}s)")
 
-            lib.crispasr_session_close(sess)
+            lib.stelnettts_session_close(sess)
     except Exception as e:
         log(f"Synthesis test failed: {e}")
         import traceback
@@ -204,7 +204,7 @@ try:
         ref_dir.mkdir(exist_ok=True)
 
         # Run the reference backend
-        sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "reference_backends"))
+        sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "reference_backends"))
 
         ref_env = os.environ.copy()
         ref_env["DOTS_TEXT"] = "Hello world, this is a test."
@@ -222,7 +222,7 @@ os.environ['DOTS_TEXT'] = '{ref_env["DOTS_TEXT"]}'
 os.environ['DOTS_MAX_PATCHES'] = '{ref_env["DOTS_MAX_PATCHES"]}'
 os.environ['DOTS_SEED'] = '{ref_env["DOTS_SEED"]}'
 os.environ['DOTS_ODE_STEPS'] = '{ref_env["DOTS_ODE_STEPS"]}'
-sys.path.insert(0, '{_CRISPASR_DIR / "tools" / "reference_backends"}')
+sys.path.insert(0, '{_STELNETTTS_DIR / "tools" / "reference_backends"}')
 import dots_tts_reference as ref
 results = ref.run(None, 0, Path('{ref_dir}'))
 for k, v in results.items():

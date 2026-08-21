@@ -26,14 +26,14 @@
 #include <sstream>
 #include <string>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
 
 std::string read_file(const std::string& rel) {
-    const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/" + rel;
+    const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/" + rel;
     std::ifstream f(path);
     INFO("reading " << rel);
     REQUIRE(f.good());
@@ -215,14 +215,14 @@ TEST_CASE("omnivoice lang: the runtime resolves before building the prompt", "[u
     // behalf, so the escape hatch matters more than usual: assert both that the
     // gate exists and that it defaults ON (an accidental flip to `false` would
     // be invisible — output would simply revert to language-agnostic).
-    REQUIRE(contains(src, "env_bool_default(\"CRISPASR_OMNIVOICE_AUTO_LANG\", true)"));
+    REQUIRE(contains(src, "env_bool_default(\"STELNETTTS_OMNIVOICE_AUTO_LANG\", true)"));
 }
 
 // The bug SubtitleEdit hit. The server owns ONE backend instance for the whole
 // session and passes the per-request language in `params`; applying it only in
 // init() means the menu can never do anything after the first line.
 TEST_CASE("omnivoice lang: the CLI adapter applies language PER CALL", "[unit][omnivoice]") {
-    const std::string src = read_file("examples/cli/crispasr_backend_omnivoice.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_backend_omnivoice.cpp");
     const size_t synth = src.find("std::vector<float> synthesize(");
     INFO("synthesize() not found in the omnivoice adapter");
     REQUIRE(synth != std::string::npos);
@@ -238,7 +238,7 @@ TEST_CASE("omnivoice lang: the CLI adapter applies language PER CALL", "[unit][o
 // backend's synthesize inline and does NOT call the adapter, so the adapter fix
 // above reaches the CLI and the server but not bindings/Flutter/Android.
 TEST_CASE("omnivoice lang: the session ABI applies language too", "[unit][omnivoice]") {
-    const std::string src = read_file("src/crispasr_c_api.cpp");
+    const std::string src = read_file("src/stelnettts_c_api.cpp");
     const size_t arm = src.find("omnivoice_synthesize(s->omnivoice_ctx");
     INFO("the session's omnivoice synthesis arm was not found");
     REQUIRE(arm != std::string::npos);

@@ -61,7 +61,7 @@ void moss_transcribe_set_beam_size(struct moss_transcribe_context* ctx, int beam
 // #292: forward --max-new-tokens. <= 0 keeps the backend's 512 default.
 void moss_transcribe_set_max_new_tokens(struct moss_transcribe_context* ctx, int max_new_tokens);
 
-// ---- Stage helpers for differential testing (crispasr-diff) ----
+// ---- Stage helpers for differential testing (stelnettts-diff) ----
 
 // Compute 128-bin log-mel spectrogram (Whisper-style, n_fft 400, hop 160).
 // Output: malloc'd (n_mels, T_mel) F32 row-major. Caller frees.

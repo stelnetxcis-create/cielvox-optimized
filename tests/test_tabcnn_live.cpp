@@ -1,6 +1,6 @@
 // test_tabcnn_live.cpp — TabCNN guitar tablature, via the session C ABI.
 //
-// Needs a real model: set CRISPASR_MODEL_TABCNN (see tests/env-live-tests.sh).
+// Needs a real model: set STELNETTTS_MODEL_TABCNN (see tests/env-live-tests.sh).
 // Skips cleanly when unset.
 //
 // Exercises the SESSION path deliberately, not the runtime directly. That is the
@@ -16,7 +16,7 @@
 // unit test cannot stand in for that, and pretending otherwise would be the
 // "self-vs-self cosine" failure this repo has been bitten by.
 
-#include "crispasr_session.h"
+#include "stelnettts_session.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -53,36 +53,36 @@ std::vector<float> plucked_low_e(double seconds) {
 } // namespace
 
 TEST_CASE("tabcnn emission scorer via the session ABI", "[integration][tabcnn]") {
-    const char* model = std::getenv("CRISPASR_MODEL_TABCNN");
+    const char* model = std::getenv("STELNETTTS_MODEL_TABCNN");
     if (!model || !*model)
-        SKIP("CRISPASR_MODEL_TABCNN not set");
+        SKIP("STELNETTTS_MODEL_TABCNN not set");
 
-    crispasr_session* s = crispasr_session_open_explicit(model, "tabcnn", 2);
+    stelnettts_session* s = stelnettts_session_open_explicit(model, "tabcnn", 2);
     REQUIRE(s != nullptr);
 
     // Metadata a decoder depends on. silent_class is read, never assumed: a
     // decoder that guesses it wrong emits confidently wrong tablature with no
     // error anywhere.
-    const int silent = crispasr_session_tab_silent_class(s);
+    const int silent = stelnettts_session_tab_silent_class(s);
     CHECK(silent == kClasses - 1);
-    const float period = crispasr_session_tab_frame_period(s);
+    const float period = stelnettts_session_tab_frame_period(s);
     CHECK(period > 0.0f);
     CHECK(period < 0.1f); // 512/22050 = 23.2 ms
     // Standard tuning, low string first: E2 A2 D3 G3 B3 E4 = MIDI 40 45 50 55 59 64.
     const int expect_midi[kStrings] = {40, 45, 50, 55, 59, 64};
     for (int i = 0; i < kStrings; i++)
-        CHECK(crispasr_session_tab_string_open_midi(s, i) == expect_midi[i]);
+        CHECK(stelnettts_session_tab_string_open_midi(s, i) == expect_midi[i]);
     // Out-of-range must not read past the array.
-    CHECK(crispasr_session_tab_string_open_midi(s, -1) == -1);
-    CHECK(crispasr_session_tab_string_open_midi(s, kStrings) == -1);
+    CHECK(stelnettts_session_tab_string_open_midi(s, -1) == -1);
+    CHECK(stelnettts_session_tab_string_open_midi(s, kStrings) == -1);
 
     const auto audio = plucked_low_e(2.0);
-    const int n_frames = crispasr_session_tab(s, audio.data(), (int)audio.size(), kSampleRate);
+    const int n_frames = stelnettts_session_tab(s, audio.data(), (int)audio.size(), kSampleRate);
     REQUIRE(n_frames > 0);
-    CHECK(crispasr_session_tab_n_frames(s) == n_frames);
+    CHECK(stelnettts_session_tab_n_frames(s) == n_frames);
 
     int f = 0, strings = 0, classes = 0;
-    const float* em = crispasr_session_tab_emissions(s, &f, &strings, &classes);
+    const float* em = stelnettts_session_tab_emissions(s, &f, &strings, &classes);
     REQUIRE(em != nullptr);
     CHECK(f == n_frames);
     CHECK(strings == kStrings);
@@ -114,10 +114,10 @@ TEST_CASE("tabcnn emission scorer via the session ABI", "[integration][tabcnn]")
         // (a wrong fmin still RUNS and produces confident garbage; see
         // src/tabcnn.h).
         const std::vector<float> quiet((size_t)kSampleRate, 0.0f);
-        const int qn = crispasr_session_tab(s, quiet.data(), (int)quiet.size(), kSampleRate);
+        const int qn = stelnettts_session_tab(s, quiet.data(), (int)quiet.size(), kSampleRate);
         REQUIRE(qn > 0);
         int fq = 0, sq = 0, cq = 0;
-        const float* qe = crispasr_session_tab_emissions(s, &fq, &sq, &cq);
+        const float* qe = stelnettts_session_tab_emissions(s, &fq, &sq, &cq);
         REQUIRE(qe != nullptr);
         int fretted = 0;
         for (int t = 0; t < fq; t++)
@@ -134,10 +134,10 @@ TEST_CASE("tabcnn emission scorer via the session ABI", "[integration][tabcnn]")
     }
 
     SECTION("bad arguments are rejected, not crashed") {
-        CHECK(crispasr_session_tab(s, nullptr, 100, kSampleRate) < 0);
-        CHECK(crispasr_session_tab(s, audio.data(), 0, kSampleRate) < 0);
-        CHECK(crispasr_session_tab(s, audio.data(), (int)audio.size(), 0) < 0);
+        CHECK(stelnettts_session_tab(s, nullptr, 100, kSampleRate) < 0);
+        CHECK(stelnettts_session_tab(s, audio.data(), 0, kSampleRate) < 0);
+        CHECK(stelnettts_session_tab(s, audio.data(), (int)audio.size(), 0) < 0);
     }
 
-    crispasr_session_close(s);
+    stelnettts_session_close(s);
 }

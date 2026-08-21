@@ -135,7 +135,7 @@ float* chatterbox_s3gen_dump_campplus_xvector(struct chatterbox_s3gen_context* c
 // `flow.encoder_proj` over [prompt_tokens | speech_tokens], returning
 // the (80, T_mel) f32 channel-first pre-CFM-denoiser hidden states.
 // T_mel = 2 * (n_prompt + n_speech_tokens). Writes T_mel into
-// *out_T_mel. Caller frees with `free()`. Used by crispasr-diff to
+// *out_T_mel. Caller frees with `free()`. Used by stelnettts-diff to
 // split "Conformer encoder breaks on GPU" from "CFM denoiser breaks
 // on GPU" when the downstream `s3gen_mel` cos drops.
 float* chatterbox_s3gen_dump_encoder_out(struct chatterbox_s3gen_context* ctx, const int32_t* speech_tokens,

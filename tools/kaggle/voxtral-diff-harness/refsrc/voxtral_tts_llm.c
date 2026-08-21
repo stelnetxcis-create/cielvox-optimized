@@ -169,7 +169,7 @@ static int alloc_decoder_buffers(tts_ctx_t *ctx) {
  * ======================================================================== */
 
 /* Per-stage diff harness: dump per-layer hidden for frame 0 only (set by the frame
- * loop in voxtral_tts.c). Matches the CrispASR runtime's CRISPASR_VOXTRAL_TTS_DIFF_DUMP
+ * loop in voxtral_tts.c). Matches the StelnetTTS runtime's STELNETTTS_VOXTRAL_TTS_DIFF_DUMP
  * layout so a per-layer cos comparison localizes the first divergence. */
 int g_tts_diff_frame = -1; /* frame loop sets this; -1 during prefill = no dump */
 static void tts_diff_dump(const char *stage, const float *v, int n) {

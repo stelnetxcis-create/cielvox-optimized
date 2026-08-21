@@ -1,26 +1,26 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(crispasr)
+project(stelnettts)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CRISPASR_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../../../)
+set(STELNETTTS_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../../../)
 
-# Get crispasr version
-file(READ "${CRISPASR_LIB_DIR}/CMakeLists.txt" MAIN_CMAKE_CONTENT)
+# Get stelnettts version
+file(READ "${STELNETTTS_LIB_DIR}/CMakeLists.txt" MAIN_CMAKE_CONTENT)
 string(REGEX MATCH "project\\(\"whisper\\.cpp\" VERSION ([0-9]+\\.[0-9]+\\.[0-9]+)\\)" VERSION_MATCH "${MAIN_CMAKE_CONTENT}")
 if(CMAKE_MATCH_1)
-    set(CRISPASR_VERSION ${CMAKE_MATCH_1} PARENT_SCOPE)
+    set(STELNETTTS_VERSION ${CMAKE_MATCH_1} PARENT_SCOPE)
 else()
-    set(CRISPASR_VERSION "unknown" PARENT_SCOPE)
+    set(STELNETTTS_VERSION "unknown" PARENT_SCOPE)
 endif()
 
-message(STATUS " Whisper version: ${CRISPASR_VERSION}")
+message(STATUS " Whisper version: ${STELNETTTS_VERSION}")
 
 set(SOURCE_FILES
-    ${CRISPASR_LIB_DIR}/src/crispasr
-    # imatrix collector: crispasr.cpp calls crispasr_imatrix_install(); this
-    # minimal whisper-only lib doesn't link crispasr-core, so compile it here.
-    ${CRISPASR_LIB_DIR}/src/crispasr_imatrix.cpp
+    ${STELNETTTS_LIB_DIR}/src/stelnettts
+    # imatrix collector: stelnettts.cpp calls stelnettts_imatrix_install(); this
+    # minimal whisper-only lib doesn't link stelnettts-core, so compile it here.
+    ${STELNETTTS_LIB_DIR}/src/stelnettts_imatrix.cpp
     ${CMAKE_SOURCE_DIR}/jni.c
     )
 
@@ -35,12 +35,12 @@ function(build_library target_name)
         ${SOURCE_FILES}
     )
 
-    FetchContent_Declare(ggml SOURCE_DIR ${CRISPASR_LIB_DIR}/ggml)
+    FetchContent_Declare(ggml SOURCE_DIR ${STELNETTTS_LIB_DIR}/ggml)
     FetchContent_MakeAvailable(ggml)
 
     target_link_libraries(${target_name} ${LOG_LIB} android ggml)
     target_compile_definitions(${target_name} PUBLIC GGML_USE_CPU)
-    target_compile_definitions(${target_name} PRIVATE CRISPASR_VERSION="${CRISPASR_VERSION}")
+    target_compile_definitions(${target_name} PRIVATE STELNETTTS_VERSION="${STELNETTTS_VERSION}")
 
     if (${target_name} STREQUAL "whisper_v8fp16_va")
         target_compile_options(${target_name} PRIVATE -march=armv8.2-a+fp16)
@@ -68,9 +68,9 @@ elseif (${ANDROID_ABI} STREQUAL "armeabi-v7a")
     build_library("whisper_vfpv4")
 endif ()
 
-include_directories(${CRISPASR_LIB_DIR})
-include_directories(${CRISPASR_LIB_DIR}/src)
-include_directories(${CRISPASR_LIB_DIR}/include)
-include_directories(${CRISPASR_LIB_DIR}/ggml/include)
-include_directories(${CRISPASR_LIB_DIR}/ggml/src)
-include_directories(${CRISPASR_LIB_DIR}/ggml/src/ggml-cpu)
+include_directories(${STELNETTTS_LIB_DIR})
+include_directories(${STELNETTTS_LIB_DIR}/src)
+include_directories(${STELNETTTS_LIB_DIR}/include)
+include_directories(${STELNETTTS_LIB_DIR}/ggml/include)
+include_directories(${STELNETTTS_LIB_DIR}/ggml/src)
+include_directories(${STELNETTTS_LIB_DIR}/ggml/src/ggml-cpu)

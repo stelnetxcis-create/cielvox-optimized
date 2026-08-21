@@ -1,6 +1,6 @@
 # server worker-pool — CUDA concurrency proof (improvements Phase 4b)
 
-Validates on a real NVIDIA card what an M1 could not: `CRISPASR_SERVER_WORKERS=N`
+Validates on a real NVIDIA card what an M1 could not: `STELNETTTS_SERVER_WORKERS=N`
 gives real request concurrency (pooled per-worker CUDA contexts) with identical
 transcripts. On M1 the memory-bound CPU model contended, so concurrency showed no
 throughput win — the honest null was documented; this settles it on a GPU.
@@ -8,15 +8,15 @@ throughput win — the honest null was documented; this settles it on a GPU.
 ## Run
 ```bash
 # 1. Merge the code to main (or push the branch) so the kernel can clone it.
-# 2. Ensure the private dataset chr1str/crispasr-hf-token exists (HF_TOKEN secret).
+# 2. Ensure the private dataset chr1str/stelnettts-hf-token exists (HF_TOKEN secret).
 bash push.sh
-kaggle kernels status  chr1str/crispasr-server-workers-cuda
-kaggle kernels output  chr1str/crispasr-server-workers-cuda -p ./out
+kaggle kernels status  chr1str/stelnettts-server-workers-cuda
+kaggle kernels output  chr1str/stelnettts-server-workers-cuda -p ./out
 ```
 
 ## Knobs (env)
-- `CRISPASR_REF` (default `main`) — branch/tag to build.
-- `MODEL_REPO`/`MODEL_FILE`/`BACKEND` — default `cstr/moonshine-tiny-GGUF` /
+- `STELNETTTS_REF` (default `main`) — branch/tag to build.
+- `MODEL_REPO`/`MODEL_FILE`/`BACKEND` — default `Xenna/moonshine-tiny-GGUF` /
   `moonshine-tiny-q8_0.gguf` / `moonshine` (small, so one request doesn't saturate the GPU).
 - `REPS` (default 3) — median over REPS.
 

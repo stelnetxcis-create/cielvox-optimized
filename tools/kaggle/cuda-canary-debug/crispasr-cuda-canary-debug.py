@@ -2,7 +2,7 @@
 
 On an 11s single-pass jfk clip, --max-new-tokens 8 vs 4096 gave IDENTICAL output
 (217 words), which the source says is impossible (decode loop is bounded by the
-cap). This run turns on CRISPASR_CANARY_QWEN_DEBUG + drops --no-prints to see:
+cap). This run turns on STELNETTTS_CANARY_QWEN_DEBUG + drops --no-prints to see:
   - how many times 'T_enc=' prints (1 = single-pass; >1 = the dispatcher SLICES
     canary-qwen, so the cap is per-slice and word-count is the wrong signal);
   - the actual generated output length at cap 8 vs 4096.
@@ -28,13 +28,13 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = TEMP / "build"
 MODELS = TEMP / "models"
 FIX = TEMP / "fixtures"
 OUT = WORK / "outputs"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 for d in (MODELS, FIX, OUT):
     d.mkdir(parents=True, exist_ok=True)
 
@@ -65,11 +65,11 @@ def record(name, passed, **kw):
 
 
 # ── cell 1: clone + harness (FULL regime) ──────────────────────────────────
-print(json.dumps({"step": "start", "ref": CRISPASR_REF}), flush=True)
+print(json.dumps({"step": "start", "ref": STELNETTTS_REF}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)], capture=False)
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)], capture=False)
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive"],
     check=False, capture=False, timeout=1800)
 
@@ -82,7 +82,7 @@ kh.init_progress()
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 kh.step("cloned", sha=sha)
 RESULTS["env"]["sha"] = sha
-RESULTS["env"]["ref"] = CRISPASR_REF
+RESULTS["env"]["ref"] = STELNETTTS_REF
 run(["nvidia-smi", "-L"], check=False)
 gpu = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True).strip()
 kh.step("gpu", gpu=gpu)
@@ -97,21 +97,21 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = [
     "cmake", "-S", str(REPO), "-B", str(BUILD),
     "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-    "-DCRISPASR_NO_C2PA_NATIVE=ON",
+    "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
 ] + kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
 run(cmake_args, capture=False)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 kh.step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("cli", path=str(CLI))
@@ -158,7 +158,7 @@ M = {}
 # The other affected backends (canary-qwen q4_k 3.6 GB, mimo q4_k 4.5 GB) are the
 # SAME code pattern and were dropped to keep the run short — CI already compiled
 # all 10 and the fix is identical per-backend.
-M["canary_qwen"] = hf_get("cstr/canary-qwen-2.5b-GGUF", "canary-qwen-2.5b-q4_k.gguf",
+M["canary_qwen"] = hf_get("Xenna/canary-qwen-2.5b-GGUF", "canary-qwen-2.5b-q4_k.gguf",
                           MODELS / "canary-qwen-q4_k.gguf")
 kh.step("downloads_done")
 
@@ -185,7 +185,7 @@ def transcribe(model, backend, wav, device, extra=None, timeout=1200):
     """Run the CLI; return (ok, text, wall_s, peak_kb).
 
     Device is selected by the flag, not an env var: CPU = --no-gpu, CUDA = default
-    (the only GPU backend built on Kaggle). There is no CRISPASR_DEVICE knob.
+    (the only GPU backend built on Kaggle). There is no STELNETTTS_DEVICE knob.
     """
     args = [str(CLI), "-m", str(model), "--backend", backend, "-f", str(wav), "--no-prints"]
     if device == "cpu":
@@ -215,7 +215,7 @@ def word_count(t):
 
 # ── DEBUG: full canary-qwen stderr with debug env, no --no-prints ───────────
 def canary_debug(cap):
-    env = {**os.environ, "CRISPASR_CANARY_QWEN_DEBUG": "1"}
+    env = {**os.environ, "STELNETTTS_CANARY_QWEN_DEBUG": "1"}
     args = [str(CLI), "-m", str(M["canary_qwen"]), "--backend", "canary-qwen",
             "-f", str(JFK), "--chunk-seconds", "0", "--max-new-tokens", str(cap)]
     r = subprocess.run(args, env=env, capture_output=True, text=True, timeout=1200)

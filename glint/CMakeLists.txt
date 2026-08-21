@@ -3,11 +3,11 @@
 # sibling glint repository (encoder core only; the upstream CLI, tests,
 # bindings and packaging stay there).
 #
-# Consumed by the TTS output paths: crispasr-server
-# response_format=mp3|aac and crispasr-cli --tts-output *.mp3|*.aac
-# (via examples/cli/crispasr_{mp3,aac}_writer.h).
+# Consumed by the TTS output paths: stelnettts-server
+# response_format=mp3|aac and stelnettts-cli --tts-output *.mp3|*.aac
+# (via examples/cli/stelnettts_{mp3,aac}_writer.h).
 #
-# Built with CrispASR's global flags — no -march=native / -ffast-math from
+# Built with StelnetTTS's global flags — no -march=native / -ffast-math from
 # upstream's CMake. SIMD kernels (AVX/SSE2/NEON) are compile-time guarded
 # and runtime dispatched, so default flags are safe on every target.
 

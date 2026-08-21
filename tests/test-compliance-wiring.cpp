@@ -34,14 +34,14 @@
 #include <sstream>
 #include <string>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
 
 std::string read_file(const std::string& rel) {
-    const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/" + rel;
+    const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/" + rel;
     std::ifstream f(path);
     INFO("reading " << rel);
     REQUIRE(f.good());
@@ -66,12 +66,12 @@ bool contains(const std::string& hay, const std::string& needle) {
 // ---------------------------------------------------------------------------
 
 TEST_CASE("the backend base class offers a voice-bank hook", "[unit][compliance]") {
-    const std::string src = read_file("examples/cli/crispasr_backend.h");
+    const std::string src = read_file("examples/cli/stelnettts_backend.h");
     REQUIRE(contains(src, "virtual std::string voice_bank_path() const"));
 }
 
 TEST_CASE("cosyvoice3 hands its voice bundle to the gate", "[unit][compliance]") {
-    const std::string src = read_file("examples/cli/crispasr_backend_cosyvoice3.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_backend_cosyvoice3.cpp");
     // Overrides the hook...
     REQUIRE(contains(src, "std::string voice_bank_path() const override"));
     // ...and actually records the bundle it resolved, rather than returning a
@@ -85,17 +85,17 @@ TEST_CASE("every synthesis surface passes the bank to classify_voice", "[unit][c
     // compliance behaviour — it has to be wired up, and only a check like this
     // will say whether it was.
     SECTION("CLI") {
-        REQUIRE(contains(read_file("examples/cli/crispasr_run.cpp"), "backend->voice_bank_path()"));
+        REQUIRE(contains(read_file("examples/cli/stelnettts_run.cpp"), "backend->voice_bank_path()"));
     }
     SECTION("HTTP server") {
-        REQUIRE(contains(read_file("examples/cli/crispasr_server.cpp"), "backend->voice_bank_path()"));
+        REQUIRE(contains(read_file("examples/cli/stelnettts_server.cpp"), "backend->voice_bank_path()"));
     }
     SECTION("Wyoming") {
         REQUIRE(contains(read_file("examples/cli/wyoming.cpp"), "g_backend->voice_bank_path()"));
     }
     SECTION("C ABI") {
         // No CrispasrBackend here — the session resolves the bundle itself.
-        const std::string src = read_file("src/crispasr_c_api.cpp");
+        const std::string src = read_file("src/stelnettts_c_api.cpp");
         REQUIRE(contains(src, "s->cosyvoice3_voices_path = std::move(cv3_voices);"));
         REQUIRE(contains(src, "s->cosyvoice3_voices_path)"));
     }
@@ -112,34 +112,34 @@ TEST_CASE("every synthesis surface passes the bank to classify_voice", "[unit][c
 // ---------------------------------------------------------------------------
 
 TEST_CASE("the backend base class resolves identity per checkpoint", "[unit][compliance]") {
-    const std::string src = read_file("examples/cli/crispasr_backend.h");
+    const std::string src = read_file("examples/cli/stelnettts_backend.h");
     // Takes the model path, because one backend serves several checkpoints with
     // different answers — `orpheus` runs both Canopy's base model and
     // Kartoffel's German fine-tune. A no-argument hook cannot tell them apart
     // and would have to pick one verdict for both.
-    REQUIRE(contains(src, "virtual crispasr_voice::SpeakerIdentity declared_speaker_identity(const std::string& "
+    REQUIRE(contains(src, "virtual stelnettts_voice::SpeakerIdentity declared_speaker_identity(const std::string& "
                           "model_path) const"));
-    REQUIRE(contains(src, "crispasr_voice::identity_for_model(name(), model_path)"));
+    REQUIRE(contains(src, "stelnettts_voice::identity_for_model(name(), model_path)"));
 }
 
 TEST_CASE("every surface passes the actual checkpoint to the lookup", "[unit][compliance]") {
     // Passing an empty string here would compile, resolve every model to
     // Unknown, and look exactly like "nothing is researched yet" — a fix that
     // ships inert. Pin the argument.
-    REQUIRE(contains(read_file("examples/cli/crispasr_run.cpp"), "declared_speaker_identity(params.model)"));
-    REQUIRE(contains(read_file("examples/cli/crispasr_server.cpp"), "declared_speaker_identity(params.model)"));
+    REQUIRE(contains(read_file("examples/cli/stelnettts_run.cpp"), "declared_speaker_identity(params.model)"));
+    REQUIRE(contains(read_file("examples/cli/stelnettts_server.cpp"), "declared_speaker_identity(params.model)"));
     REQUIRE(contains(read_file("examples/cli/wyoming.cpp"), "declared_speaker_identity(g_params.model)"));
 }
 
 TEST_CASE("the model stamp reaches the resolver on every surface", "[unit][compliance]") {
     // The durable half of the identity answer. A reader nothing consults is the
     // inert-fix failure mode (#324), so pin the call at each join.
-    REQUIRE(contains(read_file("examples/cli/crispasr_run.cpp"),
-                     "crispasr_voice::read_model_speaker_identity(params.model)"));
-    REQUIRE(contains(read_file("examples/cli/crispasr_server.cpp"),
-                     "crispasr_voice::read_model_speaker_identity(params.model)"));
+    REQUIRE(contains(read_file("examples/cli/stelnettts_run.cpp"),
+                     "stelnettts_voice::read_model_speaker_identity(params.model)"));
+    REQUIRE(contains(read_file("examples/cli/stelnettts_server.cpp"),
+                     "stelnettts_voice::read_model_speaker_identity(params.model)"));
     REQUIRE(
-        contains(read_file("examples/cli/wyoming.cpp"), "crispasr_voice::read_model_speaker_identity(g_params.model)"));
+        contains(read_file("examples/cli/wyoming.cpp"), "stelnettts_voice::read_model_speaker_identity(g_params.model)"));
 }
 
 TEST_CASE("a converter can write the stamp the runtime reads", "[unit][compliance]") {
@@ -152,15 +152,15 @@ TEST_CASE("a converter can write the stamp the runtime reads", "[unit][complianc
     // deleted. Fourth time the red-proof has caught a guard of mine matching
     // prose instead of code — the pattern is "assert the token that only exists
     // when the behaviour does".
-    REQUIRE(contains(conv, "w.add_string(\"crispasr.voice.speaker_identity\", args.speaker_identity)"));
+    REQUIRE(contains(conv, "w.add_string(\"stelnettts.voice.speaker_identity\", args.speaker_identity)"));
     // Never written as a guess: an omitted or "unknown" value writes no key.
     REQUIRE(contains(conv, "if args.speaker_identity and args.speaker_identity != \"unknown\":"));
 }
 
 TEST_CASE("the diff harness marks the audio it writes", "[unit][compliance]") {
     // Found by re-enumerating emitters from code rather than from the surface
-    // table (rule 4). crispasr-diff is an INSTALLED binary, and
-    // CRISPASR_CSM_WAV_OUT makes it write a real, playable WAV of synthesized
+    // table (rule 4). stelnettts-diff is an INSTALLED binary, and
+    // STELNETTTS_CSM_WAV_OUT makes it write a real, playable WAV of synthesized
     // speech straight from csm_tts_diag_synth_wav() — a hand-rolled RIFF writer
     // that never touched the marking path.
     //
@@ -168,10 +168,10 @@ TEST_CASE("the diff harness marks the audio it writes", "[unit][compliance]") {
     // the Wyoming server marking nothing for four releases. The file does not
     // know what you meant to use it for.
     const std::string src = read_file("src/csm_tts.cpp");
-    REQUIRE(contains(src, "crispasr_watermark_embed_impl(pcm, n);"));
+    REQUIRE(contains(src, "stelnettts_watermark_embed_impl(pcm, n);"));
     // Before the peak-normalise, so the mark scales with the signal instead of
     // being applied on top of a rescaled one.
-    const size_t mark = src.find("crispasr_watermark_embed_impl(pcm, n);");
+    const size_t mark = src.find("stelnettts_watermark_embed_impl(pcm, n);");
     const size_t norm = src.find("Peak-normalise to 0.95");
     REQUIRE(mark != std::string::npos);
     REQUIRE(norm != std::string::npos);
@@ -189,15 +189,15 @@ TEST_CASE("every binding can answer the speaker-identity question", "[unit][comp
         const char* needle;
     };
     static const Binding kBindings[] = {
-        {"python/crispasr/_binding.py", "def set_speaker_identity(self, identity: str)"},
-        {"bindings/go/crispasr_session.go", "func (s *CrispasrSession) SetSpeakerIdentity(identity string) error"},
-        {"crispasr/src/lib.rs", "pub fn set_speaker_identity(&self, identity: &str)"},
-        {"crispasr-sys/src/lib.rs", "pub fn crispasr_session_set_speaker_identity("},
-        {"bindings/ruby/ext/ruby_crispasr_session.c", "\"set_speaker_identity\", rb_session_set_speaker_identity"},
+        {"python/stelnettts/_binding.py", "def set_speaker_identity(self, identity: str)"},
+        {"bindings/go/stelnettts_session.go", "func (s *CrispasrSession) SetSpeakerIdentity(identity string) error"},
+        {"stelnettts/src/lib.rs", "pub fn set_speaker_identity(&self, identity: &str)"},
+        {"stelnettts-sys/src/lib.rs", "pub fn stelnettts_session_set_speaker_identity("},
+        {"bindings/ruby/ext/ruby_stelnettts_session.c", "\"set_speaker_identity\", rb_session_set_speaker_identity"},
         {"bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java",
          "public void setSpeakerIdentity(String identity)"},
-        {"bindings/csharp/CrispASR/Session.cs", "public void SetSpeakerIdentity(string identity)"},
-        {"flutter/crispasr/lib/src/crispasr.dart", "void setSpeakerIdentity(String identity)"},
+        {"bindings/csharp/StelnetTTS/Session.cs", "public void SetSpeakerIdentity(string identity)"},
+        {"flutter/stelnettts/lib/src/stelnettts.dart", "void setSpeakerIdentity(String identity)"},
         {"bindings/javascript/emscripten.cpp", "\"ttsSetSpeakerIdentity\""},
     };
     for (const auto& b : kBindings) {
@@ -221,20 +221,20 @@ TEST_CASE("bindings surface a bad value instead of swallowing it", "[unit][compl
     // message alone was still too weak: flipping `-2` to another code leaves the
     // message present but unreachable, and the guard stayed green. Two rounds of
     // red-proof to get this one honest.
-    REQUIRE(contains(read_file("python/crispasr/_binding.py"),
+    REQUIRE(contains(read_file("python/stelnettts/_binding.py"),
                      "if rc == -2:\n            raise ValueError(\n"
                      "                f\"unrecognised speaker_identity {identity!r}; \""));
-    REQUIRE(contains(read_file("bindings/go/crispasr_session.go"),
+    REQUIRE(contains(read_file("bindings/go/stelnettts_session.go"),
                      "case -2:\n\t\treturn fmt.Errorf(\"unrecognised speaker_identity %q "
                      "(expected real_person, synthetic or unknown)\", identity)"));
-    REQUIRE(contains(read_file("crispasr/src/lib.rs"),
+    REQUIRE(contains(read_file("stelnettts/src/lib.rs"),
                      "unrecognised speaker_identity {identity:?} (expected real_person, synthetic or unknown)"));
-    REQUIRE(contains(read_file("bindings/ruby/ext/ruby_crispasr_session.c"),
+    REQUIRE(contains(read_file("bindings/ruby/ext/ruby_stelnettts_session.c"),
                      "unrecognised speaker_identity (expected real_person, synthetic or unknown)"));
     REQUIRE(contains(read_file("bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java"),
                      "(expected real_person, synthetic or unknown)"));
-    REQUIRE(contains(read_file("bindings/csharp/CrispASR/Session.cs"), "(expected real_person, synthetic or unknown)"));
-    REQUIRE(contains(read_file("flutter/crispasr/lib/src/crispasr.dart"), "'real_person', 'synthetic' or 'unknown'"));
+    REQUIRE(contains(read_file("bindings/csharp/StelnetTTS/Session.cs"), "(expected real_person, synthetic or unknown)"));
+    REQUIRE(contains(read_file("flutter/stelnettts/lib/src/stelnettts.dart"), "'real_person', 'synthetic' or 'unknown'"));
 }
 
 TEST_CASE("the verdict has one source, queryable from the binary", "[unit][compliance]") {
@@ -243,16 +243,16 @@ TEST_CASE("the verdict has one source, queryable from the binary", "[unit][compl
     // verdict. That matters more than it looks: the verdicts already live in
     // C++, in GGUF stamps and in the docs, and a fourth copy in a shell script
     // is the one that silently drifts.
-    const std::string run = read_file("examples/cli/crispasr_run.cpp");
+    const std::string run = read_file("examples/cli/stelnettts_run.cpp");
     REQUIRE(contains(run, "params.print_speaker_identity_file"));
-    REQUIRE(contains(run, "crispasr_voice::read_model_speaker_identity(path)"));
-    REQUIRE(contains(run, "crispasr_voice::identity_for_voice_pack(path)"));
+    REQUIRE(contains(run, "stelnettts_voice::read_model_speaker_identity(path)"));
+    REQUIRE(contains(run, "stelnettts_voice::identity_for_voice_pack(path)"));
 
     // It has to be ROUTED before the "no input files" guard — it inspects a
     // file, not a session. Missing that made the verb exit 2 on first run.
     REQUIRE(
         contains(read_file("examples/cli/cli.cpp"),
-                 "if (!params.print_speaker_identity_file.empty()) {\n        return crispasr_run_backend(params);"));
+                 "if (!params.print_speaker_identity_file.empty()) {\n        return stelnettts_run_backend(params);"));
 
     // The bulk stamper asks the binary rather than deciding for itself, and
     // skips unknowns instead of guessing — writing a guess is the one error
@@ -265,11 +265,11 @@ TEST_CASE("the verdict has one source, queryable from the binary", "[unit][compl
 
 TEST_CASE("the converters share one definition of the stamp", "[unit][compliance]") {
     // Seven converters can write this key. Seven hand-written copies would be
-    // seven chances for one to drift from crispasr_voice::speaker_identity_key()
+    // seven chances for one to drift from stelnettts_voice::speaker_identity_key()
     // — and a drift fails OPEN: the stamp is simply never found, and nothing
     // errors. One module, one spelling.
     const std::string helper = read_file("models/_speaker_identity_arg.py");
-    REQUIRE(contains(helper, "IDENTITY_KEY = \"crispasr.voice.speaker_identity\""));
+    REQUIRE(contains(helper, "IDENTITY_KEY = \"stelnettts.voice.speaker_identity\""));
     REQUIRE(contains(helper, "WRITABLE = (\"real_person\", \"synthetic\")"));
     // Writes nothing when no value was given: absence means "not established",
     // and a converter must never assert a verdict nobody made.
@@ -291,19 +291,19 @@ TEST_CASE("the converters share one definition of the stamp", "[unit][compliance
 }
 
 TEST_CASE("marking primitives live at the core layer", "[unit][compliance]") {
-    // crispasr_watermark.h used to sit under examples/cli/, so src/ reached
-    // into the examples tree to find it (src/crispasr_c_api.cpp, and then
+    // stelnettts_watermark.h used to sit under examples/cli/, so src/ reached
+    // into the examples tree to find it (src/stelnettts_c_api.cpp, and then
     // src/csm_tts.cpp when the diff harness needed marking — the second
     // instance is what made it worth fixing). It now lives next to
-    // crispasr_c2pa.h, which is where marking primitives belong.
-    REQUIRE(read_file("src/core/crispasr_watermark.h").find("crispasr_watermark_embed_impl") != std::string::npos);
-    for (const char* f : {"src/crispasr_c_api.cpp", "src/csm_tts.cpp", "examples/cli/crispasr_run.cpp",
-                          "examples/cli/crispasr_server.cpp", "examples/cli/crispasr_watermark_dispatch.h"}) {
+    // stelnettts_c2pa.h, which is where marking primitives belong.
+    REQUIRE(read_file("src/core/stelnettts_watermark.h").find("stelnettts_watermark_embed_impl") != std::string::npos);
+    for (const char* f : {"src/stelnettts_c_api.cpp", "src/csm_tts.cpp", "examples/cli/stelnettts_run.cpp",
+                          "examples/cli/stelnettts_server.cpp", "examples/cli/stelnettts_watermark_dispatch.h"}) {
         INFO("includer=" << f);
         const std::string src = read_file(f);
-        REQUIRE(contains(src, "#include \"core/crispasr_watermark.h\""));
+        REQUIRE(contains(src, "#include \"core/stelnettts_watermark.h\""));
         // No path back into the examples tree from anywhere.
-        REQUIRE_FALSE(contains(src, "../examples/cli/crispasr_watermark.h"));
+        REQUIRE_FALSE(contains(src, "../examples/cli/stelnettts_watermark.h"));
     }
 }
 
@@ -313,7 +313,7 @@ TEST_CASE("published GGUFs can be stamped without re-converting", "[unit][compli
     // it does not get done, so the answer would stay in the file-name table for
     // good.
     const std::string tool = read_file("models/stamp-speaker-identity.py");
-    REQUIRE(contains(tool, "IDENTITY_KEY = \"crispasr.voice.speaker_identity\""));
+    REQUIRE(contains(tool, "IDENTITY_KEY = \"stelnettts.voice.speaker_identity\""));
     // "unknown" must not be writable: absence of the key IS unknown, and
     // writing it would turn "nobody established this" into a claim the file
     // makes about itself.
@@ -329,7 +329,7 @@ TEST_CASE("declared sources combine by strongest duty", "[unit][compliance]") {
     // The rule that keeps a stale stamp from cancelling a researched verdict.
     // Guarded here as well as in the pure test because it is the kind of thing
     // a later "simplification" turns back into precedence.
-    const std::string src = read_file("examples/cli/crispasr_speaker_identity.h");
+    const std::string src = read_file("examples/cli/stelnettts_speaker_identity.h");
     REQUIRE(contains(src, "duty_rank"));
     REQUIRE(contains(src, "if (duty_rank(model_value) > duty_rank(best))"));
     REQUIRE(contains(src, "if (duty_rank(backend_value) > duty_rank(best))"));
@@ -339,13 +339,13 @@ TEST_CASE("the verdict table records its evidence", "[unit][compliance]") {
     // These are research results, not code. The value of the table is the
     // reasoning beside each entry — a bare `return RealPerson;` is unreviewable
     // and gets flipped by whoever finds it inconvenient.
-    const std::string src = read_file("examples/cli/crispasr_speaker_identity_models.h");
+    const std::string src = read_file("examples/cli/stelnettts_speaker_identity_models.h");
     // The SECTION BANNER, not a bare mention: "OPEN QUESTIONS" also appears as
     // a cross-reference inside the orpheus branch, so matching the short string
     // stayed green with the backlog itself deleted. The red-proof caught that.
     REQUIRE(contains(src, "OPEN QUESTIONS — models whose card has NOT been read"));
     // The conflict found while porting CrispTTS's research, and its resolution:
-    // kokoro is synthetic upstream, but CrispASR reaches HUI's named narrators
+    // kokoro is synthetic upstream, but StelnetTTS reaches HUI's named narrators
     // through df_eva / dm_bernd. The evidence has to stay next to the verdict.
     REQUIRE(contains(src, "HUI-Audio-Corpus-German"));
     REQUIRE(contains(src, "identity_for_voice_pack"));
@@ -353,7 +353,7 @@ TEST_CASE("the verdict table records its evidence", "[unit][compliance]") {
     // (where it is defined) proved nothing: deleting the call site left the
     // definition, and the guard stayed green. Pin the call, in the file that
     // makes it.
-    REQUIRE(contains(read_file("examples/cli/crispasr_voice_provenance.h"),
+    REQUIRE(contains(read_file("examples/cli/stelnettts_voice_provenance.h"),
                      "d.pack_identity = identity_for_voice_pack(resolved);"));
     // Each Unknown must record that the provider was CHECKED, not skipped —
     // otherwise "unknown" stops meaning anything and gets cleared as backlog.
@@ -370,7 +370,7 @@ TEST_CASE("the verdict table records its evidence", "[unit][compliance]") {
 
 TEST_CASE("every synthesis surface resolves the speaker identity", "[unit][compliance]") {
     SECTION("CLI") {
-        const std::string src = read_file("examples/cli/crispasr_run.cpp");
+        const std::string src = read_file("examples/cli/stelnettts_run.cpp");
         REQUIRE(contains(src, "resolve_speaker_identity"));
         REQUIRE(contains(src, "needs_spoken_disclosure"));
         // ...and USES it: the disclaimer must key on the resolved answer, not
@@ -380,9 +380,9 @@ TEST_CASE("every synthesis surface resolves the speaker identity", "[unit][compl
         REQUIRE_FALSE(contains(src, "if (is_voice_clone && !params.tts_no_spoken_disclaimer)"));
     }
     SECTION("HTTP server") {
-        const std::string src = read_file("examples/cli/crispasr_server.cpp");
+        const std::string src = read_file("examples/cli/stelnettts_server.cpp");
         REQUIRE(contains(src, "resolve_speaker_identity"));
-        REQUIRE(contains(src, "crispasr_marking::decide(needs_spoken_disclosure,"));
+        REQUIRE(contains(src, "stelnettts_marking::decide(needs_spoken_disclosure,"));
     }
     SECTION("Wyoming") {
         const std::string src = read_file("examples/cli/wyoming.cpp");
@@ -390,15 +390,15 @@ TEST_CASE("every synthesis surface resolves the speaker identity", "[unit][compl
         REQUIRE(contains(src, "clone_decision.is_clone, rp.tts_voice_clone_consent, needs_spoken_disclosure"));
     }
     SECTION("C ABI") {
-        const std::string src = read_file("src/crispasr_c_api.cpp");
-        REQUIRE(contains(src, "crispasr_session_set_speaker_identity"));
+        const std::string src = read_file("src/stelnettts_c_api.cpp");
+        REQUIRE(contains(src, "stelnettts_session_set_speaker_identity"));
         REQUIRE(contains(src, "s->voice_pack_identity = voice_decision.pack_identity;"));
         REQUIRE(contains(src, "requires_spoken_disclosure(s->voice_is_clone, identity)"));
     }
 }
 
 TEST_CASE("the identity is readable from a pack and a bank entry", "[unit][compliance]") {
-    const std::string src = read_file("examples/cli/crispasr_voice_provenance.h");
+    const std::string src = read_file("examples/cli/stelnettts_voice_provenance.h");
     REQUIRE(contains(src, "speaker_identity_key()"));
     REQUIRE(contains(src, "speaker_identity_key_for(voice_name)"));
     // Carried out of classify_voice so the server's hot path does not reopen
@@ -413,9 +413,9 @@ TEST_CASE("the operator can answer the question on every surface", "[unit][compl
     // survives renaming the flag to "--speaker-identity-disabled", which the
     // red-proof duly demonstrated on an earlier draft of this line.
     REQUIRE(contains(read_file("examples/cli/cli.cpp"), "arg == \"--speaker-identity\""));
-    REQUIRE(contains(read_file("examples/cli/crispasr_server.cpp"), "body.value(\"speaker_identity\""));
-    REQUIRE(contains(read_file("include/crispasr_session.h"), "crispasr_session_set_speaker_identity"));
-    REQUIRE(contains(read_file("include/crispasr.h"), "crispasr_session_set_speaker_identity"));
+    REQUIRE(contains(read_file("examples/cli/stelnettts_server.cpp"), "body.value(\"speaker_identity\""));
+    REQUIRE(contains(read_file("include/stelnettts_session.h"), "stelnettts_session_set_speaker_identity"));
+    REQUIRE(contains(read_file("include/stelnettts.h"), "stelnettts_session_set_speaker_identity"));
 }
 
 TEST_CASE("consent stays keyed on cloning alone", "[unit][compliance]") {
@@ -423,7 +423,7 @@ TEST_CASE("consent stays keyed on cloning alone", "[unit][compliance]") {
     // "safe" direction: making a real-person preset demand --i-have-rights
     // would gate every documented preset example behind an attestation the
     // operator cannot truthfully give.
-    const std::string policy = read_file("examples/cli/crispasr_speaker_identity.h");
+    const std::string policy = read_file("examples/cli/stelnettts_speaker_identity.h");
     REQUIRE(contains(policy, "inline bool requires_consent_attestation(bool is_clone, SpeakerIdentity /*identity*/) {\n"
                              "    return is_clone;\n"
                              "}"));
@@ -448,24 +448,24 @@ TEST_CASE("the cosyvoice3 bank baker gates and stamps", "[unit][compliance]") {
     REQUIRE(contains(src, "baking a CosyVoice3 voice bundle requires --i-have-rights."));
     // Per-entry stamp: a bundle can hold a preset and a clone at once, and a
     // bank-wide flag would have to gate both or free both.
-    REQUIRE(contains(src, "crispasr.voice.{name}.cloned_from_recording"));
+    REQUIRE(contains(src, "stelnettts.voice.{name}.cloned_from_recording"));
     // The sentinel that makes an ABSENT per-voice key mean "preset" rather than
     // "baked before the stamp existed". Without it every entry falls back to
     // the producer architecture and re-gates the presets.
-    REQUIRE(contains(src, "crispasr.voice.bank_stamped"));
+    REQUIRE(contains(src, "stelnettts.voice.bank_stamped"));
 }
 
 TEST_CASE("the kugelaudio voice baker gates the --audio path only", "[unit][compliance]") {
     const std::string src = read_file("models/convert-kugelaudio-voice-to-gguf.py");
     REQUIRE(contains(src, "if not args.i_have_rights:"));
     REQUIRE(contains(src, "encoding a voice from --audio requires --i-have-rights."));
-    REQUIRE(contains(src, "crispasr.voice.cloned_from_recording"));
+    REQUIRE(contains(src, "stelnettts.voice.cloned_from_recording"));
     // --voice-pt converts an upstream pre-encoded voice: no recording of a
     // natural person, so no attestation and no stamp. That dual mode is also
     // why `kugelaudio-voice` must NOT go on the architecture list — it cannot
     // tell the two apart, and the stamp is the only predicate that can.
     REQUIRE(contains(src, "cloned_from_recording=True"));
-    REQUIRE_FALSE(contains(read_file("examples/cli/crispasr_voice_clone_policy.h"), "arch == \"kugelaudio-voice\""));
+    REQUIRE_FALSE(contains(read_file("examples/cli/stelnettts_voice_clone_policy.h"), "arch == \"kugelaudio-voice\""));
 }
 
 TEST_CASE("the recording-derived producer list matches the bakers", "[unit][compliance]") {
@@ -473,9 +473,9 @@ TEST_CASE("the recording-derived producer list matches the bakers", "[unit][comp
     // The header claims "every recording-derived producer in this repo is
     // enumerated above" — that claim was false for a year, which is what let
     // cosyvoice3 bundles through. Pin it.
-    const std::string policy = read_file("examples/cli/crispasr_voice_clone_policy.h");
+    const std::string policy = read_file("examples/cli/stelnettts_voice_clone_policy.h");
     REQUIRE(contains(policy, "\"chatterbox-voice\""));
-    REQUIRE(contains(policy, "\"qwen3tts.voicepack\""));
+    REQUIRE(contains(policy, "\"cielvox2tts.voicepack\""));
     REQUIRE(contains(policy, "\"cosyvoice3-voices\""));
 }
 
@@ -484,12 +484,12 @@ TEST_CASE("the recording-derived producer list matches the bakers", "[unit][comp
 // ---------------------------------------------------------------------------
 
 TEST_CASE("uploading a voice reference requires a consent attestation", "[unit][compliance]") {
-    const std::string src = read_file("examples/cli/crispasr_server.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_server.cpp");
     // POST /v1/voices stores an arbitrary uploaded recording as a reusable
     // voiceprint — the network equivalent of --make-ref, which demands
     // --i-have-rights. It accepted uploads from anyone who could reach the
     // endpoint and logged only a byte count.
-    // The record is built from structured fields now (crispasr_consent_record.h)
+    // The record is built from structured fields now (stelnettts_consent_record.h)
     // rather than one format string, so the assertion follows the field the
     // emitted line still carries — `scope=voice-upload` — in its new shape.
     // Deleting the record still fails this, which is the property that matters.
@@ -515,17 +515,17 @@ TEST_CASE("uploading a voice reference requires a consent attestation", "[unit][
 
 TEST_CASE("bindings request the robust default watermark strength", "[unit][compliance]") {
     SECTION("python") {
-        const std::string src = read_file("python/crispasr/_binding.py");
+        const std::string src = read_file("python/stelnettts/_binding.py");
         REQUIRE(contains(src, "def watermark_embed(pcm: \"numpy.ndarray\", alpha: float = -1.0)"));
         REQUIRE_FALSE(contains(src, "alpha: float = 0.005"));
     }
     SECTION("dart / flutter") {
-        const std::string src = read_file("flutter/crispasr/lib/src/crispasr.dart");
+        const std::string src = read_file("flutter/stelnettts/lib/src/stelnettts.dart");
         REQUIRE(contains(src, "{double alpha = -1.0,"));
         REQUIRE_FALSE(contains(src, "double alpha = 0.005"));
     }
     SECTION("go") {
-        const std::string src = read_file("bindings/go/crispasr_session.go");
+        const std::string src = read_file("bindings/go/stelnettts_session.go");
         REQUIRE(contains(src, "C.int(len(pcm)), -1.0)"));
         REQUIRE_FALSE(contains(src, "C.int(len(pcm)), 0.005)"));
     }
@@ -537,10 +537,10 @@ TEST_CASE("every binding that can opt out of marking can also mark", "[unit][com
     // remediation, "mark the result yourself", was unreachable from the binding
     // that handed you the unmarked buffer.
     SECTION("rust") {
-        REQUIRE(contains(read_file("crispasr/src/lib.rs"), "pub fn watermark_embed(pcm: &mut [f32])"));
+        REQUIRE(contains(read_file("stelnettts/src/lib.rs"), "pub fn watermark_embed(pcm: &mut [f32])"));
     }
     SECTION("ruby") {
-        REQUIRE(contains(read_file("bindings/ruby/ext/ruby_crispasr_session.c"),
+        REQUIRE(contains(read_file("bindings/ruby/ext/ruby_stelnettts_session.c"),
                          "\"watermark_embed\", rb_watermark_embed"));
     }
     SECTION("java") {
@@ -548,7 +548,7 @@ TEST_CASE("every binding that can opt out of marking can also mark", "[unit][com
                          "public static void watermarkEmbed(float[] pcm)"));
     }
     SECTION("csharp") {
-        REQUIRE(contains(read_file("bindings/csharp/CrispASR/Session.cs"),
+        REQUIRE(contains(read_file("bindings/csharp/StelnetTTS/Session.cs"),
                          "public static void WatermarkEmbed(float[] pcm)"));
     }
 }
@@ -557,23 +557,23 @@ TEST_CASE("every binding that can opt out of marking can also mark", "[unit][com
 // Synthetic TEXT surfaces disclose (Art. 50(1)) and carry marking metadata
 // (Art. 50(2)).
 //
-// CrispASR marks audio; nothing marks short-form text, and the docs said so —
+// StelnetTTS marks audio; nothing marks short-form text, and the docs said so —
 // for ONE of the four surfaces that generate it. The chat ABI, the installed
-// crispasr-chat binary and the Flutter chat binding were all unlisted, and the
+// stelnettts-chat binary and the Flutter chat binding were all unlisted, and the
 // Flutter one is exactly where §6.3's "a CLI is obvious to a reasonably
 // well-informed person" stops being true.
 // ---------------------------------------------------------------------------
 
 TEST_CASE("the chat ABI publishes a canonical AI disclosure", "[unit][compliance]") {
-    const std::string hdr = read_file("include/crispasr_chat.h");
-    REQUIRE(contains(hdr, "crispasr_chat_ai_disclosure_text(void)"));
+    const std::string hdr = read_file("include/stelnettts_chat.h");
+    REQUIRE(contains(hdr, "stelnettts_chat_ai_disclosure_text(void)"));
     // The header is where an integrator learns the duty exists. It carried no
-    // AI Act text at all, unlike crispasr.h and crispasr_session.h.
+    // AI Act text at all, unlike stelnettts.h and stelnettts_session.h.
     REQUIRE(contains(hdr, "Art. 50(1)"));
     REQUIRE(contains(hdr, "Art. 50(2)"));
 
     const std::string impl = read_file("src/chat.cpp");
-    REQUIRE(contains(impl, "crispasr_chat_ai_disclosure_text(void)"));
+    REQUIRE(contains(impl, "stelnettts_chat_ai_disclosure_text(void)"));
     // Pinned wording: four surfaces read this string, and a drift between them
     // is a disclosure that differs depending on which one you called.
     REQUIRE(contains(impl, "You are interacting with an AI system. "
@@ -581,8 +581,8 @@ TEST_CASE("the chat ABI publishes a canonical AI disclosure", "[unit][compliance
 }
 
 TEST_CASE("the chat CLI discloses at startup", "[unit][compliance]") {
-    const std::string src = read_file("examples/cli/crispasr_chat_main.cpp");
-    REQUIRE(contains(src, "crispasr_chat_ai_disclosure_text()"));
+    const std::string src = read_file("examples/cli/stelnettts_chat_main.cpp");
+    REQUIRE(contains(src, "stelnettts_chat_ai_disclosure_text()"));
 }
 
 TEST_CASE("the chat endpoint marks its responses as AI-generated", "[unit][compliance]") {
@@ -590,13 +590,13 @@ TEST_CASE("the chat endpoint marks its responses as AI-generated", "[unit][compl
     // Commission's guidance points at metadata travelling with the response.
     // For an HTTP API that is a header, and it must be set on the buffered and
     // the SSE branch alike — set_header after a body write is too late.
-    const std::string src = read_file("examples/cli/crispasr_server.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_server.cpp");
     REQUIRE(contains(src, "X-Crispasr-Ai-Generated"));
     REQUIRE(contains(src, "X-Crispasr-Ai-Disclosure"));
 }
 
 TEST_CASE("the flutter chat binding surfaces the disclosure", "[unit][compliance]") {
-    const std::string src = read_file("flutter/crispasr/lib/src/chat.dart");
+    const std::string src = read_file("flutter/stelnettts/lib/src/chat.dart");
     REQUIRE(contains(src, "aiDisclosureText"));
-    REQUIRE(contains(src, "crispasr_chat_ai_disclosure_text"));
+    REQUIRE(contains(src, "stelnettts_chat_ai_disclosure_text"));
 }

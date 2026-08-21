@@ -1,13 +1,13 @@
 # benchmark_asr_engines.py
 
 Head-to-head benchmark of `onnx-asr` (the `istupakov/onnx-asr` Python
-library) vs CrispASR on the **same** Parakeet TDT 0.6B v3 model. Built
+library) vs StelnetTTS on the **same** Parakeet TDT 0.6B v3 model. Built
 to reproduce the comparison from
-[issue #81](https://github.com/CrispStrobe/CrispASR/issues/81).
+[issue #81](https://github.com/Cyna/StelnetTTS/issues/81).
 
 **Read first**: `PERFORMANCE.md` § "onnx-asr cross-comparison —
 issue #81 (2026-05-09)". That section documents the headline
-conclusion (crispasr Metal Q8_0 wins TDT-vs-TDT by 1.32× on M1, and
+conclusion (stelnettts Metal Q8_0 wins TDT-vs-TDT by 1.32× on M1, and
 CTC-vs-CTC by 1.58×; on Windows + RTX 4070 + DirectML the picture
 inverts and ONNX wins because of dGPU EP coverage), pins the
 upstream onnxruntime issue
@@ -36,15 +36,15 @@ Two call modes — pick with `--mode {whole,chunked,both}` (default both):
   call transcribe on each chunk. This is the latency shape that matters
   for streaming ASR — it's what the issue #81 reporter measured.
 
-Two CrispASR call paths — pick with `--crispasr-call {ctypes,cli,both}`
+Two StelnetTTS call paths — pick with `--stelnettts-call {ctypes,cli,both}`
 (default `ctypes`):
 
-- **ctypes** — `ctypes.CDLL` against `libcrispasr.{dylib,so,dll}`,
-  calling the public `crispasr_parakeet_*` C ABI. One process; the
+- **ctypes** — `ctypes.CDLL` against `libstelnettts.{dylib,so,dll}`,
+  calling the public `stelnettts_parakeet_*` C ABI. One process; the
   parakeet engine is loaded once and re-used across all runs. **This is
   the apples-to-apples path** and matches what the issue #81 reporter
   built.
-- **cli** — `subprocess` `./build/bin/crispasr` per run. Includes
+- **cli** — `subprocess` `./build/bin/stelnettts` per run. Includes
   process startup + any cold Metal kernel JIT, so subsequent runs after
   warmup are closer to steady-state but never as low as `ctypes`. Only
   whole-file is supported here (chunked needs `--stream`/stdin
@@ -62,15 +62,15 @@ The script will:
 
 1. Auto-pick a sensible `onnxruntime` provider per host: `CUDA` /
    `TensorRT` / `DirectML` if available (the dGPU EPs that actually
-   beat CrispASR on Windows), otherwise **`CPUExecutionProvider`**
+   beat StelnetTTS on Windows), otherwise **`CPUExecutionProvider`**
    (including on macOS — the CoreML EP is slower than CPU EP for
    parakeet on M1, per PERFORMANCE.md). Override with
    `--providers CoreMLExecutionProvider,CPUExecutionProvider` if you
    want to measure CoreML explicitly.
-2. Auto-find `libcrispasr.dylib` under `build-ninja-compile/src/`
-   (override with `--crispasr-lib /path/to/lib`).
-3. Auto-locate GGUF models under `/Volumes/backups/ai/crispasr/`,
-   downloading from `cstr/parakeet-tdt-0.6b-v3-GGUF` if absent.
+2. Auto-find `libstelnettts.dylib` under `build-ninja-compile/src/`
+   (override with `--stelnettts-lib /path/to/lib`).
+3. Auto-locate GGUF models under `/Volumes/backups/ai/stelnettts/`,
+   downloading from `Xenna/parakeet-tdt-0.6b-v3-GGUF` if absent.
 4. Auto-locate ONNX models under
    `/Volumes/backups/ai/huggingface-hub/parakeet-tdt-0.6b-v3-onnx/`,
    downloading from `istupakov/parakeet-tdt-0.6b-v3-onnx` if absent.
@@ -79,21 +79,21 @@ The script will:
 
 ## Quick start (Windows / CUDA)
 
-After building `libcrispasr` with CUDA on Windows:
+After building `libstelnettts` with CUDA on Windows:
 
 ```powershell
 python tools\benchmark_asr_engines.py `
-  --crispasr-lib build-cuda\src\crispasr.dll `
-  --crispasr-bin build-cuda\bin\crispasr.exe `
+  --stelnettts-lib build-cuda\src\stelnettts.dll `
+  --stelnettts-bin build-cuda\bin\stelnettts.exe `
   --providers CUDAExecutionProvider,CPUExecutionProvider `
   --gpu-backend cuda `
-  --gguf-dir D:\models\crispasr `
+  --gguf-dir D:\models\stelnettts `
   --onnx-dir D:\models\onnx-asr-parakeet
 ```
 
 The script defaults already auto-pick `CUDAExecutionProvider` if it's
 in `onnxruntime.get_available_providers()`, so on a CUDA-enabled host
-you typically just need `--crispasr-lib` and `--gpu-backend cuda`.
+you typically just need `--stelnettts-lib` and `--gpu-backend cuda`.
 
 ## Common variations
 
@@ -102,12 +102,12 @@ you typically just need `--crispasr-lib` and `--gpu-backend cuda`.
 python tools/benchmark_asr_engines.py --engine onnx --onnx-quants fp32 \
     --audio long --runs 5
 
-# CrispASR Q8_0 only, ctypes, 2-second streaming chunks:
-python tools/benchmark_asr_engines.py --engine crispasr \
+# StelnetTTS Q8_0 only, ctypes, 2-second streaming chunks:
+python tools/benchmark_asr_engines.py --engine stelnettts \
     --gguf-quants q8_0 --mode chunked --window-s 2
 
 # Add the CLI subprocess path to the matrix (slower, includes startup):
-python tools/benchmark_asr_engines.py --crispasr-call both --mode whole
+python tools/benchmark_asr_engines.py --stelnettts-call both --mode whole
 
 # CPU-only sanity check (both sides):
 python tools/benchmark_asr_engines.py \
@@ -126,7 +126,7 @@ Columns:
 
 | column | meaning |
 |---|---|
-| engine | `onnx-asr` / `crispasr-ctypes` / `crispasr-cli` |
+| engine | `onnx-asr` / `stelnettts-ctypes` / `stelnettts-cli` |
 | quant | GGUF: `q4_k`/`q8_0`/`f16`; ONNX: `int8`/`fp32` |
 | mode | `whole` or `chunked` |
 | audio | `short` (jfk.wav, 11 s) or `long` (60 s tiled JFK) |
@@ -168,7 +168,7 @@ Columns:
 3. **CLI mode includes process startup** every run. The numbers will
    be inflated vs `ctypes`. This is intentional — it's a real cost
    for CLI-driven workflows. Compare like-for-like.
-4. **`--crispasr-call cli` skips chunked mode**. The CLI doesn't
+4. **`--stelnettts-call cli` skips chunked mode**. The CLI doesn't
    expose per-chunk timing without `--stream` + stdin plumbing; we
    could add that later if useful.
 5. **WER uses `jiwer`** (`pip install jiwer`). Without it, the WER
@@ -199,8 +199,8 @@ The reporter's setup was:
 - 60 s audio, 4 s window, 1 warmup + 3 runs (matches our defaults)
 - ONNX precision: fp16/int8 (we pair with `int8` here; ONNX repo
   doesn't ship an fp16 file)
-- CrispASR precision: Q8_0 GGUF
-- DirectML EP on Windows for ONNX, CUDA backend for CrispASR
+- StelnetTTS precision: Q8_0 GGUF
+- DirectML EP on Windows for ONNX, CUDA backend for StelnetTTS
 
 Equivalent on Windows:
 

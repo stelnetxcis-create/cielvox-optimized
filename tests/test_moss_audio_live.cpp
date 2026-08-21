@@ -1,7 +1,7 @@
 // MOSS-Audio-4B integration test — exercises ASR transcription and
 // audio-understanding (custom prompt).
 //
-// Requires CRISPASR_MODEL_MOSS_AUDIO env var pointing to the GGUF.
+// Requires STELNETTTS_MODEL_MOSS_AUDIO env var pointing to the GGUF.
 // SKIPs cleanly when not set.
 
 #include <catch2/catch_test_macros.hpp>
@@ -36,9 +36,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("moss-audio transcribe JFK", "[integration][moss-audio]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MOSS_AUDIO");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MOSS_AUDIO");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MOSS_AUDIO not set");
+        SKIP("STELNETTTS_MODEL_MOSS_AUDIO not set");
     }
 
     auto params = moss_audio_context_default_params();
@@ -63,9 +63,9 @@ TEST_CASE("moss-audio transcribe JFK", "[integration][moss-audio]") {
 }
 
 TEST_CASE("moss-audio custom prompt", "[integration][moss-audio]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MOSS_AUDIO");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MOSS_AUDIO");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MOSS_AUDIO not set");
+        SKIP("STELNETTTS_MODEL_MOSS_AUDIO not set");
     }
 
     auto params = moss_audio_context_default_params();
@@ -91,9 +91,9 @@ TEST_CASE("moss-audio custom prompt", "[integration][moss-audio]") {
 }
 
 TEST_CASE("moss-audio run_encoder_meta valid-frame metadata (issue #344)", "[integration][moss-audio]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MOSS_AUDIO");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MOSS_AUDIO");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MOSS_AUDIO not set");
+        SKIP("STELNETTTS_MODEL_MOSS_AUDIO not set");
     }
 
     auto params = moss_audio_context_default_params();

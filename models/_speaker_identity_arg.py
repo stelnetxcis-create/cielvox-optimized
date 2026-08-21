@@ -1,13 +1,13 @@
 """Shared `--speaker-identity` flag for the model converters.
 
-Whose voice a preset voice is decides whether CrispASR prepends the EU AI Act
+Whose voice a preset voice is decides whether StelnetTTS prepends the EU AI Act
 Art. 50(4) audible disclosure. The runtime prefers a stamp inside the GGUF over
 its built-in table of file-name patterns, because a stamped file answers for
 itself and survives being renamed, re-quantised or moved.
 
 One module rather than a copy of the flag in each converter, for the same
 reason the verdicts live in one C++ table: the metadata KEY has to match
-crispasr_voice::speaker_identity_key() exactly, and seven hand-written copies
+stelnettts_voice::speaker_identity_key() exactly, and seven hand-written copies
 are seven chances for one of them to drift. A drift fails OPEN — the stamp is
 simply never found — so nothing would fail loudly.
 
@@ -23,12 +23,12 @@ To stamp a GGUF that is already published, use models/stamp-speaker-identity.py
 instead — it rewrites the KV block without re-running the conversion.
 """
 
-# Must match crispasr_voice::speaker_identity_key() in
-# examples/cli/crispasr_speaker_identity.h, and the same constant in
+# Must match stelnettts_voice::speaker_identity_key() in
+# examples/cli/stelnettts_speaker_identity.h, and the same constant in
 # models/stamp-speaker-identity.py. Guarded by
 # tests/test-compliance-wiring.cpp.
-IDENTITY_KEY = "crispasr.voice.speaker_identity"
-EVIDENCE_KEY = "crispasr.voice.speaker_identity_evidence"
+IDENTITY_KEY = "stelnettts.voice.speaker_identity"
+EVIDENCE_KEY = "stelnettts.voice.speaker_identity_evidence"
 
 #: Values a converter may WRITE. "unknown" is deliberately absent: absence of
 #: the key IS unknown, and writing it would turn "nobody has established this"
@@ -37,7 +37,7 @@ WRITABLE = ("real_person", "synthetic")
 
 _HELP = (
     "whose voice this checkpoint's preset speakers are: real_person or "
-    "synthetic. Stamped into the GGUF as crispasr.voice.speaker_identity and "
+    "synthetic. Stamped into the GGUF as stelnettts.voice.speaker_identity and "
     "read back by the runtime to decide whether output needs the EU AI Act "
     "Art. 50(4) audible disclosure. Omit when the model card does not say — "
     "unknown is a question, synthetic is a claim, and guessing synthetic "
@@ -74,7 +74,7 @@ def stamp_speaker_identity(writer, args, voice_name=None):
     """Write the stamp, if the caller supplied one.
 
     `voice_name` namespaces the key for a single entry inside a multi-voice
-    bank (crispasr.voice.<name>.speaker_identity), mirroring the per-voice
+    bank (stelnettts.voice.<name>.speaker_identity), mirroring the per-voice
     clone stamp. Omit it for a whole-file verdict.
 
     Writes nothing when no value was given. That is the point: absence means
@@ -83,7 +83,7 @@ def stamp_speaker_identity(writer, args, voice_name=None):
     value = getattr(args, "speaker_identity", "") or ""
     if not value:
         return False
-    key = IDENTITY_KEY if not voice_name else f"crispasr.voice.{voice_name}.speaker_identity"
+    key = IDENTITY_KEY if not voice_name else f"stelnettts.voice.{voice_name}.speaker_identity"
     writer.add_string(key, value)
     evidence = getattr(args, "speaker_identity_evidence", "") or ""
     if evidence and not voice_name:

@@ -53,7 +53,7 @@ cross-reference when you already know which model you are touching.
 - L3212 — HF Space is a separate, FLAT repo that silently drifts from `hf-space/`
 - L4515 — Windows / MSVC portability
 - L5753 — GitHub Actions workflow triggers — `master` → `main` rename gotcha
-- L5899 — libcrispasr.a + libcommon.a both define stb_vorbis / miniaudio impl (Linux ld dies)
+- L5899 — libstelnettts.a + libcommon.a both define stb_vorbis / miniaudio impl (Linux ld dies)
 - L11138 — Kaggle as a batch-rebake target: seven fragilities the script has to work around
 - L14582 — CI has no NVIDIA GPU — a CUDA-only graph path (mimo RVQ) is guarded by an on-Kaggle exact-parity smoke, not CI (#309)
 - L15409 — #313 Rust crates on crates.io via git dep
@@ -205,7 +205,7 @@ cross-reference when you already know which model you are touching.
 
 **Quantization** (10)
 
-- L1885 — Auditing CrispASR against CrispEmbed's bug classes: a weight reader with no quantized branch fails silently (2026-07)
+- L1885 — Auditing StelnetTTS against StelnetEmbed's bug classes: a weight reader with no quantized branch fails silently (2026-07)
 - L1965 — Quantizing a forced-aligner: q8 everywhere (incl. lm_head) is bit-identical; q4 on the encoder is not (#192 TADA aligner)
 - L3015 — Orpheus/SNAC TTS: `token_embd` must stay F16 for sub-Q8 quants
 - L3617 — Quantisation and memory
@@ -272,7 +272,7 @@ cross-reference when you already know which model you are touching.
 - L6613 — Chatterbox atomic native voice clone — the resampler + 5-cond install
 - L11590 — moshi / Mimi RVQ codebooks: decode uses embed_sum / cluster_usage
 - L12613 — MeloTTS (VITS2) — from zero to BERT conditioning
-- L15130 — #245/§232 qwen3-tts CP_DIRECT + codec FASTCONV DONE
+- L15130 — #245/§232 cielvox2-tts CP_DIRECT + codec FASTCONV DONE
 - L17455 — glint MP3+AAC TTS output §225 SHIPPED
 - L17938 — voxcpm2 CausalTransposeConv1d kwargs gotcha
 
@@ -296,7 +296,7 @@ cross-reference when you already know which model you are touching.
 - L13608 — Issue #89 close-out: four transferable lessons
 - L13903 — Issue triage discipline: check the codebase before leaving issues open
 - L14530 — `git apply --3way` STAGES its result — a later `git add X && git commit` sweeps it up
-- L16808 — CrispEmbed #31 WASM OCR e2e
+- L16808 — StelnetEmbed #31 WASM OCR e2e
 
 **Per-model port notes** (44)
 

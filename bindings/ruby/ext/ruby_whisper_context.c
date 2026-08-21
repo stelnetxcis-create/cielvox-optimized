@@ -99,7 +99,7 @@ ruby_whisper_normalize_model_path(VALUE model_path) {
     VALUE pre_converted_model = rb_hash_aref(pre_converted_models, model_path);
     if (!NIL_P(pre_converted_model)) {
         model_path = pre_converted_model;
-#ifdef RUBY_CRISPASR_USE_COREML
+#ifdef RUBY_STELNETTTS_USE_COREML
         VALUE coreml_converted_models = rb_funcall(cModel, id_coreml_compiled_models, 0);
         VALUE coreml_converted_model = rb_hash_aref(coreml_converted_models, pre_converted_model);
         if (!NIL_P(coreml_converted_model)) {

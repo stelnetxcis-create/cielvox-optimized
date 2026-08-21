@@ -1,13 +1,13 @@
 {
-  "id": "chr1s4/crispasr-moss-tts-local-validate",
-  "title": "CrispASR moss tts local validate",
-  "code_file": "crispasr-moss-tts-local-validate.py",
+  "id": "chr1s4/stelnettts-moss-tts-local-validate",
+  "title": "StelnetTTS moss tts local validate",
+  "code_file": "stelnettts-moss-tts-local-validate.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1s4/crispasr-hf-token", "chr1s4/crispasr-ccache"],
+  "dataset_sources": ["chr1s4/stelnettts-hf-token", "chr1s4/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

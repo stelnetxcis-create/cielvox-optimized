@@ -20,7 +20,7 @@ base_model: reazon-research/reazonspeech-nemo-v2
 
 # ReazonSpeech NeMo v2 (Japanese) — GGUF
 
-GGUF / ggml conversions of [`reazon-research/reazonspeech-nemo-v2`](https://huggingface.co/reazon-research/reazonspeech-nemo-v2) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`reazon-research/reazonspeech-nemo-v2`](https://huggingface.co/reazon-research/reazonspeech-nemo-v2) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 A 619 M-parameter Japanese ASR model trained on the
 [ReazonSpeech](https://research.reazon.jp/projects/ReazonSpeech/) v2.0
@@ -46,30 +46,30 @@ want the closest match to the official NeMo Python pipeline.
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr
+cmake --build build -j$(nproc) --target stelnettts
 
 # 2. Download the Q8_0 (default) — or swap the filename for the F16 / Q4_K
-huggingface-cli download cstr/reazonspeech-nemo-v2-GGUF \
+huggingface-cli download Xenna/reazonspeech-nemo-v2-GGUF \
     reazonspeech-nemo-v2-q8_0.gguf --local-dir .
 
 # 3. Transcribe a 16 kHz mono WAV
-./build/bin/crispasr --backend parakeet \
+./build/bin/stelnettts --backend parakeet \
     -m reazonspeech-nemo-v2-q8_0.gguf -f your-japanese-audio.wav -t 8
 ```
 
-crispasr can also fetch the model for you by its registry name:
+stelnettts can also fetch the model for you by its registry name:
 
 ```bash
-./build/bin/crispasr --backend parakeet -m reazonspeech \
+./build/bin/stelnettts --backend parakeet -m reazonspeech \
     --auto-download -f your-japanese-audio.wav
 ```
 
 (Both this RNNT model and the sibling
-[`cstr/parakeet-ctc-1.1b-ja-GGUF`](https://huggingface.co/cstr/parakeet-ctc-1.1b-ja-GGUF)
-run through crispasr's `parakeet` backend — the runtime selects the
+[`Xenna/parakeet-ctc-1.1b-ja-GGUF`](https://huggingface.co/Xenna/parakeet-ctc-1.1b-ja-GGUF)
+run through stelnettts's `parakeet` backend — the runtime selects the
 RNNT vs. CTC decode path from the GGUF metadata.)
 
 ## Long-form audio
@@ -79,7 +79,7 @@ Japanese FastConformer models a single long pass can drift; for clips
 longer than ~15 s prefer VAD-bounded chunking:
 
 ```bash
-./build/bin/crispasr --backend parakeet -m reazonspeech-nemo-v2-q8_0.gguf \
+./build/bin/stelnettts --backend parakeet -m reazonspeech-nemo-v2-q8_0.gguf \
     -f long-japanese-audio.wav --vad -t 8
 ```
 
@@ -105,7 +105,7 @@ longer than ~15 s prefer VAD-bounded chunking:
 2. NeMo state-dict keys are remapped to ggml-friendly names — matmul
    tensors as F16, norms / biases / mel filterbank as F32 — and the
    F16 GGUF is quantised to Q8_0 and Q4_K.
-3. Inference runs through `src/parakeet.{h,cpp}` in CrispASR, which
+3. Inference runs through `src/parakeet.{h,cpp}` in StelnetTTS, which
    handles the local relative-position attention and the RNNT
    predictor/joint loop.
 

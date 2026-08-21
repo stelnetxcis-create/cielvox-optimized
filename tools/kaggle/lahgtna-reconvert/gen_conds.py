@@ -90,17 +90,17 @@ del model
 torch.cuda.empty_cache()
 import gc; gc.collect()
 
-print("=== Clone CrispASR + convert ===", flush=True)
-CRISPASR_DIR = WORK / "CrispASR"
-if not CRISPASR_DIR.exists():
+print("=== Clone StelnetTTS + convert ===", flush=True)
+STELNETTTS_DIR = WORK / "StelnetTTS"
+if not STELNETTTS_DIR.exists():
     subprocess.check_call(["git", "clone", "--depth", "1",
-                           "https://github.com/CrispStrobe/CrispASR.git",
-                           str(CRISPASR_DIR)])
+                           "https://github.com/Cyna/StelnetTTS.git",
+                           str(STELNETTTS_DIR)])
 
 out_dir = WORK / "gguf-out"
 out_dir.mkdir(exist_ok=True)
 subprocess.check_call([
-    sys.executable, str(CRISPASR_DIR / "models" / "convert-chatterbox-to-gguf.py"),
+    sys.executable, str(STELNETTTS_DIR / "models" / "convert-chatterbox-to-gguf.py"),
     "--input", str(model_dir),
     "--output-dir", str(out_dir),
     "--t3-only",
@@ -121,8 +121,8 @@ for t in r.tensors:
 
 print("=== Upload to HF ===", flush=True)
 hf_token = None
-for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-          "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+          "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
     if os.path.exists(p):
         with open(p) as f:
             hf_token = f.read().strip()
@@ -132,12 +132,12 @@ if hf_token:
     api = HfApi(token=hf_token)
     # Delete old file first to avoid LFS dedup
     try:
-        api.delete_file("chatterbox-t3-f16.gguf", "cstr/lahgtna-chatterbox-v1-GGUF")
+        api.delete_file("chatterbox-t3-f16.gguf", "Xenna/lahgtna-chatterbox-v1-GGUF")
     except:
         pass
     api.upload_file(path_or_fileobj=str(t3_gguf),
                     path_in_repo="chatterbox-t3-f16.gguf",
-                    repo_id="cstr/lahgtna-chatterbox-v1-GGUF")
+                    repo_id="Xenna/lahgtna-chatterbox-v1-GGUF")
     print("Uploaded")
 else:
     print("No HF token — skipped upload")

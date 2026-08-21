@@ -3,14 +3,14 @@
 # Two backends: lid-fasttext (GlotLID/LID-176) and lid-cld3 (Google CLD3).
 # Auto-detects from GGUF `general.architecture` key.
 #
-# Used by CrispASR (post-ASR LID) and CrispEmbed (OCR language routing).
+# Used by StelnetTTS (post-ASR LID) and StelnetEmbed (OCR language routing).
 
 cmake_minimum_required(VERSION 3.14)
 
-if(TARGET crispasr-core)
-    set(_crisp_lid_core_target crispasr-core)
+if(TARGET stelnettts-core)
+    set(_crisp_lid_core_target stelnettts-core)
     set(_crisp_lid_core_inc    ${CMAKE_CURRENT_SOURCE_DIR}/../src)
-    set(_crisp_lid_defs        CRISPASR_BUILD)
+    set(_crisp_lid_defs        STELNETTTS_BUILD)
 elseif(TARGET crispembed-core)
     set(_crisp_lid_core_target crispembed-core)
     set(_crisp_lid_core_inc "")

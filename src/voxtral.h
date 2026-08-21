@@ -23,7 +23,7 @@
 //                  the projector output frames.
 //
 // This is structurally simpler than Qwen3-ASR (no Q-norm/K-norm, no chunked
-// audio encoder) and should reuse most of the qwen3_asr.cpp infrastructure
+// audio encoder) and should reuse most of the cielvox2_asr.cpp infrastructure
 // with parameter swaps.
 
 #pragma once
@@ -65,7 +65,7 @@ int32_t* voxtral_tokenize(struct voxtral_context* ctx, const char* text, int* ou
 
 // ---- Stage-1 helpers exposed for differential testing ----------------------
 //
-// These mirror the qwen3_asr_* test helpers — feed precomputed inputs and
+// These mirror the cielvox2_asr_* test helpers — feed precomputed inputs and
 // pull intermediate activations back out for diffing against PyTorch dumps.
 
 // Run the audio encoder + projector on a (128, 3000) mel spectrogram (padded
@@ -85,7 +85,7 @@ float* voxtral_compute_mel(struct voxtral_context* ctx, const float* samples, in
 // Returns malloc'd (n_tokens, d_model=3072) F32 row-major. Caller frees.
 float* voxtral_embed_tokens(struct voxtral_context* ctx, const int32_t* input_ids, int n_tokens);
 
-// KV cache lifecycle (same pattern as qwen3_asr).
+// KV cache lifecycle (same pattern as cielvox2_asr).
 bool voxtral_kv_init(struct voxtral_context* ctx, int max_ctx);
 void voxtral_kv_reset(struct voxtral_context* ctx);
 

@@ -24,7 +24,7 @@
 // If audio.wav is omitted the normalised PCM from the reference archive
 // (key "audio_norm") is used as the encoder input.
 
-#include "crispasr_diff.h"
+#include "stelnettts_diff.h"
 #include "vibevoice.h"
 
 #include <cmath>
@@ -106,8 +106,8 @@ static std::vector<float> load_wav_mono(const char* path, int* out_sr) {
 }
 
 // ── print a stage result ─────────────────────────────────────────────────────
-static bool print_stage(const char* name, const crispasr_diff::Report& rep, float cos_threshold,
-                        const crispasr_diff::Ref& ref, const float* cpp_data) {
+static bool print_stage(const char* name, const stelnettts_diff::Report& rep, float cos_threshold,
+                        const stelnettts_diff::Ref& ref, const float* cpp_data) {
     const bool pass = rep.is_pass(cos_threshold);
     fprintf(stderr, "\n[%s]\n", name);
     fprintf(stderr, "  elements:        %zu\n", rep.n_elem);
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
     }
 
     // ── 1. Load reference archive ─────────────────────────────────────────────
-    crispasr_diff::Ref ref;
+    stelnettts_diff::Ref ref;
     if (!ref.load(argv[arg_start + 1]))
         return 2;
 
@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
     bool all_pass = true;
     // Encoder stages: conv weights are 3D → stay F16 in the quantized model.
     // 26 ConvNeXt blocks with F16 dw_conv accumulate ~cos 0.99 at the output.
-    // Connector stages: FC weights are 2D → quantized to Q4_K by crispasr-quantize,
+    // Connector stages: FC weights are 2D → quantized to Q4_K by stelnettts-quantize,
     // adding another noise layer (fc2 is 3584×3584=12.8M weights). cos_min ~0.986
     // with Q4_K; for F16 models expect cos_min >0.999.
     const float ENC_COS_THRESHOLD = 0.90f;

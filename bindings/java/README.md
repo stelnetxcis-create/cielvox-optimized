@@ -1,6 +1,6 @@
-# Java JNI bindings for CrispASR
+# Java JNI bindings for StelnetTTS
 
-This package provides Java JNI bindings for crispasr. They have been tested on:
+This package provides Java JNI bindings for stelnettts. They have been tested on:
 
   * <strike>Darwin (OS X) 12.6 on x64_64</strike>
   * Ubuntu on x86_64
@@ -29,7 +29,7 @@ public class Example {
             // By default, models are loaded from ~/.cache/whisper/ and are usually named "ggml-${name}.bin"
             // or you can provide the absolute path to the model file.
             whisper.initContext("../ggml-base.en.bin"); 
-            WhisperFullParams.ByValue whisperParams = whisper.getFullDefaultParams(WhisperSamplingStrategy.CRISPASR_SAMPLING_BEAM_SEARCH); 
+            WhisperFullParams.ByValue whisperParams = whisper.getFullDefaultParams(WhisperSamplingStrategy.STELNETTTS_SAMPLING_BEAM_SEARCH); 
             
             // custom configuration if required      
             //whisperParams.n_threads = 8;
@@ -65,8 +65,8 @@ public class Example {
 
 ## Chat / LLM
 
-`io.github.ggerganov.whispercpp.chat` binds the `crispasr_chat_*` C ABI
-(`include/crispasr_chat.h`) — text in, text out, separate from the ASR surface
+`io.github.ggerganov.whispercpp.chat` binds the `stelnettts_chat_*` C ABI
+(`include/stelnettts_chat.h`) — text in, text out, separate from the ASR surface
 above and usable on its own.
 
 ```java
@@ -115,10 +115,10 @@ Points worth knowing:
   wording; show it visibly, and mark the output machine-readably yourself.
 
 The end-to-end cases in `ChatSessionTest` need a GGUF chat model and are gated
-on `CRISPASR_CHAT_TEST_MODEL`, self-skipping when it is unset:
+on `STELNETTTS_CHAT_TEST_MODEL`, self-skipping when it is unset:
 
 ```bash
-CRISPASR_CHAT_TEST_MODEL=/models/gemma-3-1b-it-Q4_K_M.gguf ./gradlew test
+STELNETTTS_CHAT_TEST_MODEL=/models/gemma-3-1b-it-Q4_K_M.gguf ./gradlew test
 ```
 
 ## Building & Testing
@@ -126,19 +126,19 @@ CRISPASR_CHAT_TEST_MODEL=/models/gemma-3-1b-it-Q4_K_M.gguf ./gradlew test
 In order to build, you need to have the JDK 8 or higher installed. Run the tests with:
 
 ```bash
-git clone https://github.com/ggml-org/crispasr.git
-cd crispasr/bindings/java
+git clone https://github.com/ggml-org/stelnettts.git
+cd stelnettts/bindings/java
 
 ./gradlew build
 ```
 
-You need to have the `crispasr` library in your [JNA library path](https://java-native-access.github.io/jna/4.2.1/com/sun/jna/NativeLibrary.html). On Windows the dll is included in the jar and you can update it:
+You need to have the `stelnettts` library in your [JNA library path](https://java-native-access.github.io/jna/4.2.1/com/sun/jna/NativeLibrary.html). On Windows the dll is included in the jar and you can update it:
 
 ```bash
-copy /y ..\..\build\bin\Release\crispasr.dll build\generated\resources\main\win32-x86-64\crispasr.dll
+copy /y ..\..\build\bin\Release\stelnettts.dll build\generated\resources\main\win32-x86-64\stelnettts.dll
 ```
 
 
 ## License
 
-The license for the Java bindings is the same as the license for the rest of the crispasr project, which is the MIT License. See the `LICENSE` file for more details.
+The license for the Java bindings is the same as the license for the rest of the stelnettts project, which is the MIT License. See the `LICENSE` file for more details.

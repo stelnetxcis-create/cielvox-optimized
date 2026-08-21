@@ -1,4 +1,4 @@
-// Regression coverage for CrispASR's carried ggml audio-op backend patches.
+// Regression coverage for StelnetTTS's carried ggml audio-op backend patches.
 //
 // This intentionally runs GGML_OP_CONV_TRANSPOSE_1D and GGML_OP_COL2IM_1D
 // directly on one selected GPU backend, with no CPU fallback scheduler. If a
@@ -15,11 +15,11 @@
 // ggml bump — not ggml_col2im_1d in isolation.
 #include "../src/core/conv.h"
 
-#if defined(CRISPASR_TEST_BACKEND_METAL)
+#if defined(STELNETTTS_TEST_BACKEND_METAL)
 #include "ggml-metal.h"
-#elif defined(CRISPASR_TEST_BACKEND_VULKAN)
+#elif defined(STELNETTTS_TEST_BACKEND_VULKAN)
 #include "ggml-vulkan.h"
-#elif defined(CRISPASR_TEST_BACKEND_CUDA)
+#elif defined(STELNETTTS_TEST_BACKEND_CUDA)
 #include "ggml-cuda.h"
 #endif
 
@@ -37,13 +37,13 @@ static float value_at(int i, int salt) {
 }
 
 static ggml_backend_t init_test_backend() {
-#if defined(CRISPASR_TEST_BACKEND_METAL)
+#if defined(STELNETTTS_TEST_BACKEND_METAL)
     return ggml_backend_metal_init();
-#elif defined(CRISPASR_TEST_BACKEND_VULKAN)
+#elif defined(STELNETTTS_TEST_BACKEND_VULKAN)
     if (ggml_backend_vk_get_device_count() <= 0)
         return nullptr;
     return ggml_backend_vk_init(0);
-#elif defined(CRISPASR_TEST_BACKEND_CUDA)
+#elif defined(STELNETTTS_TEST_BACKEND_CUDA)
     if (ggml_backend_cuda_get_device_count() <= 0)
         return nullptr;
     return ggml_backend_cuda_init(0);
@@ -53,11 +53,11 @@ static ggml_backend_t init_test_backend() {
 }
 
 static const char* backend_name() {
-#if defined(CRISPASR_TEST_BACKEND_METAL)
+#if defined(STELNETTTS_TEST_BACKEND_METAL)
     return "metal";
-#elif defined(CRISPASR_TEST_BACKEND_VULKAN)
+#elif defined(STELNETTTS_TEST_BACKEND_VULKAN)
     return "vulkan";
-#elif defined(CRISPASR_TEST_BACKEND_CUDA)
+#elif defined(STELNETTTS_TEST_BACKEND_CUDA)
     return "cuda";
 #else
     return "unknown";
@@ -388,7 +388,7 @@ int main() {
     ok = ok && run_col2im_1d(gpu, GGML_TYPE_F32, col_gpu, col_ref) &&
          close_enough(col_ref, col_gpu, 1e-5f, "col2im_1d_f32");
 
-#if defined(CRISPASR_TEST_COL2IM_F16)
+#if defined(STELNETTTS_TEST_COL2IM_F16)
     ok = ok && run_col2im_1d(gpu, GGML_TYPE_F16, col_gpu, col_ref) &&
          close_enough(col_ref, col_gpu, 2e-3f, "col2im_1d_f16");
 #endif

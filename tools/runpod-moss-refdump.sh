@@ -1,5 +1,5 @@
 #!/bin/bash
-# CrispASR RunPod — MOSS-Audio reference activation dump
+# StelnetTTS RunPod — MOSS-Audio reference activation dump
 #
 # Spins up RTX 3090, downloads model, runs Python reference forward pass,
 # SCPs the ref GGUF back to this machine.
@@ -16,7 +16,7 @@ RPOD_API="${RUNPOD_API_KEY:-$(grep RPOD_API ~/.env 2>/dev/null | cut -d= -f2)}"
 GPU_TYPE="NVIDIA GeForce RTX 3090"
 IMAGE="runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub 2>/dev/null || echo "")
-POD_FILE="/tmp/crispasr-runpod-refdump-pod-id.txt"
+POD_FILE="/tmp/stelnettts-runpod-refdump-pod-id.txt"
 BRANCH="${1:-feature/moss-audio}"
 LOCAL_OUT="/mnt/volume1/moss-audio-4b-instruct-ref.gguf"
 
@@ -46,7 +46,7 @@ POD_INFO=$(python << PYEOF
 import runpod, json
 runpod.api_key = '$RPOD_API'
 pod = runpod.create_pod(
-    name="crispasr-moss-refdump",
+    name="stelnettts-moss-refdump",
     image_name="$IMAGE",
     gpu_type_id="$GPU_TYPE",
     gpu_count=1,
@@ -98,7 +98,7 @@ $SSH << REMOTE
 set -e
 pip3 install -q torch transformers==4.57.1 safetensors gguf huggingface_hub hf_transfer 2>&1 | tail -3
 cd /runpod-volume
-git clone --depth 1 --branch $BRANCH https://github.com/CrispStrobe/CrispASR.git 2>&1 | tail -2
+git clone --depth 1 --branch $BRANCH https://github.com/Cyna/StelnetTTS.git 2>&1 | tail -2
 git clone --depth 1 https://github.com/OpenMOSS/MOSS-Audio.git 2>&1 | tail -2
 echo "=== Clones done ==="
 REMOTE
@@ -125,7 +125,7 @@ export MOSS_AUDIO_GITHUB=/runpod-volume/MOSS-Audio
 export MOSS_AUDIO_PROMPT="Transcribe this audio."
 export MOSS_AUDIO_MAX_NEW=128
 
-cd /runpod-volume/CrispASR
+cd /runpod-volume/StelnetTTS
 python3 tools/dump_reference.py \
   --backend moss-audio \
   --model-dir "$MOSS_AUDIO_DIR" \
@@ -149,7 +149,7 @@ api = HfApi()
 api.upload_file(
     path_or_fileobj='$LOCAL_OUT',
     path_in_repo='moss-audio-4b-instruct-ref.gguf',
-    repo_id='cstr/MOSS-Audio-4B-Instruct-GGUF',
+    repo_id='Xenna/MOSS-Audio-4B-Instruct-GGUF',
     repo_type='model',
     commit_message='Add reference activation dump (jfk.wav, bf16 forward)',
 )

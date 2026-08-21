@@ -11,22 +11,22 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR_BIN:-./build/bin/crispasr}"
+CRISPASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
 if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="./build-ninja-compile/bin/crispasr"
+    CRISPASR="./build-ninja-compile/bin/stelnettts"
 fi
 if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="/tmp/build-issue89/bin/crispasr"
+    CRISPASR="/tmp/build-issue89/bin/stelnettts"
 fi
 if [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found"
+    echo "SKIP: stelnettts binary not found"
     exit 2
 fi
 
-# Check for parakeet model — respect CRISPASR_MODELS_DIR, then fall back to
+# Check for parakeet model — respect STELNETTTS_MODELS_DIR, then fall back to
 # the auto-download cache.
-MODELS_DIR="${CRISPASR_MODELS_DIR:-$HOME/.cache/crispasr}"
-MODEL="${CRISPASR_BENCHMARK_MODEL:-}"
+MODELS_DIR="${STELNETTTS_MODELS_DIR:-$HOME/.cache/stelnettts}"
+MODEL="${STELNETTTS_BENCHMARK_MODEL:-}"
 if [ -z "$MODEL" ]; then
     for name in parakeet-tdt-0.6b-v3.gguf parakeet-tdt-0.6b-v3-q4_k.gguf; do
         if [ -f "$MODELS_DIR/$name" ]; then
@@ -36,7 +36,7 @@ if [ -z "$MODEL" ]; then
     done
 fi
 if [ -z "$MODEL" ]; then
-    echo "SKIP: parakeet model not found (set CRISPASR_MODELS_DIR or CRISPASR_BENCHMARK_MODEL)"
+    echo "SKIP: parakeet model not found (set STELNETTTS_MODELS_DIR or STELNETTTS_BENCHMARK_MODEL)"
     exit 2
 fi
 
@@ -52,7 +52,7 @@ echo "Model:  $MODEL"
 echo "Audio:  $AUDIO"
 
 # Run the benchmark driver
-export CRISPASR_BIN="$CRISPASR"
+export STELNETTTS_BIN="$CRISPASR"
 python3 tests/benchmark_asr.py \
     --audio "$AUDIO" \
     --model "$MODEL" \

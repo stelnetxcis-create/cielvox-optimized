@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Kaggle GPU kernel: CrispASR full-fleet benchmark + onnx-asr head-to-head (#81).
+"""Kaggle GPU kernel: StelnetTTS full-fleet benchmark + onnx-asr head-to-head (#81).
 
-Tests all CrispASR backends that fit in Kaggle's time/disk budget.
+Tests all StelnetTTS backends that fit in Kaggle's time/disk budget.
 Head-to-head with onnx-asr for overlapping models (whisper, parakeet, canary).
-CrispASR-only RTF for the 20+ backends onnx-asr doesn't support.
+StelnetTTS-only RTF for the 20+ backends onnx-asr doesn't support.
 
 Push (under chr1str):
   export KAGGLE_API_TOKEN=<chr1str token>
@@ -20,20 +20,20 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-# Clone the repo into TEMP, NOT /kaggle/working. The git-cloned CrispASR/ tree
+# Clone the repo into TEMP, NOT /kaggle/working. The git-cloned StelnetTTS/ tree
 # (thousands of files, sorts before ccache.tar) was filling `kaggle kernels
 # output`'s 500-file page 1 and burying ccache.tar — so it could never be
 # retrieved to refresh the dataset. With the repo in TEMP, /kaggle/working holds
 # only ccache.tar + benchmark_results.json (+ the always-fetched log), so
 # ccache.tar is reachable in page 1.
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 
-# ── Phase 0: Clone + build CrispASR with CUDA ───────────────────────────────
-print("=== Phase 0: clone + build CrispASR ===", flush=True)
+# ── Phase 0: Clone + build StelnetTTS with CUDA ───────────────────────────────
+print("=== Phase 0: clone + build StelnetTTS ===", flush=True)
 if not REPO.exists():
     subprocess.check_call([
         "git", "clone", "--depth", "1", "-b", "main",
-        "https://github.com/CrispStrobe/CrispASR", str(REPO),
+        "https://github.com/Cyna/StelnetTTS", str(REPO),
     ])
 if (REPO / "ggml").is_dir() and not (REPO / "ggml" / "CMakeLists.txt").exists():
     subprocess.check_call(["git", "submodule", "update", "--init", "ggml"], cwd=str(REPO))
@@ -43,7 +43,7 @@ if (REPO / "tools" / "kaggle").is_dir():
 import kaggle_harness as kh  # noqa: E402
 
 kh.init_progress()  # structured progress + heartbeat plumbing (kaggle_usage.md regime)
-# 3-tier HF auth (env -> Kaggle secret -> attached chr1str/crispasr-hf-token
+# 3-tier HF auth (env -> Kaggle secret -> attached chr1str/stelnettts-hf-token
 # dataset) so Phase 3's GGUF pulls are authenticated (avoids anon rate limits;
 # the token dataset is attached specifically for this).
 kh.resolve_hf_token()
@@ -55,7 +55,7 @@ os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
 BUILD = TEMP / "build"
 BUILD.mkdir(parents=True, exist_ok=True)
 
-# Install ninja/ccache/mold AND warm ccache from the attached chr1str/crispasr-ccache
+# Install ninja/ccache/mold AND warm ccache from the attached chr1str/stelnettts-ccache
 # dataset (kaggle_usage.md #13/#17). Without this the build runs cold (~21 min);
 # warm it's ~3 min. cache_and_link_flags() below only sets the compiler-launcher
 # flags — it does NOT install or warm ccache, which is what this call does.
@@ -89,7 +89,7 @@ if has_cuda:
     # C2PA provenance signing is irrelevant to a benchmark; disabling it avoids
     # the third_party/c2pa-audio submodule (the clone below inits only ggml, so
     # requiring c2pa's sources fails cmake generate — the v1 error).
-    cmake_flags = "-DCMAKE_BUILD_TYPE=Release -DCRISPASR_NO_C2PA_NATIVE=ON " + " ".join(flags)
+    cmake_flags = "-DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_NO_C2PA_NATIVE=ON " + " ".join(flags)
     ret = subprocess.call(f"cmake -G Ninja -B {BUILD} -S {REPO} {cmake_flags}", shell=True)
     if ret != 0:
         print("  CUDA cmake failed, falling back to CPU")
@@ -100,7 +100,7 @@ if has_cuda:
 if not has_cuda:
     subprocess.check_call(
         f"cmake -G Ninja -B {BUILD} -S {REPO} -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF "
-        "-DCRISPASR_NO_C2PA_NATIVE=ON",
+        "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
         shell=True, stdout=subprocess.DEVNULL)
 
 n_jobs = min(os.cpu_count() or 2, 4)
@@ -108,13 +108,13 @@ with kh.build_heartbeat("cmake.build"):
     # Capture build output and surface the tail on failure. v7 errored here with
     # stdout=DEVNULL, hiding the cause (a transient glint size_t GCC break on main,
     # since fixed) — a silent build failure is undebuggable from the kernel log.
-    _b = subprocess.run(f"cmake --build {BUILD} -j{n_jobs} --target crispasr-cli 2>&1",
+    _b = subprocess.run(f"cmake --build {BUILD} -j{n_jobs} --target stelnettts-cli 2>&1",
                         shell=True, capture_output=True, text=True)
     if _b.returncode != 0:
-        print("=== crispasr-cli BUILD FAILED — last 40 lines ===", flush=True)
+        print("=== stelnettts-cli BUILD FAILED — last 40 lines ===", flush=True)
         print("\n".join((_b.stdout or "").splitlines()[-40:]), flush=True)
-        raise SystemExit("crispasr-cli build failed")
-CRISPASR = BUILD / "bin" / "crispasr"
+        raise SystemExit("stelnettts-cli build failed")
+CRISPASR = BUILD / "bin" / "stelnettts"
 print(f"  built: {CRISPASR}")
 
 # ── Phase 1: Install onnx-asr (+ onnxruntime-gpu for the CUDA EP) ────────────
@@ -126,7 +126,7 @@ subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
 # Kaggle's P100 worker has CUDA 12.8, but the LATEST onnxruntime-gpu links
 # libcudart.so.13 -> ImportError on 12.8 (this crashed v9). onnxruntime-gpu
 # 1.19.2 = CUDA 12 + cuDNN 9. Phase 5 is import-guarded, so if this still can't
-# load (e.g. cuDNN mismatch) the kernel skips onnx cleanly and keeps the CrispASR
+# load (e.g. cuDNN mismatch) the kernel skips onnx cleanly and keeps the StelnetTTS
 # numbers rather than crashing.
 subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "onnxruntime", "onnxruntime-gpu"],
                capture_output=True)
@@ -179,32 +179,32 @@ MODELS_DIR = TEMP / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Models to benchmark: (backend, hf_repo, filename, label)
-CRISPASR_MODELS = [
+STELNETTTS_MODELS = [
     # Head-to-head with onnx-asr.
     # NOTE: parakeet-ctc is a pure CTC (EncDecCTCModelBPE) — it must run on the
     # fastconformer-ctc backend, NOT the `parakeet` transducer backend (which
     # rejects it: "no RNN-T decoder/joint tensors — failed to load"). Using the
     # wrong backend here is exactly the #81 bug that produced the bogus 102.4×/
     # 127.7× (a ~0.5 s failed load timed as if it were inference). See the guard
-    # in bench_crispasr() below.
-    ("fastconformer-ctc", "cstr/parakeet-ctc-0.6b-GGUF",   "parakeet-ctc-0.6b-q8_0.gguf",     "parakeet-ctc-0.6b"),
-    ("parakeet",  "cstr/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q8_0.gguf",  "parakeet-tdt-0.6b"),
-    # CrispASR-only (small models that fit in budget)
-    ("moonshine", "cstr/moonshine-tiny-GGUF",       "moonshine-tiny-q8_0.gguf",         "moonshine-tiny"),
-    ("cohere",    "cstr/cohere-transcribe-GGUF",    "cohere-transcribe-q4_k.gguf",      "cohere-transcribe"),
-    ("kyutai-stt","cstr/kyutai-stt-1b-GGUF",        "kyutai-stt-1b-q4_k.gguf",          "kyutai-stt-1b"),
-    ("firered-asr","cstr/firered-asr2-aed-GGUF",    "firered-asr2-aed-q4_k.gguf",      "firered-asr2"),
-    ("sensevoice","cstr/sensevoice-small-GGUF",     "sensevoice-small-q8_0.gguf",       "sensevoice-small"),
-    ("funasr",    "cstr/fun-asr-nano-GGUF",         "fun-asr-nano-q8_0.gguf",           "funasr-nano"),
-    ("paraformer","cstr/paraformer-zh-GGUF",        "paraformer-zh-q8_0.gguf",          "paraformer-zh"),
-    ("glm-asr",   "cstr/glm-asr-nano-GGUF",        "glm-asr-nano-q4_k.gguf",           "glm-asr-nano"),
+    # in bench_stelnettts() below.
+    ("fastconformer-ctc", "Xenna/parakeet-ctc-0.6b-GGUF",   "parakeet-ctc-0.6b-q8_0.gguf",     "parakeet-ctc-0.6b"),
+    ("parakeet",  "Xenna/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q8_0.gguf",  "parakeet-tdt-0.6b"),
+    # StelnetTTS-only (small models that fit in budget)
+    ("moonshine", "Xenna/moonshine-tiny-GGUF",       "moonshine-tiny-q8_0.gguf",         "moonshine-tiny"),
+    ("cohere",    "Xenna/cohere-transcribe-GGUF",    "cohere-transcribe-q4_k.gguf",      "cohere-transcribe"),
+    ("kyutai-stt","Xenna/kyutai-stt-1b-GGUF",        "kyutai-stt-1b-q4_k.gguf",          "kyutai-stt-1b"),
+    ("firered-asr","Xenna/firered-asr2-aed-GGUF",    "firered-asr2-aed-q4_k.gguf",      "firered-asr2"),
+    ("sensevoice","Xenna/sensevoice-small-GGUF",     "sensevoice-small-q8_0.gguf",       "sensevoice-small"),
+    ("funasr",    "Xenna/fun-asr-nano-GGUF",         "fun-asr-nano-q8_0.gguf",           "funasr-nano"),
+    ("paraformer","Xenna/paraformer-zh-GGUF",        "paraformer-zh-q8_0.gguf",          "paraformer-zh"),
+    ("glm-asr",   "Xenna/glm-asr-nano-GGUF",        "glm-asr-nano-q4_k.gguf",           "glm-asr-nano"),
 ]
 
 # Add moonshine tokenizer
 MOONSHINE_TOK = None
 
 model_paths = {}
-for backend, repo, fname, label in CRISPASR_MODELS:
+for backend, repo, fname, label in STELNETTTS_MODELS:
     try:
         p = hf_hub_download(repo, fname, cache_dir=str(TEMP / "hf"))
         model_paths[label] = p
@@ -219,14 +219,14 @@ for backend, repo, fname, label in CRISPASR_MODELS:
     except Exception as e:
         print(f"  {label}: SKIP ({e})")
 
-# ── Phase 4: Benchmark CrispASR fleet ───────────────────────────────────────
-print("\n=== Phase 4: benchmark CrispASR fleet ===", flush=True)
+# ── Phase 4: Benchmark StelnetTTS fleet ───────────────────────────────────────
+print("\n=== Phase 4: benchmark StelnetTTS fleet ===", flush=True)
 
 gpu_flag = "--gpu-backend cuda" if has_cuda else ""
 
-def bench_crispasr(backend, model_path, audio_path, audio_dur, label, extra_flags="",
+def bench_stelnettts(backend, model_path, audio_path, audio_dur, label, extra_flags="",
                    n_warmup=1, n_runs=3, env_prefix="", force_cpu=False):
-    """Benchmark one CrispASR backend. Returns a dict with BOTH:
+    """Benchmark one StelnetTTS backend. Returns a dict with BOTH:
       wall_rtf  = audio_dur / subprocess walltime (INCLUDES model load each call)
       cli_rtf   = the CLI's own '(Nx realtime)' (load-EXCLUDED, per LEARNINGS #19)
     onnx-asr is timed in-process (load once), so cli_rtf is the fair apples-to-
@@ -235,7 +235,7 @@ def bench_crispasr(backend, model_path, audio_path, audio_dur, label, extra_flag
     transcript still comes on stdout.
 
     env_prefix: shell env-var assignments prepended to the command (e.g.
-      'CRISPASR_TDT_BATCH=1 ') so an A/B arm toggles a decode path without a
+      'STELNETTTS_TDT_BATCH=1 ') so an A/B arm toggles a decode path without a
       rebuild. force_cpu: run '--no-gpu' regardless of the global gpu_flag —
       issue #81's real gap is x86 CPU (OpenBLAS), so the TDT_BATCH A/B is CPU-only."""
     this_gpu = "--no-gpu" if force_cpu else gpu_flag
@@ -275,7 +275,7 @@ def bench_crispasr(backend, model_path, audio_path, audio_dur, label, extra_flag
     return {"wall_s": mean, "wall_rtf": audio_dur / mean, "cli_rtf": cli_rtf, "text": text}
 
 results = {}
-for backend, repo, fname, label in CRISPASR_MODELS:
+for backend, repo, fname, label in STELNETTTS_MODELS:
     if label not in model_paths:
         continue
     mp = model_paths[label]
@@ -284,7 +284,7 @@ for backend, repo, fname, label in CRISPASR_MODELS:
         extra = f"--moonshine-tokenizer {MOONSHINE_TOK}"
 
     print(f"\n  [{label}]")
-    rj = bench_crispasr(backend, mp, jfk_wav, duration, label, extra)
+    rj = bench_stelnettts(backend, mp, jfk_wav, duration, label, extra)
     if rj:
         # rtf_jfk = load-EXCLUDED CLI RTF (fair vs onnx); wall shows the load tax.
         print(f"    JFK {duration:.0f}s: cli {rj['cli_rtf']}x (load-excl) | wall "
@@ -293,7 +293,7 @@ for backend, repo, fname, label in CRISPASR_MODELS:
 
         # Also test long audio for the head-to-head models
         if "parakeet" in label:
-            rl = bench_crispasr(backend, mp, long_wav, long_dur, label, extra, n_warmup=0, n_runs=2)
+            rl = bench_stelnettts(backend, mp, long_wav, long_dur, label, extra, n_warmup=0, n_runs=2)
             if rl:
                 nwl = len((rl["text"] or "").split())
                 print(f"    Long {long_dur:.0f}s: cli {rl['cli_rtf']}x (load-excl) | wall "
@@ -309,7 +309,7 @@ for backend, repo, fname, label in CRISPASR_MODELS:
 # ── Phase 4b: parakeet TDT decode A/B on CPU (issue #81) ─────────────────────
 # The real #81 gap is x86 CPU (OpenBLAS): the default per-frame greedy TDT
 # decode issues T tiny joint-head sgemms. parakeet_tdt_decode_batched
-# (CRISPASR_TDT_BATCH=1) issues one big sgemm over the joint head — better
+# (STELNETTTS_TDT_BATCH=1) issues one big sgemm over the joint head — better
 # BLAS utilization. It already runs unconditionally on the long-form streamed
 # path; here we A/B it for short-form to decide whether to flip the default.
 # A flip is only safe if it is FASTER *and* byte-equal in transcript (rule 3/4).
@@ -319,19 +319,19 @@ def _norm_text(t):
     return " ".join((t or "").split()).lower()
 
 tdt_ab = {}
-for backend, repo, fname, label in CRISPASR_MODELS:
+for backend, repo, fname, label in STELNETTTS_MODELS:
     if "parakeet" not in label or label not in model_paths:
         continue
     mp = model_paths[label]
     extra = ""
-    print(f"\n  [{label}] CPU baseline vs CRISPASR_TDT_BATCH=1")
+    print(f"\n  [{label}] CPU baseline vs STELNETTTS_TDT_BATCH=1")
     for tag, dur, wav in (("jfk", duration, jfk_wav), ("long", long_dur, long_wav)):
         if wav is None:
             continue
-        base = bench_crispasr(backend, mp, wav, dur, label, extra,
+        base = bench_stelnettts(backend, mp, wav, dur, label, extra,
                               n_warmup=1, n_runs=3, force_cpu=True)
-        batch = bench_crispasr(backend, mp, wav, dur, label, extra,
-                               n_warmup=1, n_runs=3, env_prefix="CRISPASR_TDT_BATCH=1 ",
+        batch = bench_stelnettts(backend, mp, wav, dur, label, extra,
+                               n_warmup=1, n_runs=3, env_prefix="STELNETTTS_TDT_BATCH=1 ",
                                force_cpu=True)
         if not base or not batch:
             print(f"    {tag}: FAILED (base={bool(base)} batch={bool(batch)})")
@@ -365,7 +365,7 @@ results["tdt_batch_ab"] = tdt_ab
 print("\n=== Phase 5: benchmark onnx-asr ===", flush=True)
 # Import-guarded: a broken onnxruntime (e.g. CUDA-13 wheel on a CUDA-12 box, or a
 # cuDNN mismatch) must NOT crash the kernel — v9 died here on
-# `ImportError: libcudart.so.13`. On failure we skip onnx and keep the CrispASR
+# `ImportError: libcudart.so.13`. On failure we skip onnx and keep the StelnetTTS
 # fleet numbers + saved results.
 try:
     import onnx_asr
@@ -406,7 +406,7 @@ def bench_onnx(onnx_name, quant, providers):
         # Return FULL transcript + word count so we can PROVE the run transcribed
         # the WHOLE clip: the ~120 s real clip must yield a large word count that
         # ~matches across engines/EPs (onnx-CUDA long_words ≈ onnx-CPU long_words ≈
-        # CrispASR long_words). A truncated/no-op fast path would be short+fast =
+        # StelnetTTS long_words). A truncated/no-op fast path would be short+fast =
         # a fake high RTF. (Real varied speech, not jfk×5 — so caches can't reuse
         # work across identical repeats and inflate the GPU number.)
         return dur / med, med, txt, len(txt), len(txt.split())
@@ -447,10 +447,10 @@ try:
 except Exception: pass
 
 print("\n" + "=" * 78)
-print("  CrispASR FULL-FLEET BENCHMARK + onnx-asr HEAD-TO-HEAD")
+print("  StelnetTTS FULL-FLEET BENCHMARK + onnx-asr HEAD-TO-HEAD")
 print("=" * 78)
 print(f"  GPU: {gpu_name}  |  CUDA build: {has_cuda}  |  Audio: {duration:.0f}s JFK")
-print("  METHOD NOTE: CrispASR is timed as a fresh CLI subprocess INCLUDING model")
+print("  METHOD NOTE: StelnetTTS is timed as a fresh CLI subprocess INCLUDING model")
 print("  load each call; onnx-asr loads once then times inference-only. So short-")
 print("  clip RTF favours onnx; the LONG-audio column (load amortised) is the fair")
 print("  one. onnx-asr does not chunk long audio -> O(T^2) attention blowup there.")
@@ -464,7 +464,7 @@ for label in ["parakeet-ctc-0.6b", "parakeet-tdt-0.6b"]:
     ox = onnx_results.get(label, {})
     ca_rtf = f"{ca.get('rtf_jfk', 0):.1f}x" if ca.get('rtf_jfk') else "FAIL"
     ca_long = f"{ca.get('rtf_long', 0):.1f}x" if ca.get('rtf_long') else "-"
-    print(f"  {label:<22s} {'CrispASR':>10s} {ca_rtf:>10s} {ca_long:>10s} {'CUDA Q8_0':>20s}")
+    print(f"  {label:<22s} {'StelnetTTS':>10s} {ca_rtf:>10s} {ca_long:>10s} {'CUDA Q8_0':>20s}")
     for key, note in [("cpu_int8", "onnx CPU int8"), ("cuda_fp32", "onnx CUDA fp32")]:
         o = ox.get(key, {})
         oj = f"{o.get('rtf_jfk', 0):.1f}x" if o.get("rtf_jfk") else "FAIL"
@@ -472,29 +472,29 @@ for label in ["parakeet-ctc-0.6b", "parakeet-tdt-0.6b"]:
         print(f"  {'':.<22s} {'onnx-asr':>10s} {oj:>10s} {ol:>10s} {note:>20s}")
 
 print(f"  {'-'*74}")
-print(f"  {'CrispASR-only backends':}")
+print(f"  {'StelnetTTS-only backends':}")
 
-# CrispASR-only
-for backend, repo, fname, label in CRISPASR_MODELS:
+# StelnetTTS-only
+for backend, repo, fname, label in STELNETTTS_MODELS:
     if "parakeet" in label:
         continue  # already shown above
     ca = results.get(label, {})
     ca_rtf = f"{ca.get('rtf_jfk', 0):.1f}x" if ca.get('rtf_jfk') else "FAIL"
-    print(f"  {label:<22s} {'CrispASR':>10s} {ca_rtf:>10s} {'':>10s} {'CUDA':>20s}")
+    print(f"  {label:<22s} {'StelnetTTS':>10s} {ca_rtf:>10s} {'':>10s} {'CUDA':>20s}")
 
-print(f"\n  Total backends tested: {len(results)} CrispASR + {len(onnx_results)} onnx-asr")
-print(f"  CrispASR supports 25+ backends; onnx-asr supports ~10")
+print(f"\n  Total backends tested: {len(results)} StelnetTTS + {len(onnx_results)} onnx-asr")
+print(f"  StelnetTTS supports 25+ backends; onnx-asr supports ~10")
 
 # Save JSON
 all_results = {
     "gpu": gpu_name, "cuda_build": has_cuda, "audio_duration": duration,
-    "crispasr": results, "onnx_asr": onnx_results,
+    "stelnettts": results, "onnx_asr": onnx_results,
 }
 with open(WORK / "benchmark_results.json", "w") as f:
     json.dump(all_results, f, indent=2)
 print(f"\n  Results saved to {WORK / 'benchmark_results.json'}")
 
-# Refresh the ccache snapshot so the chr1str/crispasr-ccache dataset can be updated
+# Refresh the ccache snapshot so the chr1str/stelnettts-ccache dataset can be updated
 # from this run (kaggle_usage.md #17 — keep it current or warm builds go stale).
 # ccache lives at the RELOCATED CCACHE_DIR (/kaggle/temp/.ccache, out of the
 # output). Tar it into /kaggle/working/ccache.tar as the ONLY ccache artifact in
@@ -507,7 +507,7 @@ try:
         subprocess.run(f"tar cf {WORK}/ccache.tar -C {parent} {ccache_dir.name}", shell=True, check=True)
         sz = (WORK / "ccache.tar").stat().st_size / (1024**2)
         print(f"  ccache.tar written to /kaggle/working ({sz:.0f} MB) — the only ccache artifact in "
-              f"the output; update chr1str/crispasr-ccache from it", flush=True)
+              f"the output; update chr1str/stelnettts-ccache from it", flush=True)
         subprocess.run("ccache -s 2>/dev/null | tail -6 || true", shell=True)
 except Exception as e:  # noqa: BLE001
     print(f"  ccache tar skipped: {e}", flush=True)

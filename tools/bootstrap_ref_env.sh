@@ -9,7 +9,7 @@
 # Reads tools/reference_envs/<backend>/requirements.txt for the dep
 # scaffold. Creates the venv at:
 #
-#   ${CRISPASR_REF_ENVS_ROOT:-/Volumes/backups/ai/refenvs}/<backend>/
+#   ${STELNETTTS_REF_ENVS_ROOT:-/Volumes/backups/ai/refenvs}/<backend>/
 #
 # After bootstrap, activate + dump:
 #
@@ -45,7 +45,7 @@ if [[ ! -f "$REQ_FILE" ]]; then
     exit 1
 fi
 
-ENVS_ROOT="${CRISPASR_REF_ENVS_ROOT:-/Volumes/backups/ai/refenvs}"
+ENVS_ROOT="${STELNETTTS_REF_ENVS_ROOT:-/Volumes/backups/ai/refenvs}"
 ENV_DIR="$ENVS_ROOT/$BACKEND"
 
 if [[ -d "$ENV_DIR" && "$UPGRADE" -eq 0 ]]; then

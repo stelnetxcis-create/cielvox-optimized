@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert rednote-hilab/dots.tts-{soar,base,mf} safetensors → GGUF for the
-CrispASR `dots-tts` backend.
+StelnetTTS `dots-tts` backend.
 
 dots.tts is a 2B-parameter continuous AR TTS:
   - LLM backbone: Qwen2.5-1.5B (28L, 12Q/2KV heads, hidden=1536)

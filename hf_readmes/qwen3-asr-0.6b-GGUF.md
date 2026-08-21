@@ -47,7 +47,7 @@ base_model: Qwen/Qwen3-ASR-0.6B
 
 # Qwen3-ASR 0.6B — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) for use with the `qwen3-asr-main` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) for use with the `cielvox2-asr-main` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Qwen3-ASR 0.6B is Alibaba's **speech-LLM** ASR model:
 
@@ -56,18 +56,18 @@ Qwen3-ASR 0.6B is Alibaba's **speech-LLM** ASR model:
 - **Apache-2.0** licence
 - **Speech-LLM architecture**: Whisper-style audio encoder (2D-conv subsampler + 18-layer Transformer + projector head, 896 → 1024) feeds frames into a stock **Qwen3 0.6B LLM** (28 layers, GQA 16/8, head_dim=128, Q-norm/K-norm, SwiGLU, RoPE θ=1e6) via embedding splice at `<|audio_pad|>` placeholder positions in a ChatML prompt. The LLM autoregressively generates the transcript.
 
-This is the **first speech-LLM** in the CrispASR family — every other model in the set uses a dedicated CTC / transducer / encoder-decoder. The Qwen3-ASR runtime ships with a persistent KV cache so per-token decode is O(1) in cache size, not O(N) full re-forwards.
+This is the **first speech-LLM** in the StelnetTTS family — every other model in the set uses a dedicated CTC / transducer / encoder-decoder. The Qwen3-ASR runtime ships with a persistent KV cache so per-token decode is O(1) in cache size, not O(N) full re-forwards.
 
 ## Files
 
 | File | Size | Notes |
 | --- | ---: | --- |
-| `qwen3-asr-0.6b.gguf`        | 1.88 GB | F16 |
-| `qwen3-asr-0.6b-q8_0.gguf`   | 961 MB  | Q8_0, near-lossless |
-| `qwen3-asr-0.6b-q4_k.gguf`   | 631 MB  | **Q4_K — recommended default**, faster than realtime on a 4-core CPU |
-| `qwen3-asr-0.6b-q4_k-imatrix.gguf` | 631 MB | Q4_K, **importance-matrix calibrated** — see below. |
-| `qwen3-asr-0.6b-q3_k-imatrix.gguf` | 531 MB | Q3_K + imatrix — smallest usable variant. |
-| `qwen3-asr-0.6b-en-de.imatrix.gguf` | 913 KB | The importance matrix itself (CC0 Common Voice EN+DE calibration), for reproducibility / re-quantising other sizes. |
+| `cielvox2-asr-0.6b.gguf`        | 1.88 GB | F16 |
+| `cielvox2-asr-0.6b-q8_0.gguf`   | 961 MB  | Q8_0, near-lossless |
+| `cielvox2-asr-0.6b-q4_k.gguf`   | 631 MB  | **Q4_K — recommended default**, faster than realtime on a 4-core CPU |
+| `cielvox2-asr-0.6b-q4_k-imatrix.gguf` | 631 MB | Q4_K, **importance-matrix calibrated** — see below. |
+| `cielvox2-asr-0.6b-q3_k-imatrix.gguf` | 531 MB | Q3_K + imatrix — smallest usable variant. |
+| `cielvox2-asr-0.6b-en-de.imatrix.gguf` | 913 KB | The importance matrix itself (CC0 Common Voice EN+DE calibration), for reproducibility / re-quantising other sizes. |
 
 All quantisations produce the correct transcript on `samples/jfk.wav`:
 > And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.
@@ -77,7 +77,7 @@ All quantisations produce the correct transcript on `samples/jfk.wav`:
 The sub-Q8 quantisations were re-baked with the 18-layer **audio encoder kept
 at Q8_0** (previously Q4_0/Q4_K like the LLM body; ~90 MB larger per file).
 Diff-harness analysis on a real 145 s clip
-([CrispASR #218](https://github.com/CrispStrobe/CrispASR/issues/218)) showed
+([StelnetTTS #218](https://github.com/Cyna/StelnetTTS/issues/218)) showed
 sub-8-bit encoder weights compound per-block drift (block 0 cos 0.9996 → block
 17 cos 0.973 vs the bf16 reference) until greedy decode flips into repetition
 loops ("hey, hey, hey, …") or an empty "language none" answer on long audio.
@@ -90,13 +90,13 @@ no repetition post-processing needed. Q8_0 / F16 files were never affected.
 `-q4_k-imatrix.gguf` is a Q4_K build quantised with an **importance
 matrix**: per-column activation statistics
 collected by running real audio through the F16 model
-(`CRISPASR_IMATRIX_OUT`), so the quantiser spends precision on the columns the
+(`STELNETTTS_IMATRIX_OUT`), so the quantiser spends precision on the columns the
 model actually uses (the same idea as llama.cpp's `llama-imatrix`, but computed
 from **audio** rather than a text corpus).
 
 Calibrated on a **CC0 [Mozilla Common Voice](https://commonvoice.mozilla.org)**
 English + German sample, published at
-[`cstr/crispasr-imatrix-calib`](https://huggingface.co/datasets/cstr/crispasr-imatrix-calib).
+[`Xenna/stelnettts-imatrix-calib`](https://huggingface.co/datasets/Xenna/stelnettts-imatrix-calib).
 Measured with the `tools/imatrix_ab.py` A/B harness (prefill first-token-logit
 cosine vs the F16 gold, held-out clips):
 
@@ -120,18 +120,18 @@ The mel filterbank from `WhisperFeatureExtractor` is **baked into the GGUF** as 
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target qwen3-asr-main
+cmake --build build -j$(nproc) --target cielvox2-asr-main
 
 # 2. Download a quantisation
-huggingface-cli download cstr/qwen3-asr-0.6b-GGUF \
-    qwen3-asr-0.6b-q4_k.gguf --local-dir .
+huggingface-cli download Xenna/cielvox2-asr-0.6b-GGUF \
+    cielvox2-asr-0.6b-q4_k.gguf --local-dir .
 
 # 3. Transcribe
-./build/bin/qwen3-asr-main \
-    -m qwen3-asr-0.6b-q4_k.gguf \
+./build/bin/cielvox2-asr-main \
+    -m cielvox2-asr-0.6b-q4_k.gguf \
     -f your-audio.wav -t 8
 ```
 
@@ -188,17 +188,17 @@ A few non-obvious gotchas the port had to handle:
 5. **Qwen3 attention output width** is `hd × n_q_heads = 2048`, not `d_model = 1024`. The o_proj is `(2048 → 1024)`, so the attention output is reshaped to `(2048, T)` before o_proj.
 6. **mrope sidestep**: Qwen3-ASR uses interleaved multi-modal RoPE with `mrope_section=[24,20,20]`. For text-only or 1D-position input (which includes our spliced audio frames), the three mrope sections all receive identical position_ids and **collapse to standard 1D RoPE**. The simpler RoPE matches the reference perfectly for our use case.
 
-See [`qwen3-asr-todo.md`](https://github.com/CrispStrobe/CrispASR/blob/main/qwen3-asr-todo.md) in the runtime repo for the complete work log.
+See [`cielvox2-asr-todo.md`](https://github.com/Cyna/StelnetTTS/blob/main/cielvox2-asr-todo.md) in the runtime repo for the complete work log.
 
 ## How this was made
 
-1. The HF safetensors model was converted to GGUF F16 by [`models/convert-qwen3-asr-to-gguf.py`](https://github.com/CrispStrobe/CrispASR/blob/main/models/convert-qwen3-asr-to-gguf.py). All 612 tensors map cleanly. The mel filterbank (from `WhisperFeatureExtractor.mel_filters`) and Hann window are baked into the GGUF as `audio.mel_filters` / `audio.mel_window`.
-2. Quantised variants are produced by `crispasr-quantize` (the same llama.cpp-style quantiser used for the other GGUF releases in this family).
-3. Inference is implemented in [`src/qwen3_asr.{h,cpp}`](https://github.com/CrispStrobe/CrispASR/blob/main/src/qwen3_asr.cpp): the encoder and the LLM each run as one ggml graph, with a persistent F32 KV cache `(head_dim, max_ctx, n_kv_heads, n_layers)` shared between prefill and per-token decode steps.
+1. The HF safetensors model was converted to GGUF F16 by [`models/convert-cielvox2-asr-to-gguf.py`](https://github.com/Cyna/StelnetTTS/blob/main/models/convert-cielvox2-asr-to-gguf.py). All 612 tensors map cleanly. The mel filterbank (from `WhisperFeatureExtractor.mel_filters`) and Hann window are baked into the GGUF as `audio.mel_filters` / `audio.mel_window`.
+2. Quantised variants are produced by `stelnettts-quantize` (the same llama.cpp-style quantiser used for the other GGUF releases in this family).
+3. Inference is implemented in [`src/cielvox2_asr.{h,cpp}`](https://github.com/Cyna/StelnetTTS/blob/main/src/cielvox2_asr.cpp): the encoder and the LLM each run as one ggml graph, with a persistent F32 KV cache `(head_dim, max_ctx, n_kv_heads, n_layers)` shared between prefill and per-token decode steps.
 
 ## Reference implementation
 
-[`predict-woo/qwen3-asr.cpp`](https://github.com/predict-woo/qwen3-asr.cpp) (MIT) was read for architecture discovery and tensor name mapping. **No source code was vendored** — the CrispASR runtime is a re-implementation in this repo's existing FastConformer / cohere-style ggml infrastructure, sharing structures with the four other ASR runtimes in the family.
+[`predict-woo/cielvox2-asr.cpp`](https://github.com/predict-woo/cielvox2-asr.cpp) (MIT) was read for architecture discovery and tensor name mapping. **No source code was vendored** — the StelnetTTS runtime is a re-implementation in this repo's existing FastConformer / cohere-style ggml infrastructure, sharing structures with the four other ASR runtimes in the family.
 
 ## Supported languages
 
@@ -207,17 +207,17 @@ See [`qwen3-asr-todo.md`](https://github.com/CrispStrobe/CrispASR/blob/main/qwen
 ## Attribution
 
 - **Original model**: [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) (Apache-2.0). Alibaba Cloud Qwen team.
-- **GGUF conversion + ggml runtime**: [CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR) — community contribution.
-- **Reference implementation**: [predict-woo/qwen3-asr.cpp](https://github.com/predict-woo/qwen3-asr.cpp) (MIT) — used for architecture discovery only, no code vendored.
+- **GGUF conversion + ggml runtime**: [Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS) — community contribution.
+- **Reference implementation**: [predict-woo/cielvox2-asr.cpp](https://github.com/predict-woo/cielvox2-asr.cpp) (MIT) — used for architecture discovery only, no code vendored.
 
 ## Related
 
-- C++ runtime: **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**
+- C++ runtime: **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**
 - Sister releases in the same family:
-  - [`cstr/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF) — Cohere Transcribe 2B (Open ASR Leaderboard #1)
-  - [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) — Parakeet TDT 600M (free word timestamps)
-  - [`cstr/canary-1b-v2-GGUF`](https://huggingface.co/cstr/canary-1b-v2-GGUF) — Canary 978M (speech translation)
-  - [`cstr/canary-ctc-aligner-GGUF`](https://huggingface.co/cstr/canary-ctc-aligner-GGUF) — universal multilingual forced aligner
+  - [`Xenna/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF) — Cohere Transcribe 2B (Open ASR Leaderboard #1)
+  - [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) — Parakeet TDT 600M (free word timestamps)
+  - [`Xenna/canary-1b-v2-GGUF`](https://huggingface.co/Xenna/canary-1b-v2-GGUF) — Canary 978M (speech translation)
+  - [`Xenna/canary-ctc-aligner-GGUF`](https://huggingface.co/Xenna/canary-ctc-aligner-GGUF) — universal multilingual forced aligner
 
 ## License
 

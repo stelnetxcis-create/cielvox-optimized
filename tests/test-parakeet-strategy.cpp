@@ -66,7 +66,7 @@ TEST_CASE("JA never takes the CHUNK_SEGMENTED branch", "[unit][parakeet-strategy
 // ---- Issue #350: the chunked entry point must stay bounded ----
 
 TEST_CASE("chunked request with default length is sliced, not one full pass", "[unit][parakeet-strategy][issue-350]") {
-    // crispasr_session_transcribe_chunked(…, chunk_seconds = 0, …): "use
+    // stelnettts_session_transcribe_chunked(…, chunk_seconds = 0, …): "use
     // per-model defaults". The 300 s cap made 30-300 s files ONE decode — the
     // regression. Anything past the reliable window is LONGFORM now.
     REQUIRE(route(mk(231, false, false, 0, 300, true, /*chunked=*/true)) == parakeet_strategy::LONGFORM);
@@ -88,7 +88,7 @@ TEST_CASE("no chunked request → the 300 s cap is untouched", "[unit][parakeet-
 }
 
 TEST_CASE("an explicit threshold or chunk length wins over the bounded cap", "[unit][parakeet-strategy][issue-350]") {
-    // CRISPASR_PARAKEET_STREAM_THRESHOLD=200 stays 200 even for a chunked call.
+    // STELNETTTS_PARAKEET_STREAM_THRESHOLD=200 stays 200 even for a chunked call.
     REQUIRE(parakeet_effective_single_pass_cap_s(mk(231, false, false, 0, 200, true, true), /*from_env=*/true) == 200);
     REQUIRE(route(mk(231, false, false, 0, 200, true, true), true) == parakeet_strategy::LONGFORM);
     // An explicit chunk length routes to CHUNK_SEGMENTED before any cap.

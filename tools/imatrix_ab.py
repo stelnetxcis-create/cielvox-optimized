@@ -4,17 +4,17 @@
 Measures whether feeding an importance matrix to the quantizer improves the
 quantized ASR model's fidelity to the f16 gold, using the model's **prefill
 logits** (the first-token distribution over the audio) as a fixed-length,
-generation-independent parity signal — the ASR analog of CrispEmbed's
+generation-independent parity signal — the ASR analog of StelnetEmbed's
 embedding-cosine A/B (tools/imatrix_ab.py there).
 
 Everything runs serially (16 GB Mac constraint: never load two heavy models at
 once). Pipeline:
-  1. calibration : run crispasr with CRISPASR_IMATRIX_OUT over the calib clips
+  1. calibration : run stelnettts with STELNETTTS_IMATRIX_OUT over the calib clips
                    (merges across clips) -> <model>.imatrix.gguf
-  2. quant A     : crispasr-quantize <src> <out_a> <qtype>              (baseline)
-  3. quant B     : crispasr-quantize <src> <out_b> <qtype> --imatrix    (candidate)
+  2. quant A     : stelnettts-quantize <src> <out_a> <qtype>              (baseline)
+  3. quant B     : stelnettts-quantize <src> <out_b> <qtype> --imatrix    (candidate)
   4. eval        : for each held-out clip, dump prefill logits (via
-                   CRISPASR_ACTDUMP_OUT) from src / A / B and report
+                   STELNETTTS_ACTDUMP_OUT) from src / A / B and report
                    mean cosine(A, src) vs mean cosine(B, src).
 
 Two signals vs the f16 gold: transcript **CER** (primary — the real quality
@@ -24,12 +24,12 @@ already match. NOTE: the two can diverge at aggressive bit-widths — measured o
 q3_k, imatrix improved CER (0.37→0.13) while cosine dipped — so CER is the gate.
 
 Usage:
-  python tools/imatrix_ab.py --cli build/bin/crispasr \\
-      --quant build/bin/crispasr-quantize --src model-f16.gguf --qtype q4_k \\
+  python tools/imatrix_ab.py --cli build/bin/stelnettts \\
+      --quant build/bin/stelnettts-quantize --src model-f16.gguf --qtype q4_k \\
       --calib a.wav b.wav --eval c.wav d.wav [--workdir DIR] [--keep]
 
 Note: the src model's backend must have the imatrix/actdump collector installed
-on its decode scheduler (crispasr_imatrix_install) — see docs/quantize.md.
+on its decode scheduler (stelnettts_imatrix_install) — see docs/quantize.md.
 """
 import argparse, math, os, struct, subprocess, sys, time
 
@@ -51,7 +51,7 @@ def logits(cli, model, wav, out):
     signal (CER vs the f16 gold) alongside the logit cosine."""
     if os.path.exists(out):
         os.remove(out)
-    env = dict(os.environ, CRISPASR_ACTDUMP_OUT=out)
+    env = dict(os.environ, STELNETTTS_ACTDUMP_OUT=out)
     r = run([cli, "-m", model, "-f", wav], env=env)
     if not os.path.exists(out):
         sys.exit(f"no logits dumped for {os.path.basename(model)} on {os.path.basename(wav)}:\n{r.stderr[-1500:]}")
@@ -110,7 +110,7 @@ def main():
     print(f"[1/4] calibration over {len(args.calib)} clip(s) -> {imat}")
     t0 = time.time()
     for w in args.calib:
-        env = dict(os.environ, CRISPASR_IMATRIX_OUT=imat)
+        env = dict(os.environ, STELNETTTS_IMATRIX_OUT=imat)
         r = run([args.cli, "-m", args.src, "-f", w], env=env)
         if not os.path.exists(imat):
             sys.exit(f"calibration failed on {w}:\n{r.stderr[-1500:]}")

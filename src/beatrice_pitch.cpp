@@ -272,7 +272,7 @@ beatrice_pitch_context* beatrice_pitch_init_from_file(const char* model_path, be
         return nullptr;
     }
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
 

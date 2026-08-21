@@ -32,9 +32,9 @@
 #include "wav2vec2-ggml.h"
 #include "align.h"
 #include "common.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 #include "ggml.h"
-#include "crispasr.h" // for Silero VAD API
+#include "stelnettts.h" // for Silero VAD API
 
 #include <algorithm>
 #include <cassert>

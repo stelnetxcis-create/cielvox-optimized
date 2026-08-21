@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-moss-audio-convert",
-  "title": "crispasr-moss-audio-convert",
-  "code_file": "crispasr-moss-audio-convert.ipynb",
+  "id": "chr1str/stelnettts-moss-audio-convert",
+  "title": "stelnettts-moss-audio-convert",
+  "code_file": "stelnettts-moss-audio-convert.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

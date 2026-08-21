@@ -15,5 +15,5 @@ echo "Pushing $(jq -r .id kernel-metadata.json) ..."
 kaggle kernels push -p "$dir"
 echo
 echo "Triggered. Monitor with:"
-echo "  kaggle kernels status chr1str/crispasr-issue126-cuda-verify"
-echo "  kaggle kernels output chr1str/crispasr-issue126-cuda-verify -p ./out"
+echo "  kaggle kernels status chr1str/stelnettts-issue126-cuda-verify"
+echo "  kaggle kernels output chr1str/stelnettts-issue126-cuda-verify -p ./out"

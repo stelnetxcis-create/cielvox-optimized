@@ -16,7 +16,7 @@
 // window so we land in a quiet point near the cap. Mirrors the
 // `_find_split_point_energy` / `split_audio_chunks_energy` helpers in
 // nano-cohere-transcribe (Apache 2.0); ported to C++ for use across
-// CrispASR's encoder backends.
+// StelnetTTS's encoder backends.
 #pragma once
 
 #include <cmath>

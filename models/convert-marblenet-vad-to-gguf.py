@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert NVIDIA MarbleNet VAD (.nemo) to GGUF for CrispASR.
+"""Convert NVIDIA MarbleNet VAD (.nemo) to GGUF for StelnetTTS.
 
 Architecture: 1D time-channel separable CNN (6 Jasper blocks, 91.5K params).
 Input: 80-bin mel at 16kHz. Output: per-frame speech probability (20ms).

@@ -45,4 +45,4 @@ if [ ! -f "$DEST/include/c2pa.h" ]; then
     exit 1
 fi
 echo "fetch-c2pa: installed c2pa v$C2PA_VERSION ($TARGET) → $DEST"
-echo "  Configure CrispASR with: -DCMAKE_PREFIX_PATH=$DEST"
+echo "  Configure StelnetTTS with: -DCMAKE_PREFIX_PATH=$DEST"

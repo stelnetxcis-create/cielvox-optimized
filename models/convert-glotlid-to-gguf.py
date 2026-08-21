@@ -37,14 +37,14 @@ Usage:
     python models/convert-glotlid-to-gguf.py \\
         --variant glotlid-v3 \\
         --input  /Volumes/backups/ai/huggingface-hub/models--cis-lmu--glotlid/snapshots/<rev>/model.bin \\
-        --output /Volumes/backups/ai/crispasr-models/lid-glotlid/lid-glotlid-f16.gguf \\
+        --output /Volumes/backups/ai/stelnettts-models/lid-glotlid/lid-glotlid-f16.gguf \\
         --dtype f16
 
 For ``--variant fasttext-lid176`` the input is the upstream
 ``lid.176.bin`` from Facebook (CC-BY-SA-3.0 — distributors must keep
 the SA notice).
 
-This converter writes F32 or F16. Use ``crispasr-quantize`` for Q8_0
+This converter writes F32 or F16. Use ``stelnettts-quantize`` for Q8_0
 and below; per docs/quantize.md, embeddings should be diff-harness
 verified before locking in K-quants on a 2M-row table.
 """
@@ -318,7 +318,7 @@ def convert(in_path: Path, out_path: Path, variant: str, dtype: str) -> None:
     w.add_array("lid_fasttext.labels", labels)
     w.add_array("lid_fasttext.words", words)
 
-    # Tensors. Names include ".weight" so crispasr-quantize's
+    # Tensors. Names include ".weight" so stelnettts-quantize's
     # is_weight gate (sname.find("weight") != npos) picks them up
     # for K-quant re-quantization.
     w.add_tensor("lid_fasttext.embedding.weight", in_arr, raw_dtype=gtype_in)
@@ -362,7 +362,7 @@ def _probe_ngram_range(m) -> tuple[int, int]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="Convert fastText LID (.bin) → GGUF for CrispASR",
+        description="Convert fastText LID (.bin) → GGUF for StelnetTTS",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("--variant", required=True, choices=sorted(KNOWN_VARIANTS),

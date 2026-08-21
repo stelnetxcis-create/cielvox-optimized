@@ -1,20 +1,20 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — firered encoder GPU A/B on CUDA (§224)
+# # StelnetTTS — firered encoder GPU A/B on CUDA (§224)
 #
 # The firered encoder used to rely on ggml's sched auto-copying CPU-resident
 # weights to the GPU per layer; ggml removed that resolution, silently making
-# the encoder CPU-only. d6e2ad85 added CRISPASR_FIRERED_ENC_GPU=1, which
+# the encoder CPU-only. d6e2ad85 added STELNETTTS_FIRERED_ENC_GPU=1, which
 # split-loads enc.* onto the GPU backend (dec.* stays CPU for the Q4_K SIMD
 # vecmat decode path). Verified transcript-identical on Metal (2.3×) and
 # Vulkan/MoltenVK (2.1×). This kernel closes the CUDA gap so the default can
 # flip.
 #
 # What it does:
-# 1. Clone CrispASR @ env CRISPASR_REF (default: main).
+# 1. Clone StelnetTTS @ env STELNETTTS_REF (default: main).
 # 2. Build with -DGGML_CUDA=ON.
 # 3. Auto-download firered-asr2-aed-q4_k (~918 MB), transcribe samples/jfk.wav
 #    twice: (a) baseline (CPU-pinned encoder weights) and (b) with
-#    CRISPASR_FIRERED_ENC_GPU=1, both with FIRERED_BENCH=1.
+#    STELNETTTS_FIRERED_ENC_GPU=1, both with FIRERED_BENCH=1.
 # 4. PASS iff both transcripts are non-empty and identical, and the GPU
 #    encoder is at least as fast as baseline. Encoder timings reported.
 #
@@ -38,13 +38,13 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = REPO / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 
 PROGRESS = RESULTS / "progress.jsonl"
 _T0 = time.time()
@@ -78,12 +78,12 @@ def run(cmd, check=True, capture=False, env=None, cwd=None, timeout=None):
 
 
 # ─────────────────────────── cell 2 (code) — clone + build ───────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
@@ -113,18 +113,18 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    candidates = [c for c in BUILD.rglob("crispasr")
+    candidates = [c for c in BUILD.rglob("stelnettts")
                   if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 step("cli_found", path=str(CLI))
 
 LIB_DIR = BUILD / "src"
@@ -138,7 +138,7 @@ CACHE.mkdir(parents=True, exist_ok=True)
 MODEL = CACHE / "firered-asr2-aed-q4_k.gguf"
 if not MODEL.exists():
     run(["curl", "-sL", "-o", str(MODEL),
-         "https://huggingface.co/cstr/firered-asr2-aed-GGUF/resolve/main/firered-asr2-aed-q4_k.gguf"],
+         "https://huggingface.co/Xenna/firered-asr2-aed-GGUF/resolve/main/firered-asr2-aed-q4_k.gguf"],
         timeout=1800)
 step("model_ready", bytes=MODEL.stat().st_size)
 
@@ -163,7 +163,7 @@ def firered_run(tag: str, extra_env: dict) -> dict:
         if not low:
             continue
         if any(low.startswith(p) for p in
-               ("crispasr", "firered", "whisper", "ggml", "[step]", "$", "  firered_bench")):
+               ("stelnettts", "firered", "whisper", "ggml", "[step]", "$", "  firered_bench")):
             continue
         transcript = low
         break
@@ -179,9 +179,9 @@ def firered_run(tag: str, extra_env: dict) -> dict:
 
 
 baseline = firered_run("cpu_pinned_enc", {})
-gpu_enc = firered_run("enc_gpu", {"CRISPASR_FIRERED_ENC_GPU": "1"})
+gpu_enc = firered_run("enc_gpu", {"STELNETTTS_FIRERED_ENC_GPU": "1"})
 # Second GPU run: warm CUDA context / autotuned kernels.
-gpu_enc2 = firered_run("enc_gpu_warm", {"CRISPASR_FIRERED_ENC_GPU": "1"})
+gpu_enc2 = firered_run("enc_gpu_warm", {"STELNETTTS_FIRERED_ENC_GPU": "1"})
 
 # ─────────────────────────── cell 4 (code) — verdict ─────────────────────
 ok_text = (baseline["transcript"] and

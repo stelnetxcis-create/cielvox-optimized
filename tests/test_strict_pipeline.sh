@@ -16,9 +16,9 @@
 #   - required aligner unloadable / no word timestamps → non-zero (cases 4,5)
 #   - required punctuation model unloadable → non-zero (case 6)
 #
-# Usage: bash tests/test_strict_pipeline.sh [crispasr-bin] [src-dir]
+# Usage: bash tests/test_strict_pipeline.sh [stelnettts-bin] [src-dir]
 
-CRISPASR="${1:-${CRISPASR_BIN:-build/bin/crispasr}}"
+CRISPASR="${1:-${STELNETTTS_BIN:-build/bin/stelnettts}}"
 SRC_DIR="${2:-.}"
 # Tier selector, same split as test_vad_export_live.sh and for the same reason:
 # labelled `unit`, this script reported green in CI while SKIPPING the
@@ -58,7 +58,7 @@ expect_exit() {
     fi
 }
 
-if [ ! -f "$CRISPASR" ]; then echo "SKIP: crispasr binary not found at $CRISPASR"; exit 0; fi
+if [ ! -f "$CRISPASR" ]; then echo "SKIP: stelnettts binary not found at $CRISPASR"; exit 0; fi
 if [ ! -f "$JFK_WAV" ]; then echo "SKIP: test audio not found at $JFK_WAV"; exit 0; fi
 
 echo "=== Issue #311: strict pipeline semantics ==="
@@ -87,7 +87,7 @@ if [ "$TIER" = "unit" ]; then
 fi
 
 # ─── Model-gated A/B ────────────────────────────────────────────────────────
-MODEL="${CRISPASR_MODEL_WHISPER:-}"
+MODEL="${STELNETTTS_MODEL_WHISPER:-}"
 if [ -z "$MODEL" ]; then
     for m in ggml-base.bin models/ggml-base.en.bin "$SRC_DIR/ggml-base.bin"; do
         [ -f "$m" ] && MODEL="$m" && break
@@ -106,7 +106,7 @@ if [ -n "$MODEL" ]; then
 fi
 
 if [ -z "$MODEL" ]; then
-    skip "model-gated A/B" "no loadable whisper model (set CRISPASR_MODEL_WHISPER)"
+    skip "model-gated A/B" "no loadable whisper model (set STELNETTTS_MODEL_WHISPER)"
 else
     echo "--- model-gated A/B with $MODEL ---"
     # VAD: unloadable required model fails; permissive falls back and succeeds.

@@ -1,6 +1,6 @@
 #pragma once
 
-// Shared BERT WordPiece tokenizer for CrispASR backends.
+// Shared BERT WordPiece tokenizer for StelnetTTS backends.
 //
 // Used by bark_tts (bert-base-multilingual-cased) and fireredpunc
 // (chinese-bert-wwm-ext).  Supports both cased and uncased variants.

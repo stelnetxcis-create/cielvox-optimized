@@ -18,74 +18,74 @@ include(Catch)
 
 if (EMSCRIPTEN)
 #
-#test - crispasr - js
+#test - stelnettts - js
 
-    set(TEST_TARGET test-crispasr-js)
+    set(TEST_TARGET test-stelnettts-js)
 
     add_test(NAME ${TEST_TARGET}
-        COMMAND node test-crispasr.js --experimental-wasm-threads
+        COMMAND node test-stelnettts.js --experimental-wasm-threads
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
     return()
 endif()
 
-set(TEST_TARGET test-crispasr-cli-tiny)
+set(TEST_TARGET test-stelnettts-cli-tiny)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-tiny.bin -l fr
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "tiny;gh")
 
-set(TEST_TARGET test-crispasr-cli-tiny.en)
+set(TEST_TARGET test-stelnettts-cli-tiny.en)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-tiny.en.bin
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "tiny;en")
 
-set(TEST_TARGET test-crispasr-cli-base)
+set(TEST_TARGET test-stelnettts-cli-base)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-base.bin -l fr
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "base")
 
-set(TEST_TARGET test-crispasr-cli-base.en)
+set(TEST_TARGET test-stelnettts-cli-base.en)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-base.en.bin
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "base;en")
 
-set(TEST_TARGET test-crispasr-cli-small)
+set(TEST_TARGET test-stelnettts-cli-small)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-small.bin -l fr
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "small")
 
-set(TEST_TARGET test-crispasr-cli-small.en)
+set(TEST_TARGET test-stelnettts-cli-small.en)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-small.en.bin
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "small;en")
 
 # CLI integration tests — use auto-download to fetch real whisper models.
-# Set CRISPASR_MODELS_DIR to a local cache dir to avoid network downloads.
-set(TEST_TARGET test-crispasr-cli-medium)
+# Set STELNETTTS_MODELS_DIR to a local cache dir to avoid network downloads.
+set(TEST_TARGET test-stelnettts-cli-medium)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     --backend whisper -m auto --auto-download -l fr
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES
     LABELS "medium;live"
     TIMEOUT 300)
 
-set(TEST_TARGET test-crispasr-cli-medium.en)
+set(TEST_TARGET test-stelnettts-cli-medium.en)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     --backend whisper -m auto --auto-download
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES
@@ -101,7 +101,7 @@ set_tests_properties(${TEST_TARGET} PROPERTIES
 # paraformer exercises the CIF predictor read (read_f32 → core_cpu::to_f32).
 set(TEST_TARGET test-paraformer-jfk-live)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     --backend paraformer --auto-download -f ${PROJECT_SOURCE_DIR}/samples/jfk.mp3)
 set_tests_properties(${TEST_TARGET} PROPERTIES
     LABELS "live;asr;weight-read"
@@ -111,41 +111,41 @@ set_tests_properties(${TEST_TARGET} PROPERTIES
 # kyutai-stt (Mimi codec) — default causal+sliding-window attention.
 set(TEST_TARGET test-kyutai-stt-jfk-live)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     --backend kyutai-stt --auto-download -f ${PROJECT_SOURCE_DIR}/samples/jfk.mp3)
 set_tests_properties(${TEST_TARGET} PROPERTIES
     LABELS "live;asr;mimi"
     TIMEOUT 600
     PASS_REGULAR_EXPRESSION "what you can do for your country")
 
-# kyutai-stt with the old full non-causal path (CRISPASR_MIMI_NONCAUSAL=1 opt-out).
+# kyutai-stt with the old full non-causal path (STELNETTTS_MIMI_NONCAUSAL=1 opt-out).
 # On short audio (jfk, <250 frames) it ties the causal default; this guards that the
 # bisection opt-out still transcribes. (The causal default's win only shows on audio
 # > mimi_context frames — see LEARNINGS; that A/B is run manually with a 3x sample.)
 set(TEST_TARGET test-kyutai-stt-mimi-noncausal-jfk-live)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     --backend kyutai-stt --auto-download -f ${PROJECT_SOURCE_DIR}/samples/jfk.mp3)
 set_tests_properties(${TEST_TARGET} PROPERTIES
     LABELS "live;asr;mimi"
     TIMEOUT 600
-    ENVIRONMENT "CRISPASR_MIMI_NONCAUSAL=1"
+    ENVIRONMENT "STELNETTTS_MIMI_NONCAUSAL=1"
     PASS_REGULAR_EXPRESSION "what you can do for your country")
 
-set(TEST_TARGET test-crispasr-cli-large)
+set(TEST_TARGET test-stelnettts-cli-large)
 add_test(NAME ${TEST_TARGET}
-    COMMAND $<TARGET_FILE:crispasr-cli>
+    COMMAND $<TARGET_FILE:stelnettts-cli>
     --backend whisper -m auto --auto-download -l fr
     -f ${PROJECT_SOURCE_DIR}/samples/jfk.wav)
 set_tests_properties(${TEST_TARGET} PROPERTIES
     LABELS "large;live"
     TIMEOUT 300)
 
-if (CRISPASR_FFMPEG)
-    set(TEST_TARGET test-crispasr-cli-tiny-mp3)
+if (STELNETTTS_FFMPEG)
+    set(TEST_TARGET test-stelnettts-cli-tiny-mp3)
 #Check with reviewers : any way to check the output transcription via ctest(diff, ...) ?
     add_test(NAME ${TEST_TARGET}
-      COMMAND $<TARGET_FILE:crispasr-cli>
+      COMMAND $<TARGET_FILE:stelnettts-cli>
       -m ${PROJECT_SOURCE_DIR}/models/for-tests-ggml-tiny.en.bin
       -f ${PROJECT_SOURCE_DIR}/samples/jfk.mp3)
     set_tests_properties(${TEST_TARGET} PROPERTIES LABELS "tiny;mp3")
@@ -183,13 +183,13 @@ target_compile_definitions(${VAD_TEST} PRIVATE
 add_test(NAME ${VAD_TEST} COMMAND ${VAD_TEST})
 set_tests_properties(${VAD_TEST} PROPERTIES LABELS "unit")
 
-#VAD test full uses crispasr_full with VAD enabled
+#VAD test full uses stelnettts_full with VAD enabled
 set(VAD_TEST test-vad-full)
 add_executable(${VAD_TEST} ${VAD_TEST}.cpp)
 target_include_directories(${VAD_TEST} PRIVATE ../include ../ggml/include ../examples)
 target_link_libraries(${VAD_TEST} PRIVATE common)
 target_compile_definitions(${VAD_TEST} PRIVATE
-    CRISPASR_MODEL_PATH="${PROJECT_SOURCE_DIR}/models/ggml-tiny.en.bin"
+    STELNETTTS_MODEL_PATH="${PROJECT_SOURCE_DIR}/models/ggml-tiny.en.bin"
     VAD_MODEL_PATH="${PROJECT_SOURCE_DIR}/models/for-tests-silero-v6.2.0-ggml.bin"
     SAMPLE_PATH="${PROJECT_SOURCE_DIR}/samples/jfk.wav")
 add_test(NAME ${VAD_TEST} COMMAND ${VAD_TEST})
@@ -201,43 +201,43 @@ add_executable(${VAD_TH_TEST} ${VAD_TH_TEST}.cpp)
 target_include_directories(${VAD_TH_TEST} PRIVATE ../include ../ggml/include ../examples)
 target_link_libraries(${VAD_TH_TEST} PRIVATE common)
 target_compile_definitions(${VAD_TH_TEST} PRIVATE
-    CRISPASR_MODEL_PATH="${PROJECT_SOURCE_DIR}/models/ggml-tiny.en.bin"
+    STELNETTTS_MODEL_PATH="${PROJECT_SOURCE_DIR}/models/ggml-tiny.en.bin"
     VAD_MODEL_PATH="${PROJECT_SOURCE_DIR}/models/for-tests-silero-v6.2.0-ggml.bin"
     SAMPLE_PATH="${PROJECT_SOURCE_DIR}/samples/jfk.wav")
 add_test(NAME ${VAD_TH_TEST} COMMAND ${VAD_TH_TEST})
 set_tests_properties(${VAD_TH_TEST} PROPERTIES LABELS "base;en")
 
-# ─── test - crispasr - cache — Catch2 unit tests for download / cache helpers ───────
+# ─── test - stelnettts - cache — Catch2 unit tests for download / cache helpers ───────
 #
-#Compiles crispasr_cache.cpp directly into the test binary so the test is
-#self - contained and does not depend on the full crispasr link closure.
+#Compiles stelnettts_cache.cpp directly into the test binary so the test is
+#self - contained and does not depend on the full stelnettts link closure.
 #Tests are pure filesystem operations — no network requests are made.
-add_executable(test-crispasr-cache
-    test-crispasr-cache.cpp
-    ${PROJECT_SOURCE_DIR}/src/crispasr_cache.cpp
+add_executable(test-stelnettts-cache
+    test-stelnettts-cache.cpp
+    ${PROJECT_SOURCE_DIR}/src/stelnettts_cache.cpp
 )
-target_include_directories(test-crispasr-cache PRIVATE
+target_include_directories(test-stelnettts-cache PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
-target_link_libraries(test-crispasr-cache PRIVATE
+target_link_libraries(test-stelnettts-cache PRIVATE
     Catch2::Catch2WithMain
     $<$<BOOL:${WIN32}>:winhttp>
 )
-if (CRISPASR_CURL)
-    target_compile_definitions(test-crispasr-cache PRIVATE CRISPASR_USE_LIBCURL)
-    target_link_libraries(test-crispasr-cache PRIVATE CURL::libcurl)
+if (STELNETTTS_CURL)
+    target_compile_definitions(test-stelnettts-cache PRIVATE STELNETTTS_USE_LIBCURL)
+    target_link_libraries(test-stelnettts-cache PRIVATE CURL::libcurl)
 endif()
 #catch_discover_tests registers one CTest entry per Catch2 TEST_CASE.
-catch_discover_tests(test-crispasr-cache
+catch_discover_tests(test-stelnettts-cache
     TEST_SPEC "[unit]"
     PROPERTIES LABELS "unit"
 )
 
-# ─── test - params — Catch2 unit tests for crispasr_params struct defaults ────────
+# ─── test - params — Catch2 unit tests for stelnettts_params struct defaults ────────
 #
-#Default - constructs crispasr_params and checks every crispasr - specific field
-#carries the right initial value.Links crispasr + common because
-#crispasr_params inlines calls to crispasr_full_default_params() in its field
+#Default - constructs stelnettts_params and checks every stelnettts - specific field
+#carries the right initial value.Links stelnettts + common because
+#stelnettts_params inlines calls to stelnettts_full_default_params() in its field
 #initialisers.
 add_executable(test-params
     test-params.cpp
@@ -251,7 +251,7 @@ target_include_directories(test-params PRIVATE
 )
 target_link_libraries(test-params PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     common
 )
 catch_discover_tests(test-params
@@ -271,7 +271,7 @@ add_executable(test-session-abi-nulls
 )
 target_link_libraries(test-session-abi-nulls PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-session-abi-nulls
     TEST_SPEC "[unit]"
@@ -289,7 +289,7 @@ target_include_directories(test-lid-speech-prefix PRIVATE
 )
 target_link_libraries(test-lid-speech-prefix PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-lid-speech-prefix
     TEST_SPEC "[unit][lid]"
@@ -316,10 +316,10 @@ catch_discover_tests(test-cpu-ops-to-f32
     PROPERTIES LABELS "unit"
 )
 
-# The --gpu-backend cpu short-circuit (CrispEmbed T18 sync) + the Metal
+# The --gpu-backend cpu short-circuit (StelnetEmbed T18 sync) + the Metal
 # pipeline-cache cap policy (PLAN #88 follow-up). Header-only helpers; links
 # ggml for the backend registry. The legacy-arm case is the red-gate proof:
-# CRISPASR_GPU_PREF_CPU_LEGACY=1 reproduces the pre-fix fall-through.
+# STELNETTTS_GPU_PREF_CPU_LEGACY=1 reproduces the pre-fix fall-through.
 add_executable(test-gpu-backend-pref
     test-gpu-backend-pref.cpp
 )
@@ -450,7 +450,7 @@ catch_discover_tests(test-pinyin-g2p
 
 # ─── test-gguf-bounds — regression guard for the GGUF load_weights OOB fix ─────
 # Untrusted-input hardening: a truncated/crafted GGUF must be rejected by
-# core_gguf::load_weights, not SIGBUS the mmap loader. Needs crispasr-lib (the
+# core_gguf::load_weights, not SIGBUS the mmap loader. Needs stelnettts-lib (the
 # loader) + ggml (gguf writer).
 add_executable(test-gguf-bounds test-gguf-bounds.cpp)
 target_include_directories(test-gguf-bounds PRIVATE
@@ -459,7 +459,7 @@ target_include_directories(test-gguf-bounds PRIVATE
 )
 target_link_libraries(test-gguf-bounds PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     ggml
 )
 catch_discover_tests(test-gguf-bounds
@@ -479,7 +479,7 @@ target_include_directories(test-gguf-release PRIVATE
 )
 target_link_libraries(test-gguf-release PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     ggml
 )
 catch_discover_tests(test-gguf-release
@@ -499,7 +499,7 @@ target_include_directories(test-gguf-mapping-released PRIVATE
 )
 target_link_libraries(test-gguf-mapping-released PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     ggml
 )
 catch_discover_tests(test-gguf-mapping-released
@@ -508,8 +508,8 @@ catch_discover_tests(test-gguf-mapping-released
 )
 
 # ─── test-crisp-audio-mapping-released — the same oracle, one step out ─────────
-# crisp_audio takes its weight buffer from core_gguf::load_weights and owns it
-# from there, so the release has to happen in crisp_audio_free(). Drives the
+# stelnet_audio takes its weight buffer from core_gguf::load_weights and owns it
+# from there, so the release has to happen in stelnet_audio_free(). Drives the
 # public C API on a synthetic one-layer tower and asks the kernel which regions
 # still name the GGUF. The GPU legs self-skip where no device advertises
 # buffer_from_host_ptr; the CPU leg runs everywhere.
@@ -520,8 +520,8 @@ target_include_directories(test-crisp-audio-mapping-released PRIVATE
 )
 target_link_libraries(test-crisp-audio-mapping-released PRIVATE
     Catch2::Catch2WithMain
-    crisp_audio
-    crispasr-lib
+    stelnet_audio
+    stelnettts-lib
     ggml
 )
 catch_discover_tests(test-crisp-audio-mapping-released
@@ -541,7 +541,7 @@ target_include_directories(test-gguf-split-alloc PRIVATE
 )
 target_link_libraries(test-gguf-split-alloc PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     ggml
 )
 catch_discover_tests(test-gguf-split-alloc
@@ -550,19 +550,19 @@ catch_discover_tests(test-gguf-split-alloc
 )
 
 # ─── test-vibevoice-quant-carveout — regression guard for issue #171 ──────────
-# Asserts crispasr-quantize keeps the VibeVoice diffusion prediction head and
+# Asserts stelnettts-quantize keeps the VibeVoice diffusion prediction head and
 # connectors/EOS (pred.*, at_conn.*, se_conn.*, tts_eos.*, tts_types.*) at source
 # precision while quantizing the LM backbone + VAE decoder — the split that
 # prevents a quantized diffusion head from decoding a "music"/hum onset. Runs the
 # built binary on a tiny committed fixture GGUF; skips gracefully if the example
 # tool isn't built.
-# crispasr-quantize lives in examples/, which is added AFTER tests/ — so guard on
+# stelnettts-quantize lives in examples/, which is added AFTER tests/ — so guard on
 # the build option (the $<TARGET_FILE:> generator expression resolves after all
 # subdirectories are processed, so the forward reference is fine).
-if(CRISPASR_BUILD_EXAMPLES)
+if(STELNETTTS_BUILD_EXAMPLES)
     add_test(NAME test-vibevoice-quant-carveout
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test-vibevoice-quant-carveout.sh
-            $<TARGET_FILE:crispasr-quantize>
+            $<TARGET_FILE:stelnettts-quantize>
             ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/vibevoice-quant-carveout.gguf)
     set_tests_properties(test-vibevoice-quant-carveout PROPERTIES
         LABELS "unit;gh;regression-171"
@@ -572,10 +572,10 @@ endif()
 # Chatterbox Multilingual V3: Q4 must retain enough precision in the native
 # voice tokenizer and AR sampling head. The script creates its own tiny GGUF,
 # so this exercises the real quantizer without downloading model weights.
-if(CRISPASR_BUILD_EXAMPLES)
+if(STELNETTTS_BUILD_EXAMPLES)
     add_test(NAME test-chatterbox-quant-carveout
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test-chatterbox-quant-carveout.sh
-            $<TARGET_FILE:crispasr-quantize>
+            $<TARGET_FILE:stelnettts-quantize>
             ${PROJECT_SOURCE_DIR})
     set_tests_properties(test-chatterbox-quant-carveout PROPERTIES
         LABELS "unit;gh;chatterbox;regression-348"
@@ -584,8 +584,8 @@ endif()
 
 # ─── test - stream - finalize — Catch2 unit tests for the streaming
 # `final.text` stitcher used by `--stream-json` finalize_utterance.
-# Header-only target (no crispasr lib needed): the helper is a pure
-# string function in examples/cli/crispasr_stream_finalize.h.
+# Header-only target (no stelnettts lib needed): the helper is a pure
+# string function in examples/cli/stelnettts_stream_finalize.h.
 add_executable(test-stream-finalize
     test-stream-finalize.cpp
 )
@@ -662,7 +662,7 @@ catch_discover_tests(test-stream-partial-decode
 
 # Pyannote-seg → ASR-segment speaker scoring (issue #107). Drives the
 # internal helper with synthetic log-softmax posteriors; no model, no
-# audio. Links against libcrispasr so it tests the actually-shipped
+# audio. Links against libstelnettts so it tests the actually-shipped
 # logic rather than a fork of it.
 # The pyannote-seg powerset class layout (core/powerset.h). Header-only, so
 # this needs no library — but it guards the table whose two swapped entries
@@ -689,7 +689,7 @@ target_include_directories(test-diarize-pyannote PRIVATE
 )
 target_link_libraries(test-diarize-pyannote PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-diarize-pyannote
     TEST_SPEC "[unit]"
@@ -700,7 +700,7 @@ catch_discover_tests(test-diarize-pyannote
 # --diarize-embedder) produce sensible labels on a real multi-speaker
 # WAV. Opt-in via env vars; skips cleanly otherwise. Compiles the
 # CLI-side cluster helper directly so the embedder variant doesn't
-# need to link the whole crispasr-cli executable.
+# need to link the whole stelnettts-cli executable.
 add_executable(test-diarize-pyannote-live
     test-diarize-pyannote-live.cpp
 )
@@ -709,7 +709,7 @@ target_include_directories(test-diarize-pyannote-live PRIVATE
 )
 target_link_libraries(test-diarize-pyannote-live PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-diarize-pyannote-live
     TEST_SPEC "[live]"
@@ -729,7 +729,7 @@ target_include_directories(test-speaker-cluster PRIVATE
 )
 target_link_libraries(test-speaker-cluster PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-speaker-cluster
     TEST_SPEC "[unit]"
@@ -746,7 +746,7 @@ target_include_directories(test-tiron-link PRIVATE
 )
 target_link_libraries(test-tiron-link PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-tiron-link
     TEST_SPEC "[unit]"
@@ -754,7 +754,7 @@ catch_discover_tests(test-tiron-link
 )
 
 # VAD segment boundary export/import serialization (issue #227). Pure
-# string <-> struct round-trip; no model, no audio. Links crispasr-lib so
+# string <-> struct round-trip; no model, no audio. Links stelnettts-lib so
 # it tests the shipped serializer/parser rather than a fork.
 add_executable(test-vad-boundaries
     test-vad-boundaries.cpp
@@ -768,7 +768,7 @@ target_include_directories(test-vad-boundaries PRIVATE
 )
 target_link_libraries(test-vad-boundaries PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-vad-boundaries
     TEST_SPEC "[unit]"
@@ -817,7 +817,7 @@ target_include_directories(test-speaker-db PRIVATE
 )
 target_link_libraries(test-speaker-db PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-speaker-db
     TEST_SPEC "[unit]"
@@ -825,18 +825,18 @@ catch_discover_tests(test-speaker-db
 )
 
 # ─── test-speaker-db-gates — CLI policy-gate regression guard (issue #266) ─────
-# Invokes the built crispasr binary and asserts the three hard gates in
-# crispasr_run_backend() fire before any model resolution: streaming refusal
+# Invokes the built stelnettts binary and asserts the three hard gates in
+# stelnettts_run_backend() fire before any model resolution: streaming refusal
 # (exit 26), missing --expect-speakers with consent given (exit 27), and the
 # no-consent warn-and-ignore path (stderr "speaker-db ignored"). All three
 # fire before model/network access, so this needs no models and no network.
-# crispasr lives in examples/, added AFTER tests/ — same forward-reference
+# stelnettts lives in examples/, added AFTER tests/ — same forward-reference
 # pattern as test-vibevoice-quant-carveout above ($<TARGET_FILE:> resolves
 # after all subdirectories are processed).
 # POSIX shell script — not registered on Windows, where the CI windows job's
 # scoped `ctest -R "speaker|..."` leg would otherwise match it by name and
 # fail trying to exec a shebang script.
-if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
+if(STELNETTTS_BUILD_EXAMPLES AND NOT WIN32)
     # Issue #227: VAD export/import at the CLI SURFACE. Unit tests cover the
     # wire format and the chunk-gate rule; only this catches a flag reaching a
     # code path that ignores it (--vad-import was silently a no-op without
@@ -850,7 +850,7 @@ if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
     # that caught #227's actual bug; the transcribing half moves to `live`.
     add_test(NAME test-vad-export
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_vad_export_live.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
             ${PROJECT_SOURCE_DIR}
             unit)
     # 300s: model-free, but still a CLI-surface test that runs the binary four
@@ -869,7 +869,7 @@ if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
 
     add_test(NAME test-vad-export-live
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_vad_export_live.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
             ${PROJECT_SOURCE_DIR}
             live)
     # 600s, not 120s: 14 runs that each load a model off whatever storage the
@@ -888,7 +888,7 @@ if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
     # the half that actually exercises --strict-pipeline against a real run.
     add_test(NAME test-strict-pipeline
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_strict_pipeline.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
             ${PROJECT_SOURCE_DIR}
             unit)
     set_tests_properties(test-strict-pipeline PROPERTIES
@@ -897,7 +897,7 @@ if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
 
     add_test(NAME test-strict-pipeline-live
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test_strict_pipeline.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
             ${PROJECT_SOURCE_DIR}
             live)
     set_tests_properties(test-strict-pipeline-live PROPERTIES
@@ -905,10 +905,10 @@ if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
         TIMEOUT 600)
 endif()
 
-if(CRISPASR_BUILD_EXAMPLES AND NOT WIN32)
+if(STELNETTTS_BUILD_EXAMPLES AND NOT WIN32)
     add_test(NAME test-speaker-db-gates
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test-speaker-db-gates.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
             ${PROJECT_SOURCE_DIR})
     set_tests_properties(test-speaker-db-gates PROPERTIES
         LABELS "unit;diarize;regression-266"
@@ -921,7 +921,7 @@ endif()
 # cross-speaker low cosine; GEMM vs TITANET_FORCE_SCALAR equivalence).
 add_executable(test-titanet test-titanet.cpp)
 target_include_directories(test-titanet PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-titanet PRIVATE titanet crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries(test-titanet PRIVATE titanet stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # test-crepe-parity — runs the CREPE ggml graph on a deterministic tone sweep
 # and dumps the 360-bin activations for tools/crepe_numpy_parity.py to score.
@@ -929,10 +929,10 @@ target_link_libraries(test-titanet PRIVATE titanet crispasr-core ggml ggml-base 
 # it needs a model — but it is the acceptance gate for src/crepe.cpp.
 add_executable(test-crepe-parity test_crepe_parity.cpp)
 target_include_directories(test-crepe-parity PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-crepe-parity PRIVATE crepe crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries(test-crepe-parity PRIVATE crepe stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ─── test-crepe-live — ctest-registered CREPE pitch/F0 integration test.
-# Gated on CRISPASR_MODEL_CREPE; SKIPs cleanly when unset. Complements (does
+# Gated on STELNETTTS_MODEL_CREPE; SKIPs cleanly when unset. Complements (does
 # not replace) test-crepe-parity above, which is the torchcrepe cosine gate.
 add_executable(test-crepe-live
     test_crepe_live.cpp
@@ -1028,13 +1028,13 @@ catch_discover_tests(test-diarize-global
 )
 
 # ─── test-diarize-align-order — Catch2 unit tests for issue #267
-# (diarize-after-align ordering). Compiles crispasr_diarize_cli.cpp
-# directly so the test can call crispasr_apply_diarize with synthetic
+# (diarize-after-align ordering). Compiles stelnettts_diarize_cli.cpp
+# directly so the test can call stelnettts_apply_diarize with synthetic
 # sherpa caches. Links the same libraries as the CLI target minus the
 # backend-specific ones.
 add_executable(test-diarize-align-order
     test_diarize_align_order.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_diarize_cli.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_diarize_cli.cpp
 )
 target_include_directories(test-diarize-align-order PRIVATE
     ${PROJECT_SOURCE_DIR}/include
@@ -1045,7 +1045,7 @@ target_include_directories(test-diarize-align-order PRIVATE
 )
 target_link_libraries(test-diarize-align-order PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     common
     pyannote-seg
     titanet
@@ -1058,10 +1058,10 @@ catch_discover_tests(test-diarize-align-order
 # ─── test-diarize-slice-rewalk — issue #324: the server diarizes the MERGED
 # segment list by re-walking the slices, and the turn splitter GROWS each
 # slice's sub-range. Guards that the re-walk never drops a sub-segment.
-# Compiles crispasr_diarize_cli.cpp directly, like test-diarize-align-order.
+# Compiles stelnettts_diarize_cli.cpp directly, like test-diarize-align-order.
 add_executable(test-diarize-slice-rewalk
     test-diarize-slice-rewalk.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_diarize_cli.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_diarize_cli.cpp
 )
 target_include_directories(test-diarize-slice-rewalk PRIVATE
     ${PROJECT_SOURCE_DIR}/include
@@ -1072,7 +1072,7 @@ target_include_directories(test-diarize-slice-rewalk PRIVATE
 )
 target_link_libraries(test-diarize-slice-rewalk PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     common
     pyannote-seg
     titanet
@@ -1096,7 +1096,7 @@ target_include_directories(test-miotts-live PRIVATE
 target_link_libraries(test-miotts-live PRIVATE
     Catch2::Catch2WithMain
     miotts
-    crispasr-lib
+    stelnettts-lib
     common
 )
 catch_discover_tests(test-miotts-live
@@ -1186,7 +1186,7 @@ catch_discover_tests(test-ark-asr
 )
 
 # ─── test-canary-qwen-live — live integration tests for canary-qwen (#247:
-# short-window instruction-echo regression guard). Needs CRISPASR_MODEL_CANARY_QWEN.
+# short-window instruction-echo regression guard). Needs STELNETTTS_MODEL_CANARY_QWEN.
 add_executable(test-canary-qwen-live
     test_canary_qwen_live.cpp
 )
@@ -1299,7 +1299,7 @@ target_include_directories(test-align-only PRIVATE
 )
 target_link_libraries(test-align-only PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-align-only
     TEST_SPEC "[unit][align]"
@@ -1427,7 +1427,7 @@ target_include_directories(test-parakeet-ja-longform PRIVATE
 )
 target_link_libraries(test-parakeet-ja-longform PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-parakeet-ja-longform
     TEST_SPEC "[parakeet-ja-longform]"
@@ -1447,7 +1447,7 @@ target_include_directories(test-parakeet-longform PRIVATE
 )
 target_link_libraries(test-parakeet-longform PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-parakeet-longform
     TEST_SPEC "[parakeet-longform]"
@@ -1507,7 +1507,7 @@ catch_discover_tests(test-chatterbox-params
 
 # ─── chatterbox-s3gen-cfg-interval-ab — manual A/B harness (needs local GGUFs) ──
 # Drives the s3gen CFM decoder from fixed synthetic tokens (skips slow T3 AR) so
-# CRISPASR_S3GEN_CFG_INTERVAL can be A/B'd fast + deterministically on M1. Not a
+# STELNETTTS_S3GEN_CFG_INTERVAL can be A/B'd fast + deterministically on M1. Not a
 # ctest (requires chatterbox-t3 + chatterbox-s3gen GGUFs). See PLAN.md TODO-2.
 add_executable(chatterbox-s3gen-cfg-interval-ab chatterbox-s3gen-cfg-interval-ab.cpp)
 target_include_directories(chatterbox-s3gen-cfg-interval-ab PRIVATE
@@ -1771,13 +1771,13 @@ target_link_libraries(test-kokoro-params PRIVATE
     Catch2::Catch2WithMain
     kokoro
 )
-# #316: kokoro now compiles phonemizer.cpp with CRISPASR_BUILD, which enables the
+# #316: kokoro now compiles phonemizer.cpp with STELNETTTS_BUILD, which enables the
 # G2P dictionary auto-download (previously dead code — the macro was defined
-# nowhere). That pulls in crispasr_cache::ensure_cached_file, which lives in
-# crispasr-lib. crispasr-lib links kokoro, so kokoro cannot link it back; every
-# real binary resolves the symbol because it links crispasr-lib. This test links
+# nowhere). That pulls in stelnettts_cache::ensure_cached_file, which lives in
+# stelnettts-lib. stelnettts-lib links kokoro, so kokoro cannot link it back; every
+# real binary resolves the symbol because it links stelnettts-lib. This test links
 # kokoro ALONE, so it compiles the one translation unit it needs directly.
-target_sources(test-kokoro-params PRIVATE ${PROJECT_SOURCE_DIR}/src/crispasr_cache.cpp)
+target_sources(test-kokoro-params PRIVATE ${PROJECT_SOURCE_DIR}/src/stelnettts_cache.cpp)
 catch_discover_tests(test-kokoro-params
     TEST_SPEC "[unit]"
     PROPERTIES LABELS "unit;kokoro"
@@ -1890,7 +1890,7 @@ catch_discover_tests(test-firered-asr-params
 
 add_executable(test-moonshine-streaming-params test-moonshine-streaming-params.cpp)
 target_include_directories(test-moonshine-streaming-params PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-moonshine-streaming-params PRIVATE Catch2::Catch2WithMain moonshine_streaming crispasr-core)
+target_link_libraries(test-moonshine-streaming-params PRIVATE Catch2::Catch2WithMain moonshine_streaming stelnettts-core)
 catch_discover_tests(test-moonshine-streaming-params
     TEST_SPEC "[unit]" PROPERTIES LABELS "unit;moonshine-streaming")
 
@@ -1957,7 +1957,7 @@ target_include_directories(test-der PRIVATE
 )
 target_link_libraries(test-der PRIVATE
     Catch2::Catch2WithMain
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-der
     TEST_SPEC "[unit]"
@@ -1973,7 +1973,7 @@ target_include_directories(test-diarize-smooth PRIVATE
 )
 target_link_libraries(test-diarize-smooth PRIVATE
     Catch2::Catch2WithMain
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-diarize-smooth
     TEST_SPEC "[unit]"
@@ -1990,7 +1990,7 @@ target_include_directories(test-spectral-diarize PRIVATE
 )
 target_link_libraries(test-spectral-diarize PRIVATE
     Catch2::Catch2WithMain
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-spectral-diarize
     TEST_SPEC "[unit]"
@@ -2099,38 +2099,38 @@ catch_discover_tests(test-pockettts-params
     PROPERTIES LABELS "unit;pocket_tts"
 )
 
-# ─── test-qwen3asr-params — Catch2 unit tests for qwen3_asr_context_params defaults
+# ─── test-cielvox2asr-params — Catch2 unit tests for cielvox2_asr_context_params defaults
 # and null-guard coverage. No GGUF required. ───────────────────────────────────
-add_executable(test-qwen3asr-params
-    test-qwen3asr-params.cpp
+add_executable(test-cielvox2asr-params
+    test-cielvox2asr-params.cpp
 )
-target_include_directories(test-qwen3asr-params PRIVATE
+target_include_directories(test-cielvox2asr-params PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
-target_link_libraries(test-qwen3asr-params PRIVATE
+target_link_libraries(test-cielvox2asr-params PRIVATE
     Catch2::Catch2WithMain
-    qwen3_asr
+    cielvox2_asr
 )
-catch_discover_tests(test-qwen3asr-params
+catch_discover_tests(test-cielvox2asr-params
     TEST_SPEC "[unit]"
-    PROPERTIES LABELS "unit;qwen3_asr"
+    PROPERTIES LABELS "unit;cielvox2_asr"
 )
 
-# ─── test-qwen3tts-params — Catch2 unit tests for qwen3_tts_context_params defaults
+# ─── test-cielvox2tts-params — Catch2 unit tests for cielvox2_tts_context_params defaults
 # and null-guard coverage. No GGUF required. ───────────────────────────────────
-add_executable(test-qwen3tts-params
-    test-qwen3tts-params.cpp
+add_executable(test-cielvox2tts-params
+    test-cielvox2tts-params.cpp
 )
-target_include_directories(test-qwen3tts-params PRIVATE
+target_include_directories(test-cielvox2tts-params PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
-target_link_libraries(test-qwen3tts-params PRIVATE
+target_link_libraries(test-cielvox2tts-params PRIVATE
     Catch2::Catch2WithMain
-    qwen3_tts
+    cielvox2_tts
 )
-catch_discover_tests(test-qwen3tts-params
+catch_discover_tests(test-cielvox2tts-params
     TEST_SPEC "[unit]"
-    PROPERTIES LABELS "unit;qwen3_tts"
+    PROPERTIES LABELS "unit;cielvox2_tts"
 )
 
 # ─── test-moss-tts-params — Catch2 unit tests for moss_tts_context_params /
@@ -2261,7 +2261,7 @@ target_include_directories(test-cohere-lang-gguf PRIVATE
 )
 target_link_libraries(test-cohere-lang-gguf PRIVATE
     Catch2::Catch2WithMain
-    crispasr-core
+    stelnettts-core
     ggml
 )
 catch_discover_tests(test-cohere-lang-gguf
@@ -2398,7 +2398,7 @@ target_include_directories(test-moonshine-stream-params PRIVATE
 target_link_libraries(test-moonshine-stream-params PRIVATE
     Catch2::Catch2WithMain
     moonshine_streaming
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-moonshine-stream-params
     TEST_SPEC "[unit]"
@@ -2462,7 +2462,7 @@ target_include_directories(test-gemma4e2b-params PRIVATE
 target_link_libraries(test-gemma4e2b-params PRIVATE
     Catch2::Catch2WithMain
     gemma4_e2b
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-gemma4e2b-params
     TEST_SPEC "[unit]"
@@ -2497,7 +2497,7 @@ target_include_directories(test-orpheussnac-params PRIVATE
 target_link_libraries(test-orpheussnac-params PRIVATE
     Catch2::Catch2WithMain
     snac
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-orpheussnac-params
     TEST_SPEC "[unit]"
@@ -2555,27 +2555,27 @@ catch_discover_tests(test-voxtral-tts-params
     PROPERTIES LABELS "unit;voxtral-tts"
 )
 
-# ─── test-qwen3-tts-cv-style — Catch2 unit tests for qwen3_tts_set_cv_style_instruct
+# ─── test-cielvox2-tts-cv-style — Catch2 unit tests for cielvox2_tts_set_cv_style_instruct
 # (issue #91: --instruct silently ignored for CustomVoice models).
 # Exercises null-ctx guards and default-params sanity — no GGUF needed. ─────
-add_executable(test-qwen3-tts-cv-style
-    test-qwen3-tts-cv-style.cpp
+add_executable(test-cielvox2-tts-cv-style
+    test-cielvox2-tts-cv-style.cpp
 )
-target_include_directories(test-qwen3-tts-cv-style PRIVATE
+target_include_directories(test-cielvox2-tts-cv-style PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
-target_link_libraries(test-qwen3-tts-cv-style PRIVATE
+target_link_libraries(test-cielvox2-tts-cv-style PRIVATE
     Catch2::Catch2WithMain
-    qwen3_tts
+    cielvox2_tts
 )
-catch_discover_tests(test-qwen3-tts-cv-style
+catch_discover_tests(test-cielvox2-tts-cv-style
     TEST_SPEC "[unit]"
-    PROPERTIES LABELS "unit;qwen3-tts"
+    PROPERTIES LABELS "unit;cielvox2-tts"
 )
 
 # ─── test - flash - attn - defaults — Catch2 unit tests for the PLAN #89
 # flash_attn-field plumbing across every backend with use_gpu.
-# Auto-skips backends not built into the current libcrispasr slice
+# Auto-skips backends not built into the current libstelnettts slice
 # (each section is guarded by `__has_include("backend.h")`), so the
 # test runs on every CMake configuration without hand-tuning. ────────
 add_executable(test-flash-attn-defaults
@@ -2587,12 +2587,12 @@ target_include_directories(test-flash-attn-defaults PRIVATE
 # Link every backend whose header we touch. CMake auto-skips
 # missing targets via the if(TARGET …) guards so a slim build
 # (e.g. iOS device-only with fewer backends) still configures.
-# Link crispasr-lib (which already pulls every backend) rather than
+# Link stelnettts-lib (which already pulls every backend) rather than
 # enumerating individual backend libraries — this avoids missing
-# transitive dependencies (e.g. kokoro → phonemizer → crispasr_cache).
+# transitive dependencies (e.g. kokoro → phonemizer → stelnettts_cache).
 target_link_libraries(test-flash-attn-defaults PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-flash-attn-defaults
     TEST_SPEC "[unit]"
@@ -2600,7 +2600,7 @@ catch_discover_tests(test-flash-attn-defaults
 )
 
 # ─── test - metal - pipeline - cache — Apple-only smoke test for the
-# persistent MTLBinaryArchive cache (PLAN #88 / CrisperWeaver §5.18).
+# persistent MTLBinaryArchive cache (PLAN #88 / StelnetWeaver §5.18).
 # Compiled with -ObjC++ when Metal is enabled; on Linux / Windows
 # the .mm body collapses to a single "skipped" TEST_CASE so the
 # binary still builds and registers cleanly. ────────
@@ -2652,7 +2652,7 @@ catch_discover_tests(test_chunk_context
 
 # ─── test-issue-114-chunk-context-gate — issue #114 regression guard
 #
-# Pins crispasr_chunk_context::should_use_chunk_context so a future
+# Pins stelnettts_chunk_context::should_use_chunk_context so a future
 # refactor cannot silently re-introduce the cad4c28a gate that
 # extended VAD-derived slices with neighbour audio and produced
 # kanji → hiragana on parakeet-tdt-0.6b-ja. Pure CPU, no model load.
@@ -2672,7 +2672,7 @@ catch_discover_tests(test-issue-114-chunk-context-gate
 
 # ─── test-issue-356-gap-fill-overlap — issue #356 regression guard
 #
-# Pins crispasr_gap_fill_resolve_overlaps: the #89 gap-fill second pass used to
+# Pins stelnettts_gap_fill_resolve_overlaps: the #89 gap-fill second pass used to
 # append recoveries inside the span of the segment they were recovered from and
 # sort by t0 only, so SRT/VTT cues jumped backwards by up to the hole length.
 # Covering segments must be split at each recovery so the list is monotone with
@@ -2689,7 +2689,7 @@ target_include_directories(test-issue-356-gap-fill-overlap PRIVATE
 )
 target_link_libraries(test-issue-356-gap-fill-overlap PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-issue-356-gap-fill-overlap
     TEST_SPEC "[issue-356]"
@@ -2698,14 +2698,14 @@ catch_discover_tests(test-issue-356-gap-fill-overlap
 
 # ─── test-issue-356-order-guard — issue #356 time-order guard
 #
-# Pins crispasr_first_backward_segment, the check merge_segments and the server
+# Pins stelnettts_first_backward_segment, the check merge_segments and the server
 # run over every finished transcript. #356 shipped because nothing between the
 # gap-fill producer and the SRT/VTT writers verified time order. The guard has
-# to read WORD timestamps (what crispasr_make_disp_segments uses) rather than
+# to read WORD timestamps (what stelnettts_make_disp_segments uses) rather than
 # segment spans, or it passes the very list that caused the bug.
 add_executable(test-issue-356-order-guard
     test-issue-356-order-guard.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_output.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_output.cpp
 )
 target_include_directories(test-issue-356-order-guard PRIVATE
     ${PROJECT_SOURCE_DIR}/include
@@ -2716,7 +2716,7 @@ target_include_directories(test-issue-356-order-guard PRIVATE
 )
 target_link_libraries(test-issue-356-order-guard PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-issue-356-order-guard
     TEST_SPEC "[issue-356]"
@@ -2764,7 +2764,7 @@ target_include_directories(test-cpu-backend-shim PRIVATE
 )
 target_link_libraries(test-cpu-backend-shim PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-cpu-backend-shim
     TEST_SPEC "[cpu-shim]"
@@ -2773,7 +2773,7 @@ catch_discover_tests(test-cpu-backend-shim
 
 # ─── test-parakeet-ja-detect — issue #257 regression guard
 #
-# Pins crispasr_parakeet::vocab_looks_japanese so the JA-model detection keys on
+# Pins stelnettts_parakeet::vocab_looks_japanese so the JA-model detection keys on
 # vocab content (kana/kanji), not vocab size — a small-vocab English model
 # (parakeet-tdt-1.1b, vocab 1024) must not be misclassified as Japanese. Pure
 # CPU, no model load.
@@ -2793,7 +2793,7 @@ catch_discover_tests(test-parakeet-ja-detect
 
 # ─── test-issue-89-long-audio-fallback — issue #89 regression guard
 #
-# Pins crispasr_long_audio::should_auto_chunk_long so a future refactor
+# Pins stelnettts_long_audio::should_auto_chunk_long so a future refactor
 # cannot silently restore the a069018f "always full-encode for
 # CAP_UNBOUNDED_INPUT" behaviour. That produced 35 tokens of output on
 # 300 s of audio when the user provided neither --vad nor --chunk-seconds
@@ -2815,14 +2815,14 @@ catch_discover_tests(test-issue-89-long-audio-fallback
 
 # ─── test-issue-150-cjk-fallback — issue #150 regression guard
 #
-# Pins split_text_at_punct via crispasr_make_disp_segments: the 42-char CJK
+# Pins split_text_at_punct via stelnettts_make_disp_segments: the 42-char CJK
 # subtitle fallback must only fire for text containing CJK/kana/Hangul, not
 # for long English sentences where it would split words at raw character
-# boundaries (e.g. "about" → "abo" / "ut").  Compiles crispasr_output.cpp
+# boundaries (e.g. "about" → "abo" / "ut").  Compiles stelnettts_output.cpp
 # directly — no model load, pure CPU.
 add_executable(test-issue-150-cjk-fallback
     test-issue-150-cjk-fallback.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_output.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_output.cpp
 )
 target_include_directories(test-issue-150-cjk-fallback PRIVATE
     ${PROJECT_SOURCE_DIR}/examples/cli
@@ -3080,7 +3080,7 @@ target_include_directories(test-vad-keywords PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 target_compile_definitions(test-vad-keywords PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-vad-keywords PRIVATE
     Catch2::Catch2WithMain
@@ -3100,7 +3100,7 @@ target_include_directories(test-vad-load-failure PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 target_compile_definitions(test-vad-load-failure PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-vad-load-failure PRIVATE
     Catch2::Catch2WithMain
@@ -3117,7 +3117,7 @@ add_executable(test-session-setter-parity
 )
 target_include_directories(test-session-setter-parity PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_compile_definitions(test-session-setter-parity PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-session-setter-parity PRIVATE Catch2::Catch2WithMain)
 catch_discover_tests(test-session-setter-parity
@@ -3126,7 +3126,7 @@ catch_discover_tests(test-session-setter-parity
 )
 
 # ─── test-segment-hygiene — §W2 length cap, §W5 repeat merge, §W6 filters.
-# All three live downstream of the logits, where crispasr-diff reads
+# All three live downstream of the logits, where stelnettts-diff reads
 # cos 1.000000 whether they work or not. This is the only check they get.
 add_executable(test-segment-hygiene
     test-segment-hygiene.cpp
@@ -3135,7 +3135,7 @@ target_include_directories(test-segment-hygiene PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 target_compile_definitions(test-segment-hygiene PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-segment-hygiene PRIVATE
     Catch2::Catch2WithMain
@@ -3147,7 +3147,7 @@ catch_discover_tests(test-segment-hygiene
 
 # ─── test-asr-sensitivity — named decode-threshold bundles (PLAN.md §W7).
 # Pins each preset's DIRECTION against balanced, and that balanced still equals
-# the decoder's shipped defaults (crispasr.cpp:6523).
+# the decoder's shipped defaults (stelnettts.cpp:6523).
 add_executable(test-asr-sensitivity
     test-asr-sensitivity.cpp
 )
@@ -3172,7 +3172,7 @@ target_include_directories(test-loopfix-wiring PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 target_compile_definitions(test-loopfix-wiring PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-loopfix-wiring PRIVATE
     Catch2::Catch2WithMain
@@ -3217,7 +3217,7 @@ catch_discover_tests(test-generation-health
 
 # ─── test-issue-239-popen-mode — regression guard for issue #239.
 #
-# Verifies that crispasr_popen("cmd", "rb") succeeds on POSIX (it failed
+# Verifies that stelnettts_popen("cmd", "rb") succeeds on POSIX (it failed
 # before the fix because glibc popen() rejects mode "rb" with EINVAL).
 add_executable(test-issue-239-popen-mode
     test-issue-239-popen-mode.cpp
@@ -3234,8 +3234,8 @@ catch_discover_tests(test-issue-239-popen-mode
 )
 
 # ─── test-lcs-c-abi — pin the public C ABI surface for the LCS dedup.
-# Verifies that `crispasr_lcs_dedup_prefix_count` is exported from
-# libcrispasr and agrees with the in-tree algorithm on the same
+# Verifies that `stelnettts_lcs_dedup_prefix_count` is exported from
+# libstelnettts and agrees with the in-tree algorithm on the same
 # fixtures. Catches regressions where the symbol gets dropped from the
 # dynamic library (CMake link-order slip, missing CA_EXPORT).
 add_executable(test-lcs-c-abi
@@ -3245,7 +3245,7 @@ target_include_directories(test-lcs-c-abi PRIVATE
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(test-lcs-c-abi PRIVATE
-    crispasr-lib
+    stelnettts-lib
     Catch2::Catch2WithMain
 )
 catch_discover_tests(test-lcs-c-abi
@@ -3296,7 +3296,7 @@ target_link_libraries(test-issue-79 PRIVATE
 #Usage :./ bin / test - issue - 79 / path / to / vibevoice - asr - 7b.gguf
 
 # ─── test-session-setters — Catch2 unit tests for every generation-control
-# session setter declared in include/crispasr.h (PLAN §88 parity sweep).
+# session setter declared in include/stelnettts.h (PLAN §88 parity sweep).
 #
 # Verifies the null-handle guard (return -1) for all 19 setters.
 # No model loaded — pure null-arg path, sub-millisecond.
@@ -3309,7 +3309,7 @@ target_include_directories(test-session-setters PRIVATE
 )
 target_link_libraries(test-session-setters PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-session-setters
     TEST_SPEC "[unit]"
@@ -3331,7 +3331,7 @@ target_include_directories(test-session-introspection PRIVATE
 )
 target_link_libraries(test-session-introspection PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-session-introspection
     TEST_SPEC "[unit]"
@@ -3342,8 +3342,8 @@ catch_discover_tests(test-session-introspection
 #
 # [unit][beam]  — setter API (null guard, width clamping). No model.
 # [beam][.live] — end-to-end: beam_size=1 no-regression + beam 2-4
-#                 produce non-empty output. Gated on CRISPASR_MODEL_WHISPER
-#                 (+ optionally CRISPASR_MODEL_GLM_ASR).
+#                 produce non-empty output. Gated on STELNETTTS_MODEL_WHISPER
+#                 (+ optionally STELNETTTS_MODEL_GLM_ASR).
 add_executable(test-session-beam
     test-session-beam.cpp
 )
@@ -3353,7 +3353,7 @@ target_include_directories(test-session-beam PRIVATE
 )
 target_link_libraries(test-session-beam PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-session-beam
     TEST_SPEC "[unit]"
@@ -3367,13 +3367,13 @@ catch_discover_tests(test-session-beam
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-# ─── test - registry — Catch2 unit tests for crispasr_model_registry
+# ─── test - registry — Catch2 unit tests for stelnettts_model_registry
 #
 #Verifies registry lookup by backend name, reverse lookup by filename,
 #and that all expected entries exist.No network, no models.
 add_executable(test-registry test-registry.cpp
-    ${PROJECT_SOURCE_DIR}/src/crispasr_model_registry.cpp
-    ${PROJECT_SOURCE_DIR}/src/crispasr_cache.cpp
+    ${PROJECT_SOURCE_DIR}/src/stelnettts_model_registry.cpp
+    ${PROJECT_SOURCE_DIR}/src/stelnettts_cache.cpp
 )
 target_include_directories(test-registry PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -3382,7 +3382,7 @@ target_link_libraries(test-registry PRIVATE
     Catch2::Catch2WithMain
 )
 if(WIN32)
-#crispasr_cache.cpp uses WinHTTP for model downloads
+#stelnettts_cache.cpp uses WinHTTP for model downloads
     target_link_libraries(test-registry PRIVATE winhttp)
 endif()
 catch_discover_tests(test-registry
@@ -3398,7 +3398,7 @@ target_include_directories(test-registry-c-abi PRIVATE
 )
 target_link_libraries(test-registry-c-abi PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-registry-c-abi
     TEST_SPEC "[unit]"
@@ -3410,8 +3410,8 @@ catch_discover_tests(test-registry-c-abi
 # Verifies the companion pre-download guard: sibling discovery, cache probe,
 # and correct companion size in download prompts. No network, no models.
 add_executable(test-companion-resolve test-companion-resolve.cpp
-    ${PROJECT_SOURCE_DIR}/src/crispasr_model_registry.cpp
-    ${PROJECT_SOURCE_DIR}/src/crispasr_cache.cpp
+    ${PROJECT_SOURCE_DIR}/src/stelnettts_model_registry.cpp
+    ${PROJECT_SOURCE_DIR}/src/stelnettts_cache.cpp
 )
 target_include_directories(test-companion-resolve PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -3427,9 +3427,9 @@ catch_discover_tests(test-companion-resolve
     PROPERTIES LABELS "unit"
 )
 
-# ─── test_server_wav_writer — Catch2 unit tests for crispasr_make_wav_int16
+# ─── test_server_wav_writer — Catch2 unit tests for stelnettts_make_wav_int16
 #
-#Header - only WAV serializer used by / v1 / audio / speech and crispasr_diff.
+#Header - only WAV serializer used by / v1 / audio / speech and stelnettts_diff.
 #Pure CPU, no model dependencies — sub - millisecond per case.Pins the
 #RIFF byte layout so OpenAI clients keep working.
 add_executable(test_server_wav_writer test_server_wav_writer.cpp)
@@ -3447,7 +3447,7 @@ catch_discover_tests(test_server_wav_writer
 
 # ─── test-marking-policy — Catch2 unit tests for the spoken-AI-disclaimer
 # opt-out gate (#312). Header-only decision logic from
-# examples/cli/crispasr_marking_policy.h — no server, no socket, no models, so
+# examples/cli/stelnettts_marking_policy.h — no server, no socket, no models, so
 # the policy is guarded on a tier CI actually runs (the live server test that
 # covered it before went four days red without anyone noticing).
 add_executable(test-marking-policy test-marking-policy.cpp)
@@ -3465,8 +3465,8 @@ catch_discover_tests(test-marking-policy
 # ─── test-voice-clone-policy — what counts as a voice CLONE (the predicate the
 # speaker-consent gate and the Art. 50(4) audible-disclosure gate both hang off),
 # plus which containers can carry a C2PA manifest (the watertight marking floor).
-# Both are pure predicates in examples/cli/crispasr_voice_clone_policy.h and
-# crispasr_marking_policy.h — no models, no voice files, no server — so the
+# Both are pure predicates in examples/cli/stelnettts_voice_clone_policy.h and
+# stelnettts_marking_policy.h — no models, no voice files, no server — so the
 # gates are guarded on the tier CI actually runs.
 add_executable(test-voice-clone-policy test-voice-clone-policy.cpp)
 target_include_directories(test-voice-clone-policy PRIVATE
@@ -3483,7 +3483,7 @@ catch_discover_tests(test-voice-clone-policy
 )
 
 # ─── test-speech-window — PR #330's min/max speech-token window arithmetic.
-# Pure policy (examples/cli/crispasr_speech_window.h): no model, no audio, so
+# Pure policy (examples/cli/stelnettts_speech_window.h): no model, no audio, so
 # the "can this window actually be delivered" reasoning is guarded on the tier
 # CI runs. The decode loop itself is covered by the moss live tests.
 add_executable(test-speech-window test-speech-window.cpp)
@@ -3508,16 +3508,16 @@ catch_discover_tests(test-speech-window
 add_executable(watermark-detect-ab ${PROJECT_SOURCE_DIR}/tools/watermark_detect_ab.cpp)
 target_include_directories(watermark-detect-ab PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
-# ─── test-no-emotion-recognition — CrispASR ships no voice-based emotion
+# ─── test-no-emotion-recognition — StelnetTTS ships no voice-based emotion
 # inference on any surface. SenseVoice-Small is upstream an emotion classifier
 # too; we parse its `<|HAPPY|>` marker only to strip it. Shipping the capability
-# would make CrispASR an Annex III(1)(c) high-risk system (and Art. 5(1)(f)
+# would make StelnetTTS an Annex III(1)(c) high-risk system (and Art. 5(1)(f)
 # prohibited in workplace/education), which Art. 2(12)'s open-source exemption
 # does not cover. Source-level guard — the behavioural version needs the
 # SenseVoice GGUF and would only run in the live tier CI doesn't run.
 add_executable(test-no-emotion-recognition test-no-emotion-recognition.cpp)
 target_compile_definitions(test-no-emotion-recognition PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-no-emotion-recognition PRIVATE
     Catch2::Catch2WithMain
@@ -3558,7 +3558,7 @@ target_include_directories(test-speaker-identity-gguf PRIVATE
 )
 target_link_libraries(test-speaker-identity-gguf PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     ggml
 )
 catch_discover_tests(test-speaker-identity-gguf
@@ -3577,7 +3577,7 @@ catch_discover_tests(test-speaker-identity-gguf
 # run, and a gate CI can't run is a gate that ships wrong (#312).
 add_executable(test-compliance-wiring test-compliance-wiring.cpp)
 target_compile_definitions(test-compliance-wiring PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-compliance-wiring PRIVATE
     Catch2::Catch2WithMain
@@ -3596,7 +3596,7 @@ catch_discover_tests(test-compliance-wiring
 # a session needs a TTS model, which would strand this in the live tier.
 add_executable(test-abi-clone-disclosure test-abi-clone-disclosure.cpp)
 target_compile_definitions(test-abi-clone-disclosure PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-abi-clone-disclosure PRIVATE
     Catch2::Catch2WithMain
@@ -3607,13 +3607,13 @@ catch_discover_tests(test-abi-clone-disclosure
 )
 
 # ─── test-copies-in-sync — the two fireredpunc implementations must not
-# drift. crisp_punc/src/fireredpunc.cpp is what normally links; src/fireredpunc.cpp
+# drift. stelnet_punc/src/fireredpunc.cpp is what normally links; src/fireredpunc.cpp
 # is the partial-checkout fallback. #308's capitalisation fix landed in the
 # fallback ONLY and was dead code for months (found while fixing #300). Pure file
 # comparison — no model, no linkage.
 add_executable(test-copies-in-sync test-copies-in-sync.cpp)
 target_compile_definitions(test-copies-in-sync PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-copies-in-sync PRIVATE
     Catch2::Catch2WithMain
@@ -3625,7 +3625,7 @@ catch_discover_tests(test-copies-in-sync
 
 # ─── test-kokoro-g2p-live — #316 end-to-end: a number must be audible, and
 # --tts-phonemes must drive the model instead of the text. The G2P defect was
-# invisible to every tensor-level check (crispasr-diff for kokoro is phoneme-IN),
+# invisible to every tensor-level check (stelnettts-diff for kokoro is phoneme-IN),
 # so only a real synthesis + ASR round-trip proves it. SKIPs without models.
 add_test(NAME test-kokoro-g2p-live
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-kokoro-g2p-live.sh)
@@ -3657,7 +3657,7 @@ catch_discover_tests(test-tts-phonemes-policy TEST_SPEC "[unit]" PROPERTIES LABE
 
 # ─── test-kokoro-g2p-316 — number expansion + Kokoro's phoneme alphabet (#316).
 # Kokoro dropped numbers and drifted British; both were G2P defects that
-# crispasr-diff cannot see (it is phoneme-IN, so it starts downstream of them).
+# stelnettts-diff cannot see (it is phoneme-IN, so it starts downstream of them).
 # Every expectation is misaki's own output. No model, no audio.
 add_executable(test-kokoro-g2p-316 test-kokoro-g2p-316.cpp)
 target_include_directories(test-kokoro-g2p-316 PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -3669,9 +3669,9 @@ catch_discover_tests(test-kokoro-g2p-316
 
 # ─── test-kokoro-misaki-wiring — #316: the rules reach the PRODUCT ──────────
 # The one above tests the G2P headers; this one goes through
-# crispasr::phonemize_misaki_en, which is what kokoro.cpp calls. That gap is
+# stelnettts::phonemize_misaki_en, which is what kokoro.cpp calls. That gap is
 # how the contextual-word rules shipped inert for a release. Hermetic: a tiny
-# lexicon via CRISPASR_MISAKI_DICT_PATH, no download, no model.
+# lexicon via STELNETTTS_MISAKI_DICT_PATH, no download, no model.
 add_executable(test-kokoro-misaki-wiring test-kokoro-misaki-wiring.cpp)
 target_include_directories(test-kokoro-misaki-wiring PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(test-kokoro-misaki-wiring PRIVATE Catch2::Catch2WithMain kokoro)
@@ -3703,7 +3703,7 @@ catch_discover_tests(test-vibevoice-transcript
 add_executable(test_watermark test_watermark.cpp)
 target_include_directories(test_watermark PRIVATE
     ${PROJECT_SOURCE_DIR}/examples/cli
-    ${PROJECT_SOURCE_DIR}/src   # core/crispasr_watermark.h
+    ${PROJECT_SOURCE_DIR}/src   # core/stelnettts_watermark.h
 )
 target_link_libraries(test_watermark PRIVATE
     Catch2::Catch2WithMain
@@ -3716,16 +3716,16 @@ catch_discover_tests(test_watermark
 # ─── test_c2pa_native — Catch2 unit tests for the native C++ C2PA signer
 #(CBOR/JUMBF/COSE/ES256 via uECC). Hermetic — no c2pa-rs, no network, no model.
 #The [emit] case writes a signed WAV for the live parity ctest below.
-if (NOT CRISPASR_NO_C2PA_NATIVE)
+if (NOT STELNETTTS_NO_C2PA_NATIVE)
     add_executable(test_c2pa_native test_c2pa_native.cpp)
     target_include_directories(test_c2pa_native PRIVATE
         ${PROJECT_SOURCE_DIR}/src/core
     )
     target_compile_definitions(test_c2pa_native PRIVATE
-        CRISPASR_TEST_ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+        STELNETTTS_TEST_ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
     target_link_libraries(test_c2pa_native PRIVATE
         Catch2::Catch2WithMain
-        crispasr_c2pa_native
+        stelnettts_c2pa_native
     )
     catch_discover_tests(test_c2pa_native
         TEST_SPEC "[unit]"
@@ -3751,10 +3751,10 @@ target_link_libraries(test_tts_provenance PRIVATE
     Catch2::Catch2WithMain
     glint
 )
-# crispasr_c2pa.h routes WAV signing through the native signer; link it so this
-# test (which includes the header directly, not via crispasr-lib) resolves.
-if (NOT CRISPASR_NO_C2PA_NATIVE)
-    target_link_libraries(test_tts_provenance PRIVATE crispasr_c2pa_native)
+# stelnettts_c2pa.h routes WAV signing through the native signer; link it so this
+# test (which includes the header directly, not via stelnettts-lib) resolves.
+if (NOT STELNETTTS_NO_C2PA_NATIVE)
+    target_link_libraries(test_tts_provenance PRIVATE stelnettts_c2pa_native)
 endif()
 catch_discover_tests(test_tts_provenance
     TEST_SPEC "[unit]"
@@ -3774,7 +3774,7 @@ catch_discover_tests(test-asr-overlap-trim
 
 # ─── test-tts-ref-cache — #334 CLI-writes / session-reads contract ──────────
 # The reference-transcript cache couples two layers that never compile
-# together: the CLI writes it, crispasr_c_api.cpp reads it, and the suffix and
+# together: the CLI writes it, stelnettts_c_api.cpp reads it, and the suffix and
 # tag agree only by convention. Header-only, no model needed.
 add_executable(test-tts-ref-cache test-tts-ref-cache.cpp)
 target_include_directories(test-tts-ref-cache PRIVATE ${PROJECT_SOURCE_DIR}/src)
@@ -3794,7 +3794,7 @@ add_test(NAME test-align-stdin
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test-align-stdin.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(test-align-stdin PROPERTIES
-    ENVIRONMENT "CRISPASR_BIN=$<TARGET_FILE:crispasr-cli>"
+    ENVIRONMENT "STELNETTTS_BIN=$<TARGET_FILE:stelnettts-cli>"
     LABELS "live;align;issue-317"
     TIMEOUT 600
     SKIP_RETURN_CODE 77)
@@ -3805,7 +3805,7 @@ set_tests_properties(test-align-stdin PROPERTIES
 # would shuffle speaker labels. Deterministic fake embedder, no model needed.
 add_executable(test-embed-parallel
     test-embed-parallel.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_diarize_cli.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_diarize_cli.cpp
 )
 target_include_directories(test-embed-parallel PRIVATE
     ${PROJECT_SOURCE_DIR}/examples/cli
@@ -3813,7 +3813,7 @@ target_include_directories(test-embed-parallel PRIVATE
 )
 target_link_libraries(test-embed-parallel PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-embed-parallel
     TEST_SPEC "[issue-326]"
@@ -3904,7 +3904,7 @@ target_link_libraries(test_audioseal_cosine PRIVATE
 #Pure functions, no backend dependency.
 add_executable(test_server_chunking
     test_server_chunking.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_tts_chunking.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_tts_chunking.cpp
 )
 target_include_directories(test_server_chunking PRIVATE
     ${PROJECT_SOURCE_DIR}/examples/cli
@@ -4018,28 +4018,28 @@ catch_discover_tests(test-core-wordpiece
 # ─── test-beat-this-stages — per-stage graph parity vs the torch reference ────
 add_executable(test-beat-this-stages test_beat_this_stages.cpp)
 target_include_directories(test-beat-this-stages PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-beat-this-stages PRIVATE beat-this crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries(test-beat-this-stages PRIVATE beat-this stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ─── test-beat-this-track — windowing + postprocessing vs the reference ──────
 # Needs a model + the long fixture from tools/gen_beat_this_track_ref.py; the
 # 101-frame front-end fixture is a single chunk and exercises no seams.
 add_executable(test-beat-this-track test_beat_this_track.cpp)
 target_include_directories(test-beat-this-track PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-beat-this-track PRIVATE beat-this crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries(test-beat-this-track PRIVATE beat-this stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ─── test-beat-this-frontend — log-mel vs torchaudio ──────────────────────────
 # Needs a model + fixtures, so not a ctest case; it is the acceptance gate for
 # the front end. Generate fixtures with tools/gen_beat_this_frontend_ref.py.
 add_executable(test-beat-this-frontend test_beat_this_frontend.cpp)
 target_include_directories(test-beat-this-frontend PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-beat-this-frontend PRIVATE beat-this crispasr-core ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries(test-beat-this-frontend PRIVATE beat-this stelnettts-core ggml ggml-base stelnettts_link_ggml_cpu)
 
 # ─── test-core-gru — core/gru.h vs a real PyTorch nn.GRU fixture ──────────────
-# Parity case skips unless CRISPASR_GRU_REF points at a fixture from
+# Parity case skips unless STELNETTTS_GRU_REF points at a fixture from
 # tools/gen_gru_reference.py, so CI needs neither torch nor network.
 add_executable(test-core-gru test-core-gru.cpp)
 target_include_directories(test-core-gru PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-core-gru PRIVATE Catch2::Catch2WithMain ggml ggml-base crispasr_link_ggml_cpu)
+target_link_libraries(test-core-gru PRIVATE Catch2::Catch2WithMain ggml ggml-base stelnettts_link_ggml_cpu)
 catch_discover_tests(test-core-gru
     TEST_PREFIX "core-gru: "
     PROPERTIES LABELS "unit;core"
@@ -4081,14 +4081,14 @@ catch_discover_tests(test-core-istft
 
 # ─── test-core-mel-parallel — core/mel.cpp §176f parallel-STFT bit-identity ───
 # Asserts the OpenMP-parallel STFT (Params::allow_parallel_stft) is bit-identical
-# to the serial path. Links crispasr-core (core_mel::compute is not header-only).
+# to the serial path. Links stelnettts-core (core_mel::compute is not header-only).
 add_executable(test-core-mel-parallel test-core-mel-parallel.cpp)
 target_include_directories(test-core-mel-parallel PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 target_link_libraries(test-core-mel-parallel PRIVATE
     Catch2::Catch2WithMain
-    crispasr-core
+    stelnettts-core
 )
 catch_discover_tests(test-core-mel-parallel
     TEST_SPEC "[unit]"
@@ -4106,7 +4106,7 @@ target_include_directories(test-core-cross-attn PRIVATE
 )
 target_link_libraries(test-core-cross-attn PRIVATE
     Catch2::Catch2WithMain
-    ggml ggml-base crispasr_link_ggml_cpu
+    ggml ggml-base stelnettts_link_ggml_cpu
 )
 catch_discover_tests(test-core-cross-attn
     TEST_SPEC "[unit]"
@@ -4160,7 +4160,7 @@ catch_discover_tests(test-core-utf8
     PROPERTIES LABELS "unit"
 )
 
-# ─── test-kv-quant-roundtrip — CRISPASR_KV_QUANT cross-graph round-trip ──────
+# ─── test-kv-quant-roundtrip — STELNETTTS_KV_QUANT cross-graph round-trip ──────
 # Writes a quantised KV cache with set_rows in one graph and reads it back with
 # view+cast in a LATER graph, for every supported KV dtype. Nothing covered the
 # quantised cache before; q8_0 on ark-asr silently produced an empty transcript.
@@ -4172,7 +4172,7 @@ target_include_directories(test-kv-quant-roundtrip PRIVATE
 )
 target_link_libraries(test-kv-quant-roundtrip PRIVATE
     Catch2::Catch2WithMain
-    ggml ggml-base crispasr_link_ggml_cpu
+    ggml ggml-base stelnettts_link_ggml_cpu
 )
 catch_discover_tests(test-kv-quant-roundtrip
     TEST_SPEC "[unit]"
@@ -4188,7 +4188,7 @@ target_include_directories(test-core-adaln PRIVATE
 )
 target_link_libraries(test-core-adaln PRIVATE
     Catch2::Catch2WithMain
-    ggml ggml-base crispasr_link_ggml_cpu
+    ggml ggml-base stelnettts_link_ggml_cpu
 )
 catch_discover_tests(test-core-adaln
     TEST_SPEC "[unit]"
@@ -4204,7 +4204,7 @@ target_include_directories(test-core-seanet PRIVATE
 )
 target_link_libraries(test-core-seanet PRIVATE
     Catch2::Catch2WithMain
-    ggml ggml-base crispasr_link_ggml_cpu
+    ggml ggml-base stelnettts_link_ggml_cpu
 )
 catch_discover_tests(test-core-seanet
     TEST_SPEC "[unit]"
@@ -4222,7 +4222,7 @@ target_include_directories(test-fastconv PRIVATE
 )
 target_link_libraries(test-fastconv PRIVATE
     Catch2::Catch2WithMain
-    ggml ggml-base crispasr_link_ggml_cpu
+    ggml ggml-base stelnettts_link_ggml_cpu
 )
 catch_discover_tests(test-fastconv
     TEST_SPEC "[unit]"
@@ -4231,7 +4231,7 @@ catch_discover_tests(test-fastconv
 
 # ─── cosyvoice3-hift-fastconv-ab — manual A/B harness (needs local GGUF models) ─
 # Drives the deterministic HiFT vocoder with fixed mel+noise so the
-# CRISPASR_COSYVOICE3_FASTCONV cast-kill can be byte-diffed ON vs OFF. Not a
+# STELNETTTS_COSYVOICE3_FASTCONV cast-kill can be byte-diffed ON vs OFF. Not a
 # ctest (requires cosyvoice3-{llm,hift} GGUFs); run manually. See
 # docs/perf-sweep/PLAN.md TODO-A.
 add_executable(cosyvoice3-hift-fastconv-ab cosyvoice3-hift-fastconv-ab.cpp)
@@ -4245,7 +4245,7 @@ target_link_libraries(cosyvoice3-hift-fastconv-ab PRIVATE
 
 # ─── cosyvoice3-flow-cfg-interval-ab — manual A/B harness (needs local GGUFs) ──
 # Drives the CFM Euler flow solver with fixed inputs so interval-CFG
-# (CRISPASR_COSYVOICE3_CFG_INTERVAL) can be A/B'd: K=1 byte-exact, K>1 vs K=1
+# (STELNETTTS_COSYVOICE3_CFG_INTERVAL) can be A/B'd: K=1 byte-exact, K>1 vs K=1
 # cosine. Not a ctest (requires cosyvoice3-{llm,flow} GGUFs). See PLAN.md TODO-2.
 add_executable(cosyvoice3-flow-cfg-interval-ab cosyvoice3-flow-cfg-interval-ab.cpp)
 target_include_directories(cosyvoice3-flow-cfg-interval-ab PRIVATE
@@ -4256,7 +4256,7 @@ target_link_libraries(cosyvoice3-flow-cfg-interval-ab PRIVATE
     chatterbox
 )
 
-# ─── test-audio-formats — Catch2 unit tests for crispasr_audio_load format coverage
+# ─── test-audio-formats — Catch2 unit tests for stelnettts_audio_load format coverage
 #
 # Validates AU (µ-law), AMR-NB, and WebM (Opus) decode against the WAV
 # reference (jfk.wav). Cross-correlation + length + energy checks. Pure CPU,
@@ -4269,7 +4269,7 @@ target_include_directories(test-audio-formats PRIVATE
 )
 target_link_libraries(test-audio-formats PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 target_compile_definitions(test-audio-formats PRIVATE
     SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
@@ -4297,10 +4297,10 @@ catch_discover_tests(test-audio-chunking
     PROPERTIES LABELS "unit;chunking"
 )
 
-# ─── test_slice_timestamps — Catch2 unit tests for crispasr_fixed_chunk_slices
+# ─── test_slice_timestamps — Catch2 unit tests for stelnettts_fixed_chunk_slices
 # t0_cs / t1_cs timestamp math.  Pins the invariant that PR #96 depends on:
 # each slice's t0_cs = start_sample / SR * 100, with no gaps between adjacent
-# slices.  Links libcrispasr for crispasr_fixed_chunk_slices.  Pure CPU, no
+# slices.  Links libstelnettts for stelnettts_fixed_chunk_slices.  Pure CPU, no
 # model load.
 add_executable(test_slice_timestamps
     test_slice_timestamps.cpp
@@ -4310,36 +4310,36 @@ target_include_directories(test_slice_timestamps PRIVATE
 )
 target_link_libraries(test_slice_timestamps PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test_slice_timestamps
     TEST_SPEC "[unit]"
     PROPERTIES LABELS "unit;slice-ts"
 )
 
-# ─── test_qwen3_audio_tower — pre - refactor numeric baseline for the audio
+# ─── test_cielvox2_audio_tower — pre - refactor numeric baseline for the audio
 #tower.Captures sum / sum_sq / max_abs + first - 32 / last - 32 windows on the encoder
 #output for a fixed PCM(jfk.raw) so that extracting the audio tower into the
 #CrispAudio shared library is verifiably non - disruptive.CPU - only — output
 #must be deterministic across machines.
-add_executable(test_qwen3_audio_tower test_qwen3_audio_tower.cpp)
-target_include_directories(test_qwen3_audio_tower PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test_qwen3_audio_tower PRIVATE qwen3_asr)
+add_executable(test_cielvox2_audio_tower test_cielvox2_audio_tower.cpp)
+target_include_directories(test_cielvox2_audio_tower PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(test_cielvox2_audio_tower PRIVATE cielvox2_asr)
 
-# ─── test_qwen3_tts_talker — sanity check the Qwen3 - TTS talker forward.
+# ─── test_cielvox2_tts_talker — sanity check the Qwen3 - TTS talker forward.
 #Not auto - registered with add_test — needs a real GGUF on disk.
-add_executable(test_qwen3_tts_talker test_qwen3_tts_talker.cpp)
-target_include_directories(test_qwen3_tts_talker PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test_qwen3_tts_talker PRIVATE qwen3_tts)
+add_executable(test_cielvox2_tts_talker test_cielvox2_tts_talker.cpp)
+target_include_directories(test_cielvox2_tts_talker PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(test_cielvox2_tts_talker PRIVATE cielvox2_tts)
 #Not auto - registered with add_test — needs a model file + jfk.raw which the
 #test runner / dev produces locally.Run manually:
-#./ build / tests / test_qwen3_audio_tower model.gguf samples / jfk.raw #> tests / fixtures / qwen3_audio_tower_jfk.txt
-#./ build / tests / test_qwen3_audio_tower -- check model.gguf samples / jfk.raw
-#> tests / fixtures / qwen3_audio_tower_jfk.txt
+#./ build / tests / test_cielvox2_audio_tower model.gguf samples / jfk.raw #> tests / fixtures / cielvox2_audio_tower_jfk.txt
+#./ build / tests / test_cielvox2_audio_tower -- check model.gguf samples / jfk.raw
+#> tests / fixtures / cielvox2_audio_tower_jfk.txt
 
-# ─── test-chat-ggml — end-to-end smoke for the crispasr_chat_* C ABI
+# ─── test-chat-ggml — end-to-end smoke for the stelnettts_chat_* C ABI
 #
-# Loads a small GGUF chat model (env CRISPASR_CHAT_TEST_MODEL → path) and
+# Loads a small GGUF chat model (env STELNETTTS_CHAT_TEST_MODEL → path) and
 # verifies open / generate (one-shot) / generate_stream / reset / close,
 # prefill of a prompt longer than the prompt batch, token counting
 # against the prompt a prefill really decodes, and reuse of the KV cache
@@ -4348,7 +4348,7 @@ target_link_libraries(test_qwen3_tts_talker PRIVATE qwen3_tts)
 add_executable(test-chat-ggml test-chat-ggml.cpp)
 target_link_libraries(test-chat-ggml PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-chat-ggml
     TEST_SPEC "[chat]"
@@ -4358,17 +4358,17 @@ catch_discover_tests(test-chat-ggml
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-# ─── test-chat-abort — cancellation over the crispasr_chat_* C ABI
+# ─── test-chat-abort — cancellation over the stelnettts_chat_* C ABI
 #
-# Loads the same GGUF chat model (env CRISPASR_CHAT_TEST_MODEL → path) and
-# verifies crispasr_chat_set_abort_callback: the abort code and partial
+# Loads the same GGUF chat model (env STELNETTTS_CHAT_TEST_MODEL → path) and
+# verifies stelnettts_chat_set_abort_callback: the abort code and partial
 # output on both generate paths, clearing with NULL, reuse after an abort,
 # a NULL session, and an abort between prompt batches.
 # Skipped when the env var is unset so unrelated builds stay green.
 add_executable(test-chat-abort test-chat-abort.cpp)
 target_link_libraries(test-chat-abort PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-chat-abort
     TEST_SPEC "[chat]"
@@ -4380,8 +4380,8 @@ catch_discover_tests(test-chat-abort
 
 # ─── test-chat-close — session teardown under load
 #
-# Loads the same GGUF chat model (env CRISPASR_CHAT_TEST_MODEL → path) and
-# verifies crispasr_chat_close against a generation in flight: that it waits
+# Loads the same GGUF chat model (env STELNETTTS_CHAT_TEST_MODEL → path) and
+# verifies stelnettts_chat_close against a generation in flight: that it waits
 # for the running call rather than freeing under it, that a call arriving
 # after the retirement is declined rather than run, and that the accessors
 # answer a retiring session the way they answer a NULL one. Threads, because
@@ -4391,7 +4391,7 @@ find_package(Threads REQUIRED)
 add_executable(test-chat-close test-chat-close.cpp)
 target_link_libraries(test-chat-close PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
     Threads::Threads
 )
 catch_discover_tests(test-chat-close
@@ -4413,8 +4413,8 @@ if(APPLE AND TARGET ggml-metal)
     target_link_libraries(test_metal_norm_repro PRIVATE
         ggml
         ggml-base
-        crispasr_link_ggml_cpu
-        crispasr_link_ggml_metal
+        stelnettts_link_ggml_cpu
+        stelnettts_link_ggml_metal
     )
     # T values that triggered the original bug; each must return rc=0.
     foreach(T 33 65 66 67 97 129 130 131 132 257)
@@ -4439,7 +4439,7 @@ endif()
 # ─── test_ggml_audio_ops_backend — carried ggml audio-op backend patches ─────
 #
 # These run conv_transpose_1d and col2im_1d directly on a single GPU backend
-# without a CPU fallback scheduler. They catch ggml bumps that drop CrispASR's
+# without a CPU fallback scheduler. They catch ggml bumps that drop StelnetTTS's
 # backend kernels or dtype support for audio codec/vocoder paths.
 #
 # Not built under GGML_BACKEND_DL. Unlike the rest of the tree these call
@@ -4459,7 +4459,7 @@ function(add_ggml_audio_ops_backend_test TEST_TARGET BACKEND_DEF BACKEND_TARGET)
     target_link_libraries(${TEST_TARGET} PRIVATE
         ggml
         ggml-base
-        crispasr_link_ggml_cpu
+        stelnettts_link_ggml_cpu
         ${BACKEND_TARGET}
     )
     add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
@@ -4471,27 +4471,27 @@ endfunction()
 
 if(APPLE AND TARGET ggml-metal)
     add_ggml_audio_ops_backend_test(test_ggml_audio_ops_metal
-        "CRISPASR_TEST_BACKEND_METAL;CRISPASR_TEST_COL2IM_F16"
+        "STELNETTTS_TEST_BACKEND_METAL;STELNETTTS_TEST_COL2IM_F16"
         ggml-metal)
     set_tests_properties(test_ggml_audio_ops_metal PROPERTIES LABELS "unit;ggml;backend;metal")
 endif()
 
 if(TARGET ggml-vulkan)
     add_ggml_audio_ops_backend_test(test_ggml_audio_ops_vulkan
-        CRISPASR_TEST_BACKEND_VULKAN
+        STELNETTTS_TEST_BACKEND_VULKAN
         ggml-vulkan)
     set_tests_properties(test_ggml_audio_ops_vulkan PROPERTIES LABELS "unit;ggml;backend;vulkan")
 endif()
 
 if(TARGET ggml-cuda)
     add_ggml_audio_ops_backend_test(test_ggml_audio_ops_cuda
-        "CRISPASR_TEST_BACKEND_CUDA;CRISPASR_TEST_COL2IM_F16"
+        "STELNETTTS_TEST_BACKEND_CUDA;STELNETTTS_TEST_COL2IM_F16"
         ggml-cuda)
     set_tests_properties(test_ggml_audio_ops_cuda PROPERTIES LABELS "unit;ggml;backend;cuda")
 endif()
 endif() # NOT GGML_BACKEND_DL
 
-# ─── test - backends — integration tests for all CrispASR backends ────────────
+# ─── test - backends — integration tests for all StelnetTTS backends ────────────
 #Requires network(downloads models).Not run in CI by default.
 #Usage : ctest - L integration-- output - on - failure
 #Or :./ tests / test - backends.sh[backend...]
@@ -4638,10 +4638,10 @@ catch_discover_tests(test-espeak-phonemize
 
 # ─── test-piper-roundtrip — live TTS→ASR integration test ───────────────────
 # Synthesizes text with piper, transcribes with whisper, checks output.
-if(TARGET crispasr-cli)
+if(TARGET stelnettts-cli)
 add_test(NAME test-piper-roundtrip
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-piper-roundtrip.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(test-piper-roundtrip PROPERTIES
     LABELS "live;tts;piper;espeak;roundtrip"
@@ -4650,10 +4650,10 @@ endif()
 
 # ─── test-speaker-id-live — live test: consent gate (--speaker-db-consent) +
 # session-scoped --diarize-speakers. SKIPs cleanly without audio/models. ──────
-if(TARGET crispasr-cli)
+if(TARGET stelnettts-cli)
 add_test(NAME test-speaker-id-live
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-speaker-id-live.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(test-speaker-id-live PROPERTIES
     LABELS "live;diarize;speaker"
@@ -4662,10 +4662,10 @@ endif()
 
 # ─── test-tiron-live — live test (#295): tiron decode grammar emits per-window
 # <|speakerN|> markers + cross-window linker → SPEAKER_NN. SKIPs without model. ─
-if(TARGET crispasr-cli)
+if(TARGET stelnettts-cli)
 add_test(NAME test-tiron-live
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-tiron-live.sh
-            $<TARGET_FILE:crispasr-cli>
+            $<TARGET_FILE:stelnettts-cli>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(test-tiron-live PROPERTIES
     LABELS "live;diarize;tiron;asr"
@@ -4674,7 +4674,7 @@ endif()
 
 # ─── test-surface-parity — cross-surface parity harness (improvements Phase 0):
 # CLI adapter vs session C-ABI produce the same transcription. Skips unless a
-# parakeet model + libcrispasr shared lib + python are present.
+# parakeet model + libstelnettts shared lib + python are present.
 add_test(NAME test-surface-parity
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-surface-parity.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
@@ -4715,7 +4715,7 @@ set_tests_properties(test-bundle-linux-runtime PROPERTIES
     SKIP_RETURN_CODE 77
     TIMEOUT 120)
 
-# ─── test-package-lib-bundle — the libcrispasr bundle packager (#341). Its own
+# ─── test-package-lib-bundle — the libstelnettts bundle packager (#341). Its own
 # verifier gates INTRA-bundle resolvability only, and its dlopen tolerance
 # exits 0 on the first externally-provided soname, so a dependency missing from
 # the bundle entirely was never a question anyone posed. This asks it.
@@ -4747,12 +4747,12 @@ catch_discover_tests(test-wyoming-proto
     TEST_SPEC "[unit]"
     PROPERTIES LABELS "unit;wyoming")
 
-# ─── test-crispasr-speaker-resample — Catch2 unit tests for the pre-resample
-# math inside crispasr_speaker_play(): upsample/downsample, mono expansion,
+# ─── test-stelnettts-speaker-resample — Catch2 unit tests for the pre-resample
+# math inside stelnettts_speaker_play(): upsample/downsample, mono expansion,
 # stereo mix-down, DC preservation. No audio device or model needed.
-add_executable(test-crispasr-speaker-resample test-crispasr-speaker-resample.cpp)
-target_link_libraries(test-crispasr-speaker-resample PRIVATE Catch2::Catch2WithMain)
-catch_discover_tests(test-crispasr-speaker-resample
+add_executable(test-stelnettts-speaker-resample test-stelnettts-speaker-resample.cpp)
+target_link_libraries(test-stelnettts-speaker-resample PRIVATE Catch2::Catch2WithMain)
+catch_discover_tests(test-stelnettts-speaker-resample
     TEST_SPEC "[unit]"
     PROPERTIES LABELS "unit;speaker")
 
@@ -4768,7 +4768,7 @@ set_tests_properties(test-server-wyoming PROPERTIES
     TIMEOUT 300)
 
 # ─── test-wyoming-marking — live: EU AI Act Art. 50 on the Wyoming surface.
-# The policy lives in crispasr_marking::decide_raw_surface() and is unit-tested
+# The policy lives in stelnettts_marking::decide_raw_surface() and is unit-tested
 # in test-marking-policy; this pins what a unit test cannot reach — that the
 # synthesize handler actually CALLS it. The original bug was a missing call
 # site, which a green policy test would never have caught. Needs a kokoro GGUF;
@@ -4782,7 +4782,7 @@ set_tests_properties(test-wyoming-marking PROPERTIES
 
 # ─── test-server-tts — live: /v1/audio/speech + /v1/voices smoke, incl. the
 # PR #177 streaming path (stream=true per-chunk PCM, mp3 rejection, log marker).
-# Needs a qwen3-tts CustomVoice GGUF + tokenizer (set CRISPASR_MODELS); SKIPs
+# Needs a cielvox2-tts CustomVoice GGUF + tokenizer (set STELNETTTS_MODELS); SKIPs
 # (exit 0) otherwise.
 add_test(NAME test-server-tts
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-server-tts.sh
@@ -4793,34 +4793,34 @@ set_tests_properties(test-server-tts PROPERTIES
 
 # ─── test-server-stream-resilience — live: the detached streaming-TTS worker
 # must not crash the server on an exception. Forces a worker throw
-# (CRISPASR_TEST_STREAM_THROW=1 + magic input) and asserts the server survives +
-# keeps serving. Auto-discovers a qwen3-tts GGUF; SKIPs otherwise.
+# (STELNETTTS_TEST_STREAM_THROW=1 + magic input) and asserts the server survives +
+# keeps serving. Auto-discovers a cielvox2-tts GGUF; SKIPs otherwise.
 add_test(NAME test-server-stream-resilience
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-server-stream-resilience.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(test-server-stream-resilience PROPERTIES
-    LABELS "live;server;tts;qwen3-tts"
+    LABELS "live;server;tts;cielvox2-tts"
     TIMEOUT 400)
 
-# ─── test-qwen3-tts-codes-determinism — live: CLI whole-clip synthesis gates.
+# ─── test-cielvox2-tts-codes-determinism — live: CLI whole-clip synthesis gates.
 # (1) two identical --tts runs are bit-identical (guards the shared talker AR
-# loop / streaming dedup); (2) QWEN3_TTS_O15=1 is byte-identical to O15=0
-# (guards #56). Auto-discovers a qwen3-tts GGUF; SKIPs (exit 0) otherwise.
-add_test(NAME test-qwen3-tts-codes-determinism
-    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-qwen3-tts-codes-determinism.sh
+# loop / streaming dedup); (2) CIELVOX2_TTS_O15=1 is byte-identical to O15=0
+# (guards #56). Auto-discovers a cielvox2-tts GGUF; SKIPs (exit 0) otherwise.
+add_test(NAME test-cielvox2-tts-codes-determinism
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-cielvox2-tts-codes-determinism.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-set_tests_properties(test-qwen3-tts-codes-determinism PROPERTIES
-    LABELS "live;tts;qwen3-tts;determinism"
+set_tests_properties(test-cielvox2-tts-codes-determinism PROPERTIES
+    LABELS "live;tts;cielvox2-tts;determinism"
     TIMEOUT 300)
 
-# ─── test-qwen3-tts-seed-live — live: server-side seed determinism on
+# ─── test-cielvox2-tts-seed-live — live: server-side seed determinism on
 # /v1/audio/speech (same request seed → bit-identical WAV; different seed →
-# different). Needs CRISPASR_TEST_QWEN3_TTS_MODEL/CODEC (CustomVoice); SKIPs.
-add_test(NAME test-qwen3-tts-seed-live
-    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-qwen3-tts-seed-live.sh
+# different). Needs STELNETTTS_TEST_CIELVOX2_TTS_MODEL/CODEC (CustomVoice); SKIPs.
+add_test(NAME test-cielvox2-tts-seed-live
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-cielvox2-tts-seed-live.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-set_tests_properties(test-qwen3-tts-seed-live PROPERTIES
-    LABELS "live;server;tts;qwen3-tts;determinism"
+set_tests_properties(test-cielvox2-tts-seed-live PROPERTIES
+    LABELS "live;server;tts;cielvox2-tts;determinism"
     TIMEOUT 300)
 
 # ─── test-omnivoice-style-tokens — live: prompt-token parity (#13273). The unit
@@ -4852,7 +4852,7 @@ set_tests_properties(test-omnivoice-surface-parity PROPERTIES
 # ─── test-omnivoice-seed — live: #281 seed determinism at the AR codes stage.
 # Same seed → byte-identical omnivoice_synthesize_codes output; different seed →
 # different. Text→codes only (no DAC decode), so cheap. SKIPs (exit 0) without
-# CRISPASR_TEST_OMNIVOICE_MODEL.
+# STELNETTTS_TEST_OMNIVOICE_MODEL.
 add_executable(test-omnivoice-seed
     test-omnivoice-seed.cpp
 )
@@ -4870,7 +4870,7 @@ set_tests_properties(test-omnivoice-seed PROPERTIES
     TIMEOUT 600)
 
 # ─── test-separate-live — §248 source separation smoke test. SKIPs cleanly
-# without a mel-band-roformer model (CRISPASR_MBR_MODEL / CRISPASR_MODELS_DIR).
+# without a mel-band-roformer model (STELNETTTS_MBR_MODEL / STELNETTTS_MODELS_DIR).
 add_test(NAME test-separate-live
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test-separate-live.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
@@ -4906,7 +4906,7 @@ endif()
 # Pure functions, no backend dependency.
 add_executable(test_diarized_json
     test_diarized_json.cpp
-    ${PROJECT_SOURCE_DIR}/examples/cli/crispasr_output.cpp
+    ${PROJECT_SOURCE_DIR}/examples/cli/stelnettts_output.cpp
 )
 target_include_directories(test_diarized_json PRIVATE
     ${PROJECT_SOURCE_DIR}/examples/cli
@@ -4940,42 +4940,42 @@ set_tests_properties(test-granite-maxlen PROPERTIES
     LABELS "live;granite;max-len"
     TIMEOUT 300)
 
-# ─── libFuzzer harness over crispasr_audio_load (opt-in, clang only) ─────────
-# Build: cmake -B build-fuzz -DCRISPASR_FUZZ=ON -DCRISPASR_SANITIZE_ADDRESS=ON \
-#          -DCRISPASR_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-#        cmake --build build-fuzz --target crispasr-fuzz-audio
-# Run:   ./build-fuzz/bin/crispasr-fuzz-audio -max_len=65536 tests/fuzz/corpus
-if (CRISPASR_FUZZ)
-    add_executable(crispasr-fuzz-audio fuzz/fuzz_audio_load.cpp)
-    target_link_libraries(crispasr-fuzz-audio PRIVATE crispasr-lib)
-    target_compile_options(crispasr-fuzz-audio PRIVATE -fsanitize=fuzzer)
-    target_link_options(crispasr-fuzz-audio PRIVATE -fsanitize=fuzzer)
+# ─── libFuzzer harness over stelnettts_audio_load (opt-in, clang only) ─────────
+# Build: cmake -B build-fuzz -DSTELNETTTS_FUZZ=ON -DSTELNETTTS_SANITIZE_ADDRESS=ON \
+#          -DSTELNETTTS_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+#        cmake --build build-fuzz --target stelnettts-fuzz-audio
+# Run:   ./build-fuzz/bin/stelnettts-fuzz-audio -max_len=65536 tests/fuzz/corpus
+if (STELNETTTS_FUZZ)
+    add_executable(stelnettts-fuzz-audio fuzz/fuzz_audio_load.cpp)
+    target_link_libraries(stelnettts-fuzz-audio PRIVATE stelnettts-lib)
+    target_compile_options(stelnettts-fuzz-audio PRIVATE -fsanitize=fuzzer)
+    target_link_options(stelnettts-fuzz-audio PRIVATE -fsanitize=fuzzer)
 
     # GGUF metadata parser harness (seed from a real .gguf — see tests/fuzz/README).
-    add_executable(crispasr-fuzz-gguf fuzz/fuzz_gguf_meta.cpp)
-    target_include_directories(crispasr-fuzz-gguf PRIVATE ${PROJECT_SOURCE_DIR}/src)
-    target_link_libraries(crispasr-fuzz-gguf PRIVATE crispasr-lib)
-    target_compile_options(crispasr-fuzz-gguf PRIVATE -fsanitize=fuzzer)
-    target_link_options(crispasr-fuzz-gguf PRIVATE -fsanitize=fuzzer)
+    add_executable(stelnettts-fuzz-gguf fuzz/fuzz_gguf_meta.cpp)
+    target_include_directories(stelnettts-fuzz-gguf PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    target_link_libraries(stelnettts-fuzz-gguf PRIVATE stelnettts-lib)
+    target_compile_options(stelnettts-fuzz-gguf PRIVATE -fsanitize=fuzzer)
+    target_link_options(stelnettts-fuzz-gguf PRIVATE -fsanitize=fuzzer)
 
     # Text tokenizer harness — core_bpe + core_wordpiece over untrusted
     # prompt / reference-text strings (header-only; needs the ggml headers
     # transitively via src include path).
-    add_executable(crispasr-fuzz-tokenizer fuzz/fuzz_tokenizer.cpp)
-    target_include_directories(crispasr-fuzz-tokenizer PRIVATE ${PROJECT_SOURCE_DIR}/src)
-    target_link_libraries(crispasr-fuzz-tokenizer PRIVATE crispasr-lib)
-    target_compile_options(crispasr-fuzz-tokenizer PRIVATE -fsanitize=fuzzer)
-    target_link_options(crispasr-fuzz-tokenizer PRIVATE -fsanitize=fuzzer)
+    add_executable(stelnettts-fuzz-tokenizer fuzz/fuzz_tokenizer.cpp)
+    target_include_directories(stelnettts-fuzz-tokenizer PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    target_link_libraries(stelnettts-fuzz-tokenizer PRIVATE stelnettts-lib)
+    target_compile_options(stelnettts-fuzz-tokenizer PRIVATE -fsanitize=fuzzer)
+    target_link_options(stelnettts-fuzz-tokenizer PRIVATE -fsanitize=fuzzer)
 endif()
 
 # ─── test-arch-backend-map — general.architecture → backend table (hermetic, unit)
 # Guards issue #335: the C ABI and the CLI each had their own copy of this map
 # and they drifted, so Session::open() could not open models the CLI could.
-# Links crispasr-lib to drive the real `crispasr_detect_backend_from_gguf`
+# Links stelnettts-lib to drive the real `stelnettts_detect_backend_from_gguf`
 # export over a synthesised metadata-only GGUF — no model files.
 add_executable(test-arch-backend-map test-arch-backend-map.cpp)
 target_include_directories(test-arch-backend-map PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(test-arch-backend-map PRIVATE Catch2::Catch2WithMain crispasr-lib)
+target_link_libraries(test-arch-backend-map PRIVATE Catch2::Catch2WithMain stelnettts-lib)
 catch_discover_tests(test-arch-backend-map
     TEST_SPEC "[arch-map]"
     PROPERTIES
@@ -5035,7 +5035,7 @@ catch_discover_tests(test-tts-lang
 add_executable(test-omnivoice-lang test-omnivoice-lang.cpp)
 target_include_directories(test-omnivoice-lang PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_compile_definitions(test-omnivoice-lang PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-omnivoice-lang PRIVATE Catch2::Catch2WithMain)
 catch_discover_tests(test-omnivoice-lang
@@ -5053,7 +5053,7 @@ catch_discover_tests(test-omnivoice-lang
 add_executable(test-omnivoice-instruct test-omnivoice-instruct.cpp)
 target_include_directories(test-omnivoice-instruct PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_compile_definitions(test-omnivoice-instruct PRIVATE
-    CRISPASR_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    STELNETTTS_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 target_link_libraries(test-omnivoice-instruct PRIVATE Catch2::Catch2WithMain)
 catch_discover_tests(test-omnivoice-instruct
@@ -5084,7 +5084,7 @@ target_include_directories(test-rvc-svc PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/include
 )
-target_link_libraries(test-rvc-svc PRIVATE Catch2::Catch2WithMain crispasr-lib)
+target_link_libraries(test-rvc-svc PRIVATE Catch2::Catch2WithMain stelnettts-lib)
 catch_discover_tests(test-rvc-svc
     TEST_SPEC "[rvc]"
     PROPERTIES
@@ -5104,7 +5104,7 @@ target_include_directories(test-tabcnn PRIVATE
 )
 target_link_libraries(test-tabcnn PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-tabcnn
     TEST_SPEC "[tabcnn]"
@@ -5125,7 +5125,7 @@ target_include_directories(test-btc-chords PRIVATE
 )
 target_link_libraries(test-btc-chords PRIVATE
     Catch2::Catch2WithMain
-    crispasr-lib
+    stelnettts-lib
 )
 catch_discover_tests(test-btc-chords
     TEST_SPEC "[btc-chords]"

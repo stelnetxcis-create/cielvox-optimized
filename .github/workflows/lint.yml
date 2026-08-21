@@ -50,12 +50,12 @@ on:
       - 'scripts/sync-version.py'
       - 'scripts/bump-version.sh'
       - 'python/pyproject.toml'
-      - 'python/crispasr/__init__.py'
-      - 'flutter/crispasr/pubspec.yaml'
-      - 'flutter/crispasr/CHANGELOG.md'
+      - 'python/stelnettts/__init__.py'
+      - 'flutter/stelnettts/pubspec.yaml'
+      - 'flutter/stelnettts/CHANGELOG.md'
       - 'bindings/javascript/package.json'
-      - 'crispasr/Cargo.toml'
-      - 'crispasr-sys/Cargo.toml'
+      - 'stelnettts/Cargo.toml'
+      - 'stelnettts-sys/Cargo.toml'
       # kaggle_harness bundled-copy sync. Without these the job could only ever
       # fire incidentally, on some unrelated .cpp push: editing the canonical
       # harness did not trigger it (so drift went unnoticed — 6503430b sat
@@ -67,11 +67,11 @@ on:
       - 'tools/check-kaggle-harness-sync.py'
       # chat ABI binding coverage — the guarded files, so the check runs on the
       # commits that can break it rather than incidentally on an unrelated .cpp.
-      - 'include/crispasr_chat.h'
-      - 'python/crispasr/_binding.py'
+      - 'include/stelnettts_chat.h'
+      - 'python/stelnettts/_binding.py'
       - 'bindings/go/chat.go'
-      - 'crispasr-sys/src/lib.rs'
-      - 'flutter/crispasr/lib/src/chat.dart'
+      - 'stelnettts-sys/src/lib.rs'
+      - 'flutter/stelnettts/lib/src/chat.dart'
       - 'bindings/java/src/main/java/io/github/ggerganov/whispercpp/chat/**'
       - 'tools/check-chat-binding-coverage.py'
       - 'tools/check-doc-anchors.py'
@@ -104,10 +104,10 @@ on:
       # commit that only DELETES a symbol from one binding touches no .h at
       # all — and that is precisely the drift this guards. A guard that cannot
       # run on the commits it exists to guard is not a guard.
-      - 'python/crispasr/_binding.py'
+      - 'python/stelnettts/_binding.py'
       - 'bindings/go/chat.go'
-      - 'crispasr-sys/src/lib.rs'
-      - 'flutter/crispasr/lib/src/chat.dart'
+      - 'stelnettts-sys/src/lib.rs'
+      - 'flutter/stelnettts/lib/src/chat.dart'
       - 'bindings/java/src/main/java/io/github/ggerganov/whispercpp/chat/**'
       - 'tools/check-chat-binding-coverage.py'
       - 'tools/check-doc-anchors.py'
@@ -135,12 +135,12 @@ on:
       - 'scripts/sync-version.py'
       - 'scripts/bump-version.sh'
       - 'python/pyproject.toml'
-      - 'python/crispasr/__init__.py'
-      - 'flutter/crispasr/pubspec.yaml'
-      - 'flutter/crispasr/CHANGELOG.md'
+      - 'python/stelnettts/__init__.py'
+      - 'flutter/stelnettts/pubspec.yaml'
+      - 'flutter/stelnettts/CHANGELOG.md'
       - 'bindings/javascript/package.json'
-      - 'crispasr/Cargo.toml'
-      - 'crispasr-sys/Cargo.toml'
+      - 'stelnettts/Cargo.toml'
+      - 'stelnettts-sys/Cargo.toml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -224,14 +224,14 @@ jobs:
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
             -G Ninja \
-            -DCRISPASR_BUILD_TESTS=OFF \
-            -DCRISPASR_BUILD_EXAMPLES=ON
+            -DSTELNETTTS_BUILD_TESTS=OFF \
+            -DSTELNETTTS_BUILD_EXAMPLES=ON
 
       - name: Build (clang-tidy fires on each TU)
         # tee the output so the full tidy log is visible in the Actions UI even
         # when the build succeeds; the step fails if cmake --build exits non-zero.
         run: |
-          cmake --build build-tidy --target crispasr-lib 2>&1 | tee tidy.log
+          cmake --build build-tidy --target stelnettts-lib 2>&1 | tee tidy.log
           grep -q 'warning:' tidy.log && echo "::warning::clang-tidy warnings found" || true
 
   # ---------------------------------------------------------------------------
@@ -356,7 +356,7 @@ jobs:
         run: python tools/check-cpu-backend-include.py
 
   # #342 asks for the three Windows CUDA runtime DLLs as separate downloads, so
-  # a release that only changed CrispASR does not force everyone to re-fetch
+  # a release that only changed StelnetTTS does not force everyone to re-fetch
   # them. It was implemented for the CLI package and missed on the dev-lib one —
   # which at 874 MB is the largest asset we publish, i.e. exactly the download
   # the request is about. Two surfaces, one fixed, no way to notice. release.yml
@@ -375,7 +375,7 @@ jobs:
       - name: Every CUDA-bundling job also ships a split archive
         run: python tools/check-cuda-split-packaging.py
 
-  # include/crispasr_chat.h is hand-mirrored into five languages and CI compiles
+  # include/stelnettts_chat.h is hand-mirrored into five languages and CI compiles
   # one of them: bindings-go.yml is the only binding workflow reaching the chat
   # surface, bindings/java is built only by build.yml (PR filter: ggml /
   # .gitmodules), and there is no PR-time cargo, dart or Java job. So an entry
@@ -419,7 +419,7 @@ jobs:
 
   # Release tooling only ever ran at release time, so its bugs stayed invisible
   # until a release was half-published: v0.8.24 was first tagged with
-  # crispasr.__version__ still reading 0.8.23 (bump-version.sh's staged file list
+  # stelnettts.__version__ still reading 0.8.23 (bump-version.sh's staged file list
   # had drifted from sync-version.py), and 0.8.23 never reached pub.dev at all
   # because the Flutter CHANGELOG lacked its version. Both are now a red check on
   # the commit that causes them. No network, no models — a few seconds.

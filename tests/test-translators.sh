@@ -12,11 +12,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="./build/bin/crispasr"
+CRISPASR="./build/bin/stelnettts"
 SAMPLE_EN="./samples/jfk.wav"
 SAMPLE_JA="./samples/ja/jsut_water_3s.wav"
-TMPDIR=$(mktemp -d -t crispasr-translators.XXXXXX)
-GEMMA_CACHE="$HOME/.cache/crispasr/test-translators-gemma"
+TMPDIR=$(mktemp -d -t stelnettts-translators.XXXXXX)
+GEMMA_CACHE="$HOME/.cache/stelnettts/test-translators-gemma"
 trap 'rm -rf "$TMPDIR"' EXIT
 
 if [ ! -x "$CRISPASR" ]; then
@@ -143,7 +143,7 @@ run_lid() {
     fi
 }
 
-echo "CrispASR translator smoke tests"
+echo "StelnetTTS translator smoke tests"
 echo "==============================="
 
 run_text_translate m2m100 en de "good morning" "gute"

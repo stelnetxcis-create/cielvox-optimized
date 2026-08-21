@@ -8,10 +8,10 @@ Two modes:
 `--check` exists because this tooling only ever ran at release time, so its bugs
 stayed invisible until a release was already half-published. Two real ones:
 
-  * `python/crispasr/__init__.py` was added here but not to bump-version.sh's
-    staged file list, so v0.8.24 was first tagged with `crispasr.__version__`
+  * `python/stelnettts/__init__.py` was added here but not to bump-version.sh's
+    staged file list, so v0.8.24 was first tagged with `stelnettts.__version__`
     reading 0.8.23 while the wheel metadata said 0.8.24.
-  * `flutter/crispasr/CHANGELOG.md` is not touched by either script, and pub.dev
+  * `flutter/stelnettts/CHANGELOG.md` is not touched by either script, and pub.dev
     DRY-RUN-FAILS a publish whose changelog lacks the version being published —
     which is why 0.8.23 never reached pub.dev at all.
 
@@ -68,7 +68,7 @@ def check_flutter_changelog(version):
     bump-version.sh does not touch this file, so it silently falls behind and the
     failure only surfaces at `dart pub publish` — after the tag exists.
     """
-    path = 'flutter/crispasr/CHANGELOG.md'
+    path = 'flutter/stelnettts/CHANGELOG.md'
     if not os.path.exists(path):
         return []
     with open(path, encoding='utf-8') as f:
@@ -84,12 +84,12 @@ def run(version, check):
     problems = []
 
     # Rust
-    problems += update_file('crispasr/Cargo.toml', [
+    problems += update_file('stelnettts/Cargo.toml', [
         (r'^version = "[^"]+"', 'version = "{version}"'),
-        (r'crispasr-sys = \{ path = "\.\./crispasr-sys", version = "[^"]+" \}',
-         'crispasr-sys = { path = "../crispasr-sys", version = "{version}" }')
+        (r'stelnettts-sys = \{ path = "\.\./stelnettts-sys", version = "[^"]+" \}',
+         'stelnettts-sys = { path = "../stelnettts-sys", version = "{version}" }')
     ], version, check)
-    problems += update_file('crispasr-sys/Cargo.toml', [
+    problems += update_file('stelnettts-sys/Cargo.toml', [
         (r'^version = "[^"]+"', 'version = "{version}"')
     ], version, check)
 
@@ -98,14 +98,14 @@ def run(version, check):
         (r'^version = "[^"]+"', 'version = "{version}"')
     ], version, check)
     # The package __version__ is hand-maintained (not read from pyproject at
-    # runtime), so keep it in lockstep too — otherwise `crispasr.__version__`
+    # runtime), so keep it in lockstep too — otherwise `stelnettts.__version__`
     # drifts from the published wheel version.
-    problems += update_file('python/crispasr/__init__.py', [
+    problems += update_file('python/stelnettts/__init__.py', [
         (r'^__version__ = "[^"]+"', '__version__ = "{version}"')
     ], version, check)
 
     # Dart/Flutter
-    problems += update_file('flutter/crispasr/pubspec.yaml', [
+    problems += update_file('flutter/stelnettts/pubspec.yaml', [
         (r'^version: [^\n]+', 'version: {version}')
     ], version, check)
 

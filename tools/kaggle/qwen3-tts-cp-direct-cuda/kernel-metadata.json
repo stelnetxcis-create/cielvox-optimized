@@ -1,13 +1,13 @@
 {
-  "id": "chr1s4/crispasr-qwen3-cp-direct-cuda",
-  "title": "crispasr-qwen3-cp-direct-cuda",
-  "code_file": "crispasr-qwen3-tts-cp-direct-cuda.py",
+  "id": "chr1s4/stelnettts-qwen3-cp-direct-cuda",
+  "title": "stelnettts-qwen3-cp-direct-cuda",
+  "code_file": "stelnettts-cielvox2-tts-cp-direct-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1s4/crispasr-hf-token", "chr1s4/crispasr-ccache"],
+  "dataset_sources": ["chr1s4/stelnettts-hf-token", "chr1s4/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

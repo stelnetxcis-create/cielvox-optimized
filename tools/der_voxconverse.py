@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score a CrispASR diarization arm against VoxConverse dev reference labels.
+"""Score a StelnetTTS diarization arm against VoxConverse dev reference labels.
 
 The driver behind the DER table in PLAN.md "#326". `der_score.py` is the metric;
 this is the harness that produces the hypothesis: run the CLI once per file,
@@ -17,7 +17,7 @@ extracted `<stem>.wav` + `<stem>.ref.json` pairs.
 
     # score an arm
     python tools/der_voxconverse.py --audio-dir /tmp/vox \\
-        --bin build/bin/crispasr --model ggml-tiny.bin --cache-dir ~/.cache/crispasr \\
+        --bin build/bin/stelnettts --model ggml-tiny.bin --cache-dir ~/.cache/stelnettts \\
         --args "--diarize --diarize-method pyannote --diarize-embedder auto" \\
         --label baseline
 
@@ -90,7 +90,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--prepare", metavar="PARQUET_DIR")
     ap.add_argument("--audio-dir", required=True)
-    ap.add_argument("--bin", default="build/bin/crispasr")
+    ap.add_argument("--bin", default="build/bin/stelnettts")
     ap.add_argument("--model")
     ap.add_argument("--cache-dir")
     ap.add_argument("--args", default="", help="extra CLI args, one string")

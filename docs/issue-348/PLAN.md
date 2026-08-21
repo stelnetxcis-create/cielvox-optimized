@@ -12,9 +12,9 @@
   conditionals from the fixture voice rather than unrelated built-in conds.
 - [x] Verify `.safetensors` converter inputs tensor-for-tensor against the
   upstream `.pt` states; convert explicit V3 F16 T3 and S3Gen GGUFs.
-- [x] Quantize with `crispasr-quantize`; use staged F16/Q8/Q4 parity to set
+- [x] Quantize with `stelnettts-quantize`; use staged F16/Q8/Q4 parity to set
   precision carve-outs for sampling, CFM trajectory, and vocoder tensors.
-- [x] Dump a multilingual voice-clone `-ref.gguf`, run `crispasr-diff` from
+- [x] Dump a multilingual voice-clone `-ref.gguf`, run `stelnettts-diff` from
   front ends through AR tokens, CFM mel, vocoder stages, and PCM, and publish
   it under `chatterbox-v3/de-jfk/ref.gguf` in regression fixtures (fixture
   commit `7982e8dd8e0d53c344681335b00239773300a7aa`).
@@ -24,7 +24,7 @@
   files (model commit `c45504bb8d55473a2213db17ec472ed11b69056a`), and verify
   registry quant/companion substitution against the SSD cache.
 - [x] Repeat conversion/parity/live roundtrips with CUDA in the dedicated
-  `chr1str/crispasr-chatterbox-v3-issue-348-cuda-parity` Kaggle kernel,
+  `chr1str/stelnettts-chatterbox-v3-issue-348-cuda-parity` Kaggle kernel,
   preserving JSONL progress, logs, JSON summaries, and WAV artifacts.
 - [x] Rebase-merged PR #354 at `278e3fbf` after every required GitHub check
   passed; answer #348 with linked evidence.
@@ -35,7 +35,7 @@
   explicit ISO language ID through the multilingual tokenizer.
 - Every GGUF records the selected upstream checkpoint; generic fallback cannot
   silently replace V3 with V2 or pair V3 T3 with the retired V3 vocoder.
-- `crispasr-diff` reports both cosine and norm/scale checks. Quant acceptance is
+- `stelnettts-diff` reports both cosine and norm/scale checks. Quant acceptance is
   based on decoded output and roundtrip results, not cosine alone.
 - Cross-language cloning uses a real generated reference R, clone C, and
   baseline B: C is non-silent, ASR(C) preserves the target text, and speaker
@@ -48,7 +48,7 @@
 - Exact upstream state audit: S3Gen safetensors has 2,489/2,489 shared tensors
   byte-identical to `s3gen.pt`; its only omitted key is the upstream-declared
   non-persistent tokenizer window. VoiceEncoder has 16/16 exact tensors.
-- `crispasr-diff`, German/JFK reference, canonical Q4: **32 pass, 0 fail,
+- `stelnettts-diff`, German/JFK reference, canonical Q4: **32 pass, 0 fail,
   2 intentional skips**. T3 condition cosine/norm = 0.995116/0.9995; S3Gen
   encoder = 0.988826/0.9963; CFM mel = 0.994839/0.9775; isolated vocoder and
   PCM stages are effectively 1.0.
@@ -66,7 +66,7 @@
   assertions). Japanese Q4_K reproduced its documented TDT quantization
   failure (2/3 keyword occurrences), so it is not represented as a green TDT
   artifact; Q8_0 is the release-quality Japanese TDT control.
-- Kaggle P100/SM60 CUDA gate at exact CrispASR commit `ea3302ed`: the pinned
+- Kaggle P100/SM60 CUDA gate at exact StelnetTTS commit `ea3302ed`: the pinned
   converter and quantizer reproduced 313 T3 + 2,285 S3 tensor names, shapes,
   types and provenance; native CUDA diff against the published Python oracle
   passed **32/0/2**; all 23 supported languages emitted finite/non-silent

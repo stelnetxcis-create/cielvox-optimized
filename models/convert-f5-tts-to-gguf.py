@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert SWivid/F5-TTS safetensors + Vocos vocoder → GGUF for the CrispASR
+Convert SWivid/F5-TTS safetensors + Vocos vocoder → GGUF for the StelnetTTS
 `f5-tts` backend.
 
 F5-TTS pipeline:

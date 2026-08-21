@@ -8,11 +8,11 @@ gianni-cor ships THREE converter scripts; this one replicates all three:
   - scripts/convert-t3-mtl-to-gguf.py    (Llama-520M backbone, multilingual)
   - scripts/convert-s3gen-to-gguf.py     (S3Gen flow + HiFT + CAMPPlus + S3Tok)
 
-Key differences from CrispASR's own convert-chatterbox-to-gguf.py:
+Key differences from StelnetTTS's own convert-chatterbox-to-gguf.py:
   - Tensor namespace: gianni uses slash-separated paths (e.g. "model/h0/attn/qkv/w")
-    vs CrispASR's dot-separated prefixes (e.g. "t3.blk.0.attn_q.weight")
-  - Metadata keys: gianni uses "chatterbox.*" flat keys; CrispASR uses "chatterbox.t3.*"
-  - Built-in conds: gianni stores them inside the S3Gen GGUF; CrispASR stores in T3
+    vs StelnetTTS's dot-separated prefixes (e.g. "t3.blk.0.attn_q.weight")
+  - Metadata keys: gianni uses "chatterbox.*" flat keys; StelnetTTS uses "chatterbox.t3.*"
+  - Built-in conds: gianni stores them inside the S3Gen GGUF; StelnetTTS stores in T3
   - Quantization: gianni applies gguf.quants.quantize() inline for q4_0/q5_0/q8_0
   - BN fusion and weight-norm resolution are equivalent in both
 

@@ -1,8 +1,8 @@
 """
-CrispASR — funasr language flag verification.
+StelnetTTS — funasr language flag verification.
 
 Tests that -l now reaches the funasr prompt template:
-  1. Build CrispASR from feature branch with CUDA.
+  1. Build StelnetTTS from feature branch with CUDA.
   2. Download funasr-nano-2512-q8_0.gguf.
   3. Run JFK with default (no -l) → should produce English transcript.
   4. Run JFK with -l en → prompt becomes "语音转写成en：", may differ.
@@ -33,11 +33,11 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "worktree-funasr-perf-and-lang")
-MODEL_REPO = "cstr/funasr-nano-GGUF"
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "worktree-funasr-perf-and-lang")
+MODEL_REPO = "Xenna/funasr-nano-GGUF"
 MODEL_FILE = "funasr-nano-2512-q8_0.gguf"
 
 _T0 = time.time()
@@ -69,13 +69,13 @@ def run(cmd, capture=False, check=True, timeout=600, cwd=None, env=None):
 
 
 # ── Clone + build ──────────────────────────────────────────────────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
@@ -109,19 +109,19 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}"
     )
 step("build_done")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    candidates = list(BUILD.rglob("crispasr"))
+    candidates = list(BUILD.rglob("stelnettts"))
     candidates = [c for c in candidates if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 step("cli_found", path=str(CLI))
 
 LIB_DIR = BUILD / "src"
@@ -152,7 +152,7 @@ if not AUDIO.exists():
 
 # ── Run helper ────────────────────────────────────────────────────────────
 def run_transcribe(label: str, extra_args: list, n_runs: int = 2) -> dict:
-    """Run crispasr n_runs times, return {label, transcript, timings, stderr_snippet}."""
+    """Run stelnettts n_runs times, return {label, transcript, timings, stderr_snippet}."""
     step(f"{label}_start")
     timings = []
     transcript = None

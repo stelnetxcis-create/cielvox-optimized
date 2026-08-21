@@ -1,7 +1,7 @@
 # Quantize
 
-CrispASR ships a single, model-agnostic GGUF re-quantization tool,
-**`crispasr-quantize`**, that works across all supported model
+StelnetTTS ships a single, model-agnostic GGUF re-quantization tool,
+**`stelnettts-quantize`**, that works across all supported model
 families: Whisper, Parakeet, Canary, Cohere, Voxtral, Qwen3, Granite,
 Wav2Vec2, MiMo-ASR, GLM-ASR, Moonshine, VibeVoice, Kokoro, Qwen3-TTS,
 and others. It iterates through the GGUF tensor list and re-quantizes
@@ -11,31 +11,31 @@ their original types.
 
 Replaces the legacy per-model tools (`cohere-quantize`,
 `parakeet-quantize`, …) — those are no longer built. If a model card
-references one of them, use `crispasr-quantize` instead with the same
+references one of them, use `stelnettts-quantize` instead with the same
 arguments.
 
 ## Build
 
-`crispasr-quantize` is built automatically as part of the default
+`stelnettts-quantize` is built automatically as part of the default
 build target. The shortest path:
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 
-ls build/bin/crispasr-quantize    # confirm it exists
+ls build/bin/stelnettts-quantize    # confirm it exists
 ```
 
-> If you previously built with `--target crispasr-lib` (which only builds
+> If you previously built with `--target stelnettts-lib` (which only builds
 > the main library), re-run **without** `--target` or with
-> `--target crispasr-quantize` to produce the quantize tool.
+> `--target stelnettts-quantize` to produce the quantize tool.
 
 The `scripts/dev-build.sh` wrapper accepts `--target` directly:
 
 ```bash
-scripts/dev-build.sh --target crispasr-quantize
+scripts/dev-build.sh --target stelnettts-quantize
 ```
 
 > **glibc note.** Pre-built binaries on some HuggingFace model cards
@@ -44,14 +44,14 @@ scripts/dev-build.sh --target crispasr-quantize
 > ```
 > /lib/x86_64-linux-gnu/libc.so.6: version 'GLIBC_2.38' not found
 > ```
-> Building from source (above) avoids this — CrispASR has no glibc
+> Building from source (above) avoids this — StelnetTTS has no glibc
 > minimum of its own and builds cleanly against whatever glibc your
 > distro ships.
 
 ## Usage
 
 ```bash
-./build/bin/crispasr-quantize <input.gguf> <output.gguf> <type> \
+./build/bin/stelnettts-quantize <input.gguf> <output.gguf> <type> \
     [--imatrix <file>] [--tensor-type <regex>=<type> ...]
 ```
 
@@ -81,7 +81,7 @@ name. Examples:
 
 ```bash
 # Keep the LM head at Q8_0 while the body is Q4_K, and pin FFN gates to Q6_K:
-crispasr-quantize model-f16.gguf model.gguf q4_k \
+stelnettts-quantize model-f16.gguf model.gguf q4_k \
     --tensor-type '^output\.weight$=q8_0' --tensor-type '\.ffn_gate\.=q6_k'
 ```
 
@@ -106,23 +106,23 @@ crispasr-quantize model-f16.gguf model.gguf q4_k \
 
 ```bash
 # Whisper base.en F16 → Q4_K (small + fast)
-./build/bin/crispasr-quantize ggml-base.en.bin ggml-base.en-q4_k.bin q4_k
+./build/bin/stelnettts-quantize ggml-base.en.bin ggml-base.en-q4_k.bin q4_k
 
 # Parakeet TDT 0.6B F16 → Q4_K
-./build/bin/crispasr-quantize parakeet-tdt-0.6b-f16.gguf parakeet-tdt-0.6b-q4_k.gguf q4_k
+./build/bin/stelnettts-quantize parakeet-tdt-0.6b-f16.gguf parakeet-tdt-0.6b-q4_k.gguf q4_k
 
 # Voxtral Mini 4B F16 → Q5_0
-./build/bin/crispasr-quantize voxtral-mini-4b-realtime-f16.gguf \
+./build/bin/stelnettts-quantize voxtral-mini-4b-realtime-f16.gguf \
                               voxtral-mini-4b-realtime-q5_0.gguf q5_0
 
 # Canary 1B F16 → Q6_K (near-lossless)
-./build/bin/crispasr-quantize canary-1b-v2-f16.gguf canary-1b-v2-q6_k.gguf q6_k
+./build/bin/stelnettts-quantize canary-1b-v2-f16.gguf canary-1b-v2-q6_k.gguf q6_k
 
 # Re-quantize straight from a shipped q8_0 (no F16 base needed) → IQ4_XS
-./build/bin/crispasr-quantize mega-asr-1.7b-q8_0.gguf mega-asr-1.7b-iq4_xs.gguf iq4_xs
+./build/bin/stelnettts-quantize mega-asr-1.7b-q8_0.gguf mega-asr-1.7b-iq4_xs.gguf iq4_xs
 
 # IQ4_XS with an importance matrix for best low-bit quality
-./build/bin/crispasr-quantize model-f16.gguf model-iq4_xs.gguf iq4_xs --imatrix model.imatrix.gguf
+./build/bin/stelnettts-quantize model-f16.gguf model-iq4_xs.gguf iq4_xs --imatrix model.imatrix.gguf
 ```
 
 ### Alignment fallback
@@ -144,25 +144,25 @@ representative corpus. Feeding it to the quantizer (`--imatrix`) lets
 k-quant / IQ-quant spend its bits where they matter, which recovers
 quality at low bit-widths (`iq4_*`, `q3_k`, `q2_k`).
 
-CrispASR produces the imatrix as a **side effect of normal
-transcription**. Set `CRISPASR_IMATRIX_OUT` and run the model over your
+StelnetTTS produces the imatrix as a **side effect of normal
+transcription**. Set `STELNETTTS_IMATRIX_OUT` and run the model over your
 calibration audio; every run **merges into** the same file, so you can
 stream a corpus across many invocations:
 
 ```bash
-export CRISPASR_IMATRIX_OUT=mega-asr.imatrix.gguf
+export STELNETTTS_IMATRIX_OUT=mega-asr.imatrix.gguf
 for f in calib/*.wav; do
-    ./build/bin/crispasr -m mega-asr-1.7b-q8_0.gguf -f "$f"
+    ./build/bin/stelnettts -m mega-asr-1.7b-q8_0.gguf -f "$f"
 done
 # → "imatrix: wrote N tensors to 'mega-asr.imatrix.gguf'" after each run
 
 # Then quantize with it:
-./build/bin/crispasr-quantize mega-asr-1.7b-q8_0.gguf \
+./build/bin/stelnettts-quantize mega-asr-1.7b-q8_0.gguf \
     mega-asr-1.7b-iq4_xs.gguf iq4_xs --imatrix mega-asr.imatrix.gguf
 ```
 
 A small **CC0** starter corpus (Common Voice EN + DE) lives at
-[`cstr/crispasr-imatrix-calib`](https://huggingface.co/datasets/cstr/crispasr-imatrix-calib)
+[`Xenna/stelnettts-imatrix-calib`](https://huggingface.co/datasets/Xenna/stelnettts-imatrix-calib)
 (see [`tools/imatrix-calib/`](../tools/imatrix-calib/)). The A/B harness
 [`tools/imatrix_ab.py`](../tools/imatrix_ab.py) measures the effect
 (prefill-logit cosine + transcript CER vs the f16 gold).
@@ -172,23 +172,23 @@ Notes:
 - **No-op unless the env var is set** — production paths are unaffected.
 - Collection copies each `mul_mat` activation to host, so a calibration
   run is slower than a normal transcription; that cost is only paid when
-  `CRISPASR_IMATRIX_OUT` is set.
+  `STELNETTTS_IMATRIX_OUT` is set.
 - Calibrate on **in-distribution audio** (the languages / domain you
   care about), not a single clip — the matrix is only as good as the
-  corpus that produced it. Measured on qwen3-asr-0.6b q4_k: an EN+DE
+  corpus that produced it. Measured on cielvox2-asr-0.6b q4_k: an EN+DE
   Common Voice set lifted cosine-to-f16 **0.890 → 0.941**, while an
   English-only set **regressed** it. Language/domain coverage is decisive.
-- **imatrix helps most at aggressive bit-widths.** On qwen3-asr-0.6b
+- **imatrix helps most at aggressive bit-widths.** On cielvox2-asr-0.6b
   **q3_k**, imatrix roughly *thirded* the transcript error vs f16
   (CER **0.37 → 0.13**, 6/12 held-out clips improved). Note the two A/B
   signals can diverge there: the prefill-logit **cosine** dipped
   (−0.04) even as **CER** — the real quality metric — improved sharply.
   Trust CER; the single-position cosine is only a proxy.
 - Implemented for the ASR backends whose large weights actually benefit
-  (whisper, parakeet, canary, cohere, qwen3-asr / mega-asr, higgs-stt,
+  (whisper, parakeet, canary, cohere, cielvox2-asr / mega-asr, higgs-stt,
   ark-asr, moss-transcribe, moss-diarize, granite, glm-asr, mimo-asr, voxtral). The
   collector is installed on the decode scheduler
-  (`crispasr_imatrix_install`); adding it to another backend is a
+  (`stelnettts_imatrix_install`); adding it to another backend is a
   one-line call after its `ggml_backend_sched_new`.
 
 ## Recommended quants per backend
@@ -204,7 +204,7 @@ ASR backends.
 | canary              | ✓     | ✓     | ✓     | ✓     | Q4_K validated on test-all-backends.                                     |
 | cohere              | ✓     | ✓     | ✓     | ✓     |                                                                          |
 | voxtral / voxtral4b | ✓     | ✓     | ✓     | ✓     | Q4_K is the shipped HF default.                                          |
-| qwen3-asr           | ✓     | ✓     | ✓     | ✓     | Some 896-wide tensors trigger the alignment fallback (still works).      |
+| cielvox2-asr           | ✓     | ✓     | ✓     | ✓     | Some 896-wide tensors trigger the alignment fallback (still works).      |
 | granite             | ✓     | ✓     | ✓     | ✓     |                                                                          |
 | mimo-asr            | ✓     | ✓     | ✓     | ✓     | F16 + Q4_K shipped to HF; Q4_K validated.                                |
 | glm-asr             | ✓     | ✓     | ✓     | ✓     |                                                                          |
@@ -218,9 +218,9 @@ ASR backends.
 | outetts (TTS)       | ✓     | ✓     | ✓     | ✓     | WavTokenizer decoder always F16.                                         |
 | audioseal           | ✓     | ✓     | ✓     | ✓     | Small model; quant gains minimal.                                        |
 | kokoro (TTS)        | ✓     | ✓     | —     | —     | Q5_K and below break the German backbone — ship F16 + Q8_0 only.         |
-| qwen3-tts           | ✓     | ✓     | ✓     | ✓     |                                                                          |
+| cielvox2-tts           | ✓     | ✓     | ✓     | ✓     |                                                                          |
 | vibevoice (TTS)     | ✓     | ✓     | ✓     | ✓     | F16 + Q4_K shipped.                                                      |
-| chatterbox (TTS)    | ✓     | ✓     | ✓     | ✓     | Vocoder/F0/embeddings auto-skipped. F16 + Q8_0 + Q4_K shipped. On **Metal** a quantized S3Gen CFM has its `s3.fd.*` weights dequantised to F16 at load and kept GPU-resident (Metal's q8 mat-vec kernel requantises activations to q8 and corrupts the CFM — NaN/garbage; F16 weights take the correct `mul_mm_f16_f32_hp` path at full GPU speed). F16 S3Gen and all CUDA are unaffected. `CRISPASR_S3GEN_UNET_CPU=1` forces the slower all-CPU route. |
+| chatterbox (TTS)    | ✓     | ✓     | ✓     | ✓     | Vocoder/F0/embeddings auto-skipped. F16 + Q8_0 + Q4_K shipped. On **Metal** a quantized S3Gen CFM has its `s3.fd.*` weights dequantised to F16 at load and kept GPU-resident (Metal's q8 mat-vec kernel requantises activations to q8 and corrupts the CFM — NaN/garbage; F16 weights take the correct `mul_mm_f16_f32_hp` path at full GPU speed). F16 S3Gen and all CUDA are unaffected. `STELNETTTS_S3GEN_UNET_CPU=1` forces the slower all-CPU route. |
 
 > The cells marked `—` are not just "untested" — they have a known
 > quality regression. See [`PERFORMANCE.md`](../PERFORMANCE.md) for

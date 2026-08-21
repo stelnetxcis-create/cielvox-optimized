@@ -21,7 +21,7 @@ base_model: nvidia/parakeet-tdt_ctc-1.1b
 
 # Parakeet TDT+CTC 1.1B — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-1.1b`](https://huggingface.co/nvidia/parakeet-tdt_ctc-1.1b) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-1.1b`](https://huggingface.co/nvidia/parakeet-tdt_ctc-1.1b) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 The **largest hybrid** Parakeet — 1.1 B parameters, 42-layer FastConformer encoder with **both** TDT and CTC heads. The hybrid head gives you two decode strategies on the same encoder: native TDT word timestamps (default), or CTC if you need shallow-fusion biasing.
 
@@ -29,7 +29,7 @@ The **largest hybrid** Parakeet — 1.1 B parameters, 42-layer FastConformer enc
 - **Hybrid TDT+CTC** — default decode is TDT; pass `--parakeet-decoder ctc` for the CTC head
 - **CC-BY-4.0** licence
 
-This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `crispasr-quantize`.
+This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `stelnettts-quantize`.
 
 ## Files
 
@@ -53,21 +53,21 @@ Smoke test on `samples/jfk.wav` (11 s clip, M1 Metal):
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr-lib
+cmake --build build -j$(nproc) --target stelnettts-lib
 
 # 2a. Auto-download via the registry key
-./build/bin/crispasr -m parakeet-tdt_ctc-1.1b --auto-download -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt_ctc-1.1b --auto-download -f your-audio.wav
 
 # 2b. Or explicit download + load
-hf download cstr/parakeet-tdt_ctc-1.1b-GGUF \
+hf download Xenna/parakeet-tdt_ctc-1.1b-GGUF \
     parakeet-tdt_ctc-1.1b-q4_k.gguf --local-dir .
-./build/bin/crispasr -m parakeet-tdt_ctc-1.1b-q4_k.gguf -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt_ctc-1.1b-q4_k.gguf -f your-audio.wav
 
 # 2c. Switch to the CTC head (e.g. when adding hotword biasing)
-./build/bin/crispasr -m parakeet-tdt_ctc-1.1b --parakeet-decoder ctc -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt_ctc-1.1b --parakeet-decoder ctc -f your-audio.wav
 ```
 
 ## When to pick this over the other Parakeet variants
@@ -75,10 +75,10 @@ hf download cstr/parakeet-tdt_ctc-1.1b-GGUF \
 | Scenario | Pick |
 | --- | --- |
 | English 1.1B with proper casing + punctuation in output | **tdt_ctc-1.1b** (this repo) |
-| English 1.1B, lowercase output, faster Q4_K/Q8_0 | [`cstr/parakeet-tdt-1.1b-GGUF`](https://huggingface.co/cstr/parakeet-tdt-1.1b-GGUF) |
-| English, best WER per FLOP | [`cstr/parakeet-tdt-0.6b-v2-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v2-GGUF) |
-| Multilingual (25 EU languages) | [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) |
-| Tight RAM | [`cstr/parakeet-tdt_ctc-110m-GGUF`](https://huggingface.co/cstr/parakeet-tdt_ctc-110m-GGUF) |
+| English 1.1B, lowercase output, faster Q4_K/Q8_0 | [`Xenna/parakeet-tdt-1.1b-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-1.1b-GGUF) |
+| English, best WER per FLOP | [`Xenna/parakeet-tdt-0.6b-v2-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v2-GGUF) |
+| Multilingual (25 EU languages) | [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) |
+| Tight RAM | [`Xenna/parakeet-tdt_ctc-110m-GGUF`](https://huggingface.co/Xenna/parakeet-tdt_ctc-110m-GGUF) |
 
 ## Model architecture
 
@@ -98,7 +98,7 @@ Same 42-layer encoder as `parakeet-tdt-1.1b`, but with an added CTC head and a m
 ## Attribution
 
 - **Original model:** [`nvidia/parakeet-tdt_ctc-1.1b`](https://huggingface.co/nvidia/parakeet-tdt_ctc-1.1b) (CC-BY-4.0). NVIDIA NeMo team.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).
 
 ## License
 

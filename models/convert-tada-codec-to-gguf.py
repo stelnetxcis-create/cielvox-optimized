@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert HumeAI/tada-codec decoder subfolder → GGUF for the CrispASR
+Convert HumeAI/tada-codec decoder subfolder → GGUF for the StelnetTTS
 `tada-tts` backend's codec decoder stage.
 
 The TADA codec decoder converts expanded acoustic feature sequences

@@ -33,8 +33,8 @@
 #include "core/fft.h"
 #include "core/gguf_loader.h"
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -64,7 +64,7 @@
 static bool indextts_voc_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_INDEXTTS_VOC_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_INDEXTTS_VOC_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -266,7 +266,7 @@ static void aa_snake_beta_op(struct ggml_tensor* dst, const struct ggml_tensor* 
     auto& snake_tmp = p->scratch_snake[ith];
     // Step C-1 A/B knob — INDEXTTS_AA_SCALAR=1 forces the scalar paths for the
     // SnakeBeta and downsample stages so we can bench Accelerate's contribution.
-    static const bool s_force_scalar = crispasr_env::get("CRISPASR_INDEXTTS_AA_SCALAR") != nullptr;
+    static const bool s_force_scalar = stelnettts_env::get("STELNETTTS_INDEXTTS_AA_SCALAR") != nullptr;
     if ((int)padded.size() < T_padded)
         padded.resize(T_padded);
     if ((int)upsampled.size() < T_up)
@@ -563,18 +563,18 @@ static ggml_tensor* aa_snake_beta_native(ggml_context* ctx, ggml_tensor* x, ggml
 // op (Step C-2); anything else (or unset) stays on the proven CPU custom-op
 // path.
 static bool aa_use_native() {
-    const char* v = crispasr_env::get("CRISPASR_INDEXTTS_AA_BACKEND");
+    const char* v = stelnettts_env::get("STELNETTTS_INDEXTTS_AA_BACKEND");
     return v && (v[0] == 'n' || v[0] == 'N');
 }
 static bool aa_use_opvariant() {
-    const char* v = crispasr_env::get("CRISPASR_INDEXTTS_AA_BACKEND");
+    const char* v = stelnettts_env::get("STELNETTTS_INDEXTTS_AA_BACKEND");
     // Match "op", "Op", "metal", "Metal".
     return v && (v[0] == 'o' || v[0] == 'O' || v[0] == 'm' || v[0] == 'M');
 }
 
 // ── ECAPA-TDNN speaker encoder ──────────────────────────────────
 //
-// Architecture mirrors the qwen3_tts ECAPA-TDNN (SE-Res2Net blocks,
+// Architecture mirrors the cielvox2_tts ECAPA-TDNN (SE-Res2Net blocks,
 // ASP pooling, final FC → 512d). The key difference is that IndexTTS
 // ships BatchNorm tensors unfused, so we apply BN explicitly:
 //   y = gamma * (x - running_mean) / sqrt(running_var + eps) + beta
@@ -1256,8 +1256,8 @@ extern "C" struct indextts_voc_context* indextts_voc_init(const char* path, int 
     //   INDEXTTS_VOCODER_RAW=1 → force raw SnakeBeta (legacy path; aliased)
     //   INDEXTTS_VOCODER_AA=0  → same, alternate spelling
     //   INDEXTTS_VOCODER_AA=1  → force AA (also the default)
-    const char* raw_env = crispasr_env::get("CRISPASR_INDEXTTS_VOCODER_RAW");
-    const char* aa_env = crispasr_env::get("CRISPASR_INDEXTTS_VOCODER_AA");
+    const char* raw_env = stelnettts_env::get("STELNETTTS_INDEXTTS_VOCODER_RAW");
+    const char* aa_env = stelnettts_env::get("STELNETTTS_INDEXTTS_VOCODER_AA");
     if (raw_env && raw_env[0] == '1') {
         c->use_aa = false;
     } else if (aa_env && aa_env[0] == '0') {
@@ -1357,14 +1357,14 @@ extern "C" struct indextts_voc_context* indextts_voc_init(const char* path, int 
         delete c;
         return nullptr;
     }
-    const bool force_gpu_with_aa = crispasr_env::get("CRISPASR_INDEXTTS_VOC_FORCE_GPU") &&
-                                   crispasr_env::get("CRISPASR_INDEXTTS_VOC_FORCE_GPU")[0] == '1';
+    const bool force_gpu_with_aa = stelnettts_env::get("STELNETTTS_INDEXTTS_VOC_FORCE_GPU") &&
+                                   stelnettts_env::get("STELNETTTS_INDEXTTS_VOC_FORCE_GPU")[0] == '1';
     // Native-ops AA (Step B) and the new ggml_aa_snake_beta op (Step C-2) both
     // run on whichever backend owns the graph — no Metal↔CPU sync at each AA
     // site. The auto-CPU fallback only applies to the legacy map_custom1 path.
     const bool aa_blocks_gpu = c->use_aa && !aa_use_native() && !aa_use_opvariant() && !force_gpu_with_aa;
     const bool effective_use_gpu = use_gpu && !aa_blocks_gpu;
-    c->backend = effective_use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = effective_use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend) {
         c->backend = c->backend_cpu;
     }
@@ -1505,7 +1505,7 @@ extern "C" float* indextts_voc_generate(struct indextts_voc_context* ctx, const 
     }
     ctx->clear_aa_params();
     auto t1 = std::chrono::high_resolution_clock::now();
-    const bool bench = crispasr_env::get("CRISPASR_INDEXTTS_BENCH") != nullptr;
+    const bool bench = stelnettts_env::get("STELNETTTS_INDEXTTS_BENCH") != nullptr;
     if (ctx->verbosity >= 1 || bench) {
         double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
         const char* mode = ctx->use_aa ? (ctx->backend == ctx->backend_cpu ? "AA/CPU" : "AA/mixed") : "raw/GPU";

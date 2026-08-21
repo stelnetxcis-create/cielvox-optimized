@@ -1,6 +1,6 @@
 """GGUFWriter.add_tensor(raw_dtype=...) does NOT convert — the caller must.
 
-This is the bug that shipped in `cstr/fastpitch-en-GGUF`'s f16 build:
+This is the bug that shipped in `Xenna/fastpitch-en-GGUF`'s f16 build:
 `models/convert-fastpitch-to-gguf.py` chose F16 for 2-D weights and then handed
 `add_tensor` a **float32** array with `raw_dtype=F16`. add_tensor takes the
 array's bytes and labels them with the type you named, so the file contained f32
@@ -65,7 +65,7 @@ def test_q8_0_is_corrupted_the_same_way(tmp_path):
 
     The published q8_0/q4_k files are fine, which makes it very easy to conclude
     the quant path converts. It does not: those files were produced by
-    crispasr-quantize from a good source, not by this code path. add_tensor
+    stelnettts-quantize from a good source, not by this code path. add_tensor
     writes the right BYTE COUNT from the wrong bytes, so the file looks
     structurally valid and dequantizes to noise.
     """

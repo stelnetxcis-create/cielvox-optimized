@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""CrispASR Python demo — speech-to-text transcription."""
+"""StelnetTTS Python demo — speech-to-text transcription."""
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'python'))
-from crispasr import CrispASR
+from stelnettts import StelnetTTS
 
-MODEL = os.environ.get("CRISPASR_MODEL", "models/ggml-tiny.en.bin")
-AUDIO = os.environ.get("CRISPASR_AUDIO", "samples/jfk.wav")
-LIB = os.environ.get("CRISPASR_LIB", None)
-HELPERS = os.environ.get("CRISPASR_HELPERS", None)
+MODEL = os.environ.get("STELNETTTS_MODEL", "models/ggml-tiny.en.bin")
+AUDIO = os.environ.get("STELNETTTS_AUDIO", "samples/jfk.wav")
+LIB = os.environ.get("STELNETTTS_LIB", None)
+HELPERS = os.environ.get("STELNETTTS_HELPERS", None)
 
-print("=== CrispASR Python Demo ===\n")
+print("=== StelnetTTS Python Demo ===\n")
 
 kwargs = {}
 if LIB: kwargs["lib_path"] = LIB
 if HELPERS: kwargs["helpers_lib_path"] = HELPERS
 
-model = CrispASR(MODEL, **kwargs)
+model = StelnetTTS(MODEL, **kwargs)
 print(f"Model loaded: {MODEL}")
 
 # Transcribe

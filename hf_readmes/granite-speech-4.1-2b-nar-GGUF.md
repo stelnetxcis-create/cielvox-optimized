@@ -12,7 +12,7 @@ tags:
 - asr
 - speech
 - gguf
-- crispasr
+- stelnettts
 - granite-speech-nar
 - non-autoregressive
 ---
@@ -20,7 +20,7 @@ tags:
 # granite-speech-4.1-2b-nar — GGUF
 
 GGUF conversion of [ibm-granite/granite-speech-4.1-2b-nar](https://huggingface.co/ibm-granite/granite-speech-4.1-2b-nar)
-for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 The NAR variant replaces the autoregressive Granite decoder with a
 **non-autoregressive** one — the LLM runs **once** over the full
@@ -78,25 +78,25 @@ unchanged: all four files reproduce the reference final text exactly.
 
 Reference transcript: *"and so, my fellow americans, ask not what your country can do for you. ask what you can do for your country."*
 
-_Tested with `crispasr-diff granite-nle <model.gguf> <ref.gguf> samples/jfk.wav`_
+_Tested with `stelnettts-diff granite-nle <model.gguf> <ref.gguf> samples/jfk.wav`_
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 NAR uses a separate runtime from the autoregressive granite variants.
-Today it is reachable via the `crispasr-diff` harness and the
+Today it is reachable via the `stelnettts-diff` harness and the
 `granite_nle` library directly; a `granite-4.1-nar` backend in the
-main `crispasr` CLI is the next step (see [TODO.md](https://github.com/CrispStrobe/CrispASR/blob/main/TODO.md)).
+main `stelnettts` CLI is the next step (see [TODO.md](https://github.com/Cyna/StelnetTTS/blob/main/TODO.md)).
 
 ```bash
 # Bit-exact end-to-end transcribe via the diff harness
-crispasr-diff granite-nle \
+stelnettts-diff granite-nle \
   granite-speech-4.1-2b-nar-q4_k.gguf \
   /path/to/ref.gguf \
   samples/jfk.wav
 ```
 
 The library entry point is `granite_nle_transcribe(ctx, samples,
-n_samples)` in [`src/granite_nle.h`](https://github.com/CrispStrobe/CrispASR/blob/main/src/granite_nle.h);
+n_samples)` in [`src/granite_nle.h`](https://github.com/Cyna/StelnetTTS/blob/main/src/granite_nle.h);
 it returns a malloc'd UTF-8 string with the final transcript. There
 are also fine-grained accessors (`compute_mel`, `run_encoder`,
 `run_projector`, `run_llm_editing`) for partial-pipeline use.
@@ -124,24 +124,24 @@ python models/convert-granite-nle-to-gguf.py \
   --output granite-speech-4.1-2b-nar-f16.gguf
 
 # Quantise F16 → Q4_K (encoder + projector preserved F32, LLM Q4_K)
-crispasr-quantize granite-speech-4.1-2b-nar-f16.gguf \
+stelnettts-quantize granite-speech-4.1-2b-nar-f16.gguf \
                   granite-speech-4.1-2b-nar-q4_k.gguf q4_k
 
 # Q4_K with F16 encoder/projector (smaller, no measurable parity loss)
-CRISPASR_GRANITE_ENC_F16=1 \
-crispasr-quantize granite-speech-4.1-2b-nar-f16.gguf \
+STELNETTTS_GRANITE_ENC_F16=1 \
+stelnettts-quantize granite-speech-4.1-2b-nar-f16.gguf \
                   granite-speech-4.1-2b-nar-q4_k-f16enc.gguf q4_k
 
 # Aggressive Q4_K everywhere (encoder + projector + LLM)
-CRISPASR_GRANITE_QUANT_ALL=1 \
-crispasr-quantize granite-speech-4.1-2b-nar-f16.gguf \
+STELNETTTS_GRANITE_QUANT_ALL=1 \
+stelnettts-quantize granite-speech-4.1-2b-nar-f16.gguf \
                   granite-speech-4.1-2b-nar-q4_k-mini.gguf q4_k
 ```
 
 The NAR converter is a separate script (`convert-granite-nle-to-gguf.py`)
 because the GGUF arch (`granite_nle`), tensor naming (BPE auxiliary
 head, 4-layer hidden capture indices) and self-conditioning metadata
-all differ from the autoregressive variants. The `crispasr-quantize`
+all differ from the autoregressive variants. The `stelnettts-quantize`
 binary recognises both `granite_speech` and `granite_nle` archs and
 applies identical encoder/projector skip rules to both.
 

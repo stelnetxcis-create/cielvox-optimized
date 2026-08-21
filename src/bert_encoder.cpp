@@ -11,7 +11,7 @@
 #include "ggml-cpu.h"
 
 #include "core/gguf_loader.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include <algorithm>
 #include <cassert>
@@ -32,7 +32,7 @@
 static bool bert_encoder_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_BERT_ENCODER_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_BERT_ENCODER_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;

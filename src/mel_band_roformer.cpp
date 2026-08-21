@@ -24,7 +24,7 @@
 // BLAS for the linear() SGEMM. #296: the forward is ~264 GFLOP of matmul; without
 // a BLAS backend linear() falls back to a scalar loop that took ~24 min on an 11s
 // clip (Linux/Windows), while macOS was fast via Accelerate. Use the portable
-// cblas the same way cohere/crispasr-core do: Accelerate on Apple, <cblas.h>
+// cblas the same way cohere/stelnettts-core do: Accelerate on Apple, <cblas.h>
 // (OpenBLAS/MKL) elsewhere when the build found one (HAVE_BLAS).
 #if defined(__APPLE__)
 #include <Accelerate/Accelerate.h> // cblas + vDSP, no external deps
@@ -34,11 +34,11 @@
 
 // #296: run_time/run_freq parallelise the band/time loops with OpenMP and each
 // block calls BLAS — a threaded BLAS would nest and oversubscribe cores. Pin BLAS
-// to one thread. Gated on CRISPASR_MBR_OPENBLAS (set by CMake ONLY when OpenBLAS
+// to one thread. Gated on STELNETTTS_MBR_OPENBLAS (set by CMake ONLY when OpenBLAS
 // is the linked BLAS), so the symbol is guaranteed present — no __attribute__(
 // (weak)), which MSVC rejects. Reference cblas / MKL / Accelerate skip this
 // (single-threaded or self-managed).
-#if defined(CRISPASR_MBR_OPENBLAS)
+#if defined(STELNETTTS_MBR_OPENBLAS)
 extern "C" void openblas_set_num_threads(int);
 #endif
 
@@ -864,16 +864,16 @@ bool run_forward(mel_band_roformer_context* ctx, const std::vector<std::vector<f
     const int n_freqs = ctx->n_freqs();
     const int T = stft_n_frames(T_samp, hp.hop);
 
-#if defined(CRISPASR_MBR_OPENBLAS)
+#if defined(STELNETTTS_MBR_OPENBLAS)
     // Coarse OpenMP parallelism (band/time loops) does the threading; keep each
     // per-block OpenBLAS call serial so they don't oversubscribe cores.
     openblas_set_num_threads(1);
 #endif
 
-    // #296: per-stage profiling (CRISPASR_MBR_PROFILE=1) to localise where the
+    // #296: per-stage profiling (STELNETTTS_MBR_PROFILE=1) to localise where the
     // forward spends time — the separation was silently slow and the bottleneck
     // was not where it looked.
-    const bool prof = std::getenv("CRISPASR_MBR_PROFILE") != nullptr;
+    const bool prof = std::getenv("STELNETTTS_MBR_PROFILE") != nullptr;
     using clk = std::chrono::steady_clock;
     auto tick = clk::now();
     auto lap = [&](const char* what) {

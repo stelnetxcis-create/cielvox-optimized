@@ -16,11 +16,11 @@ had in fact landed:
 
 | claimed missing | actual state |
 |---|---|
-| WeSpeaker GGUF upload + CC-BY attribution | uploaded; `api.model_info("cstr/wespeaker-resnet34-lm-GGUF").cardData["license"]` returns `cc-by-4.0` |
+| WeSpeaker GGUF upload + CC-BY attribution | uploaded; `api.model_info("Xenna/wespeaker-resnet34-lm-GGUF").cardData["license"]` returns `cc-by-4.0` |
 | THIRD_PARTY_NOTICES entry | present (7 WeSpeaker mentions) |
 | docs/architecture.md section | present (6 foxnose mentions) |
-| session ABI | `foxnose_embedder_path` in `crispasr_c_api.cpp` (`crispasr_diarize_opts_abi`) |
-| registry auto-download | `{"wespeaker", "wespeaker-resnet34-lm.gguf", …}` in `crispasr_model_registry.cpp` |
+| session ABI | `foxnose_embedder_path` in `stelnettts_c_api.cpp` (`stelnettts_diarize_opts_abi`) |
+| registry auto-download | `{"wespeaker", "wespeaker-resnet34-lm.gguf", …}` in `stelnettts_model_registry.cpp` |
 
 Only **real-audio DER** was genuinely open, and it is now the root `PLAN.md`
 NOW item (§1: route the pyannote+embedder path through the same
@@ -35,7 +35,7 @@ the runner's diarize orchestration instead of calling it).
 1. **Transcript loss around every speaker change.** The CLI diarizes inside
    its per-slice loop, handing the slice its own segment vector; the server
    transcribes all slices first and then re-walks the merged list, giving each
-   slice a copied sub-range. `crispasr_apply_diarize` **grows** that sub-range
+   slice a copied sub-range. `stelnettts_apply_diarize` **grows** that sub-range
    whenever it splits a segment at a speaker turn (pyannote, foxnose and
    sherpa all do word-range splitting), and the copy-back wrote back only the
    element count it started with — so every sub-segment past the first was
@@ -45,16 +45,16 @@ the runner's diarize orchestration instead of calling it).
    ones straddling a turn are lost, which is why the reporter saw *"almost"
    full transcription, some parts where there are overlapping speakers /
    laughter didn't get transcribed* — those parts ARE the split ones.
-   Fixed by hoisting the re-walk into `crispasr_diarize_merged_by_slice`
-   (`crispasr_diarize_cli.{h,cpp}`), which rebuilds the list instead of
+   Fixed by hoisting the re-walk into `stelnettts_diarize_merged_by_slice`
+   (`stelnettts_diarize_cli.{h,cpp}`), which rebuilds the list instead of
    copying a fixed count back. Guarded by `tests/test-diarize-slice-rewalk.cpp`
    (`[issue324]`), whose last case drives the REAL splitter via a hand-built
    global-sherpa cache so the guard is anchored to production behaviour.
 2. **Foxnose ran per slice on the server.** `diarize_foxnose_global` was never
-   set there and `crispasr_apply_foxnose_global` was never called, so each VAD
+   set there and `stelnettts_apply_foxnose_global` was never called, so each VAD
    slice clustered independently — numbering restarted at 0 every few seconds
    and the WeSpeaker embedder was re-resolved per slice. The server now
-   mirrors `crispasr_apply_global_speaker_stages`: stand the per-slice path
+   mirrors `stelnettts_apply_global_speaker_stages`: stand the per-slice path
    down, run one global pass, and skip the TitaNet remap when it owns the
    labels.
 
@@ -131,7 +131,7 @@ Eigengap systematically UNDER-counts on real speech:
     bic                  4  6  3  5  4  3  2  5
 
 and the confusion term triples. It is retained behind
-`CRISPASR_DIARIZE_COUNT=eigengap` — it is genuinely better on well-separated
+`STELNETTTS_DIARIZE_COUNT=eigengap` — it is genuinely better on well-separated
 data and costs less — but it is NOT the default, and synthetic evidence must
 not be used to make it one again. The unit test now pins the default.
 
@@ -202,7 +202,7 @@ comes from, not a diarization disagreement.
 
 **On automatic counting this port is better than upstream.** On the same clip
 upstream emits 11 speakers across 25 segments (its default `max_speakers=20`);
-this port emits 2. The gated `CRISPASR_DIARIZE_COUNT=bic` path reproduces
+this port emits 2. The gated `STELNETTTS_DIARIZE_COUNT=bic` path reproduces
 upstream's failure mode (7-8 speakers), which is what confirms the port is
 faithful — the improvement comes from the eigengap switch, not from a
 divergence in the shared parts.
@@ -210,7 +210,7 @@ divergence in the shared parts.
 ### What would still settle it properly
 
 A DER number on labelled audio. There is none in the repo and none in
-`cstr/crispasr-regression-fixtures` — this was checked. VoxConverse dev (what
+`Xenna/stelnettts-regression-fixtures` — this was checked. VoxConverse dev (what
 upstream benchmarks on) needs a ~1-2 GB audio download plus RTTM wiring, which
 is its own task. Until then the honest recommendation is a **conservative
 `--diarize-max-speakers` default (4-6, not 20)**, and pinning
@@ -221,13 +221,13 @@ is its own task. Until then the honest recommendation is a **conservative
 `--diarize-method foxnose --diarize-embedder <wespeaker.gguf>`, with
 `--diarize-max-speakers` / `--diarize-num-speakers`.
 
-The method plugs into the existing `crispasr_diarize_segments` contract: the
+The method plugs into the existing `stelnettts_diarize_segments` contract: the
 caller's segments ARE the speech regions (they come from ASR/VAD upstream), so
 FoxNose deliberately runs no VAD of its own — re-segmenting would duplicate
 work and desynchronise labels from the segments they attach to.
 
 Segment splitting IS implemented (`split_segments_on_foxnose_turns`): the
-method now returns its derived turns through `crispasr_diarize_segments`'s
+method now returns its derived turns through `stelnettts_diarize_segments`'s
 `out_turns`, and the CLI splits any caller segment spanning several speakers
 at word-aligned boundaries. It reuses the same `group_words_into_speaker_runs`
 grouping and sub-segment emission as the pyannote splitter — only the per-word
@@ -245,7 +245,7 @@ different person from `speaker 0` in the next. On `samples/multispeaker.wav`
 says SPEAKER_01.
 
 Fixed by running FoxNose in ONE global pass after transcription
-(`crispasr_apply_foxnose_global`), using the final segment list as its speech
+(`stelnettts_apply_foxnose_global`), using the final segment list as its speech
 regions. The pyannote path solves the same problem with a pre-computed
 posterior cache (#107); FoxNose does it afterwards instead, because it needs
 the segments as speech regions and they do not exist beforehand. The per-slice
@@ -262,7 +262,7 @@ pipeline's turns exactly:
 | 17.04-26.80 speaker 0 | 15.90-26.70 SPEAKER_00 |
 | 26.52-31.52 speaker 1 | 26.70-31.50 SPEAKER_01 |
 
-Note this runs on the `crispasr_run` unified path. The legacy `cli.cpp`
+Note this runs on the `stelnettts_run` unified path. The legacy `cli.cpp`
 whisper path still diarizes per slice; it is the same fallback situation the
 pyannote cache has there.
 
@@ -270,14 +270,14 @@ pyannote cache has there.
 
 | var | effect |
 |---|---|
-| `CRISPASR_DIARIZE_BIC_WINDOW=1` | score silhouette only in `[k-2, k+3]` around the BIC anchor instead of the full `[min,max]` range (the default) |
-| `CRISPASR_WESPEAKER_BENCH=1` | per-stage embedder timings |
-| `CRISPASR_WESPEAKER_DEBUG=1` | embedder diagnostics |
+| `STELNETTTS_DIARIZE_BIC_WINDOW=1` | score silhouette only in `[k-2, k+3]` around the BIC anchor instead of the full `[min,max]` range (the default) |
+| `STELNETTTS_WESPEAKER_BENCH=1` | per-stage embedder timings |
+| `STELNETTTS_WESPEAKER_DEBUG=1` | embedder diagnostics |
 
 ## Performance — what was measured, and what not to bother trying
 
 All numbers: M1, Release, `esrit.wav` (215.1 s, 3 VAD regions, 352 embedding
-windows), through the real `crispasr --diarize-method foxnose` path. The
+windows), through the real `stelnettts --diarize-method foxnose` path. The
 machine was noisy early on, so every A/B below was re-run interleaved on a
 quiet machine; the paired numbers repeat to ~1%.
 
@@ -294,7 +294,7 @@ Where the time goes on a 215 s file (~45 s wall, ~4.8x realtime):
 
 | lever | result |
 |---|---|
-| **Metal / GPU** (`use_gpu = true`) | **2.0x SLOWER** — 89.6 / 89.6 s vs 45.1 / 44.6 s CPU, interleaved. The graph is submitted 352 times, once per 1.2 s window, and each one is tiny (80 mels x ~120 frames). Per-dispatch overhead and the host<->device round trip swamp the conv work. This is why `crispasr_diarize.cpp` deliberately does NOT set `cp.use_gpu`. It would likely flip if the windows were batched — see below. |
+| **Metal / GPU** (`use_gpu = true`) | **2.0x SLOWER** — 89.6 / 89.6 s vs 45.1 / 44.6 s CPU, interleaved. The graph is submitted 352 times, once per 1.2 s window, and each one is tiny (80 mels x ~120 frames). Per-dispatch overhead and the host<->device round trip swamp the conv work. This is why `stelnettts_diarize.cpp` deliberately does NOT set `cp.use_gpu`. It would likely flip if the windows were batched — see below. |
 | **F16 conv kernels** | **2.2x SLOWER** — 297 vs 133 ms/window. Correctness is fine now (our fork's `00285218` removed the `src1->type == F32` assert; cosine 0.99999724 vs the oracle) and the GGUF drops 23.9 -> 13.3 MB, but ggml's CPU conv path is far slower on F16 input. The converter keeps 4-D kernels at F32 and says so. |
 | **Persistent graph + `gallocr`** (the `bananamind_tts` / `beat_this` trick) | **~0.1% available.** Instrumented build/alloc/compute per call: **0.050 ms build, 0.049 ms alloc, 103.430 ms compute.** There is no per-call overhead to remove. The graph is already rebuilt-and-thrown-away for free. |
 | **More threads** | wash. `-t 4` 44.72 / 44.58 s vs `-t 8` 45.05 / 44.60 s. The M1's 4 E-cores contribute nothing; the default `n_threads = 4` is already right. |

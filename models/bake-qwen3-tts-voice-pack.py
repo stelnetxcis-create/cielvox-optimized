@@ -26,11 +26,11 @@ splice exactly as `Qwen3TTSForConditionalGeneration.generate_icl_prompt`
 does — no Python at synthesis time.
 
 Usage:
-    python models/bake-qwen3-tts-voice-pack.py \\
+    python models/bake-cielvox2-tts-voice-pack.py \\
         --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \\
-        --voice clone:samples/qwen3_tts/clone.wav:Okay. Yeah. I resent you... \\
-        --voice clone_1:samples/qwen3_tts/clone_1.wav:甚至出现交易几乎停滞的情况。 \\
-        --output /tmp/qwen3-tts-voice-pack.gguf
+        --voice clone:samples/cielvox2_tts/clone.wav:Okay. Yeah. I resent you... \\
+        --voice clone_1:samples/cielvox2_tts/clone_1.wav:甚至出现交易几乎停滞的情况。 \\
+        --output /tmp/cielvox2-tts-voice-pack.gguf
 
 Each --voice arg is "name:wav_path:ref_text". The voice pack stores
 per-voice tensors `spk.<name>.embd` and `code.<name>.codes` plus a
@@ -114,14 +114,14 @@ def main() -> None:
     print(f"baking {len(voices)} voice(s)")
 
     out_path = Path(args.output)
-    w = GGUFWriter(str(out_path), arch="qwen3tts.voicepack", use_temp_file=True)
+    w = GGUFWriter(str(out_path), arch="cielvox2tts.voicepack", use_temp_file=True)
     w.add_description("Qwen3-TTS voice prompt pack (spk_embedding + ref_code per voice)")
     w.add_array("voicepack.names", [name for name, _, _ in voices])
     w.add_array("voicepack.ref_texts", [t for _, _, t in voices])
-    # Voice-clone provenance — see examples/cli/crispasr_voice_clone_policy.h.
-    w.add_bool("crispasr.voice.cloned_from_recording", True)
+    # Voice-clone provenance — see examples/cli/stelnettts_voice_clone_policy.h.
+    w.add_bool("stelnettts.voice.cloned_from_recording", True)
     if args.consent_attestation:
-        w.add_string("crispasr.voice.consent_attestation", args.consent_attestation)
+        w.add_string("stelnettts.voice.consent_attestation", args.consent_attestation)
 
     for name, wav_path, ref_text in voices:
         print(f"\n--- voice '{name}' ---")

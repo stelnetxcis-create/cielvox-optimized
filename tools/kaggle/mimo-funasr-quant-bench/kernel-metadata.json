@@ -1,7 +1,7 @@
 {
-  "id": "chr1str/crispasr-mimo-funasr-quant-gpu-bench",
-  "title": "crispasr-mimo-funasr-quant-gpu-bench",
-  "code_file": "crispasr-mimo-funasr-quant-gpu-bench.py",
+  "id": "chr1str/stelnettts-mimo-funasr-quant-gpu-bench",
+  "title": "stelnettts-mimo-funasr-quant-gpu-bench",
+  "code_file": "stelnettts-mimo-funasr-quant-gpu-bench.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",

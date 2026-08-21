@@ -1,7 +1,7 @@
 // ws_stream.cpp — minimal RFC 6455 WebSocket server for real-time ASR.
 //
 // One listener thread accepts connections; each connection gets its own
-// thread that creates a crispasr session + streaming decoder, feeds
+// thread that creates a stelnettts session + streaming decoder, feeds
 // incoming binary frames as PCM, and sends back JSON text updates.
 //
 // Limitations (intentional simplicity):
@@ -12,7 +12,7 @@
 
 #include "ws_stream.h"
 // CrispasrSession/CrispasrStream types and functions are forward-declared
-// in ws_stream.h and resolved at link time from libcrispasr.
+// in ws_stream.h and resolved at link time from libstelnettts.
 
 #include <atomic>
 #include <cerrno>
@@ -259,7 +259,7 @@ static void ws_handle_connection(socket_t client_fd) {
     }
 
     // 3. Create session + streaming decoder
-    auto* session = crispasr_session_open(g_model_path.c_str(), g_n_threads);
+    auto* session = stelnettts_session_open(g_model_path.c_str(), g_n_threads);
     if (!session) {
         ws_send_text(client_fd, "{\"error\":\"failed to open session\"}");
         ws_send_close(client_fd);
@@ -267,11 +267,11 @@ static void ws_handle_connection(socket_t client_fd) {
         return;
     }
 
-    auto* stream = crispasr_session_stream_open(session, g_n_threads, 3000, 10000, 200, "en", 0);
+    auto* stream = stelnettts_session_stream_open(session, g_n_threads, 3000, 10000, 200, "en", 0);
     if (!stream) {
         ws_send_text(client_fd, "{\"error\":\"failed to open stream (whisper-only today)\"}");
         ws_send_close(client_fd);
-        crispasr_session_close(session);
+        stelnettts_session_close(session);
         CLOSE_SOCKET(client_fd);
         return;
     }
@@ -291,13 +291,13 @@ static void ws_handle_connection(socket_t client_fd) {
         if (opcode == 0x02 && len > 0) { // binary = PCM float32
             int n_samples = len / (int)sizeof(float);
             if (n_samples > 0) {
-                int rc = crispasr_stream_feed(stream, (const float*)payload.data(), n_samples);
+                int rc = stelnettts_stream_feed(stream, (const float*)payload.data(), n_samples);
                 if (rc == 1) {
                     // New text available
                     char text_buf[8192] = {};
                     double t0 = 0, t1 = 0;
                     long long counter = 0;
-                    crispasr_stream_get_text(stream, text_buf, sizeof(text_buf), &t0, &t1, &counter);
+                    stelnettts_stream_get_text(stream, text_buf, sizeof(text_buf), &t0, &t1, &counter);
                     if (counter != last_counter) {
                         last_counter = counter;
                         char json_buf[8320];
@@ -315,11 +315,11 @@ static void ws_handle_connection(socket_t client_fd) {
         if (opcode == 0x01) { // text = control command
             std::string cmd(payload.begin(), payload.end());
             if (cmd == "flush") {
-                crispasr_stream_flush(stream);
+                stelnettts_stream_flush(stream);
                 char text_buf[8192] = {};
                 double t0 = 0, t1 = 0;
                 long long counter = 0;
-                crispasr_stream_get_text(stream, text_buf, sizeof(text_buf), &t0, &t1, &counter);
+                stelnettts_stream_get_text(stream, text_buf, sizeof(text_buf), &t0, &t1, &counter);
                 char json_buf[8320];
                 snprintf(json_buf, sizeof(json_buf),
                          "{\"text\":\"%s\",\"t0\":%.3f,\"t1\":%.3f,\"counter\":%lld,\"final\":true}",
@@ -330,8 +330,8 @@ static void ws_handle_connection(socket_t client_fd) {
     }
 
     // 5. Cleanup
-    crispasr_stream_close(stream);
-    crispasr_session_close(session);
+    stelnettts_stream_close(stream);
+    stelnettts_session_close(session);
     ws_send_close(client_fd);
     CLOSE_SOCKET(client_fd);
 }

@@ -20,14 +20,14 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build"
-CODEC_REPO = "cstr/moss-tts-local-v1.5-GGUF"
+CODEC_REPO = "Xenna/moss-tts-local-v1.5-GGUF"
 CODEC_FILE = os.environ.get("MOSS_CODEC_FILE", "moss-tts-local-v1.5-codec-enc.gguf")
 
 if not REPO.exists():
     subprocess.run(["git", "clone", "--depth", "1", "--recurse-submodules",
-                    "--shallow-submodules", "https://github.com/CrispStrobe/CrispASR.git", str(REPO)],
+                    "--shallow-submodules", "https://github.com/Cyna/StelnetTTS.git", str(REPO)],
                    check=True, timeout=2400)
 
 _h = REPO / "tools" / "kaggle"
@@ -55,23 +55,23 @@ if token:
 # CPU-only: the round-trip is tiny (a couple of dozen frames) and this needs no
 # GPU, so it stays off the GPU quota entirely.
 kh.step("cmake")
-# EXAMPLES=ON is required: crispasr-cli lives there, and the ASR leg of the
+# EXAMPLES=ON is required: stelnettts-cli lives there, and the ASR leg of the
 # acceptance test needs it. With it OFF the build fails late with
-# "ninja: error: unknown target 'crispasr-cli'" — after the round-trip has
+# "ninja: error: unknown target 'stelnettts-cli'" — after the round-trip has
 # already succeeded, which reads as a failed test when it is a failed harness.
-flags = ["-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_BUILD_TESTS=OFF",
-         "-DCRISPASR_BUILD_EXAMPLES=ON", "-DCRISPASR_BUILD_SERVER=OFF"] + kh.cache_and_link_flags()
+flags = ["-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_BUILD_TESTS=OFF",
+         "-DSTELNETTTS_BUILD_EXAMPLES=ON", "-DSTELNETTTS_BUILD_SERVER=OFF"] + kh.cache_and_link_flags()
 with kh.build_heartbeat("cmake.configure"):
     rc, out = sh(f"cmake -S {REPO} -B {BUILD} -G Ninja " + " ".join(flags))
 if rc != 0:
     print(out[-6000:], flush=True); raise SystemExit("configure failed")
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-lib -j{kh.safe_build_jobs(gpu=False)}")
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-lib -j{kh.safe_build_jobs(gpu=False)}")
 
 kh.step("compile probe")
 probe = REPO / "tools" / "moss-codec" / "moss_codec_roundtrip.cpp"
 rc, out = sh(f"c++ -std=gnu++17 -O2 -I {REPO}/src -I {REPO}/ggml/include {probe} "
-             f"-o {TMP}/roundtrip -L {BUILD}/src -lcrispasr "
+             f"-o {TMP}/roundtrip -L {BUILD}/src -lstelnettts "
              f"-L {BUILD}/ggml/src -lggml-base -lggml-cpu -lggml "
              f"-Wl,-rpath,{BUILD}/src -Wl,-rpath,{BUILD}/ggml/src")
 if rc != 0:
@@ -111,9 +111,9 @@ if rc == 0 and wav_out.exists():
     # Build the CLI and transcribe the reconstruction. If encode() is correct the
     # words survive the round-trip; if the latent is misaligned they will not.
     with kh.build_heartbeat("cli.build"):
-        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
                             f"-j{kh.safe_build_jobs(gpu=False)}")
-    asr = BUILD / "bin" / "crispasr"
+    asr = BUILD / "bin" / "stelnettts"
     for label, path in (("original", wav_in), ("reconstructed", wav_out)):
         rc2, out2 = sh(f"{asr} --backend parakeet -m auto --auto-download -f {path} --no-prints",
                        timeout=3600)

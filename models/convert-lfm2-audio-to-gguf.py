@@ -789,7 +789,7 @@ def convert(model_dir: Path, out_path: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert LFM2.5-Audio to GGUF for CrispASR")
+        description="Convert LFM2.5-Audio to GGUF for StelnetTTS")
     parser.add_argument("--input", required=True,
                         help="HuggingFace model ID or local path")
     parser.add_argument("--output", required=True,

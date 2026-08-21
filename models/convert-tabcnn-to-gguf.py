@@ -3,7 +3,7 @@
 
 TabCNN (Wiggins & Kim, ISMIR 2019) emits, per frame, six independent softmaxes
 over 21 fret classes — one per string — with no decoding of any kind. It is the
-emission scorer for CrispASR's `--tab` surface; the constrained Viterbi/DP that
+emission scorer for StelnetTTS's `--tab` surface; the constrained Viterbi/DP that
 turns emissions into a playable fingering lives in the caller.
 
   weights   `best_TabCNN_tablature_trancription_model` (sic) from the EGSet12

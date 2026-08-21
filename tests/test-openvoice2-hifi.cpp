@@ -1,6 +1,6 @@
 // Minimal test: load OpenVoice2 GGUF, feed known z to HiFi-GAN, check output range.
 #include "openvoice2.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Failed to load model\n");
         return 1;
     }
-    const char* dump_dir = crispasr_env::get("CRISPASR_OV2_DUMP_DIR");
+    const char* dump_dir = stelnettts_env::get("STELNETTTS_OV2_DUMP_DIR");
     if (dump_dir)
         openvoice2_set_dump_dir(ctx, dump_dir);
 

@@ -33,7 +33,7 @@ Usage:
         [--exaggeration 0.5]
 
 ``--i-have-rights`` attests speaker consent and is required: baking is the
-cloning step. The pack is stamped ``crispasr.voice.cloned_from_recording``
+cloning step. The pack is stamped ``stelnettts.voice.cloned_from_recording``
 so the runtime's consent and spoken-AI-disclosure gates recognise it as a
 clone at synthesis time.
 
@@ -184,10 +184,10 @@ def main() -> None:
     # Voice-clone provenance. The synthesis-time consent + Art. 50(4) disclosure
     # gates classify by this stamp, not by the .gguf suffix — a pack baked from a
     # recording is as much a deepfake as the recording. Key names mirror
-    # examples/cli/crispasr_voice_clone_policy.h; change both together.
-    writer.add_bool("crispasr.voice.cloned_from_recording", True)
+    # examples/cli/stelnettts_voice_clone_policy.h; change both together.
+    writer.add_bool("stelnettts.voice.cloned_from_recording", True)
     if args.consent_attestation:
-        writer.add_string("crispasr.voice.consent_attestation", args.consent_attestation)
+        writer.add_string("stelnettts.voice.consent_attestation", args.consent_attestation)
     writer.add_uint32("chatterbox.conds.gen_prompt_token_len", int(prompt_token.shape[0]))
 
     writer.add_tensor("conds.t3.speaker_emb",

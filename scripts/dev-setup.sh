@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # dev-setup.sh — install build dependencies for fast iterative
-# CrispASR development. Per-platform: macOS uses Homebrew, Linux uses
+# StelnetTTS development. Per-platform: macOS uses Homebrew, Linux uses
 # apt/dnf, Windows is documented but not auto-installed (use the
 # matching dev-setup.ps1).
 #

@@ -29,7 +29,7 @@
 // themselves are unchanged.
 #pragma once
 
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/omnivoice_duration_table.h"
 
 #include <algorithm>
@@ -82,7 +82,7 @@ inline double duration_cp_weight_upstream(uint32_t cp) {
 // text, where ZWJ and ZWNJ are orthographic.
 //
 // Correcting that is a divergence, so it is opt-out: set
-// CRISPASR_OMNIVOICE_UPSTREAM_WEIGHTS=1 for bug-for-bug parity, which is what
+// STELNETTTS_OMNIVOICE_UPSTREAM_WEIGHTS=1 for bug-for-bug parity, which is what
 // the parity test uses.
 inline bool duration_cp_is_zero_width(uint32_t cp) {
     return cp == 0x00AD ||                   // soft hyphen
@@ -94,7 +94,7 @@ inline bool duration_cp_is_zero_width(uint32_t cp) {
 }
 
 inline bool duration_use_upstream_weights() {
-    const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_UPSTREAM_WEIGHTS");
+    const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_UPSTREAM_WEIGHTS");
     return e && e[0] == '1';
 }
 
@@ -188,7 +188,7 @@ inline bool ref_rate_is_plausible(const std::string& ref_text, int ref_T) {
 // (#363). Trusting it instead does not produce merely a mistimed clip: too high
 // a rate yields a T the text cannot fit, and because the generator is masked
 // iterative rather than autoregressive it cannot ask for more room, so the
-// utterance ends mid-phrase. Set CRISPASR_OMNIVOICE_REF_RATE_CHECK=0 to trust
+// utterance ends mid-phrase. Set STELNETTTS_OMNIVOICE_REF_RATE_CHECK=0 to trust
 // the reference regardless.
 inline int estimate_target_tokens(const std::string& text, const std::string& ref_text = std::string(), int ref_T = 0,
                                   float speed = 1.0f) {
@@ -197,7 +197,7 @@ inline int estimate_target_tokens(const std::string& text, const std::string& re
     bool have_ref = ref_T > 0 && !ref_text.empty();
 
     if (have_ref && !ref_rate_is_plausible(ref_text, ref_T)) {
-        const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_REF_RATE_CHECK");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_REF_RATE_CHECK");
         const bool enforce = !(e && e[0] == '0');
         // Warn either way: when the check is off this is still the most likely
         // explanation for whatever comes out.
@@ -206,8 +206,8 @@ inline int estimate_target_tokens(const std::string& text, const std::string& re
                 "plausible %.2f-%.2f — --ref-text likely does not match --voice.%s\n",
                 duration_text_weight(ref_text) / (double)ref_T, kMinRefRate, kMaxRefRate,
                 enforce ? " Using the built-in duration anchor instead (#363); set "
-                          "CRISPASR_OMNIVOICE_REF_RATE_CHECK=0 to trust it anyway."
-                        : " CRISPASR_OMNIVOICE_REF_RATE_CHECK=0 is set, using it anyway.");
+                          "STELNETTTS_OMNIVOICE_REF_RATE_CHECK=0 to trust it anyway."
+                        : " STELNETTTS_OMNIVOICE_REF_RATE_CHECK=0 is set, using it anyway.");
         if (enforce)
             have_ref = false;
     }
@@ -218,7 +218,7 @@ inline int estimate_target_tokens(const std::string& text, const std::string& re
     } else {
         rt = "Nice to meet you.";
         rd = 25.0;
-        if (const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_FRAMES_PER_CHAR")) {
+        if (const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_FRAMES_PER_CHAR")) {
             float v = (float)atof(e);
             if (v > 0.0f)
                 rd = v * duration_text_weight(rt); // env = frames per weighted char

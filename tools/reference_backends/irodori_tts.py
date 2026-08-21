@@ -1,4 +1,4 @@
-"""Irodori-TTS reference dump backend for crispasr-diff.
+"""Irodori-TTS reference dump backend for stelnettts-diff.
 
 Loads Aratako/Irodori-TTS (base or VoiceDesign) and captures intermediate
 activations at each architectural boundary for comparison against C++.

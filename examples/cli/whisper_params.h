@@ -1,5 +1,5 @@
 // whisper_params.h — command-line parameter struct shared between the
-// historical whisper CLI surface and the CrispASR backend dispatch layer.
+// historical whisper CLI surface and the StelnetTTS backend dispatch layer.
 //
 // Keep the `whisper_params` name for CLI/source compatibility. This is a
 // frontend params struct, not a signal that the whole project is still named
@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "crispasr.h"
+#include "stelnettts.h"
 #include "grammar-parser.h"
 
 #include <algorithm>
@@ -27,7 +27,7 @@ struct whisper_params {
     int32_t max_context = -1;
     int32_t max_len = 0;
     bool split_on_punct = false;
-    int32_t best_of = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY).greedy.best_of;
+    int32_t best_of = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY).greedy.best_of;
     int32_t beam_size = -1; // -1 = greedy; beam search only when explicitly set via -bs N
     int32_t audio_ctx = 0;
 
@@ -123,29 +123,29 @@ struct whisper_params {
     // would be an arbitrary read/write on the server host — so boundaries are
     // returned inline in the response (`vad_export=true`) and supplied inline as
     // the serialized JSON (`vad_import=<json>`). Same wire format as the CLI's
-    // files; both use crispasr_{serialize,parse}_vad_slices.
+    // files; both use stelnettts_{serialize,parse}_vad_slices.
     bool vad_export_inline = false;
     std::string vad_import_json = "";
 
     // §248 source separation. --separate routes to the separation dispatcher
-    // (crispasr_separate_cli) BEFORE any transcribe backend is built; the model
+    // (stelnettts_separate_cli) BEFORE any transcribe backend is built; the model
     // arch (mel-band-roformer / htdemucs) is auto-detected from the GGUF.
     bool separate = false;
     std::string stems;          // comma-separated stem subset; empty/"all" = every stem
     std::string sep_output_dir; // output dir for stems; empty = alongside input
 
     // Pitch (F0) estimation. --pitch routes to the pitch dispatcher
-    // (crispasr_pitch_cli) BEFORE any transcribe backend is built; the model
+    // (stelnettts_pitch_cli) BEFORE any transcribe backend is built; the model
     // arch (crepe) is auto-detected from the GGUF.
     // Chord recognition. --chords routes to the chord dispatcher
-    // (crispasr_chords_cli) BEFORE any transcribe backend is built, mirroring
+    // (stelnettts_chords_cli) BEFORE any transcribe backend is built, mirroring
     // --pitch. The BTC weights are CC-BY-NC-SA, so this path needs
     // --accept-license cc-by-nc-sa-4.0 to auto-download.
     bool chords = false;
     std::string chords_format; // "text" (default) or "json"
 
     // Piano transcription. --piano routes to the piano dispatcher
-    // (crispasr_piano_cli) BEFORE any transcribe backend is built, for the same
+    // (stelnettts_piano_cli) BEFORE any transcribe backend is built, for the same
     // reason as --chords: the output is note EVENTS (onset/offset/midi/
     // velocity), not text segments. Reaching it through transcribe() renders
     // each note as text like "C4 v=80", which is lossy.
@@ -153,12 +153,12 @@ struct whisper_params {
     std::string piano_format; // "text" (default) or "json"
 
     // Beat / downbeat tracking. --beats routes to the beat dispatcher
-    // (crispasr_beats_cli) BEFORE any transcribe backend is built, for the
+    // (stelnettts_beats_cli) BEFORE any transcribe backend is built, for the
     // same reason as --chords: the output is a beat grid, not text segments.
     bool beats = false;
     std::string beats_format; // "text" (default) or "json"
 
-    // Guitar tablature. --tab routes to the tab dispatcher (crispasr_tab_cli)
+    // Guitar tablature. --tab routes to the tab dispatcher (stelnettts_tab_cli)
     // BEFORE any transcribe backend is built, for the same reason as --chords:
     // the output is a per-frame per-string grid of fret SCORES, not text
     // segments. The CLI display argmaxes it; real consumers take the
@@ -192,7 +192,7 @@ struct whisper_params {
     // SubtitleEdit #10775: opt out of the canary auto-aligner default.
     // For --backend canary, when the user requests word-level output
     // (srt/vtt/json-full/wts/max-len/split-on-punct/print-colors) and
-    // hasn't passed --aligner-model explicitly, crispasr now defaults
+    // hasn't passed --aligner-model explicitly, stelnettts now defaults
     // to `-am auto --force-aligner` because canary's native cross-attn
     // DTW timing is ~5× looser than canary-ctc-aligner (~414 ms vs
     // ~78 ms MAE on word boundaries — see canary-ctc-aligner-GGUF
@@ -200,7 +200,7 @@ struct whisper_params {
     // DTW path (no second forward pass, no ~442 MB download).
     bool no_auto_aligner = false;
     // Issue #311: machine-reliable strict failure semantics for explicitly
-    // requested auxiliary pipeline stages. By default CrispASR degrades
+    // requested auxiliary pipeline stages. By default StelnetTTS degrades
     // gracefully (a VAD/aligner/punc model that fails to load is skipped with
     // a stderr warning and a 0 exit code). Integrations that treat these stages
     // as *required task properties* need a zero exit to actually mean "every
@@ -319,7 +319,7 @@ struct whisper_params {
     // TitaNet remap must therefore NOT also try to load that path — it is a
     // different architecture and fails with a confusing
     // "block_repeats/kernels array size mismatch". There are three call sites
-    // (cli.cpp, crispasr_run.cpp, crispasr_server.cpp); they all ask here so a
+    // (cli.cpp, stelnettts_run.cpp, stelnettts_server.cpp); they all ask here so a
     // fourth cannot silently drift.
     bool diarize_embedder_is_foxnose() const {
         return diarize_method == "foxnose" || diarize_method == "foxnose-diarize";
@@ -336,7 +336,7 @@ struct whisper_params {
     // "pure-ASR" requests (explicit language, no aligner, no punctuation/
     // truecaser) run concurrently instead of serializing on one model. Costs
     // N× model memory. 1 = single shared instance (default, unchanged). The
-    // CRISPASR_SERVER_WORKERS env var, when set, overrides this. See
+    // STELNETTTS_SERVER_WORKERS env var, when set, overrides this. See
     // docs/concurrency.md.
     int32_t server_workers = 1;
     // --ws-port: real-time WebSocket ASR streaming on a second port.
@@ -397,7 +397,7 @@ struct whisper_params {
     // Issue #84: gate the noisy `firered_vad: N frames, max_prob=…`
     // and `fbank[0,:3]=…` stderr dumps in src/firered_vad.cpp behind
     // an explicit opt-in. Set by --firered-vad-debug (or the
-    // CRISPASR_FIRERED_VAD_DEBUG env var directly).
+    // STELNETTTS_FIRERED_VAD_DEBUG env var directly).
     bool firered_vad_debug = false;
     bool auto_download = false;
     // Attests acceptance of a RESTRICTED model licence (cc-by-nc-*, gemma,
@@ -481,7 +481,7 @@ struct whisper_params {
     std::string print_speaker_identity_file;
 
     // C2PA (Content Credentials) signing — compile-time gated on
-    // CRISPASR_HAVE_C2PA. Paths to self-signed or CA-issued X.509 cert
+    // STELNETTTS_HAVE_C2PA. Paths to self-signed or CA-issued X.509 cert
     // and key. Generate with: scripts/generate-c2pa-cert.sh
     std::string c2pa_cert;
     std::string c2pa_key;
@@ -494,12 +494,12 @@ struct whisper_params {
     bool tts_voice_clone_consent = false;
     std::string tts_consent_attestation;
 
-    // --consent-log <path> / CRISPASR_CONSENT_LOG. When set, every [CONSENT]
+    // --consent-log <path> / STELNETTTS_CONSENT_LOG. When set, every [CONSENT]
     // record is ALSO appended as one JSON object per line. Default off: turning
     // on a persistent record of who attested what is the operator's decision,
     // and it is their artefact to retain and erase, not ours. Tamper-resistance
     // comes from where they put the file (append-only perms, WORM, a SIEM) —
-    // see crispasr_consent_record.h.
+    // see stelnettts_consent_record.h.
     std::string consent_log;
 
     // Set when THIS run baked `tts_voice` from a user-supplied recording (the
@@ -508,7 +508,7 @@ struct whisper_params {
     // evidence the voice was a clone, and the consent + spoken-disclosure gates
     // — which classified by filename suffix — both scored the most explicit
     // cloning command in the CLI as "not a clone".
-    // See crispasr_voice_clone_policy.h.
+    // See stelnettts_voice_clone_policy.h.
     bool tts_voice_baked_from_wav = false;
     // The RECORDING that bake started from, before tts_voice was rewritten to
     // point at the baked pack. Consent was given for this file, so this is what
@@ -518,7 +518,7 @@ struct whisper_params {
 
     // Operator override for whose voice a PRESET voice is: "real_person",
     // "synthetic" or "unknown"/empty. Outranks the pack's declaration and the
-    // backend's default (crispasr_speaker_identity.h).
+    // backend's default (stelnettts_speaker_identity.h).
     //
     // real_person turns on the Art. 50(4) spoken disclosure for a non-cloned
     // voice, and deliberately does NOT turn on the --i-have-rights gate: the
@@ -533,7 +533,7 @@ struct whisper_params {
     bool tts_no_spoken_disclaimer = false;
 
     // Turn off the imperceptible AI-content watermark on TTS output.
-    // Equivalent to the CRISPASR_NO_WATERMARK env var; both emit a one-time
+    // Equivalent to the STELNETTTS_NO_WATERMARK env var; both emit a one-time
     // warning that AI-usage marking responsibility then rests with the operator.
     // On by default — see docs/issue-260/PLAN.md for the regulatory background.
     // CLI: --no-watermark
@@ -612,7 +612,7 @@ struct whisper_params {
 
     // G2P phonemizer dictionary source:
     //   ""           → auto (OLaPh MIT preferred, then open-dict-data CC-BY-SA)
-    //   "olaph"      → OLaPh MIT dicts from cstr/g2p-dicts HuggingFace
+    //   "olaph"      → OLaPh MIT dicts from Xenna/g2p-dicts HuggingFace
     //   "open-dict"  → open-dict-data CC-BY-SA from Wiktionary
     //   path         → custom dict file path
     std::string g2p_dict;
@@ -626,7 +626,7 @@ struct whisper_params {
 
     // Text-to-text translation input (m2m100 + future translate-only
     // backends). When `--text` is set on a backend that declares
-    // CAP_TRANSLATE and has no input audio, crispasr_run dispatches to
+    // CAP_TRANSLATE and has no input audio, stelnettts_run dispatches to
     // backend->translate_text() instead of transcribe.
     //
     // Language handling has TWO independent pairs to support 2-stage

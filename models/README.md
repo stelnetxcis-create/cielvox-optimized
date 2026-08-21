@@ -17,7 +17,7 @@ models/ggml-base.en.bin          100%[==========================================
 Done! Model 'base.en' saved in 'models/ggml-base.en.bin'
 You can now use it like this:
 
-  $ ./build/bin/crispasr -m models/ggml-base.en.bin -f samples/jfk.wav
+  $ ./build/bin/stelnettts -m models/ggml-base.en.bin -f samples/jfk.wav
 ```
 
 ### 2. Manually download pre-converted models
@@ -77,28 +77,28 @@ OpenAI format. To read the HF models you can use the [convert-h5-to-ggml.py](con
 
 ```bash
 git clone https://github.com/openai/whisper
-git clone https://github.com/CrispStrobe/CrispASR
+git clone https://github.com/Cyna/StelnetTTS
 
 # clone HF fine-tuned model (this is just an example)
 git clone https://huggingface.co/openai/whisper-medium
 
 # convert the model to ggml
-python3 ./crispasr/models/convert-h5-to-ggml.py ./whisper-medium/ ./openai-whisper .
+python3 ./stelnettts/models/convert-h5-to-ggml.py ./whisper-medium/ ./openai-whisper .
 ```
 
 ## Distilled models
 
 Initial support for https://huggingface.co/distil-whisper is available.
 
-Currently, the chunk-based transcription strategy is not implemented, so there can be sub-optimal quality when using the distilled models with `crispasr`.
+Currently, the chunk-based transcription strategy is not implemented, so there can be sub-optimal quality when using the distilled models with `stelnettts`.
 
 ```bash
-# clone OpenAI whisper and crispasr
+# clone OpenAI whisper and stelnettts
 git clone https://github.com/openai/whisper
-git clone https://github.com/CrispStrobe/CrispASR
+git clone https://github.com/Cyna/StelnetTTS
 
 # get the models
-cd crispasr/models
+cd stelnettts/models
 git clone https://huggingface.co/distil-whisper/distil-medium.en
 git clone https://huggingface.co/distil-whisper/distil-large-v2
 

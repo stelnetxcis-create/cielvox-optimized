@@ -3,7 +3,7 @@
 # breaks model-internal chunking" bug (PR #124 / issue #114 follow-up).
 #
 # A backend is AT RISK on paper if it doesn't declare CAP_UNBOUNDED_INPUT or
-# CAP_INTERNAL_CHUNKING — meaning it goes through crispasr_run.cpp's fallback
+# CAP_INTERNAL_CHUNKING — meaning it goes through stelnettts_run.cpp's fallback
 # chunking + external overlap-save path. Whether it ACTUALLY exhibits the bug
 # depends on whether its own transcribe() does additional chunking when handed
 # a fallback-chunk-sized buffer.
@@ -14,9 +14,9 @@
 
 set -u
 
-BIN="${BIN:-/Users/christianstrobele/code/CrispASR/build/bin/crispasr}"
-AUDIO="${AUDIO:-/Volumes/backups/ai/crispasr-regression/issue-89/first300.wav}"
-MODELS_DIR="${MODELS_DIR:-/Volumes/backups/ai/crispasr}"
+BIN="${BIN:-/Users/christianstrobele/code/StelnetTTS/build/bin/stelnettts}"
+AUDIO="${AUDIO:-/Volumes/backups/ai/stelnettts-regression/issue-89/first300.wav}"
+MODELS_DIR="${MODELS_DIR:-/Volumes/backups/ai/stelnettts}"
 OUT_DIR="${OUT_DIR:-/Volumes/backups/ai/bench-results/overlap-bug-check}"
 PER_RUN_TIMEOUT="${PER_RUN_TIMEOUT:-900}"  # 15 min wallclock per run
 
@@ -25,7 +25,7 @@ mkdir -p "$OUT_DIR"
 # (backend_arg, model_file_in_$MODELS_DIR, optional_extra_args)
 # Only ASR backends in the AT-RISK bucket (no CAP_UNBOUNDED_INPUT, no
 # CAP_INTERNAL_CHUNKING). Source of truth for "is this backend in the
-# overlap-save opt-out" is `examples/cli/crispasr_chunk_context_gate.h`'s
+# overlap-save opt-out" is `examples/cli/stelnettts_chunk_context_gate.h`'s
 # `backend_allows_chunk_context()` — currently blocks cohere, gemma4-e2b,
 # glm-asr, kyutai-stt, qwen3, voxtral. Those six are KEPT in the sweep
 # as regression-positive checks: their default and no-overlap runs
@@ -42,7 +42,7 @@ CASES=(
   "gemma4-e2b|gemma4-e2b-it-q4_k.gguf|"
   "glm-asr|glm-asr-nano-q4_k.gguf|"
   "kyutai-stt|kyutai-stt-1b-q4_k.gguf|"
-  "qwen3|qwen3-asr-0.6b-q4_k.gguf|"
+  "qwen3|cielvox2-asr-0.6b-q4_k.gguf|"
   "voxtral|voxtral-mini-3b-2507-q4_k.gguf|"
   # ── never-opted-out backends (sweep guards future regressions) ──
   "funasr|funasr-nano-2512-q4_k.gguf|"

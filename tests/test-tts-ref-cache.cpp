@@ -13,7 +13,7 @@
 // API too instead of failing with -2.
 //
 // That makes the cache a cross-layer contract: the CLI writes it
-// (crispasr_tts_ref_text.h) and crispasr_c_api.cpp reads it, with the suffix and
+// (stelnettts_tts_ref_text.h) and stelnettts_c_api.cpp reads it, with the suffix and
 // the tag agreed only by convention. Change either on one side and the session
 // silently stops finding transcripts that are sitting right there — no error, no
 // failing build, just the -2 coming back. These cases pin it.
@@ -36,11 +36,11 @@ namespace {
 // version of this file declared its own literal, which made the round-trip case
 // self-consistent and therefore blind: changing the suffix changed writer and
 // reader together and every assertion still passed. Red-verifying caught that.
-constexpr const char* kSuffix = crispasr_ref_cache::kCv3RefTextSuffix;
+constexpr const char* kSuffix = stelnettts_ref_cache::kCv3RefTextSuffix;
 
 std::string temp_voice_path(const char* stem) {
     std::string p =
-        std::string(std::getenv("TMPDIR") ? std::getenv("TMPDIR") : "/tmp") + "/crispasr-t334-" + stem + ".wav";
+        std::string(std::getenv("TMPDIR") ? std::getenv("TMPDIR") : "/tmp") + "/stelnettts-t334-" + stem + ".wav";
     FILE* f = std::fopen(p.c_str(), "wb");
     if (f) {
         std::fputs("not really a wav", f);
@@ -50,16 +50,16 @@ std::string temp_voice_path(const char* stem) {
 }
 
 void write_cache(const std::string& voice, const std::string& text, const char* tag) {
-    const std::string cp = crispasr_ref_cache::path_for(voice, kSuffix);
-    crispasr_ref_cache::save(cp, tag, {(uint32_t)text.size()}, text.data(), text.size());
+    const std::string cp = stelnettts_ref_cache::path_for(voice, kSuffix);
+    stelnettts_ref_cache::save(cp, tag, {(uint32_t)text.size()}, text.data(), text.size());
 }
 
-// Exactly what crispasr_c_api.cpp does on the read side.
+// Exactly what stelnettts_c_api.cpp does on the read side.
 bool read_cache(const std::string& voice, std::string& out) {
-    const std::string cp = crispasr_ref_cache::path_for(voice, kSuffix);
+    const std::string cp = stelnettts_ref_cache::path_for(voice, kSuffix);
     std::vector<uint32_t> shape;
     std::vector<uint8_t> payload;
-    if (!crispasr_ref_cache::load(cp, voice, kSuffix, shape, payload) || payload.empty())
+    if (!stelnettts_ref_cache::load(cp, voice, kSuffix, shape, payload) || payload.empty())
         return false;
     out.assign((const char*)payload.data(), payload.size());
     return true;
@@ -76,7 +76,7 @@ TEST_CASE("ref cache: what the CLI writes, the session reads", "[unit][tts][issu
     REQUIRE(read_cache(voice, got));
     REQUIRE(got == text);
 
-    std::remove(crispasr_ref_cache::path_for(voice, kSuffix).c_str());
+    std::remove(stelnettts_ref_cache::path_for(voice, kSuffix).c_str());
     std::remove(voice.c_str());
 }
 
@@ -90,14 +90,14 @@ TEST_CASE("ref cache: a mismatched tag is rejected, not misread", "[unit][tts][i
     std::string got;
     REQUIRE_FALSE(read_cache(voice, got));
 
-    std::remove(crispasr_ref_cache::path_for(voice, kSuffix).c_str());
+    std::remove(stelnettts_ref_cache::path_for(voice, kSuffix).c_str());
     std::remove(voice.c_str());
 }
 
 TEST_CASE("ref cache: absent cache reports absent", "[unit][tts][issue-334]") {
     // The path that must still return -2 with the explanatory message.
     const std::string voice = temp_voice_path("missing");
-    std::remove(crispasr_ref_cache::path_for(voice, kSuffix).c_str());
+    std::remove(stelnettts_ref_cache::path_for(voice, kSuffix).c_str());
 
     std::string got;
     REQUIRE_FALSE(read_cache(voice, got));
@@ -123,19 +123,19 @@ TEST_CASE("ref cache: an edited clip invalidates its transcript", "[unit][tts][i
 
     REQUIRE_FALSE(read_cache(voice, got));
 
-    std::remove(crispasr_ref_cache::path_for(voice, kSuffix).c_str());
+    std::remove(stelnettts_ref_cache::path_for(voice, kSuffix).c_str());
     std::remove(voice.c_str());
 }
 
 TEST_CASE("ref cache: the cache path sits beside the clip", "[unit][tts][issue-334]") {
-    // The error message in crispasr_c_api.cpp tells the user this exact path, so
+    // The error message in stelnettts_c_api.cpp tells the user this exact path, so
     // it has to be derived the same way on both sides.
     const std::string voice = "/some/dir/reference.wav";
-    REQUIRE(crispasr_ref_cache::path_for(voice, kSuffix) == voice + kSuffix);
+    REQUIRE(stelnettts_ref_cache::path_for(voice, kSuffix) == voice + kSuffix);
 }
 
 TEST_CASE("ref cache: both layers share one suffix constant", "[unit][tts][issue-334]") {
     // The value itself is pinned because it names on-disk files users may
     // already have; changing it silently orphans every cached transcript.
-    REQUIRE(std::string(crispasr_ref_cache::kCv3RefTextSuffix) == ".cv3reftext");
+    REQUIRE(std::string(stelnettts_ref_cache::kCv3RefTextSuffix) == ".cv3reftext");
 }

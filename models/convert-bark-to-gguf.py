@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert Suno Bark (suno/bark-small or suno/bark) HuggingFace .pt checkpoints
--> GGUF F16/F32 for the CrispASR `bark` TTS backend.
+-> GGUF F16/F32 for the StelnetTTS `bark` TTS backend.
 
 Bark is a 3-stage hierarchical TTS system:
   Stage 1 — Semantic model (GPT-2):  text -> semantic tokens (~10K vocab)

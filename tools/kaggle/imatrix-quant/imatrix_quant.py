@@ -1,10 +1,10 @@
 """
-CrispASR — importance-matrix (imatrix) quantization + HF upload.
+StelnetTTS — importance-matrix (imatrix) quantization + HF upload.
 
 For each target ASR-LLM decoder model:
   1. download the F16 GGUF,
   2. calibrate an imatrix by running the CC0 Common Voice EN+DE clips through
-     the model with CRISPASR_IMATRIX_OUT set,
+     the model with STELNETTTS_IMATRIX_OUT set,
   3. quantize baseline + imatrix at q4_k and q3_k,
   4. validate: transcribe held-out clips, report CER of baseline vs imatrix
      against the F16 gold (imatrix should not worsen; helps most at q3_k),
@@ -23,9 +23,9 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 STAGE = Path("/tmp/imx")          # big files live here (ephemeral ~70 GB layer)
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = REPO / "build"
-BRANCH = os.environ.get("CRISPASR_REF", "main")
+BRANCH = os.environ.get("STELNETTTS_REF", "main")
 STAGE.mkdir(parents=True, exist_ok=True)
 
 
@@ -35,12 +35,12 @@ def log(msg):
 
 
 # ── 1. clone + harness ──────────────────────────────────────────────────────
-log(f"[1/4] Cloning CrispASR ({BRANCH})")
+log(f"[1/4] Cloning StelnetTTS ({BRANCH})")
 if REPO.exists():
     shutil.rmtree(REPO)
 subprocess.check_call(
     ["git", "clone", "--depth", "1", "--branch", BRANCH, "--recursive",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)], timeout=180)
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)], timeout=180)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 kh.init_progress()
@@ -51,8 +51,8 @@ from huggingface_hub import hf_hub_download, snapshot_download, HfApi  # noqa: E
 api = HfApi(token=hf_token)
 kh.step("cloned")
 
-# ── 2. CUDA build (crispasr for the imatrix producer + crispasr-quantize) ────
-log("[2/4] Building crispasr + crispasr-quantize (CUDA)")
+# ── 2. CUDA build (stelnettts for the imatrix producer + stelnettts-quantize) ────
+log("[2/4] Building stelnettts + stelnettts-quantize (CUDA)")
 kh.install_build_toolchain()
 arch = kh.detect_cuda_arch()
 cfg = ["cmake", "-G", "Ninja", "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release"] \
@@ -60,17 +60,17 @@ cfg = ["cmake", "-G", "Ninja", "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release"] \
 subprocess.check_call(cfg, cwd=str(REPO), timeout=180)
 with kh.build_heartbeat("cmake.build"):
     subprocess.check_call(
-        ["cmake", "--build", str(BUILD), "--target", "crispasr", "crispasr-quantize",
+        ["cmake", "--build", str(BUILD), "--target", "stelnettts", "stelnettts-quantize",
          f"-j{kh.safe_build_jobs(gpu=True)}"], cwd=str(REPO), timeout=3600)
-CRISPASR = str(BUILD / "bin" / "crispasr")
-QUANTIZE = str(BUILD / "bin" / "crispasr-quantize")
+CRISPASR = str(BUILD / "bin" / "stelnettts")
+QUANTIZE = str(BUILD / "bin" / "stelnettts-quantize")
 assert Path(CRISPASR).exists() and Path(QUANTIZE).exists(), "build produced no binaries"
 kh.step("built")
 
 # ── 3. calibration corpus (CC0 Common Voice EN+DE) ──────────────────────────
 log("[3/4] Downloading CC0 calibration set")
 calib_dir = STAGE / "calib"
-snapshot_download("cstr/crispasr-imatrix-calib", repo_type="dataset",
+snapshot_download("Xenna/stelnettts-imatrix-calib", repo_type="dataset",
                   local_dir=str(calib_dir), allow_patterns=["*.mp3"])
 en = sorted((calib_dir / "en").glob("*.mp3"))
 de = sorted((calib_dir / "de").glob("*.mp3"))
@@ -104,12 +104,12 @@ def transcribe(model, wav, timeout=600):
 # ── 4. per-model: calibrate → quantize → validate → upload ──────────────────
 MODELS = [
     # small → large, so early wins bank before any timeout
-    dict(repo="cstr/qwen3-asr-0.6b-GGUF", src="qwen3-asr-0.6b.gguf", prefix="qwen3-asr-0.6b"),
-    dict(repo="cstr/mega-asr-GGUF", src="mega-asr-1.7b-f16.gguf", prefix="mega-asr-1.7b"),
-    dict(repo="cstr/MOSS-Transcribe-preview-2B-GGUF", src="moss-transcribe-preview-2b-f16.gguf",
+    dict(repo="Xenna/cielvox2-asr-0.6b-GGUF", src="cielvox2-asr-0.6b.gguf", prefix="cielvox2-asr-0.6b"),
+    dict(repo="Xenna/mega-asr-GGUF", src="mega-asr-1.7b-f16.gguf", prefix="mega-asr-1.7b"),
+    dict(repo="Xenna/MOSS-Transcribe-preview-2B-GGUF", src="moss-transcribe-preview-2b-f16.gguf",
          prefix="moss-transcribe-preview-2b"),
-    dict(repo="cstr/higgs-audio-v3-stt-GGUF", src="higgs-stt-f16.gguf", prefix="higgs-stt"),
-    dict(repo="cstr/ark-asr-3b-GGUF", src="ark-asr-3b-f16.gguf", prefix="ark-asr-3b"),
+    dict(repo="Xenna/higgs-audio-v3-stt-GGUF", src="higgs-stt-f16.gguf", prefix="higgs-stt"),
+    dict(repo="Xenna/ark-asr-3b-GGUF", src="ark-asr-3b-f16.gguf", prefix="ark-asr-3b"),
 ]
 QTYPES = ["q4_k", "q3_k"]
 summary = []
@@ -137,7 +137,7 @@ for mi, M in enumerate(MODELS):
             imat.unlink()
         t0 = time.time()
         for ci, w in enumerate(CALIB):
-            env = dict(os.environ, CRISPASR_IMATRIX_OUT=str(imat))
+            env = dict(os.environ, STELNETTTS_IMATRIX_OUT=str(imat))
             subprocess.run([CRISPASR, "-m", str(f16), "-f", w], env=env,
                            capture_output=True, text=True, timeout=600)
         ok_imat = imat.exists() and imat.stat().st_size > 4096

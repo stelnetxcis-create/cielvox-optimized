@@ -5,7 +5,7 @@ Two orthogonal test classes:
 
   TestSetterSymbols   — ctypes: every C-ABI symbol is exported and returns -1
                         on a null session handle.  No model, no network.
-  TestBindingMethods  — imports python/crispasr and verifies the Session class
+  TestBindingMethods  — imports python/stelnettts and verifies the Session class
                         exposes all corresponding Python methods.
 
 Run:
@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 
-LIB_PATH = os.environ.get("CRISPASR_LIB")
+LIB_PATH = os.environ.get("STELNETTTS_LIB")
 if not LIB_PATH:
     for candidate in [
         os.path.join(REPO_ROOT, "build-ninja-compile", "src", "libwhisper.dylib"),
@@ -39,102 +39,102 @@ if not LIB_PATH:
 # All calls use a null handle (None) — expected return value is -1.
 _SETTER_SPECS = [
     (
-        "crispasr_session_set_temperature",
+        "stelnettts_session_set_temperature",
         [ctypes.c_void_p, ctypes.c_float, ctypes.c_uint64],
         [None, 0.8, 42],
     ),
     (
-        "crispasr_session_set_tts_seed",
+        "stelnettts_session_set_tts_seed",
         [ctypes.c_void_p, ctypes.c_uint64],
         [None, 12345],
     ),
     (
-        "crispasr_session_set_tts_steps",
+        "stelnettts_session_set_tts_steps",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 20],
     ),
     (
-        "crispasr_session_set_max_new_tokens",
+        "stelnettts_session_set_max_new_tokens",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 256],
     ),
     (
-        "crispasr_session_set_frequency_penalty",
+        "stelnettts_session_set_frequency_penalty",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 0.4],
     ),
     (
-        "crispasr_session_set_top_p",
+        "stelnettts_session_set_top_p",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 0.9],
     ),
     (
-        "crispasr_session_set_min_p",
+        "stelnettts_session_set_min_p",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 0.05],
     ),
     (
-        "crispasr_session_set_repetition_penalty",
+        "stelnettts_session_set_repetition_penalty",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 1.2],
     ),
     (
-        "crispasr_session_set_cfg_weight",
+        "stelnettts_session_set_cfg_weight",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 0.5],
     ),
     (
-        "crispasr_session_set_exaggeration",
+        "stelnettts_session_set_exaggeration",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 0.5],
     ),
     (
-        "crispasr_session_set_max_speech_tokens",
+        "stelnettts_session_set_max_speech_tokens",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 1000],
     ),
     (
-        "crispasr_session_set_length_scale",
+        "stelnettts_session_set_length_scale",
         [ctypes.c_void_p, ctypes.c_float],
         [None, 1.0],
     ),
     (
-        "crispasr_session_set_best_of",
+        "stelnettts_session_set_best_of",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 5],
     ),
     (
-        "crispasr_session_set_beam_size",
+        "stelnettts_session_set_beam_size",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 4],
     ),
     (
-        "crispasr_session_set_alt_n",
+        "stelnettts_session_set_alt_n",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 3],
     ),
     (
-        "crispasr_session_set_ask",
+        "stelnettts_session_set_ask",
         [ctypes.c_void_p, ctypes.c_char_p],
         [None, b"hello"],
     ),
     (
-        "crispasr_session_set_grammar_text",
+        "stelnettts_session_set_grammar_text",
         [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_float],
         [None, None, None, 100.0],
     ),
     (
-        "crispasr_session_set_fallback_thresholds",
+        "stelnettts_session_set_fallback_thresholds",
         [ctypes.c_void_p, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float],
         [None, 2.4, -1.0, 0.6, 0.2],
     ),
     (
-        "crispasr_session_set_whisper_decode_extras",
+        "stelnettts_session_set_whisper_decode_extras",
         [ctypes.c_void_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int],
         [None, 0, b"", 0],
     ),
     (
-        "crispasr_session_set_return_logits",
+        "stelnettts_session_set_return_logits",
         [ctypes.c_void_p, ctypes.c_int],
         [None, 1],
     ),
@@ -165,7 +165,7 @@ _BINDING_METHODS = [
 ]
 
 
-@unittest.skipUnless(LIB_PATH, "libwhisper/libcrispasr not built — set CRISPASR_LIB or build first")
+@unittest.skipUnless(LIB_PATH, "libwhisper/libstelnettts not built — set STELNETTTS_LIB or build first")
 class TestSetterSymbols(unittest.TestCase):
     """Every C-ABI setter must be exported and return -1 on a null handle."""
 
@@ -252,10 +252,10 @@ class TestBindingMethods(unittest.TestCase):
 
     def setUp(self):
         try:
-            from crispasr import Session
+            from stelnettts import Session
             self.Session = Session
         except ImportError as exc:
-            self.skipTest(f"crispasr Python package not importable: {exc}")
+            self.skipTest(f"stelnettts Python package not importable: {exc}")
 
     def test_all_methods_present(self):
         for method in _BINDING_METHODS:

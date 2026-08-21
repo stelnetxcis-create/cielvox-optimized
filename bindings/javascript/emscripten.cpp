@@ -1,13 +1,13 @@
 //
-// This is the Javascript API of crispasr
+// This is the Javascript API of stelnettts
 //
 // Very crude at the moment.
 // Feel free to contribute and make this better!
 //
-// See tests/test-crispasr.js for sample usage.
+// See tests/test-stelnettts.js for sample usage.
 //
 
-#include "crispasr.h"
+#include "stelnettts.h"
 
 #include <emscripten.h>
 #include <emscripten/bind.h>
@@ -31,285 +31,285 @@ static pthread_t g_compute_thread; // pthread-0 under PROXY_TO_PTHREAD
 static bool g_compute_thread_set = false;
 #endif
 
-// The unified Session C-ABI is declared in crispasr.h (included above)
-// as `struct crispasr_session`. Legacy name alias for the Embind wrappers:
+// The unified Session C-ABI is declared in stelnettts.h (included above)
+// as `struct stelnettts_session`. Legacy name alias for the Embind wrappers:
 extern "C" {
-typedef struct crispasr_session CrispasrSession;
-CrispasrSession* crispasr_session_open(const char* model_path, int n_threads);
-void crispasr_session_close(CrispasrSession* s);
-int crispasr_session_set_codec_path(CrispasrSession* s, const char* path);
-int crispasr_session_set_voice(CrispasrSession* s, const char* path, const char* ref_text_or_null);
-int crispasr_session_set_speaker_name(CrispasrSession* s, const char* name);
-int crispasr_session_n_speakers(CrispasrSession* s);
-const char* crispasr_session_get_speaker_name(CrispasrSession* s, int i);
-int crispasr_session_set_instruct(CrispasrSession* s, const char* instruct);
+typedef struct stelnettts_session CrispasrSession;
+CrispasrSession* stelnettts_session_open(const char* model_path, int n_threads);
+void stelnettts_session_close(CrispasrSession* s);
+int stelnettts_session_set_codec_path(CrispasrSession* s, const char* path);
+int stelnettts_session_set_voice(CrispasrSession* s, const char* path, const char* ref_text_or_null);
+int stelnettts_session_set_speaker_name(CrispasrSession* s, const char* name);
+int stelnettts_session_n_speakers(CrispasrSession* s);
+const char* stelnettts_session_get_speaker_name(CrispasrSession* s, int i);
+int stelnettts_session_set_instruct(CrispasrSession* s, const char* instruct);
 // #316: synthesize these phonemes verbatim, skipping the G2P. Empty clears. kokoro and piper only (rc=-2).
-int crispasr_session_set_tts_phonemes(struct crispasr_session* s, const char* phonemes);
-int crispasr_session_is_custom_voice(CrispasrSession* s);
-int crispasr_session_is_voice_design(CrispasrSession* s);
-float* crispasr_session_synthesize(CrispasrSession* s, const char* text, int* out_n_samples);
+int stelnettts_session_set_tts_phonemes(struct stelnettts_session* s, const char* phonemes);
+int stelnettts_session_is_custom_voice(CrispasrSession* s);
+int stelnettts_session_is_voice_design(CrispasrSession* s);
+float* stelnettts_session_synthesize(CrispasrSession* s, const char* text, int* out_n_samples);
 // #321 parity: UNMARKED synthesis (hard-refused unless accept_marking_responsibility was called first),
 // the marking attestation gate, speech-to-speech, the input-rate probe, and two setters.
-float* crispasr_session_synthesize_raw(CrispasrSession* s, const char* text, int* out_n_samples);
-int crispasr_session_accept_marking_responsibility(CrispasrSession* s, const char* attestation);
+float* stelnettts_session_synthesize_raw(CrispasrSession* s, const char* text, int* out_n_samples);
+int stelnettts_session_accept_marking_responsibility(CrispasrSession* s, const char* attestation);
 // Whose voice a PRESET voice is (EU AI Act Art. 50(4)); -2 on a bad value.
-int crispasr_session_set_speaker_identity(CrispasrSession* s, const char* identity);
-float* crispasr_session_speech_to_speech(CrispasrSession* s, const float* in_samples, int n_in_samples, char** out_text,
+int stelnettts_session_set_speaker_identity(CrispasrSession* s, const char* identity);
+float* stelnettts_session_speech_to_speech(CrispasrSession* s, const float* in_samples, int n_in_samples, char** out_text,
                                          int* out_n_samples);
-int crispasr_session_input_sample_rate(CrispasrSession* s);
+int stelnettts_session_input_sample_rate(CrispasrSession* s);
 // #332: output-side counterparts (rate of synthesize/s2s PCM; mono channels).
-int crispasr_session_output_sample_rate(CrispasrSession* s);
-int crispasr_session_input_channels(CrispasrSession* s);
-int crispasr_session_output_channels(CrispasrSession* s);
-int crispasr_session_set_g2p_dict(CrispasrSession* s, const char* source);
-int crispasr_session_set_speaker_id(CrispasrSession* s, int id);
-void crispasr_pcm_free(float* pcm);
-unsigned char* crispasr_c2pa_sign(const unsigned char* data, size_t len, const char* format, const char* cert_path,
+int stelnettts_session_output_sample_rate(CrispasrSession* s);
+int stelnettts_session_input_channels(CrispasrSession* s);
+int stelnettts_session_output_channels(CrispasrSession* s);
+int stelnettts_session_set_g2p_dict(CrispasrSession* s, const char* source);
+int stelnettts_session_set_speaker_id(CrispasrSession* s, int id);
+void stelnettts_pcm_free(float* pcm);
+unsigned char* stelnettts_c2pa_sign(const unsigned char* data, size_t len, const char* format, const char* cert_path,
                                   const char* key_path, size_t* out_len);
-void crispasr_c2pa_free(unsigned char* p);
-unsigned char* crispasr_pcm_to_wav(const float* pcm, int n_samples, int sample_rate, size_t* out_len);
-int crispasr_session_kokoro_clear_phoneme_cache(CrispasrSession* s);
-int crispasr_kokoro_resolve_model_for_lang_abi(const char* model_path, const char* lang, char* out_path,
+void stelnettts_c2pa_free(unsigned char* p);
+unsigned char* stelnettts_pcm_to_wav(const float* pcm, int n_samples, int sample_rate, size_t* out_len);
+int stelnettts_session_kokoro_clear_phoneme_cache(CrispasrSession* s);
+int stelnettts_kokoro_resolve_model_for_lang_abi(const char* model_path, const char* lang, char* out_path,
                                                int out_path_len);
-int crispasr_kokoro_resolve_fallback_voice_abi(const char* model_path, const char* lang, char* out_path,
+int stelnettts_kokoro_resolve_fallback_voice_abi(const char* model_path, const char* lang, char* out_path,
                                                int out_path_len, char* out_picked, int out_picked_len);
 
 // --- Full C-ABI parity declarations ---
 // Session extras
-int crispasr_session_available_backends(char* out_csv, int out_cap);
-int crispasr_session_detected_language(CrispasrSession* s, char* out_buf, int out_cap);
+int stelnettts_session_available_backends(char* out_csv, int out_cap);
+int stelnettts_session_detected_language(CrispasrSession* s, char* out_buf, int out_cap);
 // CTC vocabulary access (Omni CTC backend): n_vocab piece count, token_text
 // maps an id to its model-owned raw piece (do not free) or "" when out of
 // range / unsupported.
-int crispasr_session_n_vocab(CrispasrSession* s);
-const char* crispasr_session_token_text(CrispasrSession* s, int id);
+int stelnettts_session_n_vocab(CrispasrSession* s);
+const char* stelnettts_session_token_text(CrispasrSession* s, int id);
 // Pitch (F0) estimation — CREPE. `pitch` runs the track and returns the
 // frame count; `pitch_frames` hands back a session-owned flat array of
 // 3 floats per frame {time_ms, f0_hz, voiced_prob}, frame-major.
 // Referencing these here is also what keeps the `crepe` objects from
 // being dead-stripped out of the wasm module at link time.
-int crispasr_session_pitch(CrispasrSession* s, const float* pcm_16k, int n_samples, float hop_ms);
-const float* crispasr_session_pitch_frames(CrispasrSession* s, int* out_n_frames);
-int crispasr_session_pitch_sample_rate(CrispasrSession* s);
+int stelnettts_session_pitch(CrispasrSession* s, const float* pcm_16k, int n_samples, float hop_ms);
+const float* stelnettts_session_pitch_frames(CrispasrSession* s, int* out_n_frames);
+int stelnettts_session_pitch_sample_rate(CrispasrSession* s);
 
 // Chord recognition — BTC. `chords` runs the timeline and returns the span
 // count; `chords_spans` hands back a session-owned flat array of 4 floats per
 // span ({startMs, endMs, label, confidence}). The label is an index; resolve
 // it with chords_span_name, since the names are strings.
-int crispasr_session_chords(CrispasrSession* s, const float* pcm, int n_samples, int sample_rate);
-const float* crispasr_session_chords_spans(CrispasrSession* s, int* out_n_spans);
-const char* crispasr_session_chords_span_name(CrispasrSession* s, int idx);
-int crispasr_session_chords_vocab_size(CrispasrSession* s);
-CrispasrSession* crispasr_session_open_explicit(const char* model_path, const char* backend_name, int n_threads);
-CrispasrSession* crispasr_session_open_with_params(const char* model_path, const char* backend_name,
+int stelnettts_session_chords(CrispasrSession* s, const float* pcm, int n_samples, int sample_rate);
+const float* stelnettts_session_chords_spans(CrispasrSession* s, int* out_n_spans);
+const char* stelnettts_session_chords_span_name(CrispasrSession* s, int idx);
+int stelnettts_session_chords_vocab_size(CrispasrSession* s);
+CrispasrSession* stelnettts_session_open_explicit(const char* model_path, const char* backend_name, int n_threads);
+CrispasrSession* stelnettts_session_open_with_params(const char* model_path, const char* backend_name,
                                                    const void* params);
-const char* crispasr_session_backend(CrispasrSession* s);
-int crispasr_session_set_source_language(CrispasrSession* s, const char* lang);
-int crispasr_session_set_target_language(CrispasrSession* s, const char* lang);
-int crispasr_session_set_tts_reference_language(CrispasrSession* s, const char* lang);
-int crispasr_session_set_punctuation(CrispasrSession* s, int enable);
-int crispasr_session_set_punc_model(CrispasrSession* s, const char* punc_model);
-int crispasr_session_set_hotwords(CrispasrSession* s, const char* hotwords, float boost);
-int crispasr_session_set_sensitivity(CrispasrSession* s, const char* preset);
-int crispasr_session_set_translate(CrispasrSession* s, int enable);
-int crispasr_session_set_temperature(CrispasrSession* s, float temperature, unsigned long long seed);
-int crispasr_session_set_tts_seed(CrispasrSession* s, unsigned long long seed);
-int crispasr_session_set_tts_steps(CrispasrSession* s, int steps);
-int crispasr_session_set_tts_num_candidates(CrispasrSession* s, int n);
-int crispasr_session_set_max_new_tokens(CrispasrSession* s, int n);
-int crispasr_session_set_frequency_penalty(CrispasrSession* s, float penalty);
-int crispasr_session_set_top_p(CrispasrSession* s, float top_p);
-int crispasr_session_set_top_k(CrispasrSession* s, int top_k);
-int crispasr_session_set_do_sample(CrispasrSession* s, int enable);
-int crispasr_session_set_min_p(CrispasrSession* s, float min_p);
-int crispasr_session_set_repetition_penalty(CrispasrSession* s, float r);
-int crispasr_session_set_cfg_weight(CrispasrSession* s, float cfg_weight);
-int crispasr_session_set_tts_noise_temp(CrispasrSession* s, float noise_temp);
-int crispasr_session_set_exaggeration(CrispasrSession* s, float exaggeration);
-int crispasr_session_set_max_speech_tokens(CrispasrSession* s, int n);
-int crispasr_session_set_min_speech_tokens(CrispasrSession* s, int n);
-int crispasr_session_set_length_scale(CrispasrSession* s, float scale);
-int crispasr_session_set_best_of(CrispasrSession* s, int n);
-int crispasr_session_set_beam_size(CrispasrSession* s, int n);
-int crispasr_session_set_return_logits(CrispasrSession* s, int enable);
-int crispasr_session_set_grammar_text(CrispasrSession* s, const char* gbnf_text, const char* root_rule, float penalty);
-int crispasr_session_set_fallback_thresholds(CrispasrSession* s, float entropy_thold, float logprob_thold,
+const char* stelnettts_session_backend(CrispasrSession* s);
+int stelnettts_session_set_source_language(CrispasrSession* s, const char* lang);
+int stelnettts_session_set_target_language(CrispasrSession* s, const char* lang);
+int stelnettts_session_set_tts_reference_language(CrispasrSession* s, const char* lang);
+int stelnettts_session_set_punctuation(CrispasrSession* s, int enable);
+int stelnettts_session_set_punc_model(CrispasrSession* s, const char* punc_model);
+int stelnettts_session_set_hotwords(CrispasrSession* s, const char* hotwords, float boost);
+int stelnettts_session_set_sensitivity(CrispasrSession* s, const char* preset);
+int stelnettts_session_set_translate(CrispasrSession* s, int enable);
+int stelnettts_session_set_temperature(CrispasrSession* s, float temperature, unsigned long long seed);
+int stelnettts_session_set_tts_seed(CrispasrSession* s, unsigned long long seed);
+int stelnettts_session_set_tts_steps(CrispasrSession* s, int steps);
+int stelnettts_session_set_tts_num_candidates(CrispasrSession* s, int n);
+int stelnettts_session_set_max_new_tokens(CrispasrSession* s, int n);
+int stelnettts_session_set_frequency_penalty(CrispasrSession* s, float penalty);
+int stelnettts_session_set_top_p(CrispasrSession* s, float top_p);
+int stelnettts_session_set_top_k(CrispasrSession* s, int top_k);
+int stelnettts_session_set_do_sample(CrispasrSession* s, int enable);
+int stelnettts_session_set_min_p(CrispasrSession* s, float min_p);
+int stelnettts_session_set_repetition_penalty(CrispasrSession* s, float r);
+int stelnettts_session_set_cfg_weight(CrispasrSession* s, float cfg_weight);
+int stelnettts_session_set_tts_noise_temp(CrispasrSession* s, float noise_temp);
+int stelnettts_session_set_exaggeration(CrispasrSession* s, float exaggeration);
+int stelnettts_session_set_max_speech_tokens(CrispasrSession* s, int n);
+int stelnettts_session_set_min_speech_tokens(CrispasrSession* s, int n);
+int stelnettts_session_set_length_scale(CrispasrSession* s, float scale);
+int stelnettts_session_set_best_of(CrispasrSession* s, int n);
+int stelnettts_session_set_beam_size(CrispasrSession* s, int n);
+int stelnettts_session_set_return_logits(CrispasrSession* s, int enable);
+int stelnettts_session_set_grammar_text(CrispasrSession* s, const char* gbnf_text, const char* root_rule, float penalty);
+int stelnettts_session_set_fallback_thresholds(CrispasrSession* s, float entropy_thold, float logprob_thold,
                                              float no_speech_thold, float temperature_inc);
-int crispasr_session_set_alt_n(CrispasrSession* s, int n);
-int crispasr_session_set_whisper_decode_extras(CrispasrSession* s, int suppress_nst, const char* suppress_regex,
+int stelnettts_session_set_alt_n(CrispasrSession* s, int n);
+int stelnettts_session_set_whisper_decode_extras(CrispasrSession* s, int suppress_nst, const char* suppress_regex,
                                                int carry_initial_prompt);
-int crispasr_session_set_ask(CrispasrSession* s, const char* prompt);
-int crispasr_session_detect_language(CrispasrSession* s, const float* pcm, int n_samples, const char* lid_model_path,
+int stelnettts_session_set_ask(CrispasrSession* s, const char* prompt);
+int stelnettts_session_detect_language(CrispasrSession* s, const float* pcm, int n_samples, const char* lid_model_path,
                                      int method, char* out_lang, int out_lang_cap, float* out_prob);
 
 // Session ASR transcription
-struct crispasr_session_result;
-struct crispasr_session_result* crispasr_session_transcribe(CrispasrSession* s, const float* pcm, int n_samples);
-struct crispasr_session_result* crispasr_session_transcribe_lang(CrispasrSession* s, const float* pcm, int n_samples,
+struct stelnettts_session_result;
+struct stelnettts_session_result* stelnettts_session_transcribe(CrispasrSession* s, const float* pcm, int n_samples);
+struct stelnettts_session_result* stelnettts_session_transcribe_lang(CrispasrSession* s, const float* pcm, int n_samples,
                                                                  const char* language);
-struct crispasr_session_result* crispasr_session_transcribe_chunked_lang(CrispasrSession* s, const float* pcm,
+struct stelnettts_session_result* stelnettts_session_transcribe_chunked_lang(CrispasrSession* s, const float* pcm,
                                                                          int n_samples, int chunk_seconds,
                                                                          int overlap_seconds, const char* language);
-int crispasr_get_progress(void);
-struct crispasr_session_result* crispasr_session_transcribe_vad(CrispasrSession* s, const float* pcm, int n_samples,
+int stelnettts_get_progress(void);
+struct stelnettts_session_result* stelnettts_session_transcribe_vad(CrispasrSession* s, const float* pcm, int n_samples,
                                                                 int sample_rate, const char* vad_model_path,
                                                                 void* opts);
-struct crispasr_session_result* crispasr_session_transcribe_vad_lang(CrispasrSession* s, const float* pcm,
+struct stelnettts_session_result* stelnettts_session_transcribe_vad_lang(CrispasrSession* s, const float* pcm,
                                                                      int n_samples, int sample_rate,
                                                                      const char* vad_model_path, void* opts,
                                                                      const char* language);
-int crispasr_session_result_n_segments(struct crispasr_session_result* r);
-const char* crispasr_session_result_segment_text(struct crispasr_session_result* r, int i);
-long long crispasr_session_result_segment_t0(struct crispasr_session_result* r, int i);
-long long crispasr_session_result_segment_t1(struct crispasr_session_result* r, int i);
-int crispasr_session_result_n_words(struct crispasr_session_result* r, int i_seg);
-const char* crispasr_session_result_word_text(struct crispasr_session_result* r, int i_seg, int i_word);
-long long crispasr_session_result_word_t0(struct crispasr_session_result* r, int i_seg, int i_word);
-long long crispasr_session_result_word_t1(struct crispasr_session_result* r, int i_seg, int i_word);
-float crispasr_session_result_word_p(struct crispasr_session_result* r, int i_seg, int i_word);
-float crispasr_session_result_segment_no_speech_prob(struct crispasr_session_result* r, int i_seg);
+int stelnettts_session_result_n_segments(struct stelnettts_session_result* r);
+const char* stelnettts_session_result_segment_text(struct stelnettts_session_result* r, int i);
+long long stelnettts_session_result_segment_t0(struct stelnettts_session_result* r, int i);
+long long stelnettts_session_result_segment_t1(struct stelnettts_session_result* r, int i);
+int stelnettts_session_result_n_words(struct stelnettts_session_result* r, int i_seg);
+const char* stelnettts_session_result_word_text(struct stelnettts_session_result* r, int i_seg, int i_word);
+long long stelnettts_session_result_word_t0(struct stelnettts_session_result* r, int i_seg, int i_word);
+long long stelnettts_session_result_word_t1(struct stelnettts_session_result* r, int i_seg, int i_word);
+float stelnettts_session_result_word_p(struct stelnettts_session_result* r, int i_seg, int i_word);
+float stelnettts_session_result_segment_no_speech_prob(struct stelnettts_session_result* r, int i_seg);
 // #300: native per-segment speaker label ("(Speaker N) "), "" when the backend
 // does not diarize natively. Never NULL.
-const char* crispasr_session_result_segment_speaker(struct crispasr_session_result* r, int i);
-int crispasr_session_result_word_n_alts(struct crispasr_session_result* r, int i_seg, int i_word);
-const char* crispasr_session_result_word_alt_text(struct crispasr_session_result* r, int i_seg, int i_word, int i_alt);
-float crispasr_session_result_word_alt_p(struct crispasr_session_result* r, int i_seg, int i_word, int i_alt);
-int crispasr_session_result_n_logit_frames(struct crispasr_session_result* r);
-int crispasr_session_result_n_logit_vocab(struct crispasr_session_result* r);
-const float* crispasr_session_result_logits(struct crispasr_session_result* r);
-void crispasr_session_result_free(struct crispasr_session_result* r);
-char* crispasr_session_translate_text(CrispasrSession* s, const char* text, const char* src_lang, const char* tgt_lang,
+const char* stelnettts_session_result_segment_speaker(struct stelnettts_session_result* r, int i);
+int stelnettts_session_result_word_n_alts(struct stelnettts_session_result* r, int i_seg, int i_word);
+const char* stelnettts_session_result_word_alt_text(struct stelnettts_session_result* r, int i_seg, int i_word, int i_alt);
+float stelnettts_session_result_word_alt_p(struct stelnettts_session_result* r, int i_seg, int i_word, int i_alt);
+int stelnettts_session_result_n_logit_frames(struct stelnettts_session_result* r);
+int stelnettts_session_result_n_logit_vocab(struct stelnettts_session_result* r);
+const float* stelnettts_session_result_logits(struct stelnettts_session_result* r);
+void stelnettts_session_result_free(struct stelnettts_session_result* r);
+char* stelnettts_session_translate_text(CrispasrSession* s, const char* text, const char* src_lang, const char* tgt_lang,
                                       int max_tokens);
-void crispasr_session_translate_text_free(char* text);
+void stelnettts_session_translate_text_free(char* text);
 
 // Streaming
 struct CrispasrStream;
-struct CrispasrStream* crispasr_session_stream_open(CrispasrSession* s, int n_threads, int step_ms, int length_ms,
+struct CrispasrStream* stelnettts_session_stream_open(CrispasrSession* s, int n_threads, int step_ms, int length_ms,
                                                     int keep_ms, const char* language, int translate);
-struct CrispasrStream* crispasr_stream_open(void* ctx, int n_threads, int step_ms, int length_ms, int keep_ms,
+struct CrispasrStream* stelnettts_stream_open(void* ctx, int n_threads, int step_ms, int length_ms, int keep_ms,
                                             const char* language, int translate);
-int crispasr_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
-int crispasr_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap, double* out_t0_s, double* out_t1_s,
+int stelnettts_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
+int stelnettts_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap, double* out_t0_s, double* out_t1_s,
                              long long* out_counter);
-int crispasr_stream_flush(struct CrispasrStream* s);
-void crispasr_stream_close(struct CrispasrStream* s);
-void crispasr_stream_set_live_decode(struct CrispasrStream* s, int enabled);
+int stelnettts_stream_flush(struct CrispasrStream* s);
+void stelnettts_stream_close(struct CrispasrStream* s);
+void stelnettts_stream_set_live_decode(struct CrispasrStream* s, int enabled);
 
 // Punctuation
-void* crispasr_punc_init(const char* model_path);
-const char* crispasr_punc_process(void* ctx, const char* text);
-void crispasr_punc_free_text(const char* text);
-void crispasr_punc_free(void* ctx);
+void* stelnettts_punc_init(const char* model_path);
+const char* stelnettts_punc_process(void* ctx, const char* text);
+void stelnettts_punc_free_text(const char* text);
+void stelnettts_punc_free(void* ctx);
 
 // Alignment
-struct crispasr_align_result;
-struct crispasr_align_result* crispasr_align_words_abi(const char* aligner_model, const char* transcript,
+struct stelnettts_align_result;
+struct stelnettts_align_result* stelnettts_align_words_abi(const char* aligner_model, const char* transcript,
                                                        const float* samples, int n_samples, long long t_offset_cs,
                                                        int n_threads);
-int crispasr_align_result_n_words(struct crispasr_align_result* r);
-const char* crispasr_align_result_word_text(struct crispasr_align_result* r, int i);
-long long crispasr_align_result_word_t0(struct crispasr_align_result* r, int i);
-long long crispasr_align_result_word_t1(struct crispasr_align_result* r, int i);
-void crispasr_align_result_free(struct crispasr_align_result* r);
+int stelnettts_align_result_n_words(struct stelnettts_align_result* r);
+const char* stelnettts_align_result_word_text(struct stelnettts_align_result* r, int i);
+long long stelnettts_align_result_word_t0(struct stelnettts_align_result* r, int i);
+long long stelnettts_align_result_word_t1(struct stelnettts_align_result* r, int i);
+void stelnettts_align_result_free(struct stelnettts_align_result* r);
 
-// VAD — declared in crispasr.h
+// VAD — declared in stelnettts.h
 
 // LCS dedup
-int crispasr_lcs_dedup_prefix_count(const int* prev_tail_tokens, int n_prev, const int* curr_tokens, int n_curr,
+int stelnettts_lcs_dedup_prefix_count(const int* prev_tail_tokens, int n_prev, const int* curr_tokens, int n_curr,
                                     int min_lcs_length);
 
-// params_set_* — declared in crispasr.h (use whisper_full_params*, not void*)
+// params_set_* — declared in stelnettts.h (use whisper_full_params*, not void*)
 
 // Token-level accessors
-long long crispasr_token_t0(void* ctx, int i_seg, int i_tok);
-long long crispasr_token_t1(void* ctx, int i_seg, int i_tok);
-float crispasr_token_p(void* ctx, int i_seg, int i_tok);
-int crispasr_token_n_alts(void* ctx, int i_seg, int i_tok);
-int crispasr_token_alt_id(void* ctx, int i_seg, int i_tok, int i_alt);
-float crispasr_token_alt_p(void* ctx, int i_seg, int i_tok, int i_alt);
-int crispasr_token_alt_text(void* ctx, int i_seg, int i_tok, int i_alt, char* out, int out_cap);
+long long stelnettts_token_t0(void* ctx, int i_seg, int i_tok);
+long long stelnettts_token_t1(void* ctx, int i_seg, int i_tok);
+float stelnettts_token_p(void* ctx, int i_seg, int i_tok);
+int stelnettts_token_n_alts(void* ctx, int i_seg, int i_tok);
+int stelnettts_token_alt_id(void* ctx, int i_seg, int i_tok, int i_alt);
+float stelnettts_token_alt_p(void* ctx, int i_seg, int i_tok, int i_alt);
+int stelnettts_token_alt_text(void* ctx, int i_seg, int i_tok, int i_alt, char* out, int out_cap);
 
 // Language detection
-float crispasr_detect_language(void* ctx, const float* pcm, int n_samples, int n_threads, char* out_code, int out_cap);
-int crispasr_detect_language_pcm(const float* samples, int n_samples, int method, const char* model_path, int n_threads,
+float stelnettts_detect_language(void* ctx, const float* pcm, int n_samples, int n_threads, char* out_code, int out_cap);
+int stelnettts_detect_language_pcm(const float* samples, int n_samples, int method, const char* model_path, int n_threads,
                                  int use_gpu, int gpu_device, int flash_attn, char* out_lang, int out_lang_cap,
                                  float* out_confidence);
 
 // Direct Parakeet API
-void* crispasr_parakeet_init(const char* model_path, int n_threads, int use_flash);
-void crispasr_parakeet_free(void* ctx);
-void* crispasr_parakeet_transcribe(void* ctx, const float* pcm, int n_samples, const char* language);
-const char* crispasr_parakeet_result_text(void* r);
-int crispasr_parakeet_result_n_words(void* r);
-const char* crispasr_parakeet_result_word_text(void* r, int i);
-long long crispasr_parakeet_result_word_t0(void* r, int i);
-long long crispasr_parakeet_result_word_t1(void* r, int i);
-int crispasr_parakeet_result_n_tokens(void* r);
-const char* crispasr_parakeet_result_token_text(void* r, int i);
-long long crispasr_parakeet_result_token_t0(void* r, int i);
-long long crispasr_parakeet_result_token_t1(void* r, int i);
-float crispasr_parakeet_result_token_p(void* r, int i);
-void crispasr_parakeet_result_free(void* r);
+void* stelnettts_parakeet_init(const char* model_path, int n_threads, int use_flash);
+void stelnettts_parakeet_free(void* ctx);
+void* stelnettts_parakeet_transcribe(void* ctx, const float* pcm, int n_samples, const char* language);
+const char* stelnettts_parakeet_result_text(void* r);
+int stelnettts_parakeet_result_n_words(void* r);
+const char* stelnettts_parakeet_result_word_text(void* r, int i);
+long long stelnettts_parakeet_result_word_t0(void* r, int i);
+long long stelnettts_parakeet_result_word_t1(void* r, int i);
+int stelnettts_parakeet_result_n_tokens(void* r);
+const char* stelnettts_parakeet_result_token_text(void* r, int i);
+long long stelnettts_parakeet_result_token_t0(void* r, int i);
+long long stelnettts_parakeet_result_token_t1(void* r, int i);
+float stelnettts_parakeet_result_token_p(void* r, int i);
+void stelnettts_parakeet_result_free(void* r);
 
 // Backend detection
-int crispasr_detect_backend_from_gguf(const char* path, char* out_name, int out_cap);
+int stelnettts_detect_backend_from_gguf(const char* path, char* out_name, int out_cap);
 
 // RNNoise audio enhancement
-int crispasr_enhance_audio_rnnoise(const float* in_pcm, int n_samples, float* out_pcm, int out_cap);
+int stelnettts_enhance_audio_rnnoise(const float* in_pcm, int n_samples, float* out_pcm, int out_cap);
 
 // Text-LID
-int crispasr_text_detect_language(const char* text, const char* model_path, int n_threads, char* out_label,
+int stelnettts_text_detect_language(const char* text, const char* model_path, int n_threads, char* out_label,
                                   int out_label_cap, float* out_confidence);
 
 // TitaNet
-void* crispasr_titanet_init(const char* model_path, int n_threads);
-void crispasr_titanet_free(void* ctx);
-int crispasr_titanet_embed(void* ctx, const float* pcm_16k, int n_samples, float* out);
-float crispasr_titanet_cosine_sim(const float* a, const float* b, int dim);
+void* stelnettts_titanet_init(const char* model_path, int n_threads);
+void stelnettts_titanet_free(void* ctx);
+int stelnettts_titanet_embed(void* ctx, const float* pcm_16k, int n_samples, float* out);
+float stelnettts_titanet_cosine_sim(const float* a, const float* b, int dim);
 
 // Speaker database (closed-roster, consent-gated — issue #266)
-void* crispasr_speaker_db_open(const char* dir_path, const char* expected_names_csv, int consent_attested);
-void crispasr_speaker_db_free(void* db);
-int crispasr_speaker_db_count(const void* db);
-float crispasr_speaker_db_match(const void* db, const float* embedding, int dim, float threshold, char* out_name,
+void* stelnettts_speaker_db_open(const char* dir_path, const char* expected_names_csv, int consent_attested);
+void stelnettts_speaker_db_free(void* db);
+int stelnettts_speaker_db_count(const void* db);
+float stelnettts_speaker_db_match(const void* db, const float* embedding, int dim, float threshold, char* out_name,
                                 int out_cap);
-int crispasr_speaker_db_enroll2(const char* dir_path, const char* name, const float* embedding, int dim,
+int stelnettts_speaker_db_enroll2(const char* dir_path, const char* name, const float* embedding, int dim,
                                 int consent_attested);
 
 // Pluggable speaker embedder + clustering + pyannote cache
-void* crispasr_speaker_embedder_make_abi(const char* model_spec, int n_threads, const char* cache_dir);
-void crispasr_speaker_embedder_free_abi(void* embedder);
-int crispasr_speaker_embedder_dim_abi(const void* embedder);
-int crispasr_speaker_embedder_embed_abi(void* embedder, const float* pcm_16k, int n_samples, float* out);
-const char* crispasr_speaker_embedder_name_abi(const void* embedder);
-int crispasr_speaker_cluster_abi(const float* embeddings, int n, int dim, float merge_threshold, int max_speakers,
+void* stelnettts_speaker_embedder_make_abi(const char* model_spec, int n_threads, const char* cache_dir);
+void stelnettts_speaker_embedder_free_abi(void* embedder);
+int stelnettts_speaker_embedder_dim_abi(const void* embedder);
+int stelnettts_speaker_embedder_embed_abi(void* embedder, const float* pcm_16k, int n_samples, float* out);
+const char* stelnettts_speaker_embedder_name_abi(const void* embedder);
+int stelnettts_speaker_cluster_abi(const float* embeddings, int n, int dim, float merge_threshold, int max_speakers,
                                  int* labels_out);
-void* crispasr_pyannote_cache_compute_abi(const float* full_audio, int n_samples, const char* model_path,
+void* stelnettts_pyannote_cache_compute_abi(const float* full_audio, int n_samples, const char* model_path,
                                           int n_threads);
-void crispasr_pyannote_cache_free_abi(void* cache);
-int crispasr_pyannote_cache_apply_abi(const void* cache, long long slice_t0_cs, void* segs, int n_segs);
+void stelnettts_pyannote_cache_free_abi(void* cache);
+int stelnettts_pyannote_cache_apply_abi(const void* cache, long long slice_t0_cs, void* segs, int n_segs);
 
 // Kokoro lang helpers
-int crispasr_kokoro_lang_is_german_abi(const char* lang);
-int crispasr_kokoro_lang_has_native_voice_abi(const char* lang);
+int stelnettts_kokoro_lang_is_german_abi(const char* lang);
+int stelnettts_kokoro_lang_has_native_voice_abi(const char* lang);
 
 // Registry + cache
-int crispasr_registry_lookup_abi(const char* backend, char* out_filename, int filename_cap, char* out_url, int url_cap,
+int stelnettts_registry_lookup_abi(const char* backend, char* out_filename, int filename_cap, char* out_url, int url_cap,
                                  char* out_size, int size_cap);
-int crispasr_registry_lookup_by_filename_abi(const char* filename, char* out_filename, int filename_cap, char* out_url,
+int stelnettts_registry_lookup_by_filename_abi(const char* filename, char* out_filename, int filename_cap, char* out_url,
                                              int url_cap, char* out_size, int size_cap);
-int crispasr_registry_list_backends_abi(char* out_csv, int out_cap);
-int crispasr_registry_default_bundle_info_abi(const char* backend, char* out_backend, int backend_cap,
+int stelnettts_registry_list_backends_abi(char* out_csv, int out_cap);
+int stelnettts_registry_default_bundle_info_abi(const char* backend, char* out_backend, int backend_cap,
                                               char* out_license, int license_cap, int* out_requires_acceptance);
-int crispasr_registry_default_bundle_artifact_abi(const char* backend, int index, int* out_kind, char* out_filename,
+int stelnettts_registry_default_bundle_artifact_abi(const char* backend, int index, int* out_kind, char* out_filename,
                                                   int filename_cap, char* out_url, int url_cap, char* out_size,
                                                   int size_cap);
-int crispasr_cache_ensure_file_abi(const char* filename, const char* url, int quiet, const char* cache_dir_override,
+int stelnettts_cache_ensure_file_abi(const char* filename, const char* url, int quiet, const char* cache_dir_override,
                                    char* out_buf, int out_cap);
-int crispasr_cache_dir_abi(const char* cache_dir_override, char* out_buf, int out_cap);
+int stelnettts_cache_dir_abi(const char* cache_dir_override, char* out_buf, int out_cap);
 
 // Diarization
-int crispasr_diarize_segments_abi(const float* left_pcm, const float* right_pcm, int n_samples, int is_stereo,
+int stelnettts_diarize_segments_abi(const float* left_pcm, const float* right_pcm, int n_samples, int is_stereo,
                                   void* segs, int n_segs, const void* opts);
 }
 
@@ -364,7 +364,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
             }
 
             struct whisper_full_params params =
-                whisper_full_default_params(whisper_sampling_strategy::CRISPASR_SAMPLING_GREEDY);
+                whisper_full_default_params(whisper_sampling_strategy::STELNETTTS_SAMPLING_GREEDY);
 
             params.print_realtime = true;
             params.print_progress = false;
@@ -395,7 +395,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
 
                 printf("\n");
                 printf("%s: processing %d samples, %.1f sec, %d threads, %d processors, lang = %s, task = %s ...\n",
-                       __func__, int(pcmf32.size()), float(pcmf32.size()) / CRISPASR_SAMPLE_RATE, params.n_threads, 1,
+                       __func__, int(pcmf32.size()), float(pcmf32.size()) / STELNETTTS_SAMPLE_RATE, params.n_threads, 1,
                        params.language, params.translate ? "translate" : "transcribe");
 
                 printf("\n");
@@ -413,7 +413,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
 
     // -------------------------------------------------------------------
     // Backend-agnostic ASR session surface (parakeet, canary, …) over the
-    // crispasr_session C-ABI — the WASM analogue of the native bindings'
+    // stelnettts_session C-ABI — the WASM analogue of the native bindings'
     // Session. Unlike init()/full_default() above (whisper-only), this reaches
     // every ASR backend plus the session post-processors (punctuation,
     // punc-model, beam, hotwords, translate). Mirrors the tts* surface.
@@ -422,46 +422,46 @@ EMSCRIPTEN_BINDINGS(whisper) {
         "asrOpen",
         emscripten::optional_override([](const std::string& model_path, const std::string& backend, int n_threads) {
             if (g_asr_session) {
-                crispasr_session_close(g_asr_session);
+                stelnettts_session_close(g_asr_session);
                 g_asr_session = nullptr;
             }
             g_asr_session = backend.empty()
-                                ? crispasr_session_open(model_path.c_str(), n_threads)
-                                : crispasr_session_open_explicit(model_path.c_str(), backend.c_str(), n_threads);
+                                ? stelnettts_session_open(model_path.c_str(), n_threads)
+                                : stelnettts_session_open_explicit(model_path.c_str(), backend.c_str(), n_threads);
             return g_asr_session != nullptr;
         }));
 
     emscripten::function("asrClose", emscripten::optional_override([]() {
                              if (g_asr_session) {
-                                 crispasr_session_close(g_asr_session);
+                                 stelnettts_session_close(g_asr_session);
                                  g_asr_session = nullptr;
                              }
                          }));
 
     emscripten::function("asrSetSourceLanguage", emscripten::optional_override([](const std::string& lang) {
-                             return g_asr_session ? crispasr_session_set_source_language(g_asr_session, lang.c_str())
+                             return g_asr_session ? stelnettts_session_set_source_language(g_asr_session, lang.c_str())
                                                   : -1;
                          }));
     emscripten::function("asrSetTargetLanguage", emscripten::optional_override([](const std::string& lang) {
-                             return g_asr_session ? crispasr_session_set_target_language(g_asr_session, lang.c_str())
+                             return g_asr_session ? stelnettts_session_set_target_language(g_asr_session, lang.c_str())
                                                   : -1;
                          }));
     emscripten::function("asrSetTranslate", emscripten::optional_override([](bool enable) {
-                             return g_asr_session ? crispasr_session_set_translate(g_asr_session, enable ? 1 : 0) : -1;
+                             return g_asr_session ? stelnettts_session_set_translate(g_asr_session, enable ? 1 : 0) : -1;
                          }));
     emscripten::function("asrSetPunctuation", emscripten::optional_override([](bool enable) {
-                             return g_asr_session ? crispasr_session_set_punctuation(g_asr_session, enable ? 1 : 0)
+                             return g_asr_session ? stelnettts_session_set_punctuation(g_asr_session, enable ? 1 : 0)
                                                   : -1;
                          }));
     emscripten::function("asrSetPuncModel", emscripten::optional_override([](const std::string& m) {
-                             return g_asr_session ? crispasr_session_set_punc_model(g_asr_session, m.c_str()) : -1;
+                             return g_asr_session ? stelnettts_session_set_punc_model(g_asr_session, m.c_str()) : -1;
                          }));
     emscripten::function("asrSetBeamSize", emscripten::optional_override([](int n) {
-                             return g_asr_session ? crispasr_session_set_beam_size(g_asr_session, n) : -1;
+                             return g_asr_session ? stelnettts_session_set_beam_size(g_asr_session, n) : -1;
                          }));
     emscripten::function("asrSetHotwords", emscripten::optional_override([](const std::string& w, double boost) {
                              return g_asr_session
-                                        ? crispasr_session_set_hotwords(g_asr_session, w.c_str(), (float)boost)
+                                        ? stelnettts_session_set_hotwords(g_asr_session, w.c_str(), (float)boost)
                                         : -1;
                          }));
     // Named bundle of the four decoder fallback thresholds:
@@ -469,14 +469,14 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // preset (JS callers should treat that as an error, not a no-op) and -1
     // when no session is open.
     emscripten::function("asrSetSensitivity", emscripten::optional_override([](const std::string& preset) {
-                             return g_asr_session ? crispasr_session_set_sensitivity(g_asr_session, preset.c_str())
+                             return g_asr_session ? stelnettts_session_set_sensitivity(g_asr_session, preset.c_str())
                                                   : -1;
                          }));
     emscripten::function("asrSetAsk", emscripten::optional_override([](const std::string& prompt) {
-                             return g_asr_session ? crispasr_session_set_ask(g_asr_session, prompt.c_str()) : -1;
+                             return g_asr_session ? stelnettts_session_set_ask(g_asr_session, prompt.c_str()) : -1;
                          }));
     emscripten::function("asrSetTemperature", emscripten::optional_override([](double temp, double seed) {
-                             return g_asr_session ? crispasr_session_set_temperature(g_asr_session, (float)temp,
+                             return g_asr_session ? stelnettts_session_set_temperature(g_asr_session, (float)temp,
                                                                                      (unsigned long long)seed)
                                                   : -1;
                          }));
@@ -496,20 +496,20 @@ EMSCRIPTEN_BINDINGS(whisper) {
             emscripten::val view = audio["constructor"].new_(memory, reinterpret_cast<uintptr_t>(pcmf32.data()), n);
             view.call<void>("set", audio);
 
-            crispasr_session_result* r = crispasr_session_transcribe_lang(g_asr_session, pcmf32.data(), n,
+            stelnettts_session_result* r = stelnettts_session_transcribe_lang(g_asr_session, pcmf32.data(), n,
                                                                           lang.empty() ? nullptr : lang.c_str());
             if (!r)
                 return out;
-            const int ns = crispasr_session_result_n_segments(r);
+            const int ns = stelnettts_session_result_n_segments(r);
             for (int i = 0; i < ns; i++) {
                 emscripten::val seg = emscripten::val::object();
-                seg.set("t0", (double)crispasr_session_result_segment_t0(r, i));
-                seg.set("t1", (double)crispasr_session_result_segment_t1(r, i));
-                const char* text = crispasr_session_result_segment_text(r, i);
+                seg.set("t0", (double)stelnettts_session_result_segment_t0(r, i));
+                seg.set("t1", (double)stelnettts_session_result_segment_t1(r, i));
+                const char* text = stelnettts_session_result_segment_text(r, i);
                 seg.set("text", std::string(text ? text : ""));
                 out.call<void>("push", seg);
             }
-            crispasr_session_result_free(r);
+            stelnettts_session_result_free(r);
             return out;
         }));
 
@@ -531,38 +531,38 @@ EMSCRIPTEN_BINDINGS(whisper) {
             emscripten::val view = audio["constructor"].new_(memory, reinterpret_cast<uintptr_t>(pcmf32.data()), n);
             view.call<void>("set", audio);
 
-            crispasr_session_result* r = crispasr_session_transcribe_chunked_lang(
+            stelnettts_session_result* r = stelnettts_session_transcribe_chunked_lang(
                 g_asr_session, pcmf32.data(), n, chunkSeconds, overlapSeconds, lang.empty() ? nullptr : lang.c_str());
             if (!r)
                 return out;
-            const int ns = crispasr_session_result_n_segments(r);
+            const int ns = stelnettts_session_result_n_segments(r);
             for (int i = 0; i < ns; i++) {
                 emscripten::val seg = emscripten::val::object();
-                seg.set("t0", (double)crispasr_session_result_segment_t0(r, i));
-                seg.set("t1", (double)crispasr_session_result_segment_t1(r, i));
-                const char* text = crispasr_session_result_segment_text(r, i);
+                seg.set("t0", (double)stelnettts_session_result_segment_t0(r, i));
+                seg.set("t1", (double)stelnettts_session_result_segment_t1(r, i));
+                const char* text = stelnettts_session_result_segment_text(r, i);
                 seg.set("text", std::string(text ? text : ""));
                 out.call<void>("push", seg);
             }
-            crispasr_session_result_free(r);
+            stelnettts_session_result_free(r);
             return out;
         }));
 
     // asrGetProgress() -> 0..100 (or -1 idle). Long-form progress poll, updated
     // in lockstep with asrTranscribeChunked windows (issue #208).
-    emscripten::function("asrGetProgress", emscripten::optional_override([]() { return crispasr_get_progress(); }));
+    emscripten::function("asrGetProgress", emscripten::optional_override([]() { return stelnettts_get_progress(); }));
 
     // -------------------------------------------------------------------
-    // TTS surface (kokoro / vibevoice / qwen3-tts) + kokoro per-language
+    // TTS surface (kokoro / vibevoice / cielvox2-tts) + kokoro per-language
     // routing (PLAN #56 opt 2b).
     // -------------------------------------------------------------------
 
     emscripten::function("ttsOpen", emscripten::optional_override([](const std::string& model_path, int n_threads) {
                              if (g_tts_session != nullptr) {
-                                 crispasr_session_close(g_tts_session);
+                                 stelnettts_session_close(g_tts_session);
                                  g_tts_session = nullptr;
                              }
-                             g_tts_session = crispasr_session_open(model_path.c_str(), n_threads <= 0 ? 1 : n_threads);
+                             g_tts_session = stelnettts_session_open(model_path.c_str(), n_threads <= 0 ? 1 : n_threads);
                              return g_tts_session != nullptr;
                          }));
 
@@ -572,29 +572,29 @@ EMSCRIPTEN_BINDINGS(whisper) {
         "ttsOpenExplicit",
         emscripten::optional_override([](const std::string& model_path, const std::string& backend, int n_threads) {
             if (g_tts_session != nullptr) {
-                crispasr_session_close(g_tts_session);
+                stelnettts_session_close(g_tts_session);
                 g_tts_session = nullptr;
             }
             const int nt = n_threads <= 0 ? 1 : n_threads;
-            g_tts_session = backend.empty() ? crispasr_session_open(model_path.c_str(), nt)
-                                            : crispasr_session_open_explicit(model_path.c_str(), backend.c_str(), nt);
+            g_tts_session = backend.empty() ? stelnettts_session_open(model_path.c_str(), nt)
+                                            : stelnettts_session_open_explicit(model_path.c_str(), backend.c_str(), nt);
             return g_tts_session != nullptr;
         }));
 
     emscripten::function("ttsClose", emscripten::optional_override([]() {
                              if (g_tts_session) {
-                                 crispasr_session_close(g_tts_session);
+                                 stelnettts_session_close(g_tts_session);
                                  g_tts_session = nullptr;
                              }
                          }));
 
     emscripten::function("ttsSetCodecPath", emscripten::optional_override([](const std::string& path) {
-                             return g_tts_session ? crispasr_session_set_codec_path(g_tts_session, path.c_str()) : -1;
+                             return g_tts_session ? stelnettts_session_set_codec_path(g_tts_session, path.c_str()) : -1;
                          }));
 
     // Drop the kokoro per-session phoneme cache. (PLAN #56 #5)
     emscripten::function("ttsClearPhonemeCache", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_kokoro_clear_phoneme_cache(g_tts_session) : -1;
+                             return g_tts_session ? stelnettts_session_kokoro_clear_phoneme_cache(g_tts_session) : -1;
                          }));
 
     emscripten::function("ttsSetVoice",
@@ -602,14 +602,14 @@ EMSCRIPTEN_BINDINGS(whisper) {
                              if (!g_tts_session)
                                  return -1;
                              const char* rt = ref_text.empty() ? nullptr : ref_text.c_str();
-                             return crispasr_session_set_voice(g_tts_session, path.c_str(), rt);
+                             return stelnettts_session_set_voice(g_tts_session, path.c_str(), rt);
                          }));
 
     // Orpheus preset speakers — set by NAME, not by file path.
     emscripten::function("ttsSetSpeakerName", emscripten::optional_override([](const std::string& name) {
                              if (!g_tts_session)
                                  return -1;
-                             return crispasr_session_set_speaker_name(g_tts_session, name.c_str());
+                             return stelnettts_session_set_speaker_name(g_tts_session, name.c_str());
                          }));
 
     // Returns the list of preset speaker names for the active backend
@@ -618,20 +618,20 @@ EMSCRIPTEN_BINDINGS(whisper) {
                              emscripten::val out = emscripten::val::array();
                              if (!g_tts_session)
                                  return out;
-                             int n = crispasr_session_n_speakers(g_tts_session);
+                             int n = stelnettts_session_n_speakers(g_tts_session);
                              for (int i = 0; i < n; i++) {
-                                 const char* name = crispasr_session_get_speaker_name(g_tts_session, i);
+                                 const char* name = stelnettts_session_get_speaker_name(g_tts_session, i);
                                  if (name)
                                      out.call<void>("push", std::string(name));
                              }
                              return out;
                          }));
 
-    // qwen3-tts VoiceDesign — natural-language voice description.
+    // cielvox2-tts VoiceDesign — natural-language voice description.
     emscripten::function("ttsSetInstruct", emscripten::optional_override([](const std::string& instruct) {
                              if (!g_tts_session)
                                  return -1;
-                             return crispasr_session_set_instruct(g_tts_session, instruct.c_str());
+                             return stelnettts_session_set_instruct(g_tts_session, instruct.c_str());
                          }));
 
     // #316: drive the acoustic model with phonemes, skipping the G2P.
@@ -639,17 +639,17 @@ EMSCRIPTEN_BINDINGS(whisper) {
     emscripten::function("ttsSetPhonemes", emscripten::optional_override([](const std::string& phonemes) {
                              if (!g_tts_session)
                                  return -1;
-                             return crispasr_session_set_tts_phonemes(g_tts_session, phonemes.c_str());
+                             return stelnettts_session_set_tts_phonemes(g_tts_session, phonemes.c_str());
                          }));
 
-    // qwen3-tts variant detection (returns false also when the active
-    // backend isn't qwen3-tts).
+    // cielvox2-tts variant detection (returns false also when the active
+    // backend isn't cielvox2-tts).
     emscripten::function("ttsIsCustomVoice", emscripten::optional_override([]() -> bool {
-                             return g_tts_session && crispasr_session_is_custom_voice(g_tts_session) != 0;
+                             return g_tts_session && stelnettts_session_is_custom_voice(g_tts_session) != 0;
                          }));
 
     emscripten::function("ttsIsVoiceDesign", emscripten::optional_override([]() -> bool {
-                             return g_tts_session && crispasr_session_is_voice_design(g_tts_session) != 0;
+                             return g_tts_session && stelnettts_session_is_voice_design(g_tts_session) != 0;
                          }));
 
     // Returns a Float32Array of 24 kHz mono PCM. Empty array on failure.
@@ -657,16 +657,16 @@ EMSCRIPTEN_BINDINGS(whisper) {
                              if (!g_tts_session)
                                  return emscripten::val::array();
                              int n = 0;
-                             float* pcm = crispasr_session_synthesize(g_tts_session, text.c_str(), &n);
+                             float* pcm = stelnettts_session_synthesize(g_tts_session, text.c_str(), &n);
                              if (!pcm || n <= 0) {
                                  if (pcm)
-                                     crispasr_pcm_free(pcm);
+                                     stelnettts_pcm_free(pcm);
                                  return emscripten::val::array();
                              }
                              emscripten::val out = emscripten::val::global("Float32Array").new_(n);
                              emscripten::val memoryView = emscripten::val(emscripten::typed_memory_view(n, pcm));
                              out.call<void>("set", memoryView);
-                             crispasr_pcm_free(pcm);
+                             stelnettts_pcm_free(pcm);
                              return out;
                          }));
 
@@ -683,14 +683,14 @@ EMSCRIPTEN_BINDINGS(whisper) {
                 // the factory has resolved) — run inline as fallback.
                 int n = 0;
                 float* pcm =
-                    g_tts_session ? crispasr_session_synthesize(g_tts_session, text_copy->c_str(), &n) : nullptr;
+                    g_tts_session ? stelnettts_session_synthesize(g_tts_session, text_copy->c_str(), &n) : nullptr;
                 emscripten::val out = emscripten::val::array();
                 if (pcm && n > 0) {
                     out = emscripten::val::global("Float32Array").new_(n);
                     out.call<void>("set", emscripten::val(emscripten::typed_memory_view(n, pcm)));
                 }
                 if (pcm)
-                    crispasr_pcm_free(pcm);
+                    stelnettts_pcm_free(pcm);
                 (*cbp)(out);
                 delete text_copy;
                 delete cbp;
@@ -701,7 +701,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
             g_proxy_queue.proxyAsync(g_compute_thread, [text_copy, cbp, servicer]() {
                 int n = 0;
                 float* pcm =
-                    g_tts_session ? crispasr_session_synthesize(g_tts_session, text_copy->c_str(), &n) : nullptr;
+                    g_tts_session ? stelnettts_session_synthesize(g_tts_session, text_copy->c_str(), &n) : nullptr;
                 delete text_copy;
                 // Hand the result (shared WASM heap) back to the servicer; only
                 // touch the JS callback `val` on the thread that created it.
@@ -712,7 +712,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
                         out.call<void>("set", emscripten::val(emscripten::typed_memory_view(n, pcm)));
                     }
                     if (pcm)
-                        crispasr_pcm_free(pcm);
+                        stelnettts_pcm_free(pcm);
                     (*cbp)(out);
                     delete cbp;
                 });
@@ -729,7 +729,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // Returns 0, -1 on no session, -2 on an unrecognised value.
     emscripten::function("ttsSetSpeakerIdentity", emscripten::optional_override([](const std::string& identity) {
                              return g_tts_session
-                                        ? crispasr_session_set_speaker_identity(g_tts_session, identity.c_str())
+                                        ? stelnettts_session_set_speaker_identity(g_tts_session, identity.c_str())
                                         : -1;
                          }));
 
@@ -738,7 +738,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // `attestation` is recorded for audit. Returns 0 on success, -1 otherwise.
     emscripten::function(
         "ttsAcceptMarkingResponsibility", emscripten::optional_override([](const std::string& attestation) {
-            return g_tts_session ? crispasr_session_accept_marking_responsibility(g_tts_session, attestation.c_str())
+            return g_tts_session ? stelnettts_session_accept_marking_responsibility(g_tts_session, attestation.c_str())
                                  : -1;
         }));
 
@@ -751,16 +751,16 @@ EMSCRIPTEN_BINDINGS(whisper) {
                              if (!g_tts_session)
                                  return emscripten::val::array();
                              int n = 0;
-                             float* pcm = crispasr_session_synthesize_raw(g_tts_session, text.c_str(), &n);
+                             float* pcm = stelnettts_session_synthesize_raw(g_tts_session, text.c_str(), &n);
                              if (!pcm || n <= 0) {
                                  if (pcm)
-                                     crispasr_pcm_free(pcm);
+                                     stelnettts_pcm_free(pcm);
                                  return emscripten::val::array();
                              }
                              emscripten::val out = emscripten::val::global("Float32Array").new_(n);
                              emscripten::val memoryView = emscripten::val(emscripten::typed_memory_view(n, pcm));
                              out.call<void>("set", memoryView);
-                             crispasr_pcm_free(pcm);
+                             stelnettts_pcm_free(pcm);
                              return out;
                          }));
 
@@ -770,7 +770,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // Returns { pcm: Float32Array (watermarked, backend-native rate), transcript:
     // string } — an empty pcm + "" transcript on failure or when the backend
     // has no S2S arm. Same owned-then-freed idiom as ttsSynthesize; the optional
-    // intermediate transcript is freed with crispasr_session_translate_text_free.
+    // intermediate transcript is freed with stelnettts_session_translate_text_free.
     emscripten::function(
         "ttsSpeechToSpeech", emscripten::optional_override([](const emscripten::val& audio) -> emscripten::val {
             emscripten::val result = emscripten::val::object();
@@ -789,25 +789,25 @@ EMSCRIPTEN_BINDINGS(whisper) {
 
             char* out_text = nullptr;
             int out_n = 0;
-            float* pcm = crispasr_session_speech_to_speech(g_tts_session, in.data(), n, &out_text, &out_n);
+            float* pcm = stelnettts_session_speech_to_speech(g_tts_session, in.data(), n, &out_text, &out_n);
             if (out_text) {
                 result.set("transcript", std::string(out_text));
-                crispasr_session_translate_text_free(out_text);
+                stelnettts_session_translate_text_free(out_text);
             }
             if (!pcm || out_n <= 0) {
                 if (pcm)
-                    crispasr_pcm_free(pcm);
+                    stelnettts_pcm_free(pcm);
                 return result;
             }
             emscripten::val outPcm = emscripten::val::global("Float32Array").new_(out_n);
             emscripten::val memoryView = emscripten::val(emscripten::typed_memory_view(out_n, pcm));
             outPcm.call<void>("set", memoryView);
-            crispasr_pcm_free(pcm);
+            stelnettts_pcm_free(pcm);
             result.set("pcm", outPcm);
             return result;
         }));
 
-    // Mirrors python crispasr.kokoro_resolve_for_lang() — returns
+    // Mirrors python stelnettts.kokoro_resolve_for_lang() — returns
     // {modelPath, voicePath, voiceName, backboneSwapped}.
     emscripten::function(
         "kokoroResolveForLang",
@@ -816,13 +816,13 @@ EMSCRIPTEN_BINDINGS(whisper) {
             char out_voice[1024] = {0};
             char out_picked[64] = {0};
 
-            int rc = crispasr_kokoro_resolve_model_for_lang_abi(model_path.c_str(), lang.c_str(), out_model,
+            int rc = stelnettts_kokoro_resolve_model_for_lang_abi(model_path.c_str(), lang.c_str(), out_model,
                                                                 sizeof(out_model));
             bool swapped = (rc == 0);
             std::string resolved = (out_model[0] != 0) ? std::string(out_model) : model_path;
 
             std::string vp, vn;
-            rc = crispasr_kokoro_resolve_fallback_voice_abi(model_path.c_str(), lang.c_str(), out_voice,
+            rc = stelnettts_kokoro_resolve_fallback_voice_abi(model_path.c_str(), lang.c_str(), out_voice,
                                                             sizeof(out_voice), out_picked, sizeof(out_picked));
             if (rc == 0) {
                 vp = out_voice;
@@ -843,139 +843,139 @@ EMSCRIPTEN_BINDINGS(whisper) {
 
     // --- Session setters ---
     emscripten::function("sessionSetSourceLanguage", emscripten::optional_override([](const std::string& lang) {
-                             return g_tts_session ? crispasr_session_set_source_language(g_tts_session, lang.c_str())
+                             return g_tts_session ? stelnettts_session_set_source_language(g_tts_session, lang.c_str())
                                                   : -1;
                          }));
     emscripten::function("sessionSetTargetLanguage", emscripten::optional_override([](const std::string& lang) {
-                             return g_tts_session ? crispasr_session_set_target_language(g_tts_session, lang.c_str())
+                             return g_tts_session ? stelnettts_session_set_target_language(g_tts_session, lang.c_str())
                                                   : -1;
                          }));
     // #329: the language the cloning REFERENCE is spoken in (not the output
     // language) — cosyvoice3 drops the reference transcript when they differ.
     emscripten::function("sessionSetTtsReferenceLanguage", emscripten::optional_override([](const std::string& lang) {
                              return g_tts_session
-                                        ? crispasr_session_set_tts_reference_language(g_tts_session, lang.c_str())
+                                        ? stelnettts_session_set_tts_reference_language(g_tts_session, lang.c_str())
                                         : -1;
                          }));
     emscripten::function("sessionSetPunctuation", emscripten::optional_override([](bool enable) {
-                             return g_tts_session ? crispasr_session_set_punctuation(g_tts_session, enable ? 1 : 0)
+                             return g_tts_session ? stelnettts_session_set_punctuation(g_tts_session, enable ? 1 : 0)
                                                   : -1;
                          }));
     emscripten::function("sessionSetTranslate", emscripten::optional_override([](bool enable) {
-                             return g_tts_session ? crispasr_session_set_translate(g_tts_session, enable ? 1 : 0) : -1;
+                             return g_tts_session ? stelnettts_session_set_translate(g_tts_session, enable ? 1 : 0) : -1;
                          }));
     emscripten::function(
         "sessionSetTemperature", emscripten::optional_override([](float temp, int seed) {
-            return g_tts_session ? crispasr_session_set_temperature(g_tts_session, temp, (unsigned long long)seed) : -1;
+            return g_tts_session ? stelnettts_session_set_temperature(g_tts_session, temp, (unsigned long long)seed) : -1;
         }));
     emscripten::function("sessionSetTtsSeed", emscripten::optional_override([](int seed) {
                              return g_tts_session
-                                        ? crispasr_session_set_tts_seed(g_tts_session, (unsigned long long)seed)
+                                        ? stelnettts_session_set_tts_seed(g_tts_session, (unsigned long long)seed)
                                         : -1;
                          }));
     emscripten::function("sessionSetTtsSteps", emscripten::optional_override([](int steps) {
-                             return g_tts_session ? crispasr_session_set_tts_steps(g_tts_session, steps) : -1;
+                             return g_tts_session ? stelnettts_session_set_tts_steps(g_tts_session, steps) : -1;
                          }));
     emscripten::function("sessionSetTtsNumCandidates", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_tts_num_candidates(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_tts_num_candidates(g_tts_session, n) : -1;
                          }));
     emscripten::function("sessionSetMaxNewTokens", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_max_new_tokens(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_max_new_tokens(g_tts_session, n) : -1;
                          }));
     emscripten::function("sessionSetFrequencyPenalty", emscripten::optional_override([](float p) {
-                             return g_tts_session ? crispasr_session_set_frequency_penalty(g_tts_session, p) : -1;
+                             return g_tts_session ? stelnettts_session_set_frequency_penalty(g_tts_session, p) : -1;
                          }));
     emscripten::function("sessionSetTopP", emscripten::optional_override([](float p) {
-                             return g_tts_session ? crispasr_session_set_top_p(g_tts_session, p) : -1;
+                             return g_tts_session ? stelnettts_session_set_top_p(g_tts_session, p) : -1;
                          }));
     emscripten::function("sessionSetTopK", emscripten::optional_override([](int k) {
-                             return g_tts_session ? crispasr_session_set_top_k(g_tts_session, k) : -1;
+                             return g_tts_session ? stelnettts_session_set_top_k(g_tts_session, k) : -1;
                          }));
     emscripten::function("sessionSetDoSample", emscripten::optional_override([](bool enable) {
-                             return g_tts_session ? crispasr_session_set_do_sample(g_tts_session, enable ? 1 : 0) : -1;
+                             return g_tts_session ? stelnettts_session_set_do_sample(g_tts_session, enable ? 1 : 0) : -1;
                          }));
     emscripten::function("sessionSetMinP", emscripten::optional_override([](float p) {
-                             return g_tts_session ? crispasr_session_set_min_p(g_tts_session, p) : -1;
+                             return g_tts_session ? stelnettts_session_set_min_p(g_tts_session, p) : -1;
                          }));
     emscripten::function("sessionSetRepetitionPenalty", emscripten::optional_override([](float r) {
-                             return g_tts_session ? crispasr_session_set_repetition_penalty(g_tts_session, r) : -1;
+                             return g_tts_session ? stelnettts_session_set_repetition_penalty(g_tts_session, r) : -1;
                          }));
     emscripten::function("sessionSetCfgWeight", emscripten::optional_override([](float w) {
-                             return g_tts_session ? crispasr_session_set_cfg_weight(g_tts_session, w) : -1;
+                             return g_tts_session ? stelnettts_session_set_cfg_weight(g_tts_session, w) : -1;
                          }));
     emscripten::function("sessionSetTtsNoiseTemp", emscripten::optional_override([](float t) {
-                             return g_tts_session ? crispasr_session_set_tts_noise_temp(g_tts_session, t) : -1;
+                             return g_tts_session ? stelnettts_session_set_tts_noise_temp(g_tts_session, t) : -1;
                          }));
     emscripten::function("sessionSetExaggeration", emscripten::optional_override([](float e) {
-                             return g_tts_session ? crispasr_session_set_exaggeration(g_tts_session, e) : -1;
+                             return g_tts_session ? stelnettts_session_set_exaggeration(g_tts_session, e) : -1;
                          }));
     emscripten::function("sessionSetMaxSpeechTokens", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_max_speech_tokens(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_max_speech_tokens(g_tts_session, n) : -1;
                          }));
     emscripten::function("sessionSetMinSpeechTokens", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_min_speech_tokens(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_min_speech_tokens(g_tts_session, n) : -1;
                          }));
     emscripten::function("sessionSetLengthScale", emscripten::optional_override([](float s) {
-                             return g_tts_session ? crispasr_session_set_length_scale(g_tts_session, s) : -1;
+                             return g_tts_session ? stelnettts_session_set_length_scale(g_tts_session, s) : -1;
                          }));
     // #321 parity: G2P dict source — "olaph" (MIT), "open-dict" (CC-BY-SA), or a file path.
     emscripten::function("sessionSetG2pDict", emscripten::optional_override([](const std::string& source) {
-                             return g_tts_session ? crispasr_session_set_g2p_dict(g_tts_session, source.c_str()) : -1;
+                             return g_tts_session ? stelnettts_session_set_g2p_dict(g_tts_session, source.c_str()) : -1;
                          }));
     // #321 parity: select a preset speaker by integer id (backends with an id-indexed roster).
     emscripten::function("sessionSetSpeakerId", emscripten::optional_override([](int id) {
-                             return g_tts_session ? crispasr_session_set_speaker_id(g_tts_session, id) : -1;
+                             return g_tts_session ? stelnettts_session_set_speaker_id(g_tts_session, id) : -1;
                          }));
     // #321 parity: sample rate the backend expects for input PCM (16000 for
     // Whisper-family; feed it to S2S/transcribe input). 0 when no session is open.
     emscripten::function("sessionInputSampleRate", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_input_sample_rate(g_tts_session) : 0;
+                             return g_tts_session ? stelnettts_session_input_sample_rate(g_tts_session) : 0;
                          }));
     // #332: rate of the PCM ttsSynthesize/speech-to-speech produce (0 = the
     // backend has no audio output), plus the mono channel-count getters.
     emscripten::function("sessionOutputSampleRate", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_output_sample_rate(g_tts_session) : 0;
+                             return g_tts_session ? stelnettts_session_output_sample_rate(g_tts_session) : 0;
                          }));
     emscripten::function("sessionInputChannels", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_input_channels(g_tts_session) : 0;
+                             return g_tts_session ? stelnettts_session_input_channels(g_tts_session) : 0;
                          }));
     emscripten::function("sessionOutputChannels", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_output_channels(g_tts_session) : 0;
+                             return g_tts_session ? stelnettts_session_output_channels(g_tts_session) : 0;
                          }));
     emscripten::function("sessionSetBestOf", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_best_of(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_best_of(g_tts_session, n) : -1;
                          }));
     emscripten::function("sessionSetBeamSize", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_beam_size(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_beam_size(g_tts_session, n) : -1;
                          }));
     emscripten::function("sessionSetReturnLogits", emscripten::optional_override([](bool enable) {
-                             return g_tts_session ? crispasr_session_set_return_logits(g_tts_session, enable ? 1 : 0)
+                             return g_tts_session ? stelnettts_session_set_return_logits(g_tts_session, enable ? 1 : 0)
                                                   : -1;
                          }));
     emscripten::function(
         "sessionSetGrammarText",
         emscripten::optional_override([](const std::string& text, const std::string& root, float penalty) {
-            return g_tts_session ? crispasr_session_set_grammar_text(g_tts_session, text.c_str(), root.c_str(), penalty)
+            return g_tts_session ? stelnettts_session_set_grammar_text(g_tts_session, text.c_str(), root.c_str(), penalty)
                                  : -1;
         }));
     emscripten::function("sessionSetFallbackThresholds",
                          emscripten::optional_override([](float entropy, float logprob, float noSpeech, float tempInc) {
-                             return g_tts_session ? crispasr_session_set_fallback_thresholds(g_tts_session, entropy,
+                             return g_tts_session ? stelnettts_session_set_fallback_thresholds(g_tts_session, entropy,
                                                                                              logprob, noSpeech, tempInc)
                                                   : -1;
                          }));
     emscripten::function("sessionSetAltN", emscripten::optional_override([](int n) {
-                             return g_tts_session ? crispasr_session_set_alt_n(g_tts_session, n) : -1;
+                             return g_tts_session ? stelnettts_session_set_alt_n(g_tts_session, n) : -1;
                          }));
     emscripten::function(
         "sessionSetWhisperDecodeExtras",
         emscripten::optional_override([](bool suppressNst, const std::string& regex, bool carryPrompt) {
-            return g_tts_session ? crispasr_session_set_whisper_decode_extras(g_tts_session, suppressNst ? 1 : 0,
+            return g_tts_session ? stelnettts_session_set_whisper_decode_extras(g_tts_session, suppressNst ? 1 : 0,
                                                                               regex.c_str(), carryPrompt ? 1 : 0)
                                  : -1;
         }));
     emscripten::function("sessionSetAsk", emscripten::optional_override([](const std::string& prompt) {
-                             return g_tts_session ? crispasr_session_set_ask(g_tts_session, prompt.c_str()) : -1;
+                             return g_tts_session ? stelnettts_session_set_ask(g_tts_session, prompt.c_str()) : -1;
                          }));
 
     // --- Session ASR ---
@@ -991,43 +991,43 @@ EMSCRIPTEN_BINDINGS(whisper) {
             emscripten::val mv = audio["constructor"].new_(memory, reinterpret_cast<uintptr_t>(pcm.data()), n);
             mv.call<void>("set", audio);
 
-            crispasr_session_result* res;
+            stelnettts_session_result* res;
             if (!lang.empty()) {
-                res = crispasr_session_transcribe_lang(g_tts_session, pcm.data(), n, lang.c_str());
+                res = stelnettts_session_transcribe_lang(g_tts_session, pcm.data(), n, lang.c_str());
             } else {
-                res = crispasr_session_transcribe(g_tts_session, pcm.data(), n);
+                res = stelnettts_session_transcribe(g_tts_session, pcm.data(), n);
             }
             if (!res)
                 return emscripten::val::array();
 
-            int ns = crispasr_session_result_n_segments(res);
+            int ns = stelnettts_session_result_n_segments(res);
             emscripten::val out = emscripten::val::array();
             for (int i = 0; i < ns; i++) {
                 emscripten::val seg = emscripten::val::object();
-                const char* t = crispasr_session_result_segment_text(res, i);
+                const char* t = stelnettts_session_result_segment_text(res, i);
                 seg.set("text", std::string(t ? t : ""));
-                seg.set("t0", crispasr_session_result_segment_t0(res, i) / 100.0);
-                seg.set("t1", crispasr_session_result_segment_t1(res, i) / 100.0);
-                seg.set("noSpeechProb", (double)crispasr_session_result_segment_no_speech_prob(res, i));
+                seg.set("t0", stelnettts_session_result_segment_t0(res, i) / 100.0);
+                seg.set("t1", stelnettts_session_result_segment_t1(res, i) / 100.0);
+                seg.set("noSpeechProb", (double)stelnettts_session_result_segment_no_speech_prob(res, i));
                 {
-                    const char* spk = crispasr_session_result_segment_speaker(res, i);
+                    const char* spk = stelnettts_session_result_segment_speaker(res, i);
                     seg.set("speaker", std::string(spk ? spk : ""));
                 }
-                int nw = crispasr_session_result_n_words(res, i);
+                int nw = stelnettts_session_result_n_words(res, i);
                 emscripten::val words = emscripten::val::array();
                 for (int j = 0; j < nw; j++) {
                     emscripten::val w = emscripten::val::object();
-                    const char* wt = crispasr_session_result_word_text(res, i, j);
+                    const char* wt = stelnettts_session_result_word_text(res, i, j);
                     w.set("text", std::string(wt ? wt : ""));
-                    w.set("t0", crispasr_session_result_word_t0(res, i, j) / 100.0);
-                    w.set("t1", crispasr_session_result_word_t1(res, i, j) / 100.0);
-                    w.set("p", (double)crispasr_session_result_word_p(res, i, j));
+                    w.set("t0", stelnettts_session_result_word_t0(res, i, j) / 100.0);
+                    w.set("t1", stelnettts_session_result_word_t1(res, i, j) / 100.0);
+                    w.set("p", (double)stelnettts_session_result_word_p(res, i, j));
                     words.call<void>("push", w);
                 }
                 seg.set("words", words);
                 out.call<void>("push", seg);
             }
-            crispasr_session_result_free(res);
+            stelnettts_session_result_free(res);
             return out;
         }));
 
@@ -1050,41 +1050,41 @@ EMSCRIPTEN_BINDINGS(whisper) {
             emscripten::val mv = audio["constructor"].new_(memory, reinterpret_cast<uintptr_t>(pcm.data()), n);
             mv.call<void>("set", audio);
 
-            crispasr_session_set_return_logits(g_tts_session, 1);
-            crispasr_session_result* res;
+            stelnettts_session_set_return_logits(g_tts_session, 1);
+            stelnettts_session_result* res;
             if (!lang.empty()) {
-                res = crispasr_session_transcribe_lang(g_tts_session, pcm.data(), n, lang.c_str());
+                res = stelnettts_session_transcribe_lang(g_tts_session, pcm.data(), n, lang.c_str());
             } else {
-                res = crispasr_session_transcribe(g_tts_session, pcm.data(), n);
+                res = stelnettts_session_transcribe(g_tts_session, pcm.data(), n);
             }
             if (!res) {
-                crispasr_session_set_return_logits(g_tts_session, 0);
+                stelnettts_session_set_return_logits(g_tts_session, 0);
                 return emscripten::val::null();
             }
 
             emscripten::val out = emscripten::val::object();
-            int ns = crispasr_session_result_n_segments(res);
+            int ns = stelnettts_session_result_n_segments(res);
             emscripten::val segs = emscripten::val::array();
             for (int i = 0; i < ns; i++) {
                 emscripten::val seg = emscripten::val::object();
-                const char* t = crispasr_session_result_segment_text(res, i);
+                const char* t = stelnettts_session_result_segment_text(res, i);
                 seg.set("text", std::string(t ? t : ""));
-                seg.set("t0", crispasr_session_result_segment_t0(res, i) / 100.0);
-                seg.set("t1", crispasr_session_result_segment_t1(res, i) / 100.0);
-                seg.set("noSpeechProb", (double)crispasr_session_result_segment_no_speech_prob(res, i));
+                seg.set("t0", stelnettts_session_result_segment_t0(res, i) / 100.0);
+                seg.set("t1", stelnettts_session_result_segment_t1(res, i) / 100.0);
+                seg.set("noSpeechProb", (double)stelnettts_session_result_segment_no_speech_prob(res, i));
                 {
-                    const char* spk = crispasr_session_result_segment_speaker(res, i);
+                    const char* spk = stelnettts_session_result_segment_speaker(res, i);
                     seg.set("speaker", std::string(spk ? spk : ""));
                 }
-                int nw = crispasr_session_result_n_words(res, i);
+                int nw = stelnettts_session_result_n_words(res, i);
                 emscripten::val words = emscripten::val::array();
                 for (int j = 0; j < nw; j++) {
                     emscripten::val w = emscripten::val::object();
-                    const char* wt = crispasr_session_result_word_text(res, i, j);
+                    const char* wt = stelnettts_session_result_word_text(res, i, j);
                     w.set("text", std::string(wt ? wt : ""));
-                    w.set("t0", crispasr_session_result_word_t0(res, i, j) / 100.0);
-                    w.set("t1", crispasr_session_result_word_t1(res, i, j) / 100.0);
-                    w.set("p", (double)crispasr_session_result_word_p(res, i, j));
+                    w.set("t0", stelnettts_session_result_word_t0(res, i, j) / 100.0);
+                    w.set("t1", stelnettts_session_result_word_t1(res, i, j) / 100.0);
+                    w.set("p", (double)stelnettts_session_result_word_p(res, i, j));
                     words.call<void>("push", w);
                 }
                 seg.set("words", words);
@@ -1095,9 +1095,9 @@ EMSCRIPTEN_BINDINGS(whisper) {
             // Copy the result-owned logit grid into a JS Float32Array before the
             // result (and its buffer) is freed — same owned-then-freed idiom as
             // ttsSynthesize.
-            int nf = crispasr_session_result_n_logit_frames(res);
-            int nv = crispasr_session_result_n_logit_vocab(res);
-            const float* lg = crispasr_session_result_logits(res);
+            int nf = stelnettts_session_result_n_logit_frames(res);
+            int nv = stelnettts_session_result_n_logit_vocab(res);
+            const float* lg = stelnettts_session_result_logits(res);
             if (nf > 0 && nv > 0 && lg) {
                 const int total = nf * nv;
                 emscripten::val data = emscripten::val::global("Float32Array").new_(total);
@@ -1112,8 +1112,8 @@ EMSCRIPTEN_BINDINGS(whisper) {
                 out.set("logits", emscripten::val::null());
             }
 
-            crispasr_session_set_return_logits(g_tts_session, 0);
-            crispasr_session_result_free(res);
+            stelnettts_session_set_return_logits(g_tts_session, 0);
+            stelnettts_session_result_free(res);
             return out;
         }));
 
@@ -1125,12 +1125,12 @@ EMSCRIPTEN_BINDINGS(whisper) {
     emscripten::function("sessionCtcVocab", emscripten::optional_override([]() -> emscripten::val {
                              if (!g_tts_session)
                                  return emscripten::val::null();
-                             const int n = crispasr_session_n_vocab(g_tts_session);
+                             const int n = stelnettts_session_n_vocab(g_tts_session);
                              if (n <= 0)
                                  return emscripten::val::null();
                              emscripten::val vocab = emscripten::val::array();
                              for (int i = 0; i < n; i++) {
-                                 const char* p = crispasr_session_token_text(g_tts_session, i);
+                                 const char* p = stelnettts_session_token_text(g_tts_session, i);
                                  vocab.call<void>("push", std::string(p ? p : ""));
                              }
                              return vocab;
@@ -1143,11 +1143,11 @@ EMSCRIPTEN_BINDINGS(whisper) {
             if (!g_tts_session)
                 return "";
             char* res =
-                crispasr_session_translate_text(g_tts_session, text.c_str(), src.c_str(), tgt.c_str(), maxTokens);
+                stelnettts_session_translate_text(g_tts_session, text.c_str(), src.c_str(), tgt.c_str(), maxTokens);
             if (!res)
                 return "";
             std::string out(res);
-            crispasr_session_translate_text_free(res);
+            stelnettts_session_translate_text_free(res);
             return out;
         }));
 
@@ -1176,10 +1176,10 @@ EMSCRIPTEN_BINDINGS(whisper) {
             emscripten::val view = audio["constructor"].new_(memory, reinterpret_cast<uintptr_t>(pcmf32.data()), n);
             view.call<void>("set", audio);
 
-            if (crispasr_session_pitch(g_tts_session, pcmf32.data(), n, hopMs) <= 0)
+            if (stelnettts_session_pitch(g_tts_session, pcmf32.data(), n, hopMs) <= 0)
                 return out;
             int n_frames = 0;
-            const float* frames = crispasr_session_pitch_frames(g_tts_session, &n_frames);
+            const float* frames = stelnettts_session_pitch_frames(g_tts_session, &n_frames);
             if (!frames || n_frames <= 0)
                 return out;
             for (int i = 0; i < n_frames; i++) {
@@ -1195,7 +1195,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // Native input rate the loaded pitch model expects (16000 for CREPE), or
     // 0 when the session has no pitch arm — doubles as a capability probe.
     emscripten::function("sessionPitchSampleRate", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_pitch_sample_rate(g_tts_session) : 0;
+                             return g_tts_session ? stelnettts_session_pitch_sample_rate(g_tts_session) : 0;
                          }));
 
     // --- Chord recognition (BTC) ---
@@ -1218,17 +1218,17 @@ EMSCRIPTEN_BINDINGS(whisper) {
                                  audio["constructor"].new_(memory, reinterpret_cast<uintptr_t>(pcmf32.data()), n);
                              view.call<void>("set", audio);
 
-                             if (crispasr_session_chords(g_tts_session, pcmf32.data(), n, sampleRate) <= 0)
+                             if (stelnettts_session_chords(g_tts_session, pcmf32.data(), n, sampleRate) <= 0)
                                  return out;
                              int n_spans = 0;
-                             const float* spans = crispasr_session_chords_spans(g_tts_session, &n_spans);
+                             const float* spans = stelnettts_session_chords_spans(g_tts_session, &n_spans);
                              if (!spans || n_spans <= 0)
                                  return out;
                              for (int i = 0; i < n_spans; i++) {
                                  emscripten::val c = emscripten::val::object();
                                  c.set("startMs", (double)spans[i * 4 + 0]);
                                  c.set("endMs", (double)spans[i * 4 + 1]);
-                                 const char* nm = crispasr_session_chords_span_name(g_tts_session, i);
+                                 const char* nm = stelnettts_session_chords_span_name(g_tts_session, i);
                                  c.set("chord", std::string(nm ? nm : "N"));
                                  c.set("confidence", (double)spans[i * 4 + 3]);
                                  out.call<void>("push", c);
@@ -1239,13 +1239,13 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // 25 or 170, or 0 when the session has no chord arm — capability probe,
     // mirroring sessionPitchSampleRate.
     emscripten::function("sessionChordsVocabSize", emscripten::optional_override([]() {
-                             return g_tts_session ? crispasr_session_chords_vocab_size(g_tts_session) : 0;
+                             return g_tts_session ? stelnettts_session_chords_vocab_size(g_tts_session) : 0;
                          }));
 
     // --- Available backends ---
     emscripten::function("availableBackends", emscripten::optional_override([]() -> std::string {
                              char buf[1024] = {0};
-                             crispasr_session_available_backends(buf, sizeof(buf));
+                             stelnettts_session_available_backends(buf, sizeof(buf));
                              return std::string(buf);
                          }));
 
@@ -1254,7 +1254,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
                              if (!g_tts_session)
                                  return std::string("unknown");
                              char buf[32] = {0};
-                             crispasr_session_detected_language(g_tts_session, buf, sizeof(buf));
+                             stelnettts_session_detected_language(g_tts_session, buf, sizeof(buf));
                              return std::string(buf);
                          }));
 
@@ -1262,7 +1262,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
     emscripten::function("detectBackendFromGguf",
                          emscripten::optional_override([](const std::string& path) -> std::string {
                              char out[128] = {0};
-                             int rc = crispasr_detect_backend_from_gguf(path.c_str(), out, sizeof(out));
+                             int rc = stelnettts_detect_backend_from_gguf(path.c_str(), out, sizeof(out));
                              // rc > 0 = detected (strlen of name); rc == 0 = valid GGUF, no backend
                              // mapping (name ""); rc < 0 = error. The prior `rc == 0` check returned
                              // the empty name on success and "" on unknown-arch — i.e. always "".
@@ -1279,15 +1279,15 @@ EMSCRIPTEN_BINDINGS(whisper) {
                                  pvec[i] = prev[i].as<int>();
                              for (int i = 0; i < cn; i++)
                                  cvec[i] = curr[i].as<int>();
-                             return crispasr_lcs_dedup_prefix_count(pvec.data(), pn, cvec.data(), cn, minLen);
+                             return stelnettts_lcs_dedup_prefix_count(pvec.data(), pn, cvec.data(), cn, minLen);
                          }));
 
     // --- Kokoro lang helpers ---
     emscripten::function("kokoroLangIsGerman", emscripten::optional_override([](const std::string& lang) -> bool {
-                             return crispasr_kokoro_lang_is_german_abi(lang.c_str()) != 0;
+                             return stelnettts_kokoro_lang_is_german_abi(lang.c_str()) != 0;
                          }));
     emscripten::function("kokoroLangHasNativeVoice", emscripten::optional_override([](const std::string& lang) -> bool {
-                             return crispasr_kokoro_lang_has_native_voice_abi(lang.c_str()) != 0;
+                             return stelnettts_kokoro_lang_has_native_voice_abi(lang.c_str()) != 0;
                          }));
 
     // --- Text-LID ---
@@ -1296,7 +1296,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
                                                                int nThreads) -> emscripten::val {
             char label[64] = {0};
             float conf = 0.0f;
-            int rc = crispasr_text_detect_language(text.c_str(), modelPath.c_str(), nThreads, label, 64, &conf);
+            int rc = stelnettts_text_detect_language(text.c_str(), modelPath.c_str(), nThreads, label, 64, &conf);
             emscripten::val r = emscripten::val::object();
             r.set("rc", rc);
             r.set("lang", std::string(label));
@@ -1307,29 +1307,29 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // --- Registry ---
     emscripten::function("registryListBackends", emscripten::optional_override([]() -> std::string {
                              char buf[8192] = {0};
-                             crispasr_registry_list_backends_abi(buf, sizeof(buf));
+                             stelnettts_registry_list_backends_abi(buf, sizeof(buf));
                              return std::string(buf);
                          }));
 
     // --- Punctuation ---
     emscripten::function("puncInit", emscripten::optional_override([](const std::string& modelPath) -> int {
-                             void* h = crispasr_punc_init(modelPath.c_str());
+                             void* h = stelnettts_punc_init(modelPath.c_str());
                              return h ? (int)(uintptr_t)h : 0;
                          }));
     emscripten::function("puncProcess",
                          emscripten::optional_override([](int handle, const std::string& text) -> std::string {
                              if (!handle)
                                  return text;
-                             const char* r = crispasr_punc_process((void*)(uintptr_t)handle, text.c_str());
+                             const char* r = stelnettts_punc_process((void*)(uintptr_t)handle, text.c_str());
                              if (!r)
                                  return text;
                              std::string out(r);
-                             crispasr_punc_free_text(r);
+                             stelnettts_punc_free_text(r);
                              return out;
                          }));
     emscripten::function("puncFree", emscripten::optional_override([](int handle) {
                              if (handle)
-                                 crispasr_punc_free((void*)(uintptr_t)handle);
+                                 stelnettts_punc_free((void*)(uintptr_t)handle);
                          }));
 
     // Sign an audio CONTAINER (WAV/MP3 bytes — e.g. build a WAV from the
@@ -1339,7 +1339,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
     // no filesystem/openssl needed). Returns a signed Uint8Array, or an empty one
     // on failure / unsupported container (AAC/Opus). #260.
     //
-    // WAV is signed by the built-in native C++ signer (crispasr_c2pa_native) —
+    // WAV is signed by the built-in native C++ signer (stelnettts_c2pa_native) —
     // it compiles into every wasm build, so c2paSign("audio/wav") works WITHOUT
     // ./build-wasm.sh --c2pa and adds no ~10 MB c2pa-rs weight. (The pure-JS
     // signer in bindings/javascript/c2pa.mjs is an equivalent module-free option.)
@@ -1353,12 +1353,12 @@ EMSCRIPTEN_BINDINGS(whisper) {
         "pcmToWav", emscripten::optional_override([](const emscripten::val& pcm, int sampleRate) -> emscripten::val {
             std::vector<float> in = emscripten::vecFromJSArray<float>(pcm);
             size_t out_len = 0;
-            unsigned char* out = crispasr_pcm_to_wav(in.data(), (int)in.size(), sampleRate, &out_len);
+            unsigned char* out = stelnettts_pcm_to_wav(in.data(), (int)in.size(), sampleRate, &out_len);
             if (!out || out_len == 0)
                 return emscripten::val::global("Uint8Array").new_(0);
             emscripten::val view(emscripten::typed_memory_view(out_len, out));
             emscripten::val result = emscripten::val::global("Uint8Array").new_(view);
-            crispasr_c2pa_free(out);
+            stelnettts_c2pa_free(out);
             return result;
         }));
 
@@ -1369,14 +1369,14 @@ EMSCRIPTEN_BINDINGS(whisper) {
                              std::vector<unsigned char> in = emscripten::vecFromJSArray<unsigned char>(data);
                              size_t out_len = 0;
                              unsigned char* out_ptr =
-                                 crispasr_c2pa_sign(in.data(), in.size(), format.c_str(), nullptr, nullptr, &out_len);
+                                 stelnettts_c2pa_sign(in.data(), in.size(), format.c_str(), nullptr, nullptr, &out_len);
                              if (!out_ptr || out_len == 0)
                                  return emscripten::val::global("Uint8Array").new_(0);
                              // View over the signed bytes in the wasm heap, then copy into a fresh
                              // JS Uint8Array so we can free the wasm buffer.
                              emscripten::val view(emscripten::typed_memory_view(out_len, out_ptr));
                              emscripten::val result = emscripten::val::global("Uint8Array").new_(view);
-                             crispasr_c2pa_free(out_ptr);
+                             stelnettts_c2pa_free(out_ptr);
                              return result;
                          }));
 }

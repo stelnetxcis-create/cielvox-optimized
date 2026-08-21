@@ -3,8 +3,8 @@
 benchmark_asr_engines.py — head-to-head Parakeet TDT 0.6B v3 benchmark
 =====================================================================
 
-Reproduction of the comparison from CrispASR issue #81 (onnx-asr vs
-CrispASR/GGUF on the same parakeet-tdt-0.6b-v3 model). Runs both
+Reproduction of the comparison from StelnetTTS issue #81 (onnx-asr vs
+StelnetTTS/GGUF on the same parakeet-tdt-0.6b-v3 model). Runs both
 engines on the same audio under the same window/warmup/runs settings
 and reports realtime factor + per-call latency.
 
@@ -26,21 +26,21 @@ Two call modes:
              p50/p95 per-call latency. This is the latency shape that
              matters for streaming ASR.
 
-Two CrispASR call paths:
+Two StelnetTTS call paths:
 
-  cli       — subprocess ./build/bin/crispasr (one process per run).
+  cli       — subprocess ./build/bin/stelnettts (one process per run).
               Includes process startup + Metal kernel JIT, so usable
               only with explicit warmup runs and steady-state
               measurement on subsequent runs.
-  ctypes    — ctypes.CDLL on libcrispasr.{dylib,so,dll}, calling
-              crispasr_parakeet_{init,transcribe,result_text,
+  ctypes    — ctypes.CDLL on libstelnettts.{dylib,so,dll}, calling
+              stelnettts_parakeet_{init,transcribe,result_text,
               result_free,free}. One process; matches what the issue
               #81 reporter built. This is the apples-to-apples path.
 
-Cross-platform: the script auto-picks libcrispasr.dylib (macOS),
-libcrispasr.so (Linux), or crispasr.dll (Windows), and selects
+Cross-platform: the script auto-picks libstelnettts.dylib (macOS),
+libstelnettts.so (Linux), or stelnettts.dll (Windows), and selects
 CoreMLExecutionProvider (macOS) or CUDAExecutionProvider (Windows/Linux
-+ CUDA) for onnx-asr. Override with --crispasr-lib / --providers.
++ CUDA) for onnx-asr. Override with --stelnettts-lib / --providers.
 
 Usage:
 
@@ -51,13 +51,13 @@ Usage:
   python tools/benchmark_asr_engines.py --engine onnx --onnx-quant fp32 \\
       --audio long --runs 5
 
-  # CrispASR Q8_0 only, ctypes, chunked at 2 s windows:
-  python tools/benchmark_asr_engines.py --engine crispasr --crispasr-call ctypes \\
+  # StelnetTTS Q8_0 only, ctypes, chunked at 2 s windows:
+  python tools/benchmark_asr_engines.py --engine stelnettts --stelnettts-call ctypes \\
       --gguf-quants q8_0 --mode chunked --window-s 2
 
-  # Windows CUDA reproduction (after building libcrispasr with CUDA):
+  # Windows CUDA reproduction (after building libstelnettts with CUDA):
   python tools/benchmark_asr_engines.py --gpu-backend cuda \\
-      --providers CUDAExecutionProvider --crispasr-lib path/to/crispasr.dll
+      --providers CUDAExecutionProvider --stelnettts-lib path/to/stelnettts.dll
 
 The script writes a JSON sidecar with raw results and prints a
 markdown-friendly summary table.
@@ -82,7 +82,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BUILD = REPO_ROOT / "build-ninja-compile"
-DEFAULT_CRISPASR_BIN = DEFAULT_BUILD / "bin" / "crispasr"
+DEFAULT_STELNETTTS_BIN = DEFAULT_BUILD / "bin" / "stelnettts"
 SAMPLES_JFK = REPO_ROOT / "samples" / "jfk.wav"
 DEFAULT_LONG_WAV = REPO_ROOT / "tests" / "fixtures" / "bench_long_60s.wav"
 
@@ -92,14 +92,14 @@ JFK_REF = (
 )
 
 # GGUF artifacts on the SSD. Falls back to download from HF.
-GGUF_DIR = Path("/Volumes/backups/ai/crispasr")
+GGUF_DIR = Path("/Volumes/backups/ai/stelnettts")
 GGUF_FILES = {
     "q4_k": "parakeet-tdt-0.6b-v3-q4_k.gguf",
     "q5_0": "parakeet-tdt-0.6b-v3-q5_0.gguf",
     "q8_0": "parakeet-tdt-0.6b-v3-q8_0.gguf",
     "f16":  "parakeet-tdt-0.6b-v3.gguf",  # repo's non-quant is f16-sized
 }
-GGUF_HF_REPO = "cstr/parakeet-tdt-0.6b-v3-GGUF"
+GGUF_HF_REPO = "Xenna/parakeet-tdt-0.6b-v3-GGUF"
 
 # ONNX artifacts. snapshot-downloaded on first run.
 ONNX_DIR = Path("/Volumes/backups/ai/huggingface-hub/parakeet-tdt-0.6b-v3-onnx")
@@ -212,7 +212,7 @@ def chunk_indices(n_samples: int, window_samples: int) -> list[tuple[int, int]]:
 
 
 def host_default_lib() -> Path:
-    """Pick the first existing libcrispasr.{dylib,so,dll} candidate.
+    """Pick the first existing libstelnettts.{dylib,so,dll} candidate.
 
     Falls back to the canonical location for the host OS even if missing,
     so the script can produce a useful error message at dlopen time
@@ -221,25 +221,25 @@ def host_default_lib() -> Path:
     sysname = platform.system()
     if sysname == "Darwin":
         candidates = [
-            DEFAULT_BUILD / "src" / "libcrispasr.dylib",
-            REPO_ROOT / "build" / "src" / "libcrispasr.dylib",
+            DEFAULT_BUILD / "src" / "libstelnettts.dylib",
+            REPO_ROOT / "build" / "src" / "libstelnettts.dylib",
         ]
     elif sysname == "Linux":
         candidates = [
-            DEFAULT_BUILD / "src" / "libcrispasr.so",
-            REPO_ROOT / "build" / "src" / "libcrispasr.so",
+            DEFAULT_BUILD / "src" / "libstelnettts.so",
+            REPO_ROOT / "build" / "src" / "libstelnettts.so",
         ]
     elif sysname == "Windows":
         # cmake's default for SHARED is `<name>.dll` (no `lib` prefix), but
         # MinGW and some build configs produce `lib<name>.dll`; honor both.
         candidates = [
-            DEFAULT_BUILD / "src" / "crispasr.dll",
-            DEFAULT_BUILD / "src" / "libcrispasr.dll",
-            REPO_ROOT / "build" / "src" / "crispasr.dll",
-            REPO_ROOT / "build" / "src" / "libcrispasr.dll",
+            DEFAULT_BUILD / "src" / "stelnettts.dll",
+            DEFAULT_BUILD / "src" / "libstelnettts.dll",
+            REPO_ROOT / "build" / "src" / "stelnettts.dll",
+            REPO_ROOT / "build" / "src" / "libstelnettts.dll",
         ]
     else:
-        candidates = [DEFAULT_BUILD / "src" / "libcrispasr.dylib"]
+        candidates = [DEFAULT_BUILD / "src" / "libstelnettts.dylib"]
     for c in candidates:
         if c.is_file():
             return c
@@ -276,36 +276,36 @@ def host_default_providers() -> list[str]:
 
 
 # =======================================================================
-# CrispASR — ctypes path
+# StelnetTTS — ctypes path
 # =======================================================================
 
-class CrispASRParakeet:
-    """Thin ctypes wrapper around crispasr_parakeet_* C ABI."""
+class StelnetTTSParakeet:
+    """Thin ctypes wrapper around stelnettts_parakeet_* C ABI."""
 
     def __init__(self, lib_path: Path, model_path: Path, n_threads: int, use_flash: bool):
         self._lib = ctypes.CDLL(str(lib_path))
         L = self._lib
-        L.crispasr_parakeet_init.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
-        L.crispasr_parakeet_init.restype = ctypes.c_void_p
-        L.crispasr_parakeet_transcribe.argtypes = [
+        L.stelnettts_parakeet_init.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
+        L.stelnettts_parakeet_init.restype = ctypes.c_void_p
+        L.stelnettts_parakeet_transcribe.argtypes = [
             ctypes.c_void_p,
             ctypes.POINTER(ctypes.c_float),
             ctypes.c_int,
             ctypes.c_int64,
         ]
-        L.crispasr_parakeet_transcribe.restype = ctypes.c_void_p
-        L.crispasr_parakeet_result_text.argtypes = [ctypes.c_void_p]
-        L.crispasr_parakeet_result_text.restype = ctypes.c_char_p
-        L.crispasr_parakeet_result_free.argtypes = [ctypes.c_void_p]
-        L.crispasr_parakeet_free.argtypes = [ctypes.c_void_p]
+        L.stelnettts_parakeet_transcribe.restype = ctypes.c_void_p
+        L.stelnettts_parakeet_result_text.argtypes = [ctypes.c_void_p]
+        L.stelnettts_parakeet_result_text.restype = ctypes.c_char_p
+        L.stelnettts_parakeet_result_free.argtypes = [ctypes.c_void_p]
+        L.stelnettts_parakeet_free.argtypes = [ctypes.c_void_p]
 
         t0 = time.perf_counter()
-        self._ctx = L.crispasr_parakeet_init(
+        self._ctx = L.stelnettts_parakeet_init(
             str(model_path).encode(), int(n_threads), 1 if use_flash else 0
         )
         self.load_s = time.perf_counter() - t0
         if not self._ctx:
-            raise RuntimeError(f"crispasr_parakeet_init failed for {model_path}")
+            raise RuntimeError(f"stelnettts_parakeet_init failed for {model_path}")
 
     @staticmethod
     def _np_ptr(arr_np):
@@ -316,14 +316,14 @@ class CrispASRParakeet:
         if n is None:
             n = len(pcm_np)
         ptr = self._np_ptr(pcm_np)
-        res = self._lib.crispasr_parakeet_transcribe(self._ctx, ptr, int(n), 0)
+        res = self._lib.stelnettts_parakeet_transcribe(self._ctx, ptr, int(n), 0)
         if not res:
             return ""
         try:
-            txt = self._lib.crispasr_parakeet_result_text(res) or b""
+            txt = self._lib.stelnettts_parakeet_result_text(res) or b""
             return txt.decode("utf-8", "ignore")
         finally:
-            self._lib.crispasr_parakeet_result_free(res)
+            self._lib.stelnettts_parakeet_result_free(res)
 
     def transcribe_window(self, pcm_full_np, lo: int, hi: int) -> str:
         # Slice without copy via numpy view; pass pointer.
@@ -332,15 +332,15 @@ class CrispASRParakeet:
 
     def close(self):
         if getattr(self, "_ctx", None):
-            self._lib.crispasr_parakeet_free(self._ctx)
+            self._lib.stelnettts_parakeet_free(self._ctx)
             self._ctx = None
 
 
 # =======================================================================
-# CrispASR — CLI subprocess path
+# StelnetTTS — CLI subprocess path
 # =======================================================================
 
-def crispasr_cli_run(
+def stelnettts_cli_run(
     bin_path: Path, model: Path, audio: Path, gpu_backend: str | None, threads: int,
     timeout: int = 120,
 ) -> tuple[float, str]:
@@ -362,7 +362,7 @@ def crispasr_cli_run(
     el = time.perf_counter() - t0
     if r.returncode != 0:
         sys.stderr.write(r.stderr[-2000:] + "\n")
-        raise RuntimeError(f"crispasr CLI failed (rc={r.returncode})")
+        raise RuntimeError(f"stelnettts CLI failed (rc={r.returncode})")
     text = re.sub(r"\[[\d:.]+\s*-->\s*[\d:.]+\]\s*", "", r.stdout.strip()).strip()
     return el, text
 
@@ -423,16 +423,16 @@ class RunResult:
 # the actual benchmark
 # =======================================================================
 
-def bench_crispasr_ctypes(
+def bench_stelnettts_ctypes(
     lib_path: Path, model_path: Path, audio_path: Path, audio_label: str, mode: str,
     window_s: float, warmups: int, runs: int, threads: int, use_flash: bool, ref_text: str,
 ) -> RunResult:
     pcm, dur = load_wav_pcm_f32(audio_path)
     quant = next((q for q, fn in GGUF_FILES.items() if model_path.name == fn), model_path.name)
-    eng = CrispASRParakeet(lib_path, model_path, n_threads=threads, use_flash=use_flash)
+    eng = StelnetTTSParakeet(lib_path, model_path, n_threads=threads, use_flash=use_flash)
 
     out = RunResult(
-        engine="crispasr-ctypes",
+        engine="stelnettts-ctypes",
         quant=quant,
         mode=mode,
         audio=audio_label,
@@ -483,7 +483,7 @@ def bench_crispasr_ctypes(
     return out
 
 
-def bench_crispasr_cli(
+def bench_stelnettts_cli(
     bin_path: Path, model_path: Path, audio_path: Path, audio_label: str,
     gpu_backend: str | None, warmups: int, runs: int, threads: int, ref_text: str,
 ) -> RunResult:
@@ -491,7 +491,7 @@ def bench_crispasr_cli(
     quant = next((q for q, fn in GGUF_FILES.items() if model_path.name == fn), model_path.name)
 
     out = RunResult(
-        engine="crispasr-cli",
+        engine="stelnettts-cli",
         quant=quant,
         mode="whole",
         audio=audio_label,
@@ -507,9 +507,9 @@ def bench_crispasr_cli(
     # number vs the ctypes path; the JSON keeps both so readers can see.
     sample = ""
     for _ in range(warmups):
-        crispasr_cli_run(bin_path, model_path, audio_path, gpu_backend, threads)
+        stelnettts_cli_run(bin_path, model_path, audio_path, gpu_backend, threads)
     for _ in range(runs):
-        el, txt = crispasr_cli_run(bin_path, model_path, audio_path, gpu_backend, threads)
+        el, txt = stelnettts_cli_run(bin_path, model_path, audio_path, gpu_backend, threads)
         out.runs_s.append(el)
         if not sample:
             sample = txt
@@ -627,11 +627,11 @@ def bench_onnx(
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(
-        description="Head-to-head Parakeet TDT 0.6B v3 benchmark: onnx-asr vs CrispASR",
+        description="Head-to-head Parakeet TDT 0.6B v3 benchmark: onnx-asr vs StelnetTTS",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    ap.add_argument("--engine", choices=("both", "onnx", "crispasr"), default="both")
+    ap.add_argument("--engine", choices=("both", "onnx", "stelnettts"), default="both")
     ap.add_argument("--mode", choices=("both", "whole", "chunked"), default="both")
     ap.add_argument("--audio", choices=("both", "short", "long"), default="both")
     ap.add_argument("--audio-path", help="explicit 16 kHz mono wav (overrides --audio)")
@@ -645,12 +645,12 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--threads", type=int, default=4)
 
-    ap.add_argument("--crispasr-call", choices=("both", "ctypes", "cli"), default="ctypes",
-                    help="how to invoke CrispASR: ctypes (recommended), cli, or both")
-    ap.add_argument("--crispasr-bin", default=str(DEFAULT_CRISPASR_BIN))
-    ap.add_argument("--crispasr-lib", default=str(host_default_lib()))
+    ap.add_argument("--stelnettts-call", choices=("both", "ctypes", "cli"), default="ctypes",
+                    help="how to invoke StelnetTTS: ctypes (recommended), cli, or both")
+    ap.add_argument("--stelnettts-bin", default=str(DEFAULT_STELNETTTS_BIN))
+    ap.add_argument("--stelnettts-lib", default=str(host_default_lib()))
     ap.add_argument("--gpu-backend", default=None,
-                    help="CrispASR --gpu-backend: auto|metal|cuda|vulkan|cpu (CLI mode only)")
+                    help="StelnetTTS --gpu-backend: auto|metal|cuda|vulkan|cpu (CLI mode only)")
     ap.add_argument("--no-flash-attn", action="store_true", help="disable flash attention (ctypes)")
 
     ap.add_argument("--providers", default=None,
@@ -661,7 +661,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--json", default=None, help="path to write raw JSON results")
     ap.add_argument("--prewarm", action="store_true",
                     help=("before the matrix, run one transcribe on each audio shape "
-                          "with each crispasr quant so all Metal/CUDA pipeline kernels "
+                          "with each stelnettts quant so all Metal/CUDA pipeline kernels "
                           "JIT-compile up front. Reduces first-cell variance dramatically."))
     ap.add_argument("--quiet", action="store_true")
     return ap.parse_args()
@@ -683,8 +683,8 @@ def expand_modes(args) -> list[str]:
     return ["whole", "chunked"] if args.mode == "both" else [args.mode]
 
 
-def expand_crispasr_calls(args) -> list[str]:
-    return ["ctypes", "cli"] if args.crispasr_call == "both" else [args.crispasr_call]
+def expand_stelnettts_calls(args) -> list[str]:
+    return ["ctypes", "cli"] if args.stelnettts_call == "both" else [args.stelnettts_call]
 
 
 def fmt_table(results: list[RunResult]) -> str:
@@ -724,26 +724,26 @@ def main() -> int:
         providers = host_default_providers()
     print(f"host: {platform.system()} {platform.machine()}  python={sys.version.split()[0]}")
     print(f"onnx providers: {providers}")
-    print(f"crispasr lib:   {args.crispasr_lib}")
-    print(f"crispasr bin:   {args.crispasr_bin}")
+    print(f"stelnettts lib:   {args.stelnettts_lib}")
+    print(f"stelnettts bin:   {args.stelnettts_bin}")
 
     audios = expand_audios(args, JFK_REF)
     modes = expand_modes(args)
-    crispasr_calls = expand_crispasr_calls(args)
+    stelnettts_calls = expand_stelnettts_calls(args)
 
     gguf_quants = [q.strip() for q in args.gguf_quants.split(",") if q.strip()]
     onnx_quants = [q.strip() for q in args.onnx_quants.split(",") if q.strip()]
     onnx_quants = [None if q == "fp32" else q for q in onnx_quants]
 
     # Pre-flight: ensure all needed assets exist before timing anything.
-    if args.engine in ("both", "crispasr"):
+    if args.engine in ("both", "stelnettts"):
         models = {q: ensure_gguf(q, Path(args.gguf_dir)) for q in gguf_quants}
     else:
         models = {}
     if args.engine in ("both", "onnx"):
         ensure_onnx(Path(args.onnx_dir))
 
-    if args.prewarm and args.engine in ("both", "crispasr"):
+    if args.prewarm and args.engine in ("both", "stelnettts"):
         # JIT every (quant × {whole-shape, chunk-shape}) combo before timing.
         # Metal pipeline kernels are shape-specialized: the first transcribe of
         # a new (n_samples) hits 10-30 s of pipeline compile cost. Without this
@@ -753,7 +753,7 @@ def main() -> int:
         print("\n=== prewarm: JIT every shape before timing ===")
         for quant, model in models.items():
             t0 = time.perf_counter()
-            eng = CrispASRParakeet(Path(args.crispasr_lib), model,
+            eng = StelnetTTSParakeet(Path(args.stelnettts_lib), model,
                                    n_threads=args.threads, use_flash=not args.no_flash_attn)
             try:
                 for audio_label, audio_path in audios:
@@ -797,16 +797,16 @@ def main() -> int:
                 line += f"  p50={cs.p50_ms:.1f}ms  p95={cs.p95_ms:.1f}ms  calls={cs.n_calls}"
             print(line)
 
-        if args.engine in ("both", "crispasr"):
+        if args.engine in ("both", "stelnettts"):
             for quant in gguf_quants:
                 model = models[quant]
                 for mode in modes:
-                    for call in crispasr_calls:
+                    for call in stelnettts_calls:
                         if call == "ctypes":
                             _record(
-                                f"crispasr-ctypes  {quant:<5} {mode:<7}",
-                                lambda quant=quant, mode=mode, model=model: bench_crispasr_ctypes(
-                                    Path(args.crispasr_lib), model, audio_path, audio_label, mode,
+                                f"stelnettts-ctypes  {quant:<5} {mode:<7}",
+                                lambda quant=quant, mode=mode, model=model: bench_stelnettts_ctypes(
+                                    Path(args.stelnettts_lib), model, audio_path, audio_label, mode,
                                     args.window_s, args.warmups, args.runs, args.threads,
                                     use_flash=not args.no_flash_attn, ref_text=JFK_REF,
                                 ),
@@ -817,9 +817,9 @@ def main() -> int:
                                 # --stream + stdin plumbing; skip for now.
                                 continue
                             _record(
-                                f"crispasr-cli     {quant:<5} {mode:<7}",
-                                lambda quant=quant, mode=mode, model=model: bench_crispasr_cli(
-                                    Path(args.crispasr_bin), model, audio_path, audio_label,
+                                f"stelnettts-cli     {quant:<5} {mode:<7}",
+                                lambda quant=quant, mode=mode, model=model: bench_stelnettts_cli(
+                                    Path(args.stelnettts_bin), model, audio_path, audio_label,
                                     args.gpu_backend, args.warmups, args.runs, args.threads,
                                     ref_text=JFK_REF,
                                 ),

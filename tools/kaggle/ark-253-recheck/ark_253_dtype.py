@@ -8,31 +8,31 @@ import os, sys, json, re, shutil, subprocess, urllib.request, zipfile
 from pathlib import Path
 
 TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"; BUILD = TMP / "build"
+REPO = TMP / "StelnetTTS"; BUILD = TMP / "build"
 MODELS = Path("/tmp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 REFMODEL = Path("/tmp/refmodel"); REFMODEL.mkdir(parents=True, exist_ok=True)
 RESULTS = Path("/kaggle/working/results"); RESULTS.mkdir(parents=True, exist_ok=True)
-GGUF_REPO = "cstr/ark-asr-3b-GGUF"; ORIG_REPO = "AutoArk-AI/ARK-ASR-3B"
+GGUF_REPO = "Xenna/ark-asr-3b-GGUF"; ORIG_REPO = "AutoArk-AI/ARK-ASR-3B"
 CLIP_URL = "https://github.com/user-attachments/files/29962358/t501-3.75m.wav.zip"
 
 def jstep(n, **kv): print(f"[STEP] {n} " + " ".join(f"{k}={v}" for k, v in kv.items()), flush=True)
 def norm(s): return re.sub(r"\s+", " ", (s or "").strip())
 
 if REPO.exists(): shutil.rmtree(REPO)
-subprocess.check_call(["git","clone","--depth","1","--recursive","https://github.com/CrispStrobe/CrispASR.git",str(REPO)])
+subprocess.check_call(["git","clone","--depth","1","--recursive","https://github.com/Cyna/StelnetTTS.git",str(REPO)])
 sys.path.insert(0, str(REPO/"tools"/"kaggle")); import kaggle_harness as kh; kh.init_progress()
 SHA = subprocess.check_output(["git","-C",str(REPO),"rev-parse","HEAD"],text=True).strip(); jstep("cloned", sha=SHA[:12])
 kh.install_build_toolchain()
 subprocess.check_call(["cmake","-S",str(REPO),"-B",str(BUILD),"-DCMAKE_BUILD_TYPE=Release","-DBUILD_SHARED_LIBS=ON"])
 with kh.build_heartbeat("build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}")
-CLI = BUILD/"bin"/"crispasr"; assert CLI.exists(); jstep("built")
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}")
+CLI = BUILD/"bin"/"stelnettts"; assert CLI.exists(); jstep("built")
 
 import torch, numpy as np, soundfile as sf
 from huggingface_hub import hf_hub_download, snapshot_download
 TOKEN = kh.resolve_hf_token()
 GGUF = hf_hub_download(GGUF_REPO, "ark-asr-3b-q8_0.gguf", local_dir=str(MODELS), token=TOKEN or None)
-PARA = hf_hub_download("cstr/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf",
+PARA = hf_hub_download("Xenna/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf",
                        local_dir=str(MODELS), token=TOKEN or None) if False else None
 snapshot_download(ORIG_REPO, local_dir=str(REFMODEL), token=TOKEN or None,
                   allow_patterns=["*.json","*.py","*.safetensors","*.txt","*.model","tokenizer*","merges*","vocab*"])
@@ -76,8 +76,8 @@ jstep("fp32"); out["fp32"] = run_dtype(torch.float32, WINS)
 def cpp(wi):
     seg=a[wi*30*sr:(wi+1)*30*sr]; wp=TMP/f"w{wi}.wav"; sf.write(str(wp),seg,sr)
     r=subprocess.run([str(CLI),"-m",GGUF,"--language","en","--no-punctuation","-f",str(wp)],
-                     capture_output=True,text=True,timeout=900,env={**os.environ,"CRISPASR_ARKASR_MAX_SINGLE_PASS_S":"60"})
-    return norm(" ".join(l for l in r.stdout.splitlines() if l.strip() and not l.lstrip().startswith(("[","whisper","crispasr","load","main:"))))
+                     capture_output=True,text=True,timeout=900,env={**os.environ,"STELNETTTS_ARKASR_MAX_SINGLE_PASS_S":"60"})
+    return norm(" ".join(l for l in r.stdout.splitlines() if l.strip() and not l.lstrip().startswith(("[","whisper","stelnettts","load","main:"))))
 out["cpp"] = {wi: cpp(wi) for wi in WINS}
 for wi in WINS: print(f"  [cpp win{wi}]: {out['cpp'][wi][:150]}", flush=True)
 

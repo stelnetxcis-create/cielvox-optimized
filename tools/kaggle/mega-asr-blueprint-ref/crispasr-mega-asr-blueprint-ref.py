@@ -1,5 +1,5 @@
 """
-CrispASR — Mega-ASR bf16 blueprint check for #218 long-form drift
+StelnetTTS — Mega-ASR bf16 blueprint check for #218 long-form drift
 
 Our 4-bit mega-asr GGUFs loop on the un-chunked 145 s clip ("come on,
 come on, …" 2-gram cycles) even with the Q8_0 audio tower. Question: does
@@ -28,7 +28,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path("/kaggle/working")
-REPO = Path("/tmp/CrispASR")
+REPO = Path("/tmp/StelnetTTS")
 AUDIO_DIR = ROOT / "audio"
 OUT_DIR = ROOT / "results"
 for d in (AUDIO_DIR, OUT_DIR):
@@ -39,8 +39,8 @@ sys.stderr.reconfigure(line_buffering=True)
 
 if not REPO.exists():
     subprocess.run(
-        f"git clone --depth 1 --branch {os.environ.get('CRISPASR_REF', 'main')} "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO}", shell=True, check=True)
+        f"git clone --depth 1 --branch {os.environ.get('STELNETTTS_REF', 'main')} "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO}", shell=True, check=True)
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 

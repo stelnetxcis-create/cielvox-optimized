@@ -11,10 +11,10 @@
 // UTF-8, lone continuation bytes, huge repeats, embedded NULs). Any OOB read,
 // unbounded alloc, or infinite loop shows up under ASan/UBSan + libFuzzer.
 //
-//   cmake -B build-fuzz -DCRISPASR_FUZZ=ON -DCRISPASR_SANITIZE_ADDRESS=ON \
-//         -DCRISPASR_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-//   cmake --build build-fuzz --target crispasr-fuzz-tokenizer
-//   ./build-fuzz/bin/crispasr-fuzz-tokenizer -max_len=65536 corpus
+//   cmake -B build-fuzz -DSTELNETTTS_FUZZ=ON -DSTELNETTTS_SANITIZE_ADDRESS=ON \
+//         -DSTELNETTTS_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+//   cmake --build build-fuzz --target stelnettts-fuzz-tokenizer
+//   ./build-fuzz/bin/stelnettts-fuzz-tokenizer -max_len=65536 corpus
 
 #include <cstddef>
 #include <cstdint>

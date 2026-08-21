@@ -65,7 +65,7 @@ char* vibevoice_transcribe(struct vibevoice_context* ctx, const float* samples, 
 // vibevoice_transcribe()); matches `context_info` in microsoft/VibeVoice's
 // vibevoice_asr_processor.py. A distinct symbol rather than a new parameter
 // on vibevoice_transcribe() to avoid an ABI break: both are extern "C" and
-// exported from libcrispasr.so, so changing an existing signature in place
+// exported from libstelnettts.so, so changing an existing signature in place
 // would silently corrupt any caller still built against the 3-arg form.
 char* vibevoice_transcribe_with_context(struct vibevoice_context* ctx, const float* samples, int n_samples,
                                         const char* context);

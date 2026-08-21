@@ -2,7 +2,7 @@
 
 Branch `feat/moss-tts-249`. Spec: `docs/moss-tts/STUDY.md`. Reference:
 `github.com/pwilkin/openmoss` (validated C++ port; we graft its codec + delay
-onto CrispASR's in-house Qwen3 runtime — no libllama).
+onto StelnetTTS's in-house Qwen3 runtime — no libllama).
 
 ## NOW — active work (update at every checkpoint; push to main)
 
@@ -18,7 +18,7 @@ sampling defaults, F16 synth STOPS naturally (short 15, long 124 frames — not 
 0.969**. Full chain proven: Qwen3-4B backbone → 1-layer depth transformer →
 depth-first 12-codebook loop → ResidualLFQ + 6-stage 48 kHz codec → stereo→mono.
 
-**Shipped GGUFs** (`cstr/moss-tts-local-v1.5-GGUF`, verified): F16 backbone
+**Shipped GGUFs** (`Xenna/moss-tts-local-v1.5-GGUF`, verified): F16 backbone
 (9.107 GB, the validated one) + decode-only codec (2.125 GB). Registry `-m auto`
 defaults to **F16** (fits a 16 GB GPU). Q4_K *long* text runs away — intrinsic
 quantized-AR trajectory drift ([[tts-port-parity-via-logit-rank]]) — so Q4_K is
@@ -49,7 +49,7 @@ unit test) · P5 GPU round-trip.
    The ONE item that reds CI on the merge commit (hand-added `-lmoss_tts_local`;
    macOS regen pollutes the `#cgo linux` line with Metal/BLAS). Do first to green CI.
 2. Release via `scripts/bump-version.sh` once CI green; **close #249** (shipped).
-3. Non-blocking: ref-dumper (advisory 12-pt gap); refresh `chr1s4/crispasr-ccache`
+3. Non-blocking: ref-dumper (advisory 12-pt gap); refresh `chr1s4/stelnettts-ccache`
    seed (warm ~3 min builds vs ~23 cold); short-clip ASR 0.0 (likely
    whisper-on-~1 s artifact — the long clip proved the audio correct); optional
    Q5_K/Q6_K probe for a smaller-than-F16 stable target; v2 codec ENCODER for voice
@@ -63,12 +63,12 @@ unit test) · P5 GPU round-trip.
 |-------|------|-------|
 | 0 | Study (verified vs 2 HF configs + Python blueprint) | `docs/moss-tts/STUDY.md` |
 | 1 | GGUF converter (backbone `moss-tts` + companion `moss-tts-codec`); backbone/audio name map unit-tested; codec shortener validated vs all 1600 real codec tensor names | `models/convert-moss-tts-to-gguf.py` |
-| 2 | Qwen3-8B backbone (clone of qwen3_asr KV path: QK-norm, NEOX RoPE 1e6, GQA 4:1, SwiGLU) + `hidden_last` output + 2 aux graphs (summed embed, 32 heads) | `src/moss_tts.{h,cpp}` |
+| 2 | Qwen3-8B backbone (clone of cielvox2_asr KV path: QK-norm, NEOX RoPE 1e6, GQA 4:1, SwiGLU) + `hidden_last` output + 2 aux graphs (summed embed, 32 heads) | `src/moss_tts.{h,cpp}` |
 | 3 | Delay state machine (openmoss port, incl. sentinel/off-by-one/unique-rep-penalty gotchas) + special-token BPE + prompt builder + AR code-gen loop | `src/moss_tts.cpp` |
 | 4 | Transformer RVQ codec decode (weight-norm reconstruction, 4 ProjectedTransformer stages, sliding-window mask, patch upsamples) + end-to-end `synthesize` | `src/moss_tts_codec.{h,cpp}` |
-| 5 | CLI adapter, `--backend moss-tts` factory + filename/arch detect, CMake, registry entry, quantize keep-list, **session-ABI inline synthesize** (bindings/server) | `examples/cli/crispasr_backend_moss_tts.cpp`, `crispasr_backend.cpp`, `crispasr_c_api.cpp`, registry, quantize, CMake |
+| 5 | CLI adapter, `--backend moss-tts` factory + filename/arch detect, CMake, registry entry, quantize keep-list, **session-ABI inline synthesize** (bindings/server) | `examples/cli/stelnettts_backend_moss_tts.cpp`, `stelnettts_backend.cpp`, `stelnettts_c_api.cpp`, registry, quantize, CMake |
 
-Verified locally: whole runtime builds into `libmoss_tts.a`; `crispasr --backend
+Verified locally: whole runtime builds into `libmoss_tts.a`; `stelnettts --backend
 moss-tts` routes through the session ABI to the runtime and the registry entry
 resolves (backbone + codec companion). All builds 0 errors.
 
@@ -80,7 +80,7 @@ resolves (backbone + codec companion). All builds 0 errors.
       `python tools/sync_go_cgo_ldflags.py` then `--check`. Do NOT run on macOS
       (Metal/BLAS pollute the `#cgo linux` line). This is the one item that will
       red CI until done.
-- [ ] Bindings docstrings: `python/crispasr/_binding.py`, `bindings/go/`, `flutter/`.
+- [ ] Bindings docstrings: `python/stelnettts/_binding.py`, `bindings/go/`, `flutter/`.
 - [ ] Diff-harness reference backend: `tools/reference_backends/moss_tts.py`
       (`dump()` + `DEFAULT_STAGES`) + register in `tools/dump_reference.py`; a
       `moss_tts_<stage>_diff` self-runner in the `.cpp` (dots-tts/voxtral-tts
@@ -100,7 +100,7 @@ resolves (backbone + codec companion). All builds 0 errors.
 - **F16 FAIL = P100 VRAM only, NOT a bug**: the 16.99 GB F16 backbone doesn't fit a
   16.27 GB P100 (`cudaMalloc out of memory` at load). Needs a >24 GB GPU (L4/A100)
   or CPU; Q4_K is the practical target and is proven.
-- code-parity ref dump: torch OOM loading the 8B alongside the crispasr process on
+- code-parity ref dump: torch OOM loading the 8B alongside the stelnettts process on
   the same 16 GB P100 (non-gating; expected).
 
 **Kernel refinements for a cleaner re-run** (both known bugs, not port issues):
@@ -112,7 +112,7 @@ resolves (backbone + codec companion). All builds 0 errors.
 2. Treat an F16-backbone load-OOM as **SKIP** on ≤16 GB GPUs, not FAIL — gate only
    on Q4_K there; run F16 only when VRAM ≥ ~20 GB.
 
-Ship next: upload GGUFs to `cstr/moss-tts-v1.5-GGUF` (backbone Q4_K + F16 codec;
+Ship next: upload GGUFs to `Xenna/moss-tts-v1.5-GGUF` (backbone Q4_K + F16 codec;
 daemon-thread + timeout + server-side verify per the HF-upload note), populate the
 registry `license` (Apache-2.0), version bump, HISTORY + LEARNINGS.
 
@@ -123,7 +123,7 @@ methodically diffed the divergence. Two of the PLAN's "known-suspect" areas were
 both confirmed — one a real bug, one an intrinsic limit:
 
 1. **Tokenizer (real bug, FIXED — `41c08e8f`).** The moss-tts prompt tokenizer
-   (cloned from `qwen3_asr`) used a crude whitespace pre-splitter that split `>`
+   (cloned from `cielvox2_asr`) used a crude whitespace pre-splitter that split `>`
    from a trailing `\n`. Qwen's pre-tokenizer regex `[^\s\p{L}\p{N}]+[\r\n]*`
    groups punctuation with trailing newlines (`>\n`=397, `):\n`=982). The
    `moss-tts-promptdiff` kernel isolated it: prompt TEXT identical, tokenization
@@ -164,7 +164,7 @@ codec → run on **Kaggle** (P100/T4). Reference kernels:
    `/kaggle/working` ~20 GB): `python models/convert-moss-tts-to-gguf.py --input
    OpenMOSS-Team/MOSS-TTS-v1.5 --codec OpenMOSS-Team/MOSS-Audio-Tokenizer
    --output moss-tts-v1.5-f16.gguf` → F16 backbone + F16 codec. Then
-   `crispasr-quantize moss-tts-v1.5-f16.gguf moss-tts-v1.5-q4_k.gguf q4_k`.
+   `stelnettts-quantize moss-tts-v1.5-f16.gguf moss-tts-v1.5-q4_k.gguf q4_k`.
 2. **Code parity** (Phase 3 gate): greedy code streams byte-identical to the
    Python/pwilkin reference for a fixed text+seed. Build the parity dumper first
    (reference backend). Watch the delay-fill boundary + the sentinel warm-up.
@@ -172,7 +172,7 @@ codec → run on **Kaggle** (P100/T4). Reference kernels:
    tokenizer, then the decoded audio. Gate input alignment BEFORE trusting
    per-layer cos. ⚠ CUDA `get_rows` needs a contiguous index (dev-guide §232) —
    audit the codebook lookups if decode aborts on P100.
-4. **Decoded round-trip** (the real test): `crispasr --backend moss-tts
+4. **Decoded round-trip** (the real test): `stelnettts --backend moss-tts
    --model <gguf> --tts "..." --tts-output out.wav` → ASR `out.wav` (whisper) →
    text recognizable. Test **F16 AND Q4_K** (quant amplifies divergence). Add an
    `expected_text` regression entry.

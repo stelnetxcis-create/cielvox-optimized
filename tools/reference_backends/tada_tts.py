@@ -1,4 +1,4 @@
-"""TADA TTS reference dump backend for crispasr-diff.
+"""TADA TTS reference dump backend for stelnettts-diff.
 
 Uses the official model.generate() API with a reference audio prompt
 for voice conditioning. This produces audible, intelligible speech
@@ -346,7 +346,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
               f"RMS={np.sqrt(np.mean(pcm.astype(float)**2)):.4f})")
 
     # Store synthesis text in metadata so diff harness can replay the same text
-    out["tada_tts_syn_text"] = syn_text  # routed to crispasr.ref.tada_tts_syn_text
+    out["tada_tts_syn_text"] = syn_text  # routed to stelnettts.ref.tada_tts_syn_text
 
     generated_text = ""
     if gen_output.output_str:

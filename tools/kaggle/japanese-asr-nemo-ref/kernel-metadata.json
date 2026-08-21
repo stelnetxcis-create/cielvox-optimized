@@ -1,13 +1,13 @@
 {
-  "id": "chr1s4/crispasr-japanese-asr-nemo-reference",
-  "title": "CrispASR Japanese ASR NeMo Reference",
+  "id": "chr1s4/stelnettts-japanese-asr-nemo-reference",
+  "title": "StelnetTTS Japanese ASR NeMo Reference",
   "code_file": "nemo_reference.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["chr1s4/crispasr-hf-token"],
+  "dataset_sources": ["chr1s4/stelnettts-hf-token"],
   "competition_sources": [],
   "kernel_sources": []
 }

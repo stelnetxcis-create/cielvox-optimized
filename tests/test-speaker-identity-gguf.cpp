@@ -14,7 +14,7 @@
 // Cheap enough for the unit tier: gguf_init_empty + four keys + a temp file, no
 // model, no tensors, no network.
 
-#include "crispasr_voice_provenance.h"
+#include "stelnettts_voice_provenance.h"
 
 #include "ggml.h"
 #include "gguf.h"
@@ -25,8 +25,8 @@
 #include <filesystem>
 #include <string>
 
-using crispasr_voice::read_model_speaker_identity;
-using crispasr_voice::SpeakerIdentity;
+using stelnettts_voice::read_model_speaker_identity;
+using stelnettts_voice::SpeakerIdentity;
 
 namespace {
 
@@ -34,13 +34,13 @@ namespace {
 // return its path. Unique per case so the reader's memoisation — which is keyed
 // by path — cannot leak an answer from one case into the next.
 std::string write_stamped_gguf(const std::string& tag, const char* identity) {
-    const std::string path = (std::filesystem::temp_directory_path() / ("crispasr-sid-" + tag + ".gguf")).string();
+    const std::string path = (std::filesystem::temp_directory_path() / ("stelnettts-sid-" + tag + ".gguf")).string();
     gguf_context* g = gguf_init_empty();
     REQUIRE(g != nullptr);
     gguf_set_val_str(g, "general.architecture", "test-tts");
     gguf_set_val_str(g, "general.name", "stamp-fixture");
     if (identity) {
-        gguf_set_val_str(g, crispasr_voice::speaker_identity_key(), identity);
+        gguf_set_val_str(g, stelnettts_voice::speaker_identity_key(), identity);
     }
     REQUIRE(gguf_write_to_file(g, path.c_str(), /*only_meta=*/true));
     gguf_free(g);
@@ -91,7 +91,7 @@ TEST_CASE("a missing or empty path is unknown, not a crash", "[unit][compliance]
 }
 
 TEST_CASE("a non-GGUF file is unknown, not a crash", "[unit][compliance]") {
-    const std::string path = (std::filesystem::temp_directory_path() / "crispasr-sid-notgguf.bin").string();
+    const std::string path = (std::filesystem::temp_directory_path() / "stelnettts-sid-notgguf.bin").string();
     {
         std::FILE* fp = std::fopen(path.c_str(), "wb");
         REQUIRE(fp != nullptr);
@@ -107,13 +107,13 @@ TEST_CASE("the stamp reaches the resolver and produces a disclosure", "[unit][co
     // reader -> resolver -> duty. A reader that works while nothing consults it
     // is the inert-fix failure mode this file exists to rule out.
     TempFile f{write_stamped_gguf("endtoend", "real_person")};
-    const SpeakerIdentity resolved = crispasr_voice::resolve_speaker_identity(
+    const SpeakerIdentity resolved = stelnettts_voice::resolve_speaker_identity(
         /*override=*/SpeakerIdentity::Unknown, /*pack=*/SpeakerIdentity::Unknown,
         /*backend=*/SpeakerIdentity::Unknown, read_model_speaker_identity(f.path));
     REQUIRE(resolved == SpeakerIdentity::RealPerson);
-    REQUIRE(crispasr_voice::requires_spoken_disclosure(/*is_clone=*/false, resolved));
+    REQUIRE(stelnettts_voice::requires_spoken_disclosure(/*is_clone=*/false, resolved));
     // ...and it does NOT drag the consent gate along with it.
-    REQUIRE_FALSE(crispasr_voice::requires_consent_attestation(false, resolved));
+    REQUIRE_FALSE(stelnettts_voice::requires_consent_attestation(false, resolved));
 }
 
 TEST_CASE("the memoised reader returns the same answer twice", "[unit][compliance]") {

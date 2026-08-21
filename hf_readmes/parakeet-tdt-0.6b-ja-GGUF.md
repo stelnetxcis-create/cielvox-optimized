@@ -19,7 +19,7 @@ base_model: nvidia/parakeet-tdt_ctc-0.6b-ja
 
 # Parakeet TDT-CTC 0.6B (Japanese) — GGUF
 
-GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-0.6b-ja`](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-0.6b-ja`](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 A 600 M-parameter Japanese ASR model with punctuation:
 
@@ -46,7 +46,7 @@ Verified on a JSUT-basic5000 sample at F16:
 
 ```
 NeMo (PyTorch): '水をマレーシアから買わなくてはならないのです。'
-crispasr (F16): '水をマレーシアから買わなくてはならないのです。'
+stelnettts (F16): '水をマレーシアから買わなくてはならないのです。'
 ```
 
 The F16 GGUF produces an **identical transcript** to the official NeMo Python pipeline.
@@ -70,24 +70,24 @@ F16 CTC transcript.
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr-lib
+cmake --build build -j$(nproc) --target stelnettts-lib
 
 # 2. Download the F16
-huggingface-cli download cstr/parakeet-tdt-0.6b-ja-GGUF \
+huggingface-cli download Xenna/parakeet-tdt-0.6b-ja-GGUF \
     parakeet-tdt-0.6b-ja.gguf --local-dir .
 
 # 3. Transcribe a 16 kHz mono WAV
-./build/bin/crispasr --backend parakeet \
+./build/bin/stelnettts --backend parakeet \
     -m parakeet-tdt-0.6b-ja.gguf -f your-japanese-audio.wav -t 8
 ```
 
-You can also let crispasr auto-download the model:
+You can also let stelnettts auto-download the model:
 
 ```bash
-./build/bin/crispasr --backend parakeet -m auto --auto-download \
+./build/bin/stelnettts --backend parakeet -m auto --auto-download \
     -f your-japanese-audio.wav --model-name parakeet-ja
 ```
 
@@ -97,7 +97,7 @@ The encoder is numerically fragile past ~12 s of context on real speech —
 single-pass decoding of long audio silently drops content (upstream NeMo
 behaves the same on the same clips: its plain, local-attention, and
 buffered long-form modes score 1–51 % content recall on our reference
-clip). CrispASR ≥ `3a8141e3` handles this automatically: audio > 30 s is
+clip). StelnetTTS ≥ `3a8141e3` handles this automatically: audio > 30 s is
 VAD-segmented, slices are capped at 12 s (split at energy minima), each
 slice decodes in one NeMo-exact pass, and a gap-fill second pass
 re-transcribes any span the first pass left empty. Measured on the
@@ -105,8 +105,8 @@ issue #89 reporter's clips (phonetic char-bigram recall vs
 whisper-large-v3-turbo): **97.2 %** (60 s), **96.9 %** (120 s), **95.9 %**
 (300 s) — at the inter-model agreement ceiling (an independent
 SenseVoice-small run scores the same recall on the same audio). No flags
-needed; `--vad`, `--chunk-seconds N`, and `CRISPASR_PARAKEET_*` env vars
-override the defaults (see the CrispASR CLI docs).
+needed; `--vad`, `--chunk-seconds N`, and `STELNETTTS_PARAKEET_*` env vars
+override the defaults (see the StelnetTTS CLI docs).
 
 ## Word-level timestamps for free
 
@@ -153,12 +153,12 @@ serves both variants without per-model branches.
 ## Attribution
 
 - **Original model:** [`nvidia/parakeet-tdt_ctc-0.6b-ja`](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) (CC-BY-4.0). NVIDIA NeMo team.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).
 
 ## Related
 
-- Multilingual sibling (25 EU languages): [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF)
-- C++ runtime: [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR)
+- Multilingual sibling (25 EU languages): [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF)
+- C++ runtime: [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS)
 
 ## License
 

@@ -9,11 +9,11 @@
 # Both are required. Step 2 was the one originally missing: the published
 # v0.8.25 artifact carried
 #
-#     crispasr           RUNPATH=$ORIGIN:/home/runner/work/CrispASR/.../c2pa/lib
-#     crispasr-quantize  RUNPATH=/home/runner/work/CrispASR/.../c2pa/lib
+#     stelnettts           RUNPATH=$ORIGIN:/home/runner/work/StelnetTTS/.../c2pa/lib
+#     stelnettts-quantize  RUNPATH=/home/runner/work/StelnetTTS/.../c2pa/lib
 #
 # — a build-machine path that exists on no user's disk, and for
-# `crispasr-quantize` no `$ORIGIN` at all, so it could not find the
+# `stelnettts-quantize` no `$ORIGIN` at all, so it could not find the
 # `libc2pa_c.so` sitting right beside it. Bundling a library the loader has no
 # way to look for buys nothing, which is why this script does both.
 #
@@ -55,12 +55,12 @@
 # user must already have, since libamdhip64 has never been bundled and the
 # archive has always depended on finding it. So a leg may declare
 #
-#   CRISPASR_BUNDLE_HOST_DIRS=/opt/rocm    (colon-separated path prefixes)
+#   STELNETTTS_BUNDLE_HOST_DIRS=/opt/rocm    (colon-separated path prefixes)
 #
 # and anything resolving under one is host-provided: not copied, not fatal.
 # Pair it with
 #
-#   CRISPASR_BUNDLE_EXTRA_RPATH=/opt/rocm/lib:/opt/rocm/lib/llvm/lib
+#   STELNETTTS_BUNDLE_EXTRA_RPATH=/opt/rocm/lib:/opt/rocm/lib/llvm/lib
 #
 # which is appended after $ORIGIN, so those libraries are found through the
 # archive's own RUNPATH instead of relying on the user having configured
@@ -95,7 +95,7 @@ skip_lib() {
 # prefixes belongs to a toolkit the user installs, not to us. Naming them
 # individually does not scale — ROCm alone would need six sonames today and a
 # different six next release.
-HOST_DIRS="${CRISPASR_BUNDLE_HOST_DIRS:-}"
+HOST_DIRS="${STELNETTTS_BUNDLE_HOST_DIRS:-}"
 host_provided_path() {
     [ -n "$HOST_DIRS" ] || return 1
     local d
@@ -131,7 +131,7 @@ while [ "$i" -lt "${#queue[@]}" ]; do
         skip_lib "$base" && continue
         # Already staged beside the binary. This is not hypothetical:
         # bundle-c2pa.sh drops libc2pa_c.so in before this script runs, and a
-        # binary whose RUNPATH lacks $ORIGIN (crispasr-quantize, pre-v0.8.26)
+        # binary whose RUNPATH lacks $ORIGIN (stelnettts-quantize, pre-v0.8.26)
         # reports it as `not found` even though it is sitting right there — and
         # will resolve it once step 2 gives it $ORIGIN.
         [ -e "$DEST/$base" ] && continue
@@ -175,8 +175,8 @@ fi
 # same soname. The extra entries only cover what the archive deliberately does
 # not carry.
 NEW_RPATH='$ORIGIN'
-if [ -n "${CRISPASR_BUNDLE_EXTRA_RPATH:-}" ]; then
-    NEW_RPATH="\$ORIGIN:${CRISPASR_BUNDLE_EXTRA_RPATH}"
+if [ -n "${STELNETTTS_BUNDLE_EXTRA_RPATH:-}" ]; then
+    NEW_RPATH="\$ORIGIN:${STELNETTTS_BUNDLE_EXTRA_RPATH}"
 fi
 for f in "$DEST"/*; do
     [ -f "$f" ] || continue

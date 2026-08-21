@@ -3,10 +3,10 @@
 # Usage:
 #
 #   git clone https://github.com/openai/whisper
-#   git clone https://github.com/CrispStrobe/CrispASR
+#   git clone https://github.com/Cyna/StelnetTTS
 #   git clone https://huggingface.co/openai/whisper-medium
 #
-#   python3 ./crispasr/models/convert-h5-to-ggml.py ./whisper-medium/ ./openai-whisper .
+#   python3 ./stelnettts/models/convert-h5-to-ggml.py ./whisper-medium/ ./openai-whisper .
 #
 # This script is similar to "convert-pt-to-ggml.py"
 #

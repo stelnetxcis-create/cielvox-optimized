@@ -75,7 +75,7 @@ void rvc_svc_coarse_pitch(const float* f0_hz, int n, int* out_coarse);
 // STATUS: the FULL path passes, INCLUDING rvc_svc_convert() end to end —
 // 48 comparisons at cos 1.00000000, of which convert_e2e runs this very API
 // with the reference'''s noise and reproduces its audio (max_abs 1.4e-05).
-// Run it with `crispasr-diff rvc <model.gguf> <ref.gguf> <any.wav>`.
+// Run it with `stelnettts-diff rvc <model.gguf> <ref.gguf> <any.wav>`.
 //
 // F32 ONLY for now. An f16 GGUF converts fine but aborts at runtime: several
 // ops on this path require F32 operands (ggml_scale is F32-only, and an F16

@@ -34,7 +34,7 @@
 // degenerate-window gate + instruction-echo safety net in the transcribe path.
 
 #include "canary_qwen.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "canary_qwen_echo.h"
 
 #ifndef M_PI
@@ -43,7 +43,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "gguf.h"
 
@@ -76,7 +76,7 @@
 static bool cq_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CANARY_QWEN_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CANARY_QWEN_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -98,7 +98,7 @@ struct cq_bench_stage {
 static bool cq_debug_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_CANARY_QWEN_DEBUG");
+        const char* e = std::getenv("STELNETTTS_CANARY_QWEN_DEBUG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -155,7 +155,7 @@ struct cq_proj {
     ggml_tensor* b = nullptr; // (2048,)
 };
 
-// LLM layer (Qwen3 — identical struct to qwen3_asr)
+// LLM layer (Qwen3 — identical struct to cielvox2_asr)
 struct cq_llm_block {
     ggml_tensor* attn_norm_w = nullptr;
     ggml_tensor* attn_q_w = nullptr;
@@ -192,9 +192,9 @@ struct canary_qwen_model {
     ggml_backend_buffer_t buf = nullptr;
     ggml_backend_buffer_t buf_cpu = nullptr;
 
-    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, CRISPASR_FC_PW_Q8)
+    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, STELNETTTS_FC_PW_Q8)
     core_conformer::PwRepackBuf pw_q8;
-    // Fused Q/K/V weight concat for the encoder blocks (CRISPASR_FC_FUSED_QKV)
+    // Fused Q/K/V weight concat for the encoder blocks (STELNETTTS_FC_FUSED_QKV)
     core_conformer::PwRepackBuf qkv_fused;
 
     std::map<std::string, ggml_tensor*> tensors;
@@ -335,7 +335,7 @@ static bool canary_qwen_load_model(canary_qwen_model& model, canary_qwen_vocab& 
     // ---- pass 2: tensor data ----
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS"))
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS"))
         n_gpu_layers_env = std::atoi(s);
     const int total_layers = (int)model.hparams.llm_n_layers;
     const bool do_split =
@@ -645,7 +645,7 @@ static std::vector<float> canary_qwen_encode_mel(canary_qwen_context* ctx, const
         ggml_backend_t backends[2] = {ctx->backend, ctx->backend_cpu};
         int n_be = (ctx->backend != ctx->backend_cpu) ? 2 : 1;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched);
+        stelnettts_imatrix_install(ctx->sched);
     }
     if (ctx->compute_meta.empty())
         ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
@@ -705,7 +705,7 @@ static std::vector<float> canary_qwen_encode_mel(canary_qwen_context* ctx, const
 }
 
 // ===========================================================================
-// LLM KV-cache graph (Qwen3 — same structure as qwen3_asr)
+// LLM KV-cache graph (Qwen3 — same structure as cielvox2_asr)
 // ===========================================================================
 
 static bool canary_qwen_kv_init(canary_qwen_context* ctx, int max_ctx) {
@@ -922,7 +922,7 @@ static std::vector<float> canary_qwen_run_llm_kv_impl(canary_qwen_context* ctx, 
 }
 
 // ===========================================================================
-// Tokenizer (GPT-2 byte-level BPE — same as qwen3_asr)
+// Tokenizer (GPT-2 byte-level BPE — same as cielvox2_asr)
 // ===========================================================================
 
 static std::vector<int32_t> canary_qwen_tokenize(canary_qwen_context* ctx, const char* text) {
@@ -1109,7 +1109,7 @@ static canary_qwen_result* canary_qwen_transcribe_impl(canary_qwen_context* ctx,
     // pipeline the overlapping neighbour already covers any real fragment.
     // Tunable/disable via env (0 disables the gate → pre-fix behaviour).
     int min_enc_frames = 6;
-    if (const char* e = std::getenv("CRISPASR_CANARY_QWEN_MIN_ENC_FRAMES"))
+    if (const char* e = std::getenv("STELNETTTS_CANARY_QWEN_MIN_ENC_FRAMES"))
         min_enc_frames = std::atoi(e);
     if (min_enc_frames > 0 && T_enc < min_enc_frames) {
         if (cq_debug_enabled())
@@ -1229,7 +1229,7 @@ static canary_qwen_result* canary_qwen_transcribe_impl(canary_qwen_context* ctx,
     // BOTH the token array and the text (the previous #247 workaround stripped
     // text only, leaving the tokens array inconsistent — see #218). Disable via
     // env for A/B.
-    if (!generated_ids.empty() && !std::getenv("CRISPASR_CANARY_QWEN_NO_ECHO_STRIP")) {
+    if (!generated_ids.empty() && !std::getenv("STELNETTTS_CANARY_QWEN_NO_ECHO_STRIP")) {
         int drop = canary_qwen_echo_prefix_tokens(ctx, generated_ids);
         if (drop > 0) {
             if (cq_debug_enabled())
@@ -1295,7 +1295,7 @@ extern "C" struct canary_qwen_context* canary_qwen_init_from_file(const char* pa
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -1305,7 +1305,7 @@ extern "C" struct canary_qwen_context* canary_qwen_init_from_file(const char* pa
     }
 
     // Repack F16 conv pw1/pw2 to Q8_0 + fuse encoder Q/K/V (issue #81 — the 3D
-    // conv layout dodges crispasr-quantize; fusion is bit-identical).
+    // conv layout dodges stelnettts-quantize; fusion is bit-identical).
     {
         auto& m = ctx->model;
         std::vector<core_conformer::BlockWeights*> layers;
@@ -1434,7 +1434,7 @@ extern "C" float* canary_qwen_run_encoder(struct canary_qwen_context* ctx, const
         ggml_backend_t backends[2] = {ctx->backend, ctx->backend_cpu};
         int n_be = (ctx->backend != ctx->backend_cpu) ? 2 : 1;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched);
+        stelnettts_imatrix_install(ctx->sched);
     }
     if (ctx->compute_meta.empty())
         ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));

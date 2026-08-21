@@ -37,8 +37,8 @@
 #include "core/dac_decoder.h" // core_dac::fastconv_cache (FASTCONV kernel bake)
 #include "core/gguf_loader.h"
 #include "core/lstm.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "core/phoneme_dialect.h" // #316: one G2P, several phoneme conventions
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -63,16 +63,16 @@
 #include <vector>
 #include "core/ggml_cpu_backend.h"
 
-#ifdef CRISPASR_HAVE_ESPEAK_NG
+#ifdef STELNETTTS_HAVE_ESPEAK_NG
 #include <espeak-ng/speak_lib.h>
-#elif defined(CRISPASR_ESPEAK_DLOPEN)
+#elif defined(STELNETTTS_ESPEAK_DLOPEN)
 #include "espeak_dlopen.h"
 #endif
 
 namespace {
 
 bool env_bool(const char* k) {
-    const char* v = crispasr_env::get(k);
+    const char* v = stelnettts_env::get(k);
     return v && *v && std::strcmp(v, "0") != 0 && std::strcmp(v, "false") != 0;
 }
 
@@ -83,7 +83,7 @@ bool env_bool(const char* k) {
 bool kokoro_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_KOKORO_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_KOKORO_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -771,7 +771,7 @@ static inline ggml_tensor* kokoro_adain1d(ggml_context* ctx, ggml_tensor* x, ggm
     // simdgroup ended up with ≤ a few active threads in the prior
     // parallel-sum loop, e.g. T=65 in the kokoro AdaIN1d). The bug
     // cascaded through AdaIN → conv → AdaIN into garbage audio for
-    // short utterances ("hello world"). Fixed by the CrispASR patch
+    // short utterances ("hello world"). Fixed by the StelnetTTS patch
     // in ggml/src/ggml-metal/ggml-metal.metal (search for
     // "serial reduction by thread 0") — that patch MUST stay
     // co-versioned with this code; if you bump ggml without
@@ -1342,13 +1342,13 @@ static ggml_cgraph* kokoro_build_graph_f0n(kokoro_context* c, int T_frames, int 
     // KOKORO_DEBUG_INTERMEDIATES=1, every sub-op output inside the
     // first block (AdaIN1d → LeakyReLU → Conv1d → AdaIN1d → LeakyReLU
     // → Conv1d → residual) is named "dbg_pred_{f0,n}_0_…" and marked
-    // as a graph output so KOKORO_DUMP_STAGES (see crispasr-diff) can
+    // as a graph output so KOKORO_DUMP_STAGES (see stelnettts-diff) can
     // write each one to disk for GPU-vs-CPU comparison. Unset (the
     // default) and the block runs with no extra ops or outputs, so
     // production builds pay zero cost. Used to bisect the ggml_norm
     // Metal regression — keep available for the next per-op-level bug.
     static const bool s_dbg = []() {
-        const char* v = crispasr_env::get("CRISPASR_KOKORO_DEBUG_INTERMEDIATES");
+        const char* v = stelnettts_env::get("STELNETTTS_KOKORO_DEBUG_INTERMEDIATES");
         return v && *v && *v != '0';
     }();
     auto run_stack = [&](const char* prefix, const char* stage_branch, ggml_tensor* in) -> ggml_tensor* {
@@ -1366,7 +1366,7 @@ static ggml_cgraph* kokoro_build_graph_f0n(kokoro_context* c, int T_frames, int 
         y = kokoro_adain_resblk(ctx0, y, style_pred, w0.a1w, w0.a1b, w0.a2w, w0.a2b, w0.c1w, w0.c1b, w0.c2w, w0.c2b,
                                 /*pool*/ nullptr, nullptr, /*conv1x1*/ nullptr, dbg0);
         // Tag each AdainResBlk1d output as `pred_{f0,n}_{k}_out` so
-        // crispasr-diff can compare them against the Python reference
+        // stelnettts-diff can compare them against the Python reference
         // and pinpoint the first stage that diverges on Metal.
         {
             char nm[32];
@@ -1516,7 +1516,7 @@ static float* kokoro_run_f0n(kokoro_context* c, const int32_t* raw_ids, int n_ra
     if (!out) {
         // dbg_* stages are opt-in (KOKORO_DEBUG_INTERMEDIATES=1); when
         // that's unset they're never tagged into the graph. Silently
-        // return null so crispasr-diff can route them to SKIP rather
+        // return null so stelnettts-diff can route them to SKIP rather
         // than flooding stderr in normal runs.
         if (std::strncmp(tname, "dbg_", 4) != 0)
             fprintf(stderr, "kokoro: F0Ntrain graph missing output '%s'\n", tname);
@@ -2359,7 +2359,7 @@ static float* kokoro_run_generator(kokoro_context* c, const int32_t* raw_ids, in
     }
 
     // 3. Build `har` (22, T_har) on CPU.
-    const char* seed_env = crispasr_env::get("CRISPASR_KOKORO_SEED");
+    const char* seed_env = stelnettts_env::get("STELNETTTS_KOKORO_SEED");
     uint32_t seed = seed_env ? (uint32_t)std::strtoul(seed_env, nullptr, 0) : 0x12345u;
     std::mt19937 rng(seed);
     int T_har = 0;
@@ -2570,8 +2570,8 @@ extern "C" struct kokoro_context_params kokoro_context_default_params(void) {
     //   KOKORO_GEN_GPU=1         — clean-named for CUDA / Vulkan users where
     //                              the M1 hang doesn't apply and CPU path
     //                              is dramatically slower than the GPU.
-    // Mirrors the QWEN3_TTS_CODEC_GPU pattern from the qwen3-tts codec.
-    p.gen_force_metal = env_bool("CRISPASR_KOKORO_GEN_FORCE_METAL") || env_bool("CRISPASR_KOKORO_GEN_GPU");
+    // Mirrors the CIELVOX2_TTS_CODEC_GPU pattern from the cielvox2-tts codec.
+    p.gen_force_metal = env_bool("STELNETTTS_KOKORO_GEN_FORCE_METAL") || env_bool("STELNETTTS_KOKORO_GEN_GPU");
     p.flash_attn = true;
     p.length_scale = 1.0f;
     std::strncpy(p.espeak_lang, "en-us", sizeof(p.espeak_lang) - 1);
@@ -2681,7 +2681,7 @@ extern "C" struct kokoro_context* kokoro_init_from_file(const char* path_model, 
         return nullptr;
     }
     core_cpu_backend::set_n_threads(c->backend_cpu, c->n_threads);
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend)
         c->backend = c->backend_cpu;
     c->gen_backend = params.gen_force_metal ? c->backend : c->backend_cpu;
@@ -2735,9 +2735,9 @@ extern "C" struct kokoro_context* kokoro_init_from_file(const char* path_model, 
     // their c->tensors entry is harmless (that entry is unused afterwards). The
     // depthwise-convt path (core_convt::convt1d_depthwise_2x_k3) casts F16→F32
     // internally too, so an already-F32 base just skips that cast. Gated
-    // CRISPASR_KOKORO_FASTCONV (default on — numerically equivalent).
+    // STELNETTTS_KOKORO_FASTCONV (default on — numerically equivalent).
     {
-        const char* env = getenv("CRISPASR_KOKORO_FASTCONV");
+        const char* env = getenv("STELNETTTS_KOKORO_FASTCONV");
         const bool fc_on = !env || env[0] != '0';
         std::vector<ggml_tensor*> kernels;
         for (auto& kv : c->tensors) {
@@ -2754,7 +2754,7 @@ extern "C" struct kokoro_context* kokoro_init_from_file(const char* path_model, 
                 swapped++;
             }
         }
-        if (getenv("CRISPASR_KOKORO_FASTCONV_DEBUG"))
+        if (getenv("STELNETTTS_KOKORO_FASTCONV_DEBUG"))
             fprintf(stderr, "kokoro: FASTCONV %s: %zu F16 3D conv kernels, %d baked+swapped\n", fc_on ? "ON" : "OFF",
                     kernels.size(), swapped);
     }
@@ -2806,9 +2806,9 @@ extern "C" struct kokoro_context* kokoro_init_from_file(const char* path_model, 
         if (c->gen_backend != c->backend_cpu) {
             // Disambiguate which env var was set so the log line tells the
             // operator which knob is in effect.
-            if (env_bool("CRISPASR_KOKORO_GEN_GPU"))
+            if (env_bool("STELNETTTS_KOKORO_GEN_GPU"))
                 gpu_label = "GPU (KOKORO_GEN_GPU)";
-            else if (env_bool("CRISPASR_KOKORO_GEN_FORCE_METAL"))
+            else if (env_bool("STELNETTTS_KOKORO_GEN_FORCE_METAL"))
                 gpu_label = "GPU (KOKORO_GEN_FORCE_METAL)";
         }
         fprintf(stderr, "kokoro: loaded %zu tensors from '%s'  gen=%s\n", c->tensors.size(), path_model,
@@ -3009,7 +3009,7 @@ void rstrip_inplace(std::string& s) {
     s = s.substr(b, e - b);
 }
 
-#if defined(CRISPASR_HAVE_ESPEAK_NG) || defined(CRISPASR_ESPEAK_DLOPEN)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG) || defined(STELNETTTS_ESPEAK_DLOPEN)
 // libespeak-ng's state is process-global, so all access goes through one
 // mutex. Init is one-shot; voice switches are sticky.
 std::mutex g_espeak_mu;
@@ -3055,7 +3055,7 @@ static bool mecab_init() {
     if (!lib)
         lib = dlopen("libmecab.so", RTLD_LAZY);
     if (!lib) {
-        if (getenv("CRISPASR_NEMOTRON_DEBUG") || getenv("CRISPASR_KOKORO_DEBUG"))
+        if (getenv("STELNETTTS_NEMOTRON_DEBUG") || getenv("STELNETTTS_KOKORO_DEBUG"))
             fprintf(stderr, "kokoro: libmecab not found — JA kanji→kana disabled\n");
         return false;
     }
@@ -3099,16 +3099,16 @@ bool phonemize_espeak_lib(const std::string& lang, const std::string& text, std:
     if (g_espeak_init_failed)
         return false;
     if (!g_espeak_inited) {
-        const char* path = std::getenv("CRISPASR_ESPEAK_DATA_PATH");
-#if defined(CRISPASR_HAVE_ESPEAK_NG)
+        const char* path = std::getenv("STELNETTTS_ESPEAK_DATA_PATH");
+#if defined(STELNETTTS_HAVE_ESPEAK_NG)
         int sr = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, path,
                                    espeakINITIALIZE_PHONEME_IPA | espeakINITIALIZE_DONT_EXIT);
-#elif defined(CRISPASR_ESPEAK_DLOPEN)
+#elif defined(STELNETTTS_ESPEAK_DLOPEN)
         auto& dl = espeak_dl_get();
         if (!dl.load())
             return false;
-        int sr = dl.Initialize(CRISPASR_ESPEAK_AUDIO_OUTPUT_SYNCHRONOUS, 0, path,
-                               CRISPASR_ESPEAK_INITIALIZE_PHONEME_IPA | CRISPASR_ESPEAK_INITIALIZE_DONT_EXIT);
+        int sr = dl.Initialize(STELNETTTS_ESPEAK_AUDIO_OUTPUT_SYNCHRONOUS, 0, path,
+                               STELNETTTS_ESPEAK_INITIALIZE_PHONEME_IPA | STELNETTTS_ESPEAK_INITIALIZE_DONT_EXIT);
 #endif
         if (sr < 0) {
             fprintf(stderr, "kokoro: espeak_Initialize failed (data path=%s) — falling back to popen\n",
@@ -3119,9 +3119,9 @@ bool phonemize_espeak_lib(const std::string& lang, const std::string& text, std:
         g_espeak_inited = true;
     }
     if (g_espeak_voice != lang) {
-#if defined(CRISPASR_HAVE_ESPEAK_NG)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG)
         if (espeak_SetVoiceByName(lang.c_str()) != EE_OK) {
-#elif defined(CRISPASR_ESPEAK_DLOPEN)
+#elif defined(STELNETTTS_ESPEAK_DLOPEN)
         auto& dl = espeak_dl_get();
         if (!dl.loaded || dl.SetVoiceByName(lang.c_str()) != 0) {
 #endif
@@ -3133,10 +3133,10 @@ bool phonemize_espeak_lib(const std::string& lang, const std::string& text, std:
     out.clear();
     const void* tp = text.c_str();
     while (tp) {
-#if defined(CRISPASR_HAVE_ESPEAK_NG)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG)
         const char* chunk = espeak_TextToPhonemes(&tp, espeakCHARS_UTF8, espeakPHONEMES_IPA);
-#elif defined(CRISPASR_ESPEAK_DLOPEN)
-        const char* chunk = espeak_dl_get().TextToPhonemes(&tp, CRISPASR_ESPEAK_CHARS_UTF8, 0x02);
+#elif defined(STELNETTTS_ESPEAK_DLOPEN)
+        const char* chunk = espeak_dl_get().TextToPhonemes(&tp, STELNETTTS_ESPEAK_CHARS_UTF8, 0x02);
 #endif
         if (chunk && *chunk) {
             if (!out.empty())
@@ -3163,13 +3163,13 @@ bool phonemize_popen(const std::string& lang, const std::string& text, std::stri
     }
     cmd += "'";
 #ifdef _WIN32
-#define CRISPASR_POPEN _popen
-#define CRISPASR_PCLOSE _pclose
+#define STELNETTTS_POPEN _popen
+#define STELNETTTS_PCLOSE _pclose
 #else
-#define CRISPASR_POPEN popen
-#define CRISPASR_PCLOSE pclose
+#define STELNETTTS_POPEN popen
+#define STELNETTTS_PCLOSE pclose
 #endif
-    FILE* f = CRISPASR_POPEN(cmd.c_str(), "r");
+    FILE* f = STELNETTTS_POPEN(cmd.c_str(), "r");
     if (!f) {
         fprintf(stderr, "kokoro: failed to popen espeak-ng — is it installed?\n");
         return false;
@@ -3178,7 +3178,7 @@ bool phonemize_popen(const std::string& lang, const std::string& text, std::stri
     char buf[1024];
     while (size_t n = std::fread(buf, 1, sizeof(buf), f))
         out.append(buf, n);
-    CRISPASR_PCLOSE(f);
+    STELNETTTS_PCLOSE(f);
     rstrip_inplace(out);
     return !out.empty();
 }
@@ -3203,7 +3203,7 @@ static bool is_cmn_lang(const std::string& lang) {
     return lang == "cmn" || lang == "zh" || lang == "zh-cn" || lang == "zh_cn" || lang == "cmn-latn-pinyin";
 }
 
-#if defined(CRISPASR_HAVE_ESPEAK_NG) || defined(CRISPASR_ESPEAK_DLOPEN)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG) || defined(STELNETTTS_ESPEAK_DLOPEN)
 static bool is_ja_lang(const std::string& lang) {
     return lang == "ja" || lang == "ja-jp" || lang == "ja_jp";
 }
@@ -3225,7 +3225,7 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
     // espeak (both live in the espeak #if block above), and it only matters as a
     // pre-step before espeak phonemization — so skip it cleanly on no-espeak
     // builds where kanji_to_kana / is_ja_lang aren't compiled.
-#if defined(CRISPASR_HAVE_ESPEAK_NG) || defined(CRISPASR_ESPEAK_DLOPEN)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG) || defined(STELNETTTS_ESPEAK_DLOPEN)
     if (is_ja_lang(lang)) {
         std::string kana;
         if (kanji_to_kana(text, kana)) {
@@ -3237,12 +3237,12 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
     // §156 permissive G2P dicts — try builtin phonemizers first (no GPL dep).
     // These auto-download IPA dicts from HuggingFace on first call.
     //
-    // CRISPASR_KOKORO_G2P env var selects strategy (#216):
+    // STELNETTTS_KOKORO_G2P env var selects strategy (#216):
     //   "builtin-first"  — builtin G2P, then espeak fallback (default)
     //   "espeak-first"   — espeak first, then builtin fallback
     //   "espeak-only"    — espeak only, no builtin
     //   "builtin-only"   — builtin only, no espeak
-    static const char* g2p_strategy = std::getenv("CRISPASR_KOKORO_G2P");
+    static const char* g2p_strategy = std::getenv("STELNETTTS_KOKORO_G2P");
     static const bool espeak_first =
         g2p_strategy && (strcmp(g2p_strategy, "espeak-first") == 0 || strcmp(g2p_strategy, "espeak-only") == 0);
     static const bool skip_builtin = g2p_strategy && strcmp(g2p_strategy, "espeak-only") == 0;
@@ -3252,10 +3252,10 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
     // built-in G2Ps. English is settled — misaki emits the marks and the ASR
     // round-trip proves the difference. de/fr/es have no equivalent reference,
     // so this is A/B'd by round-trip on kokoro-de-hui-base and gated:
-    // CRISPASR_KOKORO_PUNCT=0 restores the old drop-everything behaviour.
+    // STELNETTTS_KOKORO_PUNCT=0 restores the old drop-everything behaviour.
     // Never remove the gate — it is the bisection mechanism.
     static const bool kokoro_punct = [] {
-        const char* v = crispasr_env::get("CRISPASR_KOKORO_PUNCT");
+        const char* v = stelnettts_env::get("STELNETTTS_KOKORO_PUNCT");
         return !(v && *v && strcmp(v, "0") == 0);
     }();
     auto kokoro_punctuation = [] { return kokoro_punct; };
@@ -3270,15 +3270,15 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
             // output, and CMUdict disagrees with it on ~42% of words (stress
             // and unstressed vowels, not spelling). Falls back automatically
             // when the lexicon is not installed.
-            ok = crispasr::phonemize_misaki_en(lang, text, out);
+            ok = stelnettts::phonemize_misaki_en(lang, text, out);
             if (!ok)
-                ok = crispasr::phonemize_builtin_en(lang, text, out, /*misaki_style=*/true);
+                ok = stelnettts::phonemize_builtin_en(lang, text, out, /*misaki_style=*/true);
         } else if (lang == "de")
-            ok = crispasr::phonemize_builtin_de(lang, text, out, kokoro_punctuation());
+            ok = stelnettts::phonemize_builtin_de(lang, text, out, kokoro_punctuation());
         else if (lang == "fr" || lang == "fr-fr")
-            ok = crispasr::phonemize_builtin_fr(lang, text, out, kokoro_punctuation());
+            ok = stelnettts::phonemize_builtin_fr(lang, text, out, kokoro_punctuation());
         else if (lang == "es" || lang == "es-es")
-            ok = crispasr::phonemize_builtin_es(lang, text, out, kokoro_punctuation());
+            ok = stelnettts::phonemize_builtin_es(lang, text, out, kokoro_punctuation());
         return ok && !out.empty();
     };
 
@@ -3286,14 +3286,14 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
     auto try_espeak = [&]() -> bool {
         if (skip_espeak)
             return false;
-#if defined(CRISPASR_HAVE_ESPEAK_NG) || defined(CRISPASR_ESPEAK_DLOPEN)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG) || defined(STELNETTTS_ESPEAK_DLOPEN)
         if (phonemize_espeak_lib(lang, effective_text, out)) {
-            crispasr::strip_espeak_lang_markers(out); // #169
+            stelnettts::strip_espeak_lang_markers(out); // #169
             return true;
         }
 #endif
         if (phonemize_popen(lang, effective_text, out)) {
-            crispasr::strip_espeak_lang_markers(out); // #169
+            stelnettts::strip_espeak_lang_markers(out); // #169
             return true;
         }
         return false;
@@ -3316,10 +3316,10 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
         // dropped and nothing errors; the model just gets a token sequence it
         // never saw in training and drifts ("sounds British"). Rewrite it.
         // Kokoro-scoped on purpose: piper wants the espeak spelling.
-        // Default ON; CRISPASR_KOKORO_MISAKI_IPA=0 restores the raw G2P
+        // Default ON; STELNETTTS_KOKORO_MISAKI_IPA=0 restores the raw G2P
         // spelling for A/B (never delete the old path).
         static const bool misaki_ipa = [] {
-            const char* v = crispasr_env::get("CRISPASR_KOKORO_MISAKI_IPA");
+            const char* v = stelnettts_env::get("STELNETTTS_KOKORO_MISAKI_IPA");
             return !(v && *v && strcmp(v, "0") == 0);
         }();
         const bool is_en = lang.empty() || lang.rfind("en", 0) == 0;
@@ -3334,7 +3334,7 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
         //     dataset script makes the same `ʏ`→`y` substitution.
         //
         // (b) misaki's TIED-SEQUENCE COLLAPSE (`ʦvˈI` for `tsvˈaɪ`) — opt-in,
-        //     CRISPASR_KOKORO_DE_MISAKI_ALPHABET=1. It is what the published
+        //     STELNETTTS_KOKORO_DE_MISAKI_ALPHABET=1. It is what the published
         //     training recipe does and it moves our phonemes measurably closer
         //     to it, but on the hui base we ship it made the ASR round-trip
         //     WORSE, so it does not get the default on evidence we have.
@@ -3342,7 +3342,7 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
         //     be right for the newer kikiri-tts models.
         if (lang.rfind("de", 0) == 0) {
             static const bool de_alphabet = [] {
-                const char* v = crispasr_env::get("CRISPASR_KOKORO_DE_MISAKI_ALPHABET");
+                const char* v = stelnettts_env::get("STELNETTTS_KOKORO_DE_MISAKI_ALPHABET");
                 return v && *v && strcmp(v, "0") != 0;
             }();
             out = core_phoneme::convert(out,
@@ -3365,7 +3365,7 @@ bool phonemize_cached(kokoro_context* ctx, const std::string& lang, const std::s
 extern "C" char* kokoro_phonemize_text_lib(const char* lang, const char* text) {
     if (!lang || !text)
         return nullptr;
-#if defined(CRISPASR_HAVE_ESPEAK_NG) || defined(CRISPASR_ESPEAK_DLOPEN)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG) || defined(STELNETTTS_ESPEAK_DLOPEN)
     std::string out;
     if (!phonemize_espeak_lib(lang, text, out))
         return nullptr;
@@ -3382,7 +3382,7 @@ extern "C" char* kokoro_phonemize_text_lib(const char* lang, const char* text) {
 
 // Phonemize via popen("espeak-ng …"). Returns malloc'd UTF-8 IPA (caller
 // frees) or nullptr if espeak-ng isn't on PATH or returned no output.
-// Always available regardless of CRISPASR_HAVE_ESPEAK_NG. Exposed for
+// Always available regardless of STELNETTTS_HAVE_ESPEAK_NG. Exposed for
 // the diff-harness to detect drift between the two phonemizer paths.
 // (PLAN #56 #4)
 extern "C" char* kokoro_phonemize_text_popen(const char* lang, const char* text) {
@@ -3729,7 +3729,7 @@ bool kokoro_file_exists(const char* path) {
 
 } // namespace
 
-extern "C" bool crispasr_kokoro_lang_is_german(const char* lang) {
+extern "C" bool stelnettts_kokoro_lang_is_german(const char* lang) {
     if (!lang)
         return false;
     if (lang[0] != 'd' || lang[1] != 'e')
@@ -3738,7 +3738,7 @@ extern "C" bool crispasr_kokoro_lang_is_german(const char* lang) {
     return c == '\0' || c == '-' || c == '_';
 }
 
-extern "C" bool crispasr_kokoro_lang_has_native_voice(const char* lang) {
+extern "C" bool stelnettts_kokoro_lang_has_native_voice(const char* lang) {
     if (!lang || !*lang)
         return false;
     static const char* kNative[] = {"en", "es", "fr", "hi", "it", "ja", "pt", "cmn", "zh"};
@@ -3762,7 +3762,7 @@ extern "C" bool crispasr_kokoro_lang_has_native_voice(const char* lang) {
     return false;
 }
 
-extern "C" int crispasr_kokoro_resolve_model_for_lang(const char* model_path, const char* lang, char* out_path,
+extern "C" int stelnettts_kokoro_resolve_model_for_lang(const char* model_path, const char* lang, char* out_path,
                                                       int out_path_len) {
     auto pass_through = [&](int rc) {
         if (out_path && out_path_len > 0 && model_path) {
@@ -3773,7 +3773,7 @@ extern "C" int crispasr_kokoro_resolve_model_for_lang(const char* model_path, co
     };
     if (!model_path || !lang)
         return pass_through(1);
-    if (!crispasr_kokoro_lang_is_german(lang))
+    if (!stelnettts_kokoro_lang_is_german(lang))
         return pass_through(1);
     const char* base = kokoro_basename(model_path);
     if (!kokoro_starts_with(base, "kokoro-82m"))
@@ -3790,16 +3790,16 @@ extern "C" int crispasr_kokoro_resolve_model_for_lang(const char* model_path, co
     return 0;
 }
 
-extern "C" int crispasr_kokoro_resolve_fallback_voice(const char* model_path, const char* lang, char* out_path,
+extern "C" int stelnettts_kokoro_resolve_fallback_voice(const char* model_path, const char* lang, char* out_path,
                                                       int out_path_len, char* out_picked, int out_picked_len) {
     if (!model_path || !lang)
         return 2;
-    if (crispasr_kokoro_lang_has_native_voice(lang))
+    if (stelnettts_kokoro_lang_has_native_voice(lang))
         return 1;
     // Per-language candidate cascade.
     static const char* kGerman[] = {"df_victoria", "df_eva", "ff_siwis", nullptr};
     static const char* kGeneric[] = {"ff_siwis", nullptr};
-    const char** cascade = crispasr_kokoro_lang_is_german(lang) ? kGerman : kGeneric;
+    const char** cascade = stelnettts_kokoro_lang_is_german(lang) ? kGerman : kGeneric;
     char fname[256];
     char candidate[1024];
     for (int i = 0; cascade[i]; ++i) {

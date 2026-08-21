@@ -9,14 +9,14 @@ WORK = Path("/kaggle/working")
 print("=== granite-nar SIGABRT debug ===", flush=True)
 
 # Clone + build
-cdir = WORK / "CrispASR"
+cdir = WORK / "StelnetTTS"
 if not cdir.exists():
     subprocess.check_call(["git", "clone", "--depth", "1",
-        "https://github.com/CrispStrobe/CrispASR.git", str(cdir)])
+        "https://github.com/Cyna/StelnetTTS.git", str(cdir)])
 
 # HF token
-for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-          "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+          "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
     if os.path.exists(p):
         os.environ["HF_TOKEN"] = open(p).read().strip()
         break
@@ -28,7 +28,7 @@ subprocess.run("apt-get update -qq && apt-get install -y cmake ninja-build g++ c
                shell=True, capture_output=True)
 
 bdir = cdir / "build"
-cmake_args = ["-DCMAKE_BUILD_TYPE=Debug", "-DCRISPASR_NO_C2PA_NATIVE=ON"]  # Debug build for better backtraces
+cmake_args = ["-DCMAKE_BUILD_TYPE=Debug", "-DSTELNETTTS_NO_C2PA_NATIVE=ON"]  # Debug build for better backtraces
 if shutil.which("ninja"): cmake_args += ["-G", "Ninja"]
 subprocess.check_call(["cmake", "-B", str(bdir)] + cmake_args, cwd=str(cdir))
 subprocess.check_call(["cmake", "--build", str(bdir), "-j2"], cwd=str(cdir))
@@ -37,12 +37,12 @@ print("Build OK (Debug)", flush=True)
 # Download model
 from huggingface_hub import hf_hub_download
 MDIR = WORK / "models"; MDIR.mkdir(exist_ok=True)
-mpath = hf_hub_download("cstr/granite-speech-4.1-2b-nar-GGUF",
+mpath = hf_hub_download("Xenna/granite-speech-4.1-2b-nar-GGUF",
                          "granite-speech-4.1-2b-nar-q4_k.gguf",
                          cache_dir=str(MDIR/".hf"), local_dir=str(MDIR))
 print(f"Model: {mpath}", flush=True)
 
-CLI = str(bdir / "bin" / "crispasr")
+CLI = str(bdir / "bin" / "stelnettts")
 JFK = str(cdir / "samples" / "jfk.wav")
 results = {}
 
@@ -65,7 +65,7 @@ print(f"stderr (last 1000):\n{r.stderr[-1000:]}", flush=True)
 # Test 3: granite-4.1-plus (should work — sanity check)
 print("\n=== Test 3: granite-4.1-plus (sanity) ===", flush=True)
 try:
-    mpath2 = hf_hub_download("cstr/granite-speech-4.1-2b-plus-GGUF",
+    mpath2 = hf_hub_download("Xenna/granite-speech-4.1-2b-plus-GGUF",
                               "granite-speech-4.1-2b-plus-q4_k.gguf",
                               cache_dir=str(MDIR/".hf"), local_dir=str(MDIR))
     r = subprocess.run([CLI, "--backend", "granite", "-m", str(MDIR / "granite-speech-4.1-2b-plus-q4_k.gguf"),

@@ -141,15 +141,15 @@ TEST_CASE("CJK edge cases are safe", "[ngram-loop][cjk]") {
     REQUIRE_NOTHROW(fix_loops(truncated));
 }
 
-TEST_CASE("CRISPASR_NGRAM_LOOPFIX_OFF disables the CJK path too", "[ngram-loop][cjk]") {
+TEST_CASE("STELNETTTS_NGRAM_LOOPFIX_OFF disables the CJK path too", "[ngram-loop][cjk]") {
     // The diagnostic opt-out exists to expose the RAW decode. A CJK collapse
     // that ignored it would hide the very thing the flag is set to see.
     const std::string loop = rep("あ", 40);
     REQUIRE(fix_loops(loop) != loop); // gate is on by default
 
-    setenv("CRISPASR_NGRAM_LOOPFIX_OFF", "1", 1);
+    setenv("STELNETTTS_NGRAM_LOOPFIX_OFF", "1", 1);
     REQUIRE(fix_loops(loop) == loop);
-    unsetenv("CRISPASR_NGRAM_LOOPFIX_OFF");
+    unsetenv("STELNETTTS_NGRAM_LOOPFIX_OFF");
 
     REQUIRE(fix_loops(loop) != loop); // and back on
 }

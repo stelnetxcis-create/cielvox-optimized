@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-orpheus-quantize",
-  "title": "crispasr-orpheus-quantize",
+  "id": "chr1str/stelnettts-orpheus-quantize",
+  "title": "stelnettts-orpheus-quantize",
   "code_file": "orpheus-quantize.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

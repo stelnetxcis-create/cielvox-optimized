@@ -735,18 +735,18 @@ CountMethod count_method_from_env() {
     //
     // Eigengap systematically UNDER-counts on real speech — reference
     // 4/7/2/5/5/4/4/5 speakers against 3/5/2/3/3/2/2/3 — and the confusion
-    // term triples. It is retained behind CRISPASR_DIARIZE_COUNT=eigengap
+    // term triples. It is retained behind STELNETTTS_DIARIZE_COUNT=eigengap
     // because it is genuinely better on well-separated data and costs less,
     // but it is not the default and synthetic evidence must not be used to
     // make it one again.
-    // CRISPASR_DIARIZE_COUNT=nme-sc selects NME-SC, which is the same eigengap
+    // STELNETTTS_DIARIZE_COUNT=nme-sc selects NME-SC, which is the same eigengap
     // read but over an AUTO-TUNED binarisation rather than a hardcoded 15%.
     // The fixed binarisation is a plausible reason plain eigengap under-counts
     // above, so this is the variant worth measuring — but it is opt-in until
     // it has been scored on speaker-count accuracy over a held-out split, not
     // on DER over the handful of files that happened to be to hand. See
     // tools/diarize_eval.py.
-    const char* e = std::getenv("CRISPASR_DIARIZE_COUNT");
+    const char* e = std::getenv("STELNETTTS_DIARIZE_COUNT");
     if (e && *e) {
         const std::string v(e);
         if (v == "eigengap")
@@ -1036,7 +1036,7 @@ std::vector<int> cluster_speakers(const float* x, int n, int d, int min_speakers
         est.reason = "nme-sc";
         if (out_estimate)
             *out_estimate = est;
-        if (std::getenv("CRISPASR_DIARIZE_DEBUG")) {
+        if (std::getenv("STELNETTTS_DIARIZE_DEBUG")) {
             fprintf(stderr, "  nme-sc: p*=%d k=%d r=%.4f\n", diag.best_p, diag.best_k, diag.best_r);
             for (const auto& pt : diag.curve)
                 fprintf(stderr, "    p=%-4d k=%-2d gap=%.4f  r=%.4f%s\n", pt.p, pt.k, pt.gap, pt.ratio,
@@ -1092,9 +1092,9 @@ std::vector<int> cluster_speakers(const float* x, int n, int d, int min_speakers
     // max_speakers=10. The upper bound stays anchored so absurdly high k are
     // still never scored.
     //
-    // CRISPASR_DIARIZE_BIC_WINDOW=1 restores the old anchored window for A/B
+    // STELNETTTS_DIARIZE_BIC_WINDOW=1 restores the old anchored window for A/B
     // work; the DER harness should confirm this on real meetings.
-    const char* win_env = std::getenv("CRISPASR_DIARIZE_BIC_WINDOW");
+    const char* win_env = std::getenv("STELNETTTS_DIARIZE_BIC_WINDOW");
     const bool anchored_window = win_env && *win_env && *win_env != '0';
 
     const int lower = anchored_window ? std::max({2, min_speakers, k - 2}) : std::max(2, min_speakers);
@@ -1114,7 +1114,7 @@ std::vector<int> cluster_speakers(const float* x, int n, int d, int min_speakers
         std::vector<int> lab = refine_spherical(x, n, d, spectral_labels(aff.data(), n, c, seed));
         const float sil = silhouette_precomputed(dist.data(), n, lab);
         const float score = sil + kSilhouetteKBonus * (float)std::log((double)std::max(c, 1));
-        if (std::getenv("CRISPASR_DIARIZE_DEBUG"))
+        if (std::getenv("STELNETTTS_DIARIZE_DEBUG"))
             fprintf(stderr, "  spectral: k=%d silhouette=%.4f score=%.4f%s\n", c, sil, score,
                     c == k ? "   (bic anchor)" : "");
         if (score > best_score) {

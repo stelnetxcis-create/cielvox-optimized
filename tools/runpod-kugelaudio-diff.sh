@@ -1,9 +1,9 @@
 #!/bin/bash
-# CrispASR RunPod — KugelAudio full diff + ASR roundtrip
+# StelnetTTS RunPod — KugelAudio full diff + ASR roundtrip
 #
 # Spins up an RTX 3090, builds CUDA, runs:
 #   1. Python reference dump (kugelaudio-open → ref.gguf)
-#   2. crispasr-diff kugelaudio (C++ vs Python cosine parity)
+#   2. stelnettts-diff kugelaudio (C++ vs Python cosine parity)
 #   3. TTS synthesis → whisper ASR roundtrip
 #
 # Prerequisites: pip install runpod, RPOD_API in ~/.env, SSH key
@@ -20,7 +20,7 @@ GPU_TYPE="NVIDIA GeForce RTX 3090"
 GPU_ARCH=86
 IMAGE="runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub 2>/dev/null || echo "")
-POD_FILE="/tmp/crispasr-kugelaudio-diff-pod.txt"
+POD_FILE="/tmp/stelnettts-kugelaudio-diff-pod.txt"
 BRANCH="${1:-feature/kugelaudio-tts}"
 
 if [ "$BRANCH" = "teardown" ]; then
@@ -48,7 +48,7 @@ POD_INFO=$(python3 << PYEOF
 import runpod, json
 runpod.api_key = '$RPOD_API'
 pod = runpod.create_pod(
-    name="crispasr-kugelaudio-diff",
+    name="stelnettts-kugelaudio-diff",
     image_name="$IMAGE",
     gpu_type_id="$GPU_TYPE",
     gpu_count=1,
@@ -105,19 +105,19 @@ export CMAKE=\$(find /usr -path '*/cmake/data/bin/cmake' 2>/dev/null | head -1)
 [ -z "\$CMAKE" ] && CMAKE=cmake
 
 cd /runpod-volume
-rm -rf CrispASR build
-git clone --depth 1 --branch $BRANCH https://github.com/CrispStrobe/CrispASR.git
-cd CrispASR && git submodule update --init --depth 1 ggml
+rm -rf StelnetTTS build
+git clone --depth 1 --branch $BRANCH https://github.com/Cyna/StelnetTTS.git
+cd StelnetTTS && git submodule update --init --depth 1 ggml
 echo "SHA: \$(git rev-parse --short HEAD)"
 
 mkdir -p /runpod-volume/build
-\$CMAKE -G Ninja -S /runpod-volume/CrispASR -B /runpod-volume/build \
+\$CMAKE -G Ninja -S /runpod-volume/StelnetTTS -B /runpod-volume/build \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-  -DCRISPASR_BUILD_TESTS=OFF \
+  -DSTELNETTTS_BUILD_TESTS=OFF \
   -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=$GPU_ARCH
-ninja -C /runpod-volume/build -j\$(nproc) crispasr-cli crispasr-diff
+ninja -C /runpod-volume/build -j\$(nproc) stelnettts-cli stelnettts-diff
 echo "=== Build OK ==="
-ls -la /runpod-volume/build/bin/crispasr /runpod-volume/build/bin/crispasr-diff
+ls -la /runpod-volume/build/bin/stelnettts /runpod-volume/build/bin/stelnettts-diff
 REMOTE
 
 # ── Phase 2: Download models ────────────────────────────────────
@@ -129,7 +129,7 @@ from huggingface_hub import hf_hub_download, snapshot_download
 import shutil, os
 
 # KugelAudio Q4_K GGUF for C++ inference
-path = hf_hub_download('cstr/kugelaudio-0-open-GGUF', 'kugelaudio-0-open-f16.gguf',
+path = hf_hub_download('Xenna/kugelaudio-0-open-GGUF', 'kugelaudio-0-open-f16.gguf',
                        cache_dir='/runpod-volume/cache')
 if not os.path.exists('/runpod-volume/kugelaudio-f16.gguf'):
     os.symlink(path, '/runpod-volume/kugelaudio-f16.gguf')
@@ -172,7 +172,7 @@ from huggingface_hub import snapshot_download
 print(snapshot_download('kugelaudio/kugelaudio-0-open', cache_dir='/runpod-volume/cache/hf-src'))
 ")
 
-cd /runpod-volume/CrispASR
+cd /runpod-volume/StelnetTTS
 python3 tools/dump_reference.py \
     --backend kugelaudio \
     --model-dir "$SRC_MODEL" \
@@ -182,17 +182,17 @@ python3 tools/dump_reference.py \
 ls -lh /runpod-volume/kugelaudio-ref.gguf 2>/dev/null || echo "FAILED: no reference GGUF"
 REMOTE
 
-# ── Phase 4: crispasr-diff ──────────────────────────────────────
-echo "=== Phase 4: crispasr-diff ==="
+# ── Phase 4: stelnettts-diff ──────────────────────────────────────
+echo "=== Phase 4: stelnettts-diff ==="
 $SSH << 'REMOTE'
 set -e
 export LD_LIBRARY_PATH=/runpod-volume/build/src:/runpod-volume/build/ggml/src:/runpod-volume/build/ggml/src/ggml-cuda
 
 if [ -f /runpod-volume/kugelaudio-ref.gguf ]; then
-    /runpod-volume/build/bin/crispasr-diff kugelaudio \
+    /runpod-volume/build/bin/stelnettts-diff kugelaudio \
         /runpod-volume/kugelaudio-f16.gguf \
         /runpod-volume/kugelaudio-ref.gguf \
-        /runpod-volume/CrispASR/samples/jfk.wav 2>&1 || true
+        /runpod-volume/StelnetTTS/samples/jfk.wav 2>&1 || true
 else
     echo "SKIPPED: no reference GGUF (Python dump failed)"
 fi
@@ -203,7 +203,7 @@ echo "=== Phase 5: TTS + ASR roundtrip ==="
 $SSH << 'REMOTE'
 set -e
 export LD_LIBRARY_PATH=/runpod-volume/build/src:/runpod-volume/build/ggml/src:/runpod-volume/build/ggml/src/ggml-cuda
-CLI=/runpod-volume/build/bin/crispasr
+CLI=/runpod-volume/build/bin/stelnettts
 WHISPER=/runpod-volume/cache/ggml-base.en.bin
 
 echo "--- TTS: English ---"

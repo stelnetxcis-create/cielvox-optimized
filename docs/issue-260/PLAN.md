@@ -1,18 +1,18 @@
-# Issue #260 — qwen3-tts "tinny noise" / characteristic spectrogram pattern
+# Issue #260 — cielvox2-tts "tinny noise" / characteristic spectrogram pattern
 
 ## NOW — active work
 
 ### DONE (2026-07-16): native C2PA across all audio formats — no c2pa-rs
 
 The whole C2PA layer was rebuilt from scratch (clean-room from the spec), extracted
-into a standalone library, and wired back in. **Every format CrispASR emits now
+into a standalone library, and wired back in. **Every format StelnetTTS emits now
 carries a native C2PA manifest, interoperable with the c2pa-rs reference reader in
 both directions.**
 
-- **Standalone library `c2pa-audio`** — https://github.com/CrispStrobe/c2pa-audio
+- **Standalone library `c2pa-audio`** — https://github.com/Cyna/c2pa-audio
   (MIT). Sign + verify in C/C++, pure-WebCrypto JS (no native), and Dart/Python/
   Go/C# FFI bindings. Vendored back here as the submodule `third_party/c2pa-audio`
-  (crispasr_c2pa_native compiles its sources). Published to pub.dev as
+  (stelnettts_c2pa_native compiles its sources). Published to pub.dev as
   `c2pa_audio` 0.1.0 (WAV+MP3; M4A landed after — republish pending, see below).
 - **Containers, all native + c2pa-rs-interoperable both ways:**
   - WAV — RIFF `C2PA` chunk.
@@ -22,10 +22,10 @@ both directions.**
     box_bytes)` over non-excluded top-level boxes; sign inserts the uuid box and
     fixes `stco`/`co64`. See `third_party/c2pa-audio/docs/M4A-BMFF.md`.
   - **AAC + Opus** — no C2PA path in raw ADTS/Ogg (c2pa-rs refuses them too), so
-    `crispasr_mp4_writer.h` muxes glint's AAC-LC/Opus output into MP4 and signs
-    that. `.aac`→`.m4a`, `.opus`→`.mp4` when C2PA active; `CRISPASR_NO_C2PA_REMUX=1`
+    `stelnettts_mp4_writer.h` muxes glint's AAC-LC/Opus output into MP4 and signs
+    that. `.aac`→`.m4a`, `.opus`→`.mp4` when C2PA active; `STELNETTTS_NO_C2PA_REMUX=1`
     keeps raw (watermark-only). FLAC still needs c2pa-rs.
-- **crispasr_c2pa_sign_pem** routes audio/wav|mpeg|mp4 → native; c2pa-rs is now
+- **stelnettts_c2pa_sign_pem** routes audio/wav|mpeg|mp4 → native; c2pa-rs is now
   optional (FLAC / edge formats only). WASM `c2paSign` works with no `--c2pa`.
 - Tests: JS 7 unit + 2 parity; C++ 11 Catch2 + live parity; all bindings green;
   standalone muxer validated (ffmpeg decode + c2pa-rs reader). Pushed to origin/main.
@@ -34,10 +34,10 @@ both directions.**
 GitHub-Actions OIDC auto-publish; C# has no local dotnet to test; native FLAC.
 
 - **Root cause FOUND & reproduced (model-free): the built-in spread-spectrum
-  watermark, not the qwen3-tts port.** Every TTS output from the CLI is
-  unconditionally watermarked (`crispasr_run.cpp:2374`,
-  `crispasr_wm_dispatch::embed`). With no AudioSeal `--watermark-model`, this
-  falls back to `crispasr_watermark_embed_impl` (`examples/cli/crispasr_watermark.h`).
+  watermark, not the cielvox2-tts port.** Every TTS output from the CLI is
+  unconditionally watermarked (`stelnettts_run.cpp:2374`,
+  `stelnettts_wm_dispatch::embed`). With no AudioSeal `--watermark-model`, this
+  falls back to `stelnettts_watermark_embed_impl` (`examples/cli/stelnettts_watermark.h`).
 - **The audible regression**: commit `8b81c0fc0` (2026-06-07) raised the default
   `alpha` from `0.005` → `0.08` (16×) "for robust detection." At 0.08 the
   watermark paints a **fixed comb of 32 key-derived frequency bins** onto every
@@ -56,22 +56,22 @@ GitHub-Actions OIDC auto-publish; C# has no local dotnet to test; native FLAC.
   TTS backends, so kokoro/f5/etc. get the identical comb. It is NOT a qwen3
   bug; qwen3's clean HF-matched output just makes the comb obvious vs the HF
   reference the reporter A/B'd against.
-- **Instant mitigation for the reporter**: set env `CRISPASR_NO_WATERMARK=1`
+- **Instant mitigation for the reporter**: set env `STELNETTTS_NO_WATERMARK=1`
   (only escape today — there is no `--no-watermark` CLI flag).
 
 ### Reproduction artifacts (scratchpad)
 - `wm_probe.cpp` — feeds a clean speech-like signal through the exact header;
   prints the 32 fixed comb frequencies + band SNRs.
 - `spectrogram_compare.png` — clean vs alpha=0.08: comb lines at 4.4–11.8 kHz.
-- Real-model A/B (in progress): qwen3-tts-1.7b-customvoice-q8_0, `--seed 42`,
-  `CRISPASR_NO_WATERMARK=1` vs default → diff = watermark only.
+- Real-model A/B (in progress): cielvox2-tts-1.7b-customvoice-q8_0, `--seed 42`,
+  `STELNETTTS_NO_WATERMARK=1` vs default → diff = watermark only.
 
 ## Fix — chosen direction: "2 then 1" + evaluate a permissive SOTA tool
 
 ### DONE — approach 2 (band-limit + lower alpha)  [commit on this branch]
-- `wm_params()` in `crispasr_watermark.h`: comb `hi_bin` `n_fft/2-1` → `n_fft/5`
+- `wm_params()` in `stelnettts_watermark.h`: comb `hi_bin` `n_fft/2-1` → `n_fft/5`
   (~4.8 kHz), default `alpha` `0.08` → `0.05`. Both embed + detect read
-  `wm_params()` so they agree. `CRISPASR_WATERMARK_LEGACY=1` restores the old
+  `wm_params()` so they agree. `STELNETTTS_WATERMARK_LEGACY=1` restores the old
   wideband/loud path (A/B + re-detect old marks). `embed_impl` alpha default
   `-1`=auto; `alpha==0` stays a true no-op.
 - Real qwen3 clip: **above-5 kHz SNR 17.7 → 51.7 dB** (tinny region gone),
@@ -95,7 +95,7 @@ band-limit for this spread-spectrum scheme.**
 
 ### Approach 2b (neural SOTA = AudioSeal) — DIFF HARNESS APPLIED, bug LOCALIZED
 - License clean: `facebook/audioseal` is **MIT code AND weights, UNGATED** — no
-  registration for users or devs; auto-downloadable like any CrispASR model.
+  registration for users or devs; auto-downloadable like any StelnetTTS model.
 - Produced a GGUF (`models/convert-audioseal-to-gguf.py`, 89 MB, 73 gen + 40 det
   tensors) and ran the harness:
   - **Generator: PERFECT** — `test_audioseal_cosine` full-output cos **1.000000**,
@@ -112,7 +112,7 @@ band-limit for this spread-spectrum scheme.**
   - The old round-trip test never caught this (it computed the detection prob but
     never asserted it — line 143 was a comment). Test now asserts >0.9 watermarked
     AND <0.5 clean → a real regression guard.
-- **Productionized (opt-in SOTA upgrade):** GGUF hosted at `cstr/audioseal-GGUF`
+- **Productionized (opt-in SOTA upgrade):** GGUF hosted at `Xenna/audioseal-GGUF`
   (MIT, ungated, README + Meta attribution); registry entry added; CLI resolver
   wired so `--watermark-model auto` downloads + loads it. End-to-end CLI verified:
   detect on an AudioSeal-watermarked clip → **0.9999**, clean → **0.0518**.
@@ -125,12 +125,12 @@ band-limit for this spread-spectrum scheme.**
 ### Not done, deliberately
 - `--no-watermark` CLI flag — **declined (EU AI Act Art. 50)**: an easy opt-out
   undermines the machine-readable AI-content marking obligation. Keep the
-  `CRISPASR_NO_WATERMARK=1` env as a debug-only escape.
+  `STELNETTTS_NO_WATERMARK=1` env as a debug-only escape.
 
 ## Measured (both confirm the comb)
 - Synthetic clean speech-like signal: broadband 41 dB, in-band(<4k) 47.5 dB,
   **above-band(4–11.9k) 3.3 dB** — comb clearly visible on spectrogram.
-- REAL qwen3-tts-1.7b-customvoice-q8_0 clip ("The quick brown fox…", seed 42,
+- REAL cielvox2-tts-1.7b-customvoice-q8_0 clip ("The quick brown fox…", seed 42,
   2.48 s): broadband **38.8 dB** (matches the commit's claim), in-band 44.9 dB,
   **above-band(4–11.9k) 17.5 dB** — comb visible in the silence gaps where the
   clean clip is black. This is the tinny tone audible during pauses.
@@ -138,7 +138,7 @@ band-limit for this spread-spectrum scheme.**
 ## Status
 - [x] Root cause identified (built-in spread-spectrum watermark, alpha bump 8b81c0fc0)
 - [x] Model-free reproduction + spectrogram (scratchpad wm_probe.cpp)
-- [x] Real qwen3-tts A/B clip + spectrogram (single model run, watermark applied offline)
-- [x] Confirmed backend-agnostic (generic call site crispasr_run.cpp:2374; key-derived comb)
+- [x] Real cielvox2-tts A/B clip + spectrogram (single model run, watermark applied offline)
+- [x] Confirmed backend-agnostic (generic call site stelnettts_run.cpp:2374; key-derived comb)
 - [ ] Fix direction confirmed with maintainer (product/provenance policy)
 - [ ] Implement + A/B: detection confidence retained AND comb inaudible

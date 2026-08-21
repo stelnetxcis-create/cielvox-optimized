@@ -86,7 +86,7 @@ void WChess::run() {
             } else {
                 if (!pcmf32_prompt.empty())
                     pcmf32_cur.insert(pcmf32_cur.begin(), pcmf32_prompt.begin(), pcmf32_prompt.end());
-                constexpr size_t MIN_SIZE = 1.2 * CRISPASR_SAMPLE_RATE;
+                constexpr size_t MIN_SIZE = 1.2 * STELNETTTS_SAMPLE_RATE;
                 if (MIN_SIZE > pcmf32_cur.size())
                     pcmf32_cur.insert(pcmf32_cur.begin(), MIN_SIZE - pcmf32_cur.size(), 0.0f);
 

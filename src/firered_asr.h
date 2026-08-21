@@ -42,7 +42,7 @@ char* firered_asr_transcribe(struct firered_asr_context* ctx, const float* sampl
 const char* firered_asr_token_text(struct firered_asr_context* ctx, int id);
 
 // Runtime beam-size override (mutates ctx->params.beam_size). Used by
-// the session API's crispasr_session_set_beam_size — PLAN §90. Pass
+// the session API's stelnettts_session_set_beam_size — PLAN §90. Pass
 // 0 or negative to reset to the safe default (1 = greedy).
 void firered_asr_set_beam_size(struct firered_asr_context* ctx, int beam_size);
 
@@ -64,7 +64,7 @@ struct firered_asr_result* firered_asr_transcribe_with_probs(struct firered_asr_
 void firered_asr_result_free(struct firered_asr_result* r);
 
 // ---------------------------------------------------------------------------
-// Stage API for diff regression (crispasr-diff)
+// Stage API for diff regression (stelnettts-diff)
 // ---------------------------------------------------------------------------
 
 // Compute Kaldi-compatible 80-dim log-mel fbank features + CMVN normalisation

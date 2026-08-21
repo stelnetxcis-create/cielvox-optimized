@@ -1,9 +1,9 @@
 # %% [markdown]
-# # CrispASR — one-off VibeVoice-ASR F16 GGUF conversion
+# # StelnetTTS — one-off VibeVoice-ASR F16 GGUF conversion
 #
 # Convert `microsoft/VibeVoice-ASR` (8-shard safetensors, ~28 GB)
 # to F16 GGUF on Kaggle's 30 GB-RAM CPU notebook and upload to
-# `cstr/vibevoice-asr-GGUF` (where the legacy file was just Q4_K).
+# `Xenna/vibevoice-asr-GGUF` (where the legacy file was just Q4_K).
 #
 # Local M1 can't fit it (16 GB unified, mostly used), VPS OOM'd
 # (7.6 GB RAM consumed by transkript_app + crisp-lens). Kaggle's
@@ -35,7 +35,7 @@ except Exception as exc:
     hf_token_secret = None
 
 # %% [code]
-# ── Cell 2: set up env, clone CrispASR, install ML deps.
+# ── Cell 2: set up env, clone StelnetTTS, install ML deps.
 import os
 import subprocess
 import sys
@@ -46,14 +46,14 @@ if hf_token_secret:
     os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token_secret
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 OUT = WORK / "vibevoice-asr-7b-f16.gguf"
 
 # clone (sparse — only need models/) to keep repo small
 if not REPO.exists():
     subprocess.check_call([
         "git", "clone", "--depth", "1", "--filter=blob:none", "--sparse",
-        "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+        "https://github.com/Cyna/StelnetTTS.git", str(REPO),
     ])
 subprocess.check_call(["git", "-C", str(REPO), "sparse-checkout", "set",
                        "models", "tools"])
@@ -107,11 +107,11 @@ if hf_token_secret:
     os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
     from huggingface_hub import HfApi
     api = HfApi(token=hf_token_secret)
-    print("[cell 5] uploading to cstr/vibevoice-asr-GGUF (hf_transfer on) …")
+    print("[cell 5] uploading to Xenna/vibevoice-asr-GGUF (hf_transfer on) …")
     commit = api.upload_file(
         path_or_fileobj=str(OUT),
         path_in_repo="vibevoice-asr-f16.gguf",
-        repo_id="cstr/vibevoice-asr-GGUF",
+        repo_id="Xenna/vibevoice-asr-GGUF",
         repo_type="model",
         commit_message="Add F16 GGUF (fixed: tokenizer, lm_head, "
                        "assistant header, v_proj.bias)",
@@ -119,6 +119,6 @@ if hf_token_secret:
     print(f"[cell 5] uploaded; commit: {commit.oid if hasattr(commit,'oid') else commit}")
 else:
     print(f"[cell 5] staged at {OUT}; fetch locally with:")
-    print(f"  kaggle kernels output chr1str/crispasr-vibevoice-asr-convert -p .")
-    print(f"  hf upload cstr/vibevoice-asr-GGUF vibevoice-asr-7b-f16.gguf "
+    print(f"  kaggle kernels output chr1str/stelnettts-vibevoice-asr-convert -p .")
+    print(f"  hf upload Xenna/vibevoice-asr-GGUF vibevoice-asr-7b-f16.gguf "
           f"vibevoice-asr-f16.gguf")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """PCS diff-harness reference: run the source ONNX model and dump per-token head
-predictions, to compare against the CrispEmbed/CrispASR pcs engine.
+predictions, to compare against the StelnetEmbed/StelnetTTS pcs engine.
 
 The engine mirrors these heads (post-punct, pre-punct, sbd/segmentation,
 truecase); dump the engine side with `PCS_DEBUG=1 test-punct-diff <gguf> "<text>"`

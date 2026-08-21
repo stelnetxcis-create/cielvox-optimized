@@ -52,7 +52,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace crispasr::core {
+namespace stelnettts::core {
 
 struct mt19937_state {
     uint32_t mt[624];
@@ -202,4 +202,4 @@ inline void fill_gaussian_noise_bf16(float* data, int n, uint32_t seed) {
     fill_gaussian_noise_bf16(data, n, rng);
 }
 
-} // namespace crispasr::core
+} // namespace stelnettts::core

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert kyutai/pocket-tts safetensors -> GGUF for the CrispASR
+Convert kyutai/pocket-tts safetensors -> GGUF for the StelnetTTS
 `pocket-tts` backend.
 
 Pocket TTS architecture:

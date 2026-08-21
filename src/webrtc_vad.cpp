@@ -1,4 +1,4 @@
-// webrtc_vad.cpp — WebRTC VAD wrapper for CrispASR.
+// webrtc_vad.cpp — WebRTC VAD wrapper for StelnetTTS.
 //
 // Converts float32 16kHz PCM → int16 frames, runs WebRtcVad_Process per
 // 30ms frame, then smooths per-frame decisions into speech segments using
@@ -42,7 +42,7 @@ static constexpr int WEBRTC_VAD_FRAME_SAMPLES = WEBRTC_VAD_SAMPLE_RATE * WEBRTC_
 static int get_webrtc_vad_mode(int requested_mode) {
     if (requested_mode >= 0 && requested_mode <= 3)
         return requested_mode;
-    const char* env = getenv("CRISPASR_WEBRTC_VAD_MODE");
+    const char* env = getenv("STELNETTTS_WEBRTC_VAD_MODE");
     if (env) {
         int m = atoi(env);
         if (m >= 0 && m <= 3)

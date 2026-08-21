@@ -97,7 +97,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: crispasr-wasm-${{ matrix.name }}
+          name: stelnettts-wasm-${{ matrix.name }}
           path: |
             build-wasm/bin/libwhisper.js
             build-wasm/bin/libwhisper.wasm

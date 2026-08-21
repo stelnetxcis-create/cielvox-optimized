@@ -1,4 +1,4 @@
-# CrispASR — MOSS-TTS-Local 4B stop-fix validation (#249, P5) — CPU, no codec
+# StelnetTTS — MOSS-TTS-Local 4B stop-fix validation (#249, P5) — CPU, no codec
 #
 # The model card recommends audio_temperature=1.7 / top_p 0.8 / top_k 25 with the
 # stop head SAMPLED (text_temperature 1.0); my old generic defaults (1.0/0.95/50,
@@ -20,7 +20,7 @@ from pathlib import Path
 os.environ["PYTHONUNBUFFERED"] = "1"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TMP / "moss-local"
 WORK = Path("/kaggle/working")
@@ -28,8 +28,8 @@ RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 MODELS.mkdir(parents=True, exist_ok=True)
 
-REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-local-4b")
-GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "cstr/moss-tts-local-v1.5-GGUF")
+REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-local-4b")
+GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "Xenna/moss-tts-local-v1.5-GGUF")
 MAXF = int(os.environ.get("MOSS_MAXF", "300"))
 SHORT = "Hello world."
 LONG = ("The quick brown fox jumps over the lazy dog. "
@@ -43,7 +43,7 @@ def log(m):
 
 def run_smoke(smoke, gguf, tag, text):
     env = os.environ.copy()
-    env["CRISPASR_MOSS_TTS_LOCAL_DEBUG"] = "1"
+    env["STELNETTTS_MOSS_TTS_LOCAL_DEBUG"] = "1"
     r = subprocess.run([str(smoke), str(gguf), text, str(MAXF)], capture_output=True, text=True,
                        timeout=3600, env=env)
     out = r.stdout + "\n--STDERR--\n" + r.stderr
@@ -64,7 +64,7 @@ def main():
     log(f"clone {REF}")
     if not REPO.exists():
         subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF, "--recursive",
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()

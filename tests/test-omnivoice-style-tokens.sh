@@ -39,30 +39,30 @@
 # without the vocabulary they came from.
 #
 # Env:
-#   CRISPASR_TEST_OMNIVOICE_MODEL      main GGUF (required to run; else SKIP)
-#   CRISPASR_TEST_OMNIVOICE_TOKENIZER  audio-tokenizer GGUF (optional)
+#   STELNETTTS_TEST_OMNIVOICE_MODEL      main GGUF (required to run; else SKIP)
+#   STELNETTTS_TEST_OMNIVOICE_TOKENIZER  audio-tokenizer GGUF (optional)
 
 set -u
 
-MODEL="${CRISPASR_TEST_OMNIVOICE_MODEL:-}"
+MODEL="${STELNETTTS_TEST_OMNIVOICE_MODEL:-}"
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
-    echo "SKIP: CRISPASR_TEST_OMNIVOICE_MODEL not set or missing"
+    echo "SKIP: STELNETTTS_TEST_OMNIVOICE_MODEL not set or missing"
     exit 0
 fi
 
-BIN="${CRISPASR_BIN:-./build/bin/crispasr}"
+BIN="${STELNETTTS_BIN:-./build/bin/stelnettts}"
 if [ ! -x "$BIN" ]; then
     echo "SKIP: $BIN not built"
     exit 0
 fi
 
-TOK="${CRISPASR_TEST_OMNIVOICE_TOKENIZER:-}"
+TOK="${STELNETTTS_TEST_OMNIVOICE_TOKENIZER:-}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 fails=0
 
-# run_case <name> <expected-ids> <text> [extra crispasr args...]
+# run_case <name> <expected-ids> <text> [extra stelnettts args...]
 run_case() {
     local name="$1" expect="$2" text="$3"
     shift 3
@@ -72,7 +72,7 @@ run_case() {
 
     # AUTO_LANG off so a case that omits -l really does exercise the "None"
     # path rather than whatever the detector makes of the sample text.
-    if ! CRISPASR_OMNIVOICE_DEBUG=1 CRISPASR_OMNIVOICE_AUTO_LANG=0 \
+    if ! STELNETTTS_OMNIVOICE_DEBUG=1 STELNETTTS_OMNIVOICE_AUTO_LANG=0 \
         "$BIN" "${args[@]}" "$@" > "$TMP/$name.log" 2>&1; then
         # A non-zero exit is only a failure if it is not the model refusing to
         # load; the style line is printed long before synthesis completes.

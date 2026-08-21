@@ -4,7 +4,7 @@
 //   lid-fasttext — GlotLID / LID-176 (fastText supervised)
 //   lid-cld3     — Google CLD3 (compact, Apache-2.0)
 //
-// Used by CrispASR (post-ASR LID) and CrispEmbed (OCR language routing).
+// Used by StelnetTTS (post-ASR LID) and StelnetEmbed (OCR language routing).
 
 #ifndef CRISP_LID_H
 #define CRISP_LID_H

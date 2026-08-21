@@ -19,7 +19,7 @@
 //   <|startoftranscript|> <|src|> <|tgt|> <|pnc|> <|notimestamp|> <|nodiarize|> ...
 
 #include "canary.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -27,7 +27,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "gguf.h"
 
@@ -37,7 +37,7 @@
 #include "core/attention.h"
 #include "core/cpu_ops.h" // core_cpu::to_f32 (quantized-safe weight read)
 #include "core/beam_decode.h"
-#include "core/crispasr_lcs.h"
+#include "core/stelnettts_lcs.h"
 #include "core/asr_overlap_trim.h"
 #include "core/fastconformer.h"
 
@@ -70,7 +70,7 @@
 static bool canary_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CANARY_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CANARY_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -177,9 +177,9 @@ struct canary_model {
     ggml_context* ctx = nullptr;
     ggml_backend_buffer_t buf = nullptr;
 
-    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, CRISPASR_FC_PW_Q8)
+    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, STELNETTTS_FC_PW_Q8)
     core_conformer::PwRepackBuf pw_q8;
-    // Fused Q/K/V weight concat (issue #81, CRISPASR_FC_FUSED_QKV)
+    // Fused Q/K/V weight concat (issue #81, STELNETTTS_FC_FUSED_QKV)
     core_conformer::PwRepackBuf qkv_fused;
 
     std::map<std::string, ggml_tensor*> tensors;
@@ -519,7 +519,7 @@ static void canary_fft_r2c(const float* in, int N, float* out) {
 // Delegates to core_mel::compute() with the NeMo cluster's parameters; only
 // the FFT function pointer differs between parakeet/canary/canary_ctc/cohere.
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -685,7 +685,7 @@ static std::vector<float> canary_encode_mel(canary_context* ctx, const float* me
         ggml_backend_t backends[2] = {ctx->backend, ctx->backend_cpu};
         int n_be = (ctx->backend != ctx->backend_cpu) ? 2 : 1;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     if (ctx->compute_meta.empty()) {
         ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
@@ -1210,11 +1210,11 @@ static void canary_fold_batchnorm(canary_model& model) {
 // ===========================================================================
 
 static ggml_backend_t pick_backend() {
-    // crispasr_init_gpu_backend() tries all compiled backends in priority
+    // stelnettts_init_gpu_backend() tries all compiled backends in priority
     // order (CUDA > Metal > Vulkan > CPU) and returns the first one
     // that initialises. This replaces the old Metal/CUDA-specific
     // #ifdef chain and adds Vulkan support for free.
-    ggml_backend_t b = crispasr_init_gpu_backend();
+    ggml_backend_t b = stelnettts_init_gpu_backend();
     return b ? b : core_cpu_backend::init();
 }
 
@@ -1226,7 +1226,7 @@ static ggml_backend_t pick_backend(bool use_gpu) {
 // Public C API
 // ===========================================================================
 
-// ---- Stage-level entry points for crispasr-diff ----
+// ---- Stage-level entry points for stelnettts-diff ----
 
 extern "C" float* canary_compute_mel(struct canary_context* ctx, const float* samples, int n_samples, int* out_n_mels,
                                      int* out_T_mel) {
@@ -1281,7 +1281,7 @@ extern "C" int canary_run_encoder_staged(struct canary_context* ctx, const float
         ggml_backend_t backends[2] = {ctx->backend, ctx->backend_cpu};
         int n_be = (ctx->backend != ctx->backend_cpu) ? 2 : 1;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 24576, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     if (ctx->compute_meta.empty()) {
         ctx->compute_meta.resize(ggml_tensor_overhead() * 24576 + ggml_graph_overhead_custom(24576, false));
@@ -1380,7 +1380,7 @@ extern "C" struct canary_context* canary_init_from_file(const char* path_model, 
     canary_fold_batchnorm(ctx->model);
 
     // Repack F16 conv pw1/pw2 to Q8_0 (issue #81 — the 3D conv layout dodges
-    // crispasr-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
+    // stelnettts-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
     {
         auto& m = ctx->model;
         std::vector<core_conformer::BlockWeights*> layers;
@@ -1560,7 +1560,7 @@ extern "C" struct canary_result* canary_transcribe_ex(struct canary_context* ctx
 // encoder outputs with `overlap_enc` trimming. Runs the existing AED
 // decode + cross-attention K/V over the concat. Works for the 4 trained
 // languages (en/de/fr/es) — the whitelist in
-// crispasr_backend_canary.cpp::transcribe() refuses other langs before
+// stelnettts_backend_canary.cpp::transcribe() refuses other langs before
 // either code path.
 extern "C" struct canary_result* canary_transcribe_streamed(struct canary_context* ctx, const float* samples,
                                                             int n_samples, const char* source_lang,
@@ -1626,7 +1626,7 @@ extern "C" struct canary_result* canary_transcribe_streamed(struct canary_contex
 
         // PLAN #114 P3 polish: boundary-overlap dedup via LCS-merge across
         // adjacent chunks. NeMo's `streaming_utils.longest_common_subsequence_merge`
-        // (the same primitive `core/crispasr_lcs::lcs_dedup_prefix_count`
+        // (the same primitive `core/stelnettts_lcs::lcs_dedup_prefix_count`
         // wraps) finds the LCS between the tail of accumulated tokens and
         // the head of the current chunk's tokens. If the LCS length >=
         // kMinMergeSubsequenceLen (default 3), the matched prefix of the
@@ -1657,7 +1657,7 @@ extern "C" struct canary_result* canary_transcribe_streamed(struct canary_contex
             curr_ids.reserve((size_t)part->n_tokens);
             for (int i = 0; i < part->n_tokens; i++)
                 curr_ids.push_back(canon(part->tokens[i].id));
-            n_skip = crispasr_lcs::lcs_dedup_prefix_count(prev_tail, curr_ids);
+            n_skip = stelnettts_lcs::lcs_dedup_prefix_count(prev_tail, curr_ids);
         }
 
         // PLAN #114 P3 polish — word-snap heuristic. The LCS operates on
@@ -1703,7 +1703,7 @@ extern "C" struct canary_result* canary_transcribe_streamed(struct canary_contex
         // "Many" from "Many people don't think about them as dinosaurs" — since
         // an AED's boundary timings overshoot and a chunk's first word can
         // legitimately carry an early timestamp.
-        // OPT-IN (CRISPASR_CANARY_SEAM_DEDUP=1) until the net effect is proven.
+        // OPT-IN (STELNETTTS_CANARY_SEAM_DEDUP=1) until the net effect is proven.
         //
         // Measured on a 600 s clip it removes real duplication — a stray " is."
         // cue, and the doubled "its splendors" and "versions are kept on
@@ -1712,7 +1712,7 @@ extern "C" struct canary_result* canary_transcribe_streamed(struct canary_contex
         // not an improvement, and the reporting file (#365, 20+ min French)
         // could not be reproduced here, so this ships gated rather than on.
         static const bool seam_dedup = [] {
-            const char* e = crispasr_env::get("CRISPASR_CANARY_SEAM_DEDUP");
+            const char* e = stelnettts_env::get("STELNETTTS_CANARY_SEAM_DEDUP");
             return e && e[0] == '1';
         }();
         if (seam_dedup && !all_tokens.empty() && part->n_tokens > n_skip) {
@@ -1818,7 +1818,7 @@ extern "C" struct canary_result* canary_transcribe_streamed(struct canary_contex
         // surviving token's t0 (best-effort — words and tokens don't have
         // a strict 1:1 mapping but adjacent boundary-overlap words should
         // share timing with the dropped tokens).
-        // Same rule for words. Under CRISPASR_CANARY_SEAM_DEDUP this also runs
+        // Same rule for words. Under STELNETTTS_CANARY_SEAM_DEDUP this also runs
         // when the LCS found nothing (n_skip == 0) and clamps to the last
         // accepted word, which is where the visible SRT change comes from —
         // cues are built from WORDS, not tokens. Off by default; see the gate

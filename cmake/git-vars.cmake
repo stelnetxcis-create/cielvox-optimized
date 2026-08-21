@@ -13,7 +13,7 @@ endif()
 
 # the date of the commit. Use ISO-8601 STRICT — `--date=local` produces
 # "Sat May 2 22:41:36 2026 +0200" which has spaces AND localised English
-# month names. When that value gets embedded as -DCRISPASR_GIT_DATE="..."
+# month names. When that value gets embedded as -DSTELNETTTS_GIT_DATE="..."
 # and the build runs through Windows MSVC's link.exe, the value gets
 # split at the first space and "May" is interpreted as a filename:
 #
@@ -65,7 +65,7 @@ string(REPLACE "\"" "'"  GIT_COMMIT_SUBJECT "${GIT_COMMIT_SUBJECT}")
 # the Ninja DEFINES line wraps the whole bracket-containing definition
 # in outer `"..."`, which absorbs subsequent `;`-separated definitions
 # into the same `-D` value. The compiler then sees
-#   -DCRISPASR_GIT_SUBJECT="\"...[regression]...\";CRISPASR_BUILD_DATE=\"...\";..."
+#   -DSTELNETTTS_GIT_SUBJECT="\"...[regression]...\";STELNETTTS_BUILD_DATE=\"...\";..."
 # and fails with
 #   <command-line>: error: assignment of read-only location ‘"..."’
 #   <command-line>: error: expected ‘)’ before ‘;’ token
@@ -109,11 +109,11 @@ string(REPLACE "#"  "no."  GIT_COMMIT_SUBJECT "${GIT_COMMIT_SUBJECT}")
 # generator to wrap the spaceful definition AND all subsequent
 # definitions of the same call into one `-D` flag's value:
 #
-#   -DCRISPASR_GIT_SUBJECT="\"... has spaces ...\";CRISPASR_BUILD_DATE=\"...\";..."
+#   -DSTELNETTTS_GIT_SUBJECT="\"... has spaces ...\";STELNETTTS_BUILD_DATE=\"...\";..."
 #
-# The C preprocessor then sees CRISPASR_GIT_SUBJECT followed by an
+# The C preprocessor then sees STELNETTTS_GIT_SUBJECT followed by an
 # unexpected `;` token + the rest of the definitions as orphaned
-# macro bodies, and crispasr_diagnostics.cpp fails to compile with
+# macro bodies, and stelnettts_diagnostics.cpp fails to compile with
 #   error: assignment of read-only location ‘"May 18 2026 20:45:10"’
 #   error: expected ‘)’ before ‘;’ token
 # (the BUILD_DATE fallback collapses into the GIT_SUBJECT value).
@@ -128,9 +128,9 @@ string(REPLACE " "  "_"  GIT_COMMIT_SUBJECT "${GIT_COMMIT_SUBJECT}")
 # [A-Za-z0-9._-] to "." so no future commit subject can break a build. It was
 # added after a `/` slipped through: a subject like
 #   "perf(#254): ... (Kaggle A/B: 67 vs 77 ms/step, -13%)"
-# embeds `A/B` and `ms/step` into -DCRISPASR_GIT_SUBJECT=, and MSVC cl.exe reads
+# embeds `A/B` and `ms/step` into -DSTELNETTTS_GIT_SUBJECT=, and MSVC cl.exe reads
 # the `/B` / `/step` as compiler switches →
-#   "cl : Command line error D8038: invalid argument 'CRISPASR_GIT_SUBJECT=...'"
+#   "cl : Command line error D8038: invalid argument 'STELNETTTS_GIT_SUBJECT=...'"
 # (`%` is a cmd/link metacharacter with the same hazard). This ends the
 # per-character whack-a-mole documented above; the specific maps stay only for
 # nicer `--version` output.

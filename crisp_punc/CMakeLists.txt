@@ -3,23 +3,23 @@
 # Two backends: FireRedPunc (BERT, Chinese+multilingual) and
 # PCS (XLM-R, punctuation + capitalization + segmentation).
 #
-# Used by CrispASR (post-ASR cleanup) and CrispEmbed (post-OCR cleanup).
-# Linked into CrispEmbed via add_subdirectory("../CrispASR/crisp_punc")
-# from CrispEmbed's top-level CMakeLists.txt.
+# Used by StelnetTTS (post-ASR cleanup) and StelnetEmbed (post-OCR cleanup).
+# Linked into StelnetEmbed via add_subdirectory("../StelnetTTS/crisp_punc")
+# from StelnetEmbed's top-level CMakeLists.txt.
 
 cmake_minimum_required(VERSION 3.14)
 
 # crisp_punc links against the consumer's "core" target — which provides
-# core_gguf::* symbols. CrispASR's crispasr-core and CrispEmbed's
+# core_gguf::* symbols. StelnetTTS's stelnettts-core and StelnetEmbed's
 # crispembed-core both supply these from identical sources.
-if(TARGET crispasr-core)
-    set(_crisp_punc_core_target crispasr-core)
+if(TARGET stelnettts-core)
+    set(_crisp_punc_core_target stelnettts-core)
     set(_crisp_punc_core_inc    ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 elseif(TARGET crispembed-core)
     set(_crisp_punc_core_target crispembed-core)
     set(_crisp_punc_core_inc "")
 else()
-    message(STATUS "crisp_punc: no core target (crispasr-core or crispembed-core) — skipping")
+    message(STATUS "crisp_punc: no core target (stelnettts-core or crispembed-core) — skipping")
     return()
 endif()
 

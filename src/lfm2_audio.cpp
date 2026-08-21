@@ -10,7 +10,7 @@
 // DRY: reuses core/gguf_loader.h, core/mel.h, core/fastconformer.h, core/attention.h
 
 #include "lfm2_audio.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/win_compat.h"
 
 #include "ggml.h"
@@ -19,7 +19,7 @@
 #include "ggml-cpu.h"
 #include "gguf.h"
 
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 
 #include "core/fastconformer.h"
 #include "core/gguf_loader.h"
@@ -47,7 +47,7 @@
 static bool lfm2_audio_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_LFM2_AUDIO_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_LFM2_AUDIO_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -193,9 +193,9 @@ struct lfm2_audio_model {
     ggml_backend_buffer_t buf = nullptr;
     std::map<std::string, ggml_tensor*> tensors;
 
-    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, CRISPASR_FC_PW_Q8)
+    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, STELNETTTS_FC_PW_Q8)
     core_conformer::PwRepackBuf pw_q8;
-    // Fused Q/K/V weight concat for the encoder blocks (CRISPASR_FC_FUSED_QKV)
+    // Fused Q/K/V weight concat for the encoder blocks (STELNETTTS_FC_FUSED_QKV)
     core_conformer::PwRepackBuf qkv_fused;
 
     // Vocabulary
@@ -585,16 +585,16 @@ lfm2_audio_context* lfm2_audio_init_from_file(const char* path_model, lfm2_audio
     ctx->n_threads = params.n_threads;
     ctx->verbosity = params.verbosity;
     // GPU is correct as of §206 (the backbone now computes directly on the active
-    // backend via gallocr — see backbone_step / run_lfm). `CRISPASR_LFM2_AUDIO_CPU=1`
+    // backend via gallocr — see backbone_step / run_lfm). `STELNETTTS_LFM2_AUDIO_CPU=1`
     // forces CPU (the AR decode loop is dispatch-bound and can be faster on CPU).
     if (params.use_gpu) {
-        const char* e = std::getenv("CRISPASR_LFM2_AUDIO_CPU");
+        const char* e = std::getenv("STELNETTTS_LFM2_AUDIO_CPU");
         if (e && *e && *e != '0')
             params.use_gpu = false;
     }
     ctx->use_gpu = params.use_gpu;
     // Initialize backend: GPU if available and requested, else CPU
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -613,7 +613,7 @@ lfm2_audio_context* lfm2_audio_init_from_file(const char* path_model, lfm2_audio
     }
 
     // Repack F16 conv pw1/pw2 to Q8_0 + fuse encoder Q/K/V (issue #81 — the 3D
-    // conv layout dodges crispasr-quantize; fusion is bit-identical).
+    // conv layout dodges stelnettts-quantize; fusion is bit-identical).
     {
         auto& m = ctx->model;
         std::vector<core_conformer::BlockWeights*> layers;
@@ -1678,7 +1678,7 @@ float* lfm2_audio_run_lfm(lfm2_audio_context* ctx, const float* samples, int n_s
 
     // Run all 16 LFM2 layers, with optional per-layer snapshots
     std::vector<ggml_tensor*> layer_snaps(hp.lfm_n_layers, nullptr);
-    bool do_snaps = (crispasr_env::get("CRISPASR_LFM2_SNAP_LAYERS") != nullptr);
+    bool do_snaps = (stelnettts_env::get("STELNETTTS_LFM2_SNAP_LAYERS") != nullptr);
 
     for (uint32_t i = 0; i < hp.lfm_n_layers; i++) {
         x = lfm2_build_layer(ctx0, x, model.lfm_layers[i], positions, mask, hidden, n_heads, n_kv, hd, T, norm_eps);

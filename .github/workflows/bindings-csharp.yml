@@ -1,26 +1,26 @@
 name: Bindings Tests (C#)
 
-# The C# bindings had tests (bindings/csharp/CrispASR.Tests) but NOTHING in CI
+# The C# bindings had tests (bindings/csharp/StelnetTTS.Tests) but NOTHING in CI
 # built or ran them. That is exactly how issue #291 shipped: VadSegments'
 # doc-comment promised seconds while the code returned centiseconds, and no build
 # ever compared the two. This job compiles the binding (catching signature drift
-# against the C ABI) and runs the tests against a freshly built libcrispasr.so.
+# against the C ABI) and runs the tests against a freshly built libstelnettts.so.
 on:
   push:
     branches: [main]
     paths:
       - 'bindings/csharp/**'
-      - 'include/crispasr_session.h'
-      - 'include/crispasr.h'
-      - 'src/crispasr_c_api.cpp'
+      - 'include/stelnettts_session.h'
+      - 'include/stelnettts.h'
+      - 'src/stelnettts_c_api.cpp'
       - '.github/workflows/bindings-csharp.yml'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - 'bindings/csharp/**'
-      - 'include/crispasr_session.h'
-      - 'include/crispasr.h'
-      - 'src/crispasr_c_api.cpp'
+      - 'include/stelnettts_session.h'
+      - 'include/stelnettts.h'
+      - 'src/stelnettts_c_api.cpp'
       - '.github/workflows/bindings-csharp.yml'
 
 concurrency:
@@ -44,28 +44,28 @@ jobs:
 
       # dotnet build alone would catch compile-time drift, but the reported bug
       # was a LOGIC bug (wrong units) that only a run against the real library
-      # surfaces. So build libcrispasr.so and put it on the loader path.
-      - name: Build native libcrispasr.so
+      # surfaces. So build libstelnettts.so and put it on the loader path.
+      - name: Build native libstelnettts.so
         run: |
           cmake -S . -B build-cs -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=ON \
-            -DCRISPASR_BUILD_TESTS=OFF \
-            -DCRISPASR_BUILD_EXAMPLES=OFF \
-            -DCRISPASR_BUILD_SERVER=OFF \
-            -DCRISPASR_OPUS_FETCH=ON
-          cmake --build build-cs -j "$(nproc)" --target crispasr-lib
+            -DSTELNETTTS_BUILD_TESTS=OFF \
+            -DSTELNETTTS_BUILD_EXAMPLES=OFF \
+            -DSTELNETTTS_BUILD_SERVER=OFF \
+            -DSTELNETTTS_OPUS_FETCH=ON
+          cmake --build build-cs -j "$(nproc)" --target stelnettts-lib
 
       - name: Build binding (compile-time ABI check)
         working-directory: bindings/csharp
-        run: dotnet build CrispASR/CrispASR.csproj -c Release
+        run: dotnet build StelnetTTS/StelnetTTS.csproj -c Release
 
       - name: Test
         working-directory: bindings/csharp
-        # The DllImport name is "crispasr" → libcrispasr.so; the .NET native
+        # The DllImport name is "stelnettts" → libstelnettts.so; the .NET native
         # loader honours LD_LIBRARY_PATH. Tests that still cannot load the library
         # (e.g. a missing model) skip themselves rather than fail, so a green run
         # means the binding compiled AND every loadable test passed.
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/build-cs/src:${{ github.workspace }}/build-cs/ggml/src
-        run: dotnet test CrispASR.Tests/CrispASR.Tests.csproj -c Release --verbosity normal
+        run: dotnet test StelnetTTS.Tests/StelnetTTS.Tests.csproj -c Release --verbosity normal

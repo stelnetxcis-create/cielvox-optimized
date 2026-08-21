@@ -42,7 +42,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 TEKKEN_URL = "https://huggingface.co/mistralai/Voxtral-4B-TTS-2603/resolve/main/tekken.json"
-CACHE = Path(tempfile.gettempdir()) / "crispasr-voxtral-tekken"
+CACHE = Path(tempfile.gettempdir()) / "stelnettts-voxtral-tekken"
 
 HARNESS_SRC = r'''
 #include "voxtral_tts.cpp"
@@ -106,7 +106,7 @@ def build_harness(build_dir: Path) -> Path:
            f"-I{REPO/'ggml'/'include'}", f"-I{REPO/'ggml'/'src'}"]
     for d in libdirs:
         cmd += [f"-L{d}", f"-Wl,-rpath,{d}"]
-    cmd += ["-lcrispasr", "-lggml", "-lggml-base", "-lggml-cpu"]
+    cmd += ["-lstelnettts", "-lggml", "-lggml-base", "-lggml-cpu"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         sys.exit(f"harness build failed:\n{r.stderr[-3000:]}")
@@ -176,7 +176,7 @@ def main() -> int:
     print(f"\n{len(cases)} strings: {len(bad)} mismatch, {oor} out-of-range ids")
     for s, mine, theirs in bad[:10]:
         dec = lambda ids: [ref.decode([t]) if 0 <= t < vs else "?" for t in ids]
-        print(f"\nIN {s!r}\n  crispasr       {dec(mine)}\n  mistral-common {dec(theirs)}")
+        print(f"\nIN {s!r}\n  stelnettts       {dec(mine)}\n  mistral-common {dec(theirs)}")
     if len(bad) > 10:
         print(f"\n… and {len(bad) - 10} more")
     if bad or oor:

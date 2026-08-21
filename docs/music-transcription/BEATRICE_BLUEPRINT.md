@@ -16,7 +16,7 @@ ggml graph yet. `PhoneExtractor`, `VectorQuantizer`, `ConverterNetwork` and
 | `models/convert-beatrice-to-gguf.py` | pitch_estimator: 88 tensors, 36 dropped as fusion-neutralised (124 total, balances) |
 | `tools/beatrice_torch_parity.py` | 36-stage reference dump, spec reproduces `forward()` **bit-identically** |
 | `src/beatrice_pitch.{h,cpp}` | **DONE** — 30 stages + end-to-end, 0 failed |
-| `crispasr-diff beatrice` | **DONE** |
+| `stelnettts-diff beatrice` | **DONE** |
 | PhoneExtractor converter + 73-stage reference | **DONE** (spec bit-identical) |
 | `src/beatrice_phone.{h,cpp}` | **DONE** — 69 stages + end-to-end, 0 failed |
 | ConverterNetwork / Vocoder | blueprint read done; **no converter, no graph** |
@@ -391,7 +391,7 @@ has to break something the code actually depends on.
 
 ## The ggml port — result and what it cost
 
-`crispasr-diff beatrice <model.gguf> <ref.gguf> <any.wav>` → **30 stages + end
+`stelnettts-diff beatrice <model.gguf> <ref.gguf> <any.wav>` → **30 stages + end
 to end, 0 FAILED**. Host DSP at cos 1.00000000; every network stage ≥
 0.9999998; `estimate_e2e_logits` cos 0.99999990.
 
@@ -511,7 +511,7 @@ of the 4 that `embed_pitch_features` consumes — so the port below must add it.
 
 ## F0 backend comparison — measured, and it decides the wiring
 
-`crispasr-f0-eval` (examples/cli) drives the **shipped C++ path**, not torch.
+`stelnettts-f0-eval` (examples/cli) drives the **shipped C++ path**, not torch.
 Off-grid sawtooth tones, 1 s each, 16 kHz.
 
 | | beatrice-pitch | crepe-tiny |

@@ -336,7 +336,7 @@ TEST_CASE("de: the un-stressing is on, on source evidence", "[g2p_de][unit][stre
     // EspeakG2P(language="de"), so espeak's sentence-level de-stressing is in
     // the training data and the citation form our per-word dictionary stores is
     // a spelling the model never saw. Token agreement with that recipe:
-    // 41.2% -> 81.2%. CRISPASR_G2P_DE_UNSTRESS=0 restores the old forms.
+    // 41.2% -> 81.2%. STELNETTTS_G2P_DE_UNSTRESS=0 restores the old forms.
     g2p_de::context ctx;
     CHECK(ctx.unstress_function_words);
 }

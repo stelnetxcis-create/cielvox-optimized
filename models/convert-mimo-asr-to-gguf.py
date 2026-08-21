@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert XiaomiMiMo/MiMo-V2.5-ASR to GGUF format for CrispASR.
+"""Convert XiaomiMiMo/MiMo-V2.5-ASR to GGUF format for StelnetTTS.
 
 Architecture: 6-layer input_local_transformer (audio token processor) +
 36-layer Qwen2 LLM (4096d, 32 heads, 8 KV heads, SiLU, RoPE).
@@ -157,7 +157,7 @@ def main():
     for i, v in enumerate(speech_vocab.split("-")):
         writer.add_uint32(f"mimo_asr.audio.speech_vocab.{i}", int(v))
 
-    # Tokenizer: BPE vocab + merges. Mirror qwen3-asr / granite-speech:
+    # Tokenizer: BPE vocab + merges. Mirror cielvox2-asr / granite-speech:
     # the regular BPE vocab lives in tokenizer.json's `model.vocab` (151643
     # entries); the 30 special tokens (<|im_start|>, <|empty|>, audio
     # markers, ...) live in `added_tokens` and need to be patched in at

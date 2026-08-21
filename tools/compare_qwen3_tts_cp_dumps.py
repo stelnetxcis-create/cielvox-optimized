@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Compare per-step qwen3-tts code-predictor dumps produced via
-QWEN3_TTS_DUMP_DIR.
+Compare per-step cielvox2-tts code-predictor dumps produced via
+CIELVOX2_TTS_DUMP_DIR.
 
 Usage:
-  python tools/compare_qwen3_tts_cp_dumps.py /tmp/qwen3-main /tmp/qwen3-cpu-f16
+  python tools/compare_cielvox2_tts_cp_dumps.py /tmp/qwen3-main /tmp/qwen3-cpu-f16
 
 Reports:
   - generated_codes length / first mismatch
   - per-step embed/logit max_abs + rms
   - first sampled-id divergence
 
-This is intentionally additive to the existing crispasr-diff flow: it
-consumes the extra debug dumps from src/qwen3_tts.cpp without changing
+This is intentionally additive to the existing stelnettts-diff flow: it
+consumes the extra debug dumps from src/cielvox2_tts.cpp without changing
 any public baseline format.
 """
 

@@ -765,7 +765,7 @@ struct ipa_dict {
 };
 
 // Load espeak/open-dict-data format: "word\t/IPA/\n"
-// #316: read misaki's lexicon JSON directly, so CrispASR can auto-download it
+// #316: read misaki's lexicon JSON directly, so StelnetTTS can auto-download it
 // from UPSTREAM instead of re-hosting it. The shape is a flat object whose
 // values are either a phoneme string or a POS-keyed object:
 //

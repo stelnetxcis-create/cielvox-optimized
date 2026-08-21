@@ -1,4 +1,4 @@
-// speecht5_tts.cpp -- SpeechT5 TTS backend for CrispASR.
+// speecht5_tts.cpp -- SpeechT5 TTS backend for StelnetTTS.
 //
 // Microsoft SpeechT5 (MIT license): ~80M param text-to-speech model
 // producing 80-bin mel spectrograms autoregressively, refined by a
@@ -25,8 +25,8 @@
 
 #include "core/gguf_loader.h"
 #include "core/hifigan.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -52,7 +52,7 @@
 static bool speecht5_tts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_SPEECHT5_TTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_SPEECHT5_TTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -236,7 +236,7 @@ struct speecht5_tts_context {
 
     // FASTCONV: baked F32 copies of the vocoder's F16 conv kernels, so the
     // fork's per-graph F16→F32 cast becomes a no-op (docs/perf-sweep/PLAN.md).
-    // Gated CRISPASR_SPEECHT5_FASTCONV; disabled → legacy path unchanged.
+    // Gated STELNETTTS_SPEECHT5_FASTCONV; disabled → legacy path unchanged.
     core_dac::fastconv_cache voc_fc;
 
     // §202 Cross-attention K/V pre-computed from encoder output (constant per utterance).
@@ -1053,7 +1053,7 @@ static decoder_step_result run_decoder_step(speecht5_tts_context* ctx,
 
     // ── SPEECHT5_DUMP_DIR: per-step intermediate dumps ──
     {
-        static const char* dump_dir = crispasr_env::get("CRISPASR_SPEECHT5_DUMP_DIR");
+        static const char* dump_dir = stelnettts_env::get("STELNETTTS_SPEECHT5_DUMP_DIR");
         if (dump_dir) {
             auto dump_f32 = [&](const char* tag, const float* data, size_t n) {
                 std::string path = std::string(dump_dir) + "/step" + std::to_string(dec_step) + "_" + tag + ".f32";
@@ -1312,7 +1312,7 @@ struct speecht5_tts_context* speecht5_tts_init(const char* path, struct speecht5
     ctx->max_len = params.max_len;
 
     // Backend — prefer GPU (CUDA/Metal/Vulkan) when available + requested
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend) {
         ctx->backend = core_cpu_backend::init();
     }
@@ -1429,13 +1429,13 @@ struct speecht5_tts_context* speecht5_tts_init(const char* path, struct speecht5
     }
 
     // FASTCONV: bake one F32 copy of each F16 vocoder conv kernel (default on;
-    // set CRISPASR_SPEECHT5_FASTCONV=0 for the legacy A/B arm).
+    // set STELNETTTS_SPEECHT5_FASTCONV=0 for the legacy A/B arm).
     {
-        const char* e = std::getenv("CRISPASR_SPEECHT5_FASTCONV");
+        const char* e = std::getenv("STELNETTTS_SPEECHT5_FASTCONV");
         const bool on = !e || (e[0] != '0');
         auto convs = core_hifigan::collect_fastconv_kernels(ctx->tensors(), "voc", ctx->voc_hp);
         ctx->voc_fc.bake(ctx->backend, convs, on);
-        if (std::getenv("CRISPASR_SPEECHT5_FASTCONV_DEBUG")) {
+        if (std::getenv("STELNETTTS_SPEECHT5_FASTCONV_DEBUG")) {
             fprintf(stderr, "speecht5: FASTCONV %s — baked %zu F32 kernels from %zu voc convs\n",
                     ctx->voc_fc.enabled ? "ON" : "OFF", ctx->voc_fc.f32.size(), convs.size());
         }

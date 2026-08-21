@@ -1,4 +1,4 @@
-# #329 — target language for cosyvoice3 / qwen3-tts cloning
+# #329 — target language for cosyvoice3 / cielvox2-tts cloning
 
 > *"There is usually an option to select the target language when porting
 > languages, but I don't find this option for these engines in Subtitle Edit.
@@ -43,7 +43,7 @@ when the evidence is thin (< 4 words, or the winner fails to beat the runner-up
 by 1.5×). Getting this wrong changes synthesis behaviour silently, so declining
 is the correct output far more often than a guess.
 
-Not the real text-LID (`crispasr_text_detect_language`, CLD3/GlotLID): it needs
+Not the real text-LID (`stelnettts_text_detect_language`, CLD3/GlotLID): it needs
 its own GGUF, and making a voice clone depend on a second model download to
 decide one boolean is the wrong trade. A caller who has that model can run it
 and pass the answer in as the explicit tag.
@@ -57,12 +57,12 @@ Even with a detector there are references it cannot call (a three-word
 |---|---|
 | CLI | `-sl` / `--source-lang` (cosyvoice3 already declared `CAP_SRC_TGT_LANGUAGE`, so the flag was accepted and silently discarded) |
 | Server | `"source_lang"` (alias `"ref_lang"`) on `POST /v1/audio/speech` |
-| C ABI | `crispasr_session_set_tts_reference_language()` |
+| C ABI | `stelnettts_session_set_tts_reference_language()` |
 | Python / Rust | `set_tts_reference_language()` |
 
 It is its own session setter rather than reusing `set_source_language` because
 for TTS that one already doubles as the *output*-language fallback
-(`target ?: source`) across zonos/kokoro/qwen3-tts/moss.
+(`target ?: source`) across zonos/kokoro/cielvox2-tts/moss.
 
 And when a target language is set but the reference language is undeterminable,
 the backend now says so and names the flag that resolves it, instead of
@@ -70,13 +70,13 @@ silently ignoring the request.
 
 ### 3. The session ABI dropped the language entirely (multi-surface trap)
 
-`crispasr_c_api.cpp` reimplements each backend's synthesize inline rather than
+`stelnettts_c_api.cpp` reimplements each backend's synthesize inline rather than
 calling the CLI adapter (HARD RULE #6). The cosyvoice3 branch never called
 `cosyvoice3_tts_set_target_language`, so **bindings, Flutter, Android and every
 non-CLI/non-server surface** could not do cross-lingual cosyvoice3 at all — the
 #304 wiring only ever existed in the CLI adapter.
 
-### 4. qwen3-tts ignored `-tl` and advertised nothing
+### 4. cielvox2-tts ignored `-tl` and advertised nothing
 
 The adapter read `params.language` only, and the backend did not declare
 `CAP_SRC_TGT_LANGUAGE` — so `--target-lang de` printed
@@ -87,7 +87,7 @@ cosyvoice3) and the capability bit is declared.
 ## Why voxcpm2 "just works"
 
 It is language-agnostic — it reads the script of the input text and has no
-language knob to miss. cosyvoice3 and qwen3-tts both carry explicit language
+language knob to miss. cosyvoice3 and cielvox2-tts both carry explicit language
 conditioning (a reference-transcript decision and a `codec_language_id`
 respectively), which is more controllable *and* fails closed when nobody tells
 it what to do.
@@ -99,13 +99,13 @@ it what to do.
 | `src/core/tts_lang.h` | **new** — tags, script + Latin LID, `is_cross_lingual`, `resolve_reference_language` |
 | `tests/test-tts-lang.cpp` | **new** — 68 assertions, hermetic |
 | `src/cosyvoice3_tts.{h,cpp}` | `set_reference_language()`; local helpers → `core_tts_lang`; the "could not determine" message |
-| `src/crispasr_c_api.cpp` | session cosyvoice3 language wiring + `crispasr_session_set_tts_reference_language` |
-| `include/crispasr_session.h` | ABI declaration |
-| `examples/cli/crispasr_backend_cosyvoice3.cpp` | pass `-sl` through |
-| `examples/cli/crispasr_backend_qwen3_tts.cpp` | `-tl` > `-l`; `CAP_SRC_TGT_LANGUAGE` |
-| `examples/cli/crispasr_server.cpp` | `source_lang` / `ref_lang` on `/v1/audio/speech` |
+| `src/stelnettts_c_api.cpp` | session cosyvoice3 language wiring + `stelnettts_session_set_tts_reference_language` |
+| `include/stelnettts_session.h` | ABI declaration |
+| `examples/cli/stelnettts_backend_cosyvoice3.cpp` | pass `-sl` through |
+| `examples/cli/stelnettts_backend_cielvox2_tts.cpp` | `-tl` > `-l`; `CAP_SRC_TGT_LANGUAGE` |
+| `examples/cli/stelnettts_server.cpp` | `source_lang` / `ref_lang` on `/v1/audio/speech` |
 | `examples/cli/cli.cpp` | `-sl`/`-tl` help text mentions the TTS meaning |
-| `python/crispasr/_binding.py`, `crispasr{,-sys}/src/lib.rs` | binding methods |
+| `python/stelnettts/_binding.py`, `stelnettts{,-sys}/src/lib.rs` | binding methods |
 | `docs/tts.md`, `docs/cli.md`, `docs/server.md` | the knob, per surface and per backend |
 
 ## Guard first, then fix

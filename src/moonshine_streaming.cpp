@@ -1,4 +1,4 @@
-// moonshine_streaming.cpp — CrispASR runtime for Moonshine Streaming models
+// moonshine_streaming.cpp — StelnetTTS runtime for Moonshine Streaming models
 //
 // Architecture: raw-waveform audio frontend → sliding-window transformer encoder
 // → autoregressive transformer decoder with cross-attention.
@@ -15,8 +15,8 @@
 #include "core/beam_decode.h"
 #include "core/cpu_ops.h" // core_cpu::to_f32 (quantized-safe weight read)
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "moonshine-tokenizer.h"
 
 #include "ggml.h"
@@ -42,7 +42,7 @@
 static bool moonshine_stream_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MOONSHINE_STREAM_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MOONSHINE_STREAM_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -301,7 +301,7 @@ extern "C" struct moonshine_streaming_context* moonshine_streaming_init_from_fil
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
     ctx->use_gpu = (ctx->backend != ctx->backend_cpu);
@@ -309,7 +309,7 @@ extern "C" struct moonshine_streaming_context* moonshine_streaming_init_from_fil
     // Load weights via core_gguf (mmap, backend buffer). §232: on GPU, split
     // encoder->GPU / decoder->CPU (opt out with MOONSHINE_ALL_GPU=1).
     core_gguf::WeightLoad wl;
-    const char* all_gpu_env = crispasr_env::get("CRISPASR_MOONSHINE_ALL_GPU");
+    const char* all_gpu_env = stelnettts_env::get("STELNETTTS_MOONSHINE_ALL_GPU");
     const bool all_gpu = all_gpu_env && all_gpu_env[0] == '1';
     bool loaded;
     if (ctx->use_gpu && !all_gpu) {
@@ -601,7 +601,7 @@ static int run_encoder(moonshine_streaming_context* ctx, const float* frontend_o
     int head_dim = (int)hp.enc_head_dim;
     int kv_heads = (int)hp.enc_kv_heads;
     float ln_eps = 1e-5f;
-    bool verbose = ctx->verbosity >= 2 || crispasr_env::get("CRISPASR_MOONSHINE_STREAMING_BENCH");
+    bool verbose = ctx->verbosity >= 2 || stelnettts_env::get("STELNETTTS_MOONSHINE_STREAMING_BENCH");
 
     // #215e UAF fix: always rebuild (sched gallocr regrow frees cached buffers).
     if (ctx->cached_enc_ctx) {

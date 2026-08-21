@@ -13,7 +13,7 @@
 //              8198 = 8192 vocab + 1 blank + 5 TDT durations {0,1,2,3,4}
 
 #include "parakeet.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "parakeet_ja_detect.h"
 
 #ifndef M_PI
@@ -22,7 +22,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #if defined(GGML_USE_METAL)
 #include "ggml-metal.h"
@@ -60,7 +60,7 @@
 static bool parakeet_use_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_PARAKEET_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_PARAKEET_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 #endif
@@ -76,7 +76,7 @@ static bool parakeet_use_scalar() {
 static bool parakeet_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_PARAKEET_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_PARAKEET_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -215,9 +215,9 @@ struct parakeet_model {
     ggml_context* ctx_f32 = nullptr;
     ggml_backend_buffer_t buf_f32 = nullptr;
 
-    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, CRISPASR_FC_PW_Q8)
+    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, STELNETTTS_FC_PW_Q8)
     core_conformer::PwRepackBuf pw_q8;
-    // Fused Q/K/V weight concat (issue #81, CRISPASR_FC_FUSED_QKV)
+    // Fused Q/K/V weight concat (issue #81, STELNETTTS_FC_FUSED_QKV)
     core_conformer::PwRepackBuf qkv_fused;
 
     std::map<std::string, ggml_tensor*> tensors;
@@ -343,10 +343,10 @@ static bool parakeet_load_model(parakeet_model& model, parakeet_vocab& vocab, co
         // Issue #89: NeMo supports switching a full-attention FastConformer to
         // rel_pos_local_attn at inference time (change_attention_model) for
         // long-form audio; the mask math is identical, only the window
-        // changes. CRISPASR_PARAKEET_ATT_CONTEXT="L,R" (encoder frames,
+        // changes. STELNETTTS_PARAKEET_ATT_CONTEXT="L,R" (encoder frames,
         // 1 frame = 80 ms) applies the same switch here. "-1,-1" forces full
         // attention even for GGUFs that ship a local-attn context.
-        if (const char* e = getenv("CRISPASR_PARAKEET_ATT_CONTEXT")) {
+        if (const char* e = getenv("STELNETTTS_PARAKEET_ATT_CONTEXT")) {
             int l = -1, r = -1;
             if (sscanf(e, "%d,%d", &l, &r) == 2) {
                 hp.att_context_left = l;
@@ -532,7 +532,7 @@ static bool parakeet_load_model(parakeet_model& model, parakeet_vocab& vocab, co
     // <= 4096 — small-vocab ENGLISH models (parakeet-tdt-1.1b, vocab 1024) are
     // NOT JA and decode cleanly at q4_k, so the size heuristic mis-warned them
     // that their (correct) output was garbage.
-    if (crispasr_parakeet::vocab_looks_japanese(vocab.id_to_token) && j.out_w && ggml_is_quantized(j.out_w->type) &&
+    if (stelnettts_parakeet::vocab_looks_japanese(vocab.id_to_token) && j.out_w && ggml_is_quantized(j.out_w->type) &&
         j.out_w->type != GGML_TYPE_Q8_0) {
         fprintf(stderr,
                 "parakeet: WARNING: JA model with %s weights — TDT decode degrades to repetition "
@@ -603,7 +603,7 @@ static void parakeet_fft_r2c(const float* in, int N, float* out) {
 // ===========================================================================
 
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/rnnt_ggml.h"        // §232 GPU transducer decode (shared)
 #include "core/ggml_cpu_backend.h"
 
@@ -855,7 +855,7 @@ static ggml_cgraph* parakeet_build_graph_encoder(parakeet_context* ctx, int T_me
     const bool use_windowed_attn =
         core_conformer::fc_windowed_attn() &&
         core_conformer::fc_window_attn_applicable(T, hp.att_context_left, hp.att_context_right);
-    if (getenv("CRISPASR_FC_MEM_DEBUG"))
+    if (getenv("STELNETTTS_FC_MEM_DEBUG"))
         fprintf(stderr, "[fc-encode] T=%d windowed=%d local=%d\n", T, (int)use_windowed_attn, (int)use_local_attn);
     if (use_windowed_attn) {
         const int BS = core_conformer::fc_window_block_size(hp.att_context_left, hp.att_context_right);
@@ -901,7 +901,7 @@ static std::vector<float> parakeet_encode_mel(parakeet_context* ctx, const float
         ggml_backend_t backends[2] = {ctx->backend, ctx->backend_cpu};
         int n_be = (ctx->backend != ctx->backend_cpu) ? 2 : 1;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 8192, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     if (ctx->compute_meta.empty()) {
         ctx->compute_meta.resize(ggml_tensor_overhead() * 8192 + ggml_graph_overhead_custom(8192, false));
@@ -936,8 +936,8 @@ static std::vector<float> parakeet_encode_mel(parakeet_context* ctx, const float
     // Enable PARAKEET_ENC_PROBE to reproduce the measurement and the 2nd-reuse
     // corruption (reuse windows collapse enc std 0.020 → 0.008). See issue #208.
     ggml_cgraph* gf;
-    const bool use_enc_cache = getenv("CRISPASR_PARAKEET_ENC_CACHE") != nullptr;
-    const bool probe_time = crispasr_env::get("CRISPASR_PARAKEET_ENC_PROBE") != nullptr;
+    const bool use_enc_cache = getenv("STELNETTTS_PARAKEET_ENC_CACHE") != nullptr;
+    const bool probe_time = stelnettts_env::get("STELNETTTS_PARAKEET_ENC_PROBE") != nullptr;
     bool enc_cache_hit = false;
     int64_t t_build0 = probe_time ? ggml_time_us() : 0;
     if (use_enc_cache && ctx->cached_enc_gf && ctx->cached_enc_T_mel == T_mel) {
@@ -1012,7 +1012,7 @@ static std::vector<float> parakeet_encode_mel(parakeet_context* ctx, const float
 
     std::vector<float> result((size_t)d * Te);
     ggml_backend_tensor_get(out, result.data(), 0, result.size() * sizeof(float));
-    if (crispasr_env::get("CRISPASR_PARAKEET_ENC_PROBE")) {
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_ENC_PROBE")) {
         double s = 0, s2 = 0;
         const size_t n = result.size();
         for (float v : result) {
@@ -1289,7 +1289,7 @@ static void parakeet_init_pred_weights(parakeet_context* ctx) {
     // either the converter dropped padding_idx semantics or the
     // checkpoint was built with a different convention — the SOS step
     // (predictor at blank input) would produce wrong output.
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG") && blank_id < (int)embed_rows) {
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG") && blank_id < (int)embed_rows) {
         const float* row = W.embed.data() + (size_t)blank_id * H;
         double s = 0;
         float maxv = 0;
@@ -1378,7 +1378,7 @@ static bool parakeet_ggml_decode_active(const parakeet_context* ctx) {
     if (ggml_dec && core_cpu_backend::is_metal(ctx->backend))
         ggml_dec = false;
 #endif
-    if (const char* e = crispasr_env::get("CRISPASR_PARAKEET_GGML_DECODE"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_PARAKEET_GGML_DECODE"))
         ggml_dec = (e[0] == '1');
     return ggml_dec;
 }
@@ -1389,7 +1389,7 @@ extern "C" int parakeet_decode_uses_backend(struct parakeet_context* ctx) {
 
 static bool parakeet_init_ggml_decoder(parakeet_context* ctx, core_rnnt_ggml::Decoder& gdec) {
     bool ggml_dec = parakeet_ggml_decode_active(ctx);
-    if (ggml_dec && crispasr_env::get("CRISPASR_RNNT_GGML_PERSTEP") == nullptr) {
+    if (ggml_dec && stelnettts_env::get("STELNETTTS_RNNT_GGML_PERSTEP") == nullptr) {
         const auto& p = ctx->model.predictor;
         const auto& j = ctx->model.joint;
         core_rnnt_ggml::decoder_init(gdec, ctx->backend, p.embed_w, p.lstm0_w_ih, p.lstm0_b_ih, p.lstm0_w_hh,
@@ -1432,7 +1432,7 @@ static std::vector<parakeet_emitted_token> parakeet_tdt_decode(parakeet_context*
     // §232: ggml GPU decode default (see parakeet_init_ggml_decoder / LEARNINGS 33).
     core_rnnt_ggml::Decoder gdec;
     const bool ggml_dec = parakeet_init_ggml_decoder(ctx, gdec);
-    const bool time_dec = crispasr_env::get("CRISPASR_PARAKEET_DECODE_TIMING") != nullptr;
+    const bool time_dec = stelnettts_env::get("STELNETTTS_PARAKEET_DECODE_TIMING") != nullptr;
     auto _dt0 = std::chrono::steady_clock::now();
 
     const auto& hp = ctx->model.hparams;
@@ -1460,7 +1460,7 @@ static std::vector<parakeet_emitted_token> parakeet_tdt_decode(parakeet_context*
         parakeet_predictor_step_ggml(ctx, gdec, blank_id, state, pred_out);
     else
         predictor_step(W, blank_id, state, pred_out);
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(
             stderr, "parakeet: pred_out[blank]: mean=%.4f std=%.4f [0..3]=%.4f %.4f %.4f %.4f\n",
             [&] {
@@ -1543,7 +1543,7 @@ static std::vector<parakeet_emitted_token> parakeet_tdt_decode(parakeet_context*
                 core_context_bias::apply_bias(ctx->hotword_trie, hw_state, logits.data(), n_vocab_blk,
                                               ctx->hotword_boost);
 
-            if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG") && total_steps < 5) {
+            if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG") && total_steps < 5) {
                 // Show first few logits
                 int best = 0;
                 float best_v = logits[0];
@@ -1659,7 +1659,7 @@ static std::vector<parakeet_emitted_token> parakeet_tdt_decode(parakeet_context*
 
             // Diagnostic: dump predictor stats for the first few emissions
             // so we can compare with NeMo step-by-step (not just SOS).
-            if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG") && (int)emitted.size() <= 5) {
+            if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG") && (int)emitted.size() <= 5) {
                 double s = 0, m = 0;
                 float minv = pred_out[0], maxv = pred_out[0];
                 for (auto v : pred_out) {
@@ -2861,7 +2861,7 @@ static std::vector<parakeet_emitted_token> parakeet_ctc_decode(parakeet_context*
 // ===========================================================================
 
 static ggml_backend_t pick_backend() {
-    ggml_backend_t b = crispasr_init_gpu_backend();
+    ggml_backend_t b = stelnettts_init_gpu_backend();
     return b ? b : core_cpu_backend::init();
 }
 
@@ -2902,7 +2902,7 @@ extern "C" struct parakeet_context* parakeet_init_from_file(const char* path_mod
     parakeet_fold_batchnorm(ctx->model, ctx->backend);
 
     // Repack F16 conv pw1/pw2 to Q8_0 (issue #81 — the 3D conv layout dodges
-    // crispasr-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
+    // stelnettts-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
     {
         auto& m = ctx->model;
         std::vector<core_conformer::BlockWeights*> layers;
@@ -2950,7 +2950,7 @@ extern "C" void parakeet_free(struct parakeet_context* ctx) {
 extern std::vector<float> parakeet_encode_mel(parakeet_context* ctx, const float* mel, int n_mels, int T_mel,
                                               int* out_T_enc);
 
-// ---- Stage-level entry points for crispasr-diff ----
+// ---- Stage-level entry points for stelnettts-diff ----
 
 extern "C" void parakeet_set_temperature(struct parakeet_context* ctx, float temperature, uint64_t seed) {
     if (!ctx)
@@ -3176,7 +3176,7 @@ extern "C" int parakeet_run_encoder_dump(struct parakeet_context* ctx, const flo
         ggml_backend_t backends[2] = {ctx->backend, ctx->backend_cpu};
         int n_be = (ctx->backend != ctx->backend_cpu) ? 2 : 1;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 8192, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     if (ctx->compute_meta.empty()) {
         ctx->compute_meta.resize(ggml_tensor_overhead() * 8192 + ggml_graph_overhead_custom(8192, false));
@@ -3248,7 +3248,7 @@ extern "C" int parakeet_test_encoder(struct parakeet_context* ctx, int T_mel) {
     auto out = parakeet_encode_mel(ctx, mel.data(), n_mels, T_mel, &T_enc);
     if (out.empty())
         return -1;
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: encoder OK — T_mel=%d → T_enc=%d  d=%d  out[0..3]=%g %g %g %g\n", T_mel, T_enc,
                 (int)ctx->model.hparams.d_model, (double)out[0], (double)out[1], (double)out[2], (double)out[3]);
     return T_enc;
@@ -3260,7 +3260,7 @@ extern "C" int parakeet_test_audio(struct parakeet_context* ctx, const float* sa
     if (mel.empty())
         return -1;
 
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: mel OK — n_samples=%d (%.2fs)  T_mel=%d  n_mels=%d  mel[0..3]=%g %g %g %g\n",
                 n_samples, (double)n_samples / ctx->model.hparams.sample_rate, T_mel, (int)ctx->model.hparams.n_mels,
                 (double)mel[0], (double)mel[1], (double)mel[2], (double)mel[3]);
@@ -3283,7 +3283,7 @@ extern "C" int parakeet_test_audio(struct parakeet_context* ctx, const float* sa
     }
     double mean = sum / enc_out.size();
     double var = sq / enc_out.size() - mean * mean;
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: encoder OK — T_enc=%d  d=%d  mean=%.4f  std=%.4f  min=%.3f  max=%.3f\n", T_enc,
                 (int)ctx->model.hparams.d_model, mean, sqrt(var), (double)mn, (double)mx);
     return T_enc;
@@ -3381,7 +3381,7 @@ extern "C" int parakeet_n_vocab(struct parakeet_context* ctx) {
 extern "C" int parakeet_vocab_is_japanese(struct parakeet_context* ctx) {
     if (!ctx)
         return 0;
-    return crispasr_parakeet::vocab_looks_japanese(ctx->vocab.id_to_token) ? 1 : 0;
+    return stelnettts_parakeet::vocab_looks_japanese(ctx->vocab.id_to_token) ? 1 : 0;
 }
 extern "C" int parakeet_blank_id(struct parakeet_context* ctx) {
     return (int)ctx->model.hparams.blank_id;
@@ -3447,7 +3447,7 @@ static std::string spiece_to_text(const std::string& piece) {
 // parakeet_transcribe_ex() so the two paths report identically. When a caller
 // PIPELINES them (encode on a worker thread, decode on another) the stages
 // genuinely overlap, so their sum exceeds wall time — that gap is the win, not
-// a measurement error. Set CRISPASR_PARAKEET_PIPELINE=0 for a serial baseline.
+// a measurement error. Set STELNETTTS_PARAKEET_PIPELINE=0 for a serial baseline.
 extern "C" float* parakeet_encode(struct parakeet_context* ctx, const float* samples, int n_samples, int* out_T_enc,
                                   int* out_d_model) {
     if (!ctx || !samples || n_samples <= 0)
@@ -3460,7 +3460,7 @@ extern "C" float* parakeet_encode(struct parakeet_context* ctx, const float* sam
     }
     if (mel.empty())
         return nullptr;
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: mel OK (%d frames)\n", T_mel);
     int T_enc = 0;
     std::vector<float> enc;
@@ -3470,7 +3470,7 @@ extern "C" float* parakeet_encode(struct parakeet_context* ctx, const float* sam
     }
     if (enc.empty())
         return nullptr;
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: encoder OK (%d frames)\n", T_enc);
     const int d = (int)ctx->model.hparams.d_model;
     float* out = (float*)malloc(enc.size() * sizeof(float));
@@ -3624,7 +3624,7 @@ extern "C" struct parakeet_result* parakeet_decode_frames(struct parakeet_contex
         return nullptr;
 
     // Same "decode" stage parakeet_transcribe_ex() reports, so the split
-    // encode/decode path is measurable with the same CRISPASR_PARAKEET_BENCH.
+    // encode/decode path is measurable with the same STELNETTTS_PARAKEET_BENCH.
     parakeet_bench_stage _b_dec("decode");
     const bool use_ctc = ctx->decode_ctc && ctx->model.has_ctc;
     const bool use_rnnt = !use_ctc && ctx->model.hparams.n_tdt_durations == 0;
@@ -3640,10 +3640,10 @@ extern "C" struct parakeet_result* parakeet_decode_frames(struct parakeet_contex
             : (use_maes   ? parakeet_tdt_maes_decode(ctx, enc_frames, T_enc, d_model, ctx->decode_beam_size,
                                                      ctx->maes_num_steps, ctx->maes_gamma, ctx->maes_beta)
                : use_beam ? parakeet_tdt_beam_decode(ctx, enc_frames, T_enc, d_model, ctx->decode_beam_size)
-                          : (getenv("CRISPASR_TDT_BATCH") ? parakeet_tdt_decode_batched(ctx, enc_frames, T_enc, d_model)
+                          : (getenv("STELNETTTS_TDT_BATCH") ? parakeet_tdt_decode_batched(ctx, enc_frames, T_enc, d_model)
                                                           : parakeet_tdt_decode(ctx, enc_frames, T_enc, d_model)));
 
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: %s%s decode OK (%d tokens)\n",
                 use_ctc    ? "CTC"
                 : use_rnnt ? "RNNT"
@@ -3744,7 +3744,7 @@ static std::vector<float> parakeet_encode_chunked(parakeet_context* ctx, const f
                        enc.begin() + (size_t)(skip_frames + keep_frames) * d_model);
         T_enc_total += keep_frames;
 
-        if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
             fprintf(stderr, "parakeet: chunk @%d: %d samples → %d mel → %d enc (skip %d, keep %d)\n", offset, chunk_len,
                     T_mel, T_enc, skip_frames, keep_frames);
     }
@@ -3783,7 +3783,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_chunked(struct parakeet_c
     if (enc_all.empty() || T_enc_total <= 0)
         return nullptr;
 
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: chunked encode done: %d total encoder frames from %d samples\n", T_enc_total,
                 n_samples);
 
@@ -3805,7 +3805,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_chunked(struct parakeet_c
                : use_beam ? parakeet_tdt_beam_decode(ctx, enc_all.data(), T_enc_total, d_model, ctx->decode_beam_size)
                           : parakeet_tdt_decode_batched(ctx, enc_all.data(), T_enc_total, d_model));
 
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: %s decode OK (%d tokens from %d enc frames)\n",
                 use_ctc    ? "CTC"
                 : use_rnnt ? "RNNT"
@@ -3888,7 +3888,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_streamed(struct parakeet_
         //
         // Heuristic: distinguish the JA-only model (vocab=3072) from the
         // multilingual / v3 / etc. variants (vocab >= 4096) via vocab_size.
-        // The override env var CRISPASR_PARAKEET_STREAM_CHUNK is honoured
+        // The override env var STELNETTTS_PARAKEET_STREAM_CHUNK is honoured
         // upstream of this default.
         chunk_seconds = parakeet_vocab_is_japanese(ctx) ? 8 : 30; // #257: content, not vocab size
     }
@@ -3912,7 +3912,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_streamed(struct parakeet_
     if (mel_full.empty() || T_mel <= 0)
         return nullptr;
 
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet[streamed]: full mel: %d frames from %d samples\n", T_mel, n_samples);
 
     // ---- Pass 2: encode mel in overlapping chunks ----
@@ -3951,7 +3951,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_streamed(struct parakeet_
                        enc.begin() + (size_t)(skip + keep) * d_model);
         T_enc_total += keep;
 
-        if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
             fprintf(stderr, "parakeet[streamed]: mel chunk @%d: %d mel → %d enc (skip %d, keep %d)\n", mel_offset,
                     chunk_T, T_enc, skip, keep);
     }
@@ -3959,7 +3959,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_streamed(struct parakeet_
     if (enc_all.empty() || T_enc_total <= 0)
         return nullptr;
 
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet[streamed]: total %d enc frames → single TDT decode\n", T_enc_total);
 
     // ---- Single TDT decode over concatenated encoder output ----
@@ -3982,7 +3982,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_ex(struct parakeet_contex
     }
     if (mel.empty())
         return nullptr;
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: mel OK (%d frames)\n", T_mel);
 
     // 2. Encoder
@@ -3994,7 +3994,7 @@ extern "C" struct parakeet_result* parakeet_transcribe_ex(struct parakeet_contex
     }
     if (enc.empty())
         return nullptr;
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG")) {
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG")) {
         fprintf(stderr, "parakeet: encoder OK (%d frames)\n", T_enc);
         int d = (int)ctx->model.hparams.d_model;
         double s = 0, sq = 0;
@@ -4024,9 +4024,9 @@ extern "C" struct parakeet_result* parakeet_transcribe_ex(struct parakeet_contex
             : (use_maes   ? parakeet_tdt_maes_decode(ctx, enc.data(), T_enc, d, ctx->decode_beam_size,
                                                      ctx->maes_num_steps, ctx->maes_gamma, ctx->maes_beta)
                : use_beam ? parakeet_tdt_beam_decode(ctx, enc.data(), T_enc, d, ctx->decode_beam_size)
-                          : (getenv("CRISPASR_TDT_BATCH") ? parakeet_tdt_decode_batched(ctx, enc.data(), T_enc, d)
+                          : (getenv("STELNETTTS_TDT_BATCH") ? parakeet_tdt_decode_batched(ctx, enc.data(), T_enc, d)
                                                           : parakeet_tdt_decode(ctx, enc.data(), T_enc, d)));
-    if (crispasr_env::get("CRISPASR_PARAKEET_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_PARAKEET_DEBUG"))
         fprintf(stderr, "parakeet: %s%s decode OK (%d tokens)\n",
                 use_ctc    ? "CTC"
                 : use_rnnt ? "RNNT"

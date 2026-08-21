@@ -17,7 +17,7 @@ Install once:
 Then run:
 
     INDEXTTS_TEXT_NORMALIZER="python /path/to/tools/wetext-normalize.py" \\
-        crispasr --backend indextts ...
+        stelnettts --backend indextts ...
 
 The script auto-detects language via wetext's heuristic (any CJK
 char → zh; otherwise → en). Override with --lang. Other wetext

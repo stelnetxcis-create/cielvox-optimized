@@ -10,7 +10,7 @@
 // sanity checking.
 
 #include "canary_ctc.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -52,7 +52,7 @@
 static bool canary_ctc_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CANARY_CTC_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CANARY_CTC_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -72,7 +72,7 @@ struct canary_ctc_bench_stage {
 };
 
 // ===========================================================================
-// Per-node profiler — `CRISPASR_FC_PROFILE=1` aggregates graph-compute time
+// Per-node profiler — `STELNETTTS_FC_PROFILE=1` aggregates graph-compute time
 // by op (mul_mat keyed by src0 type+shape). Forces per-node sched splits, so
 // absolute times carry dispatch overhead; use the relative shares.
 // ===========================================================================
@@ -80,7 +80,7 @@ struct canary_ctc_bench_stage {
 static bool canary_ctc_profile_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_PROFILE");
+        const char* e = std::getenv("STELNETTTS_FC_PROFILE");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -109,16 +109,16 @@ static bool cc_prof_cb(ggml_tensor* t, bool ask, void* ud) {
     auto* st = (cc_prof_state*)ud;
     if (ask)
         return true; // observe every node → per-node splits
-    // CRISPASR_FC_PROF_FP=1: per-node fingerprint of one valid column
+    // STELNETTTS_FC_PROF_FP=1: per-node fingerprint of one valid column
     // (debug tool for localizing bucketed-vs-plain divergences).
     static int fp_en = -1;
     if (fp_en < 0) {
-        const char* e = std::getenv("CRISPASR_FC_PROF_FP");
+        const char* e = std::getenv("STELNETTTS_FC_PROF_FP");
         fp_en = (e && *e && *e != '0') ? 1 : 0;
     }
     static int fp_cols = -1;
     if (fp_cols < 0) {
-        const char* e = std::getenv("CRISPASR_FC_PROF_FP_COLS");
+        const char* e = std::getenv("STELNETTTS_FC_PROF_FP_COLS");
         fp_cols = (e && *e) ? atoi(e) : 5;
     }
     // Only (features, T)-shaped nodes: checksum the first fp_cols columns so
@@ -225,9 +225,9 @@ struct cc_model {
     ggml_context* ctx_f32 = nullptr;
     ggml_backend_buffer_t buf_f32 = nullptr;
 
-    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, CRISPASR_FC_PW_Q8)
+    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, STELNETTTS_FC_PW_Q8)
     core_conformer::PwRepackBuf pw_q8;
-    // Fused Q/K/V weight concat (issue #81, CRISPASR_FC_FUSED_QKV)
+    // Fused Q/K/V weight concat (issue #81, STELNETTTS_FC_FUSED_QKV)
     core_conformer::PwRepackBuf qkv_fused;
 
     std::map<std::string, ggml_tensor*> tensors;
@@ -320,7 +320,7 @@ static void cc_fft_r2c(const float* in, int N, float* out) {
 // ===========================================================================
 
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -367,7 +367,7 @@ static std::vector<float> cc_compute_mel(canary_ctc_context* ctx, const float* s
 
 static const float kLayerNormEps = 1e-5f;
 
-// Bucketed-padding gate (issue #81 GPU phase, CRISPASR_FC_BUCKET=<mel frames>).
+// Bucketed-padding gate (issue #81 GPU phase, STELNETTTS_FC_BUCKET=<mel frames>).
 // Padding T_mel up to a bucket keeps the graph topology stable across
 // utterances of similar length, so the per-bucket graph + allocation are
 // reused and ggml-cuda's CUDA-graph replay can kick in (starling-style).
@@ -383,7 +383,7 @@ static const float kLayerNormEps = 1e-5f;
 static int cc_fc_bucket() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_BUCKET");
+        const char* e = std::getenv("STELNETTTS_FC_BUCKET");
         v = (e && *e) ? std::max(0, atoi(e)) : 0;
     }
     return v;
@@ -466,10 +466,10 @@ static ggml_cgraph* cc_build_graph(canary_ctc_context* ctx, int T_mel, bool with
         (int)hp.d_model, (int)hp.n_heads, (int)hp.head_dim, (int)hp.conv_kernel, kLayerNormEps,
     };
     bp.manual_attn = ctx->manual_attn;
-    // CRISPASR_FC_MAX_LAYERS=N truncates the block stack — the genuine-
+    // STELNETTTS_FC_MAX_LAYERS=N truncates the block stack — the genuine-
     // truncated-output bisection tool for localizing divergences.
     uint32_t n_layers = hp.n_layers;
-    if (const char* e = std::getenv("CRISPASR_FC_MAX_LAYERS"))
+    if (const char* e = std::getenv("STELNETTTS_FC_MAX_LAYERS"))
         n_layers = std::min(n_layers, (uint32_t)std::max(0, atoi(e)));
     for (uint32_t il = 0; il < n_layers; il++) {
         cur = core_conformer::build_block(ctx0, cur, pos_enc, T, m.enc[il], bp, pad_mask, time_mask);
@@ -723,7 +723,7 @@ static bool cc_load_model(cc_model& model, canary_ctc_vocab& vocab, const char* 
 // ===========================================================================
 
 static ggml_backend_t cc_pick_backend() {
-    ggml_backend_t b = crispasr_init_gpu_backend();
+    ggml_backend_t b = stelnettts_init_gpu_backend();
     return b ? b : core_cpu_backend::init();
 }
 
@@ -760,12 +760,12 @@ extern "C" struct canary_ctc_context* canary_ctc_init_from_file(const char* path
     }
     ctx->manual_attn = core_conformer::fc_gpu_manual_attn(ctx->backend);
     if (ctx->manual_attn)
-        fprintf(stderr, "canary_ctc: manual attention on %s (CRISPASR_FC_GPU_MANUAL_ATTN)\n",
+        fprintf(stderr, "canary_ctc: manual attention on %s (STELNETTTS_FC_GPU_MANUAL_ATTN)\n",
                 ggml_backend_name(ctx->backend));
     cc_fold_batchnorm(ctx->model, ctx->backend);
 
     // Repack F16 conv pw1/pw2 to Q8_0 (issue #81 — the 3D conv layout dodges
-    // crispasr-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
+    // stelnettts-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
     {
         auto& m = ctx->model;
         std::vector<core_conformer::BlockWeights*> layers;
@@ -907,7 +907,7 @@ extern "C" int canary_ctc_compute_logits(struct canary_ctc_context* ctx, const f
     if (mel.empty())
         return -1;
 
-    // Bucketed padding (CRISPASR_FC_BUCKET, issue #81 GPU phase): pad T_mel up
+    // Bucketed padding (STELNETTTS_FC_BUCKET, issue #81 GPU phase): pad T_mel up
     // to the bucket so the graph topology is stable across utterances and the
     // cached graph + allocation (and CUDA-graph capture) are reused.
     const int bucket = cc_fc_bucket();

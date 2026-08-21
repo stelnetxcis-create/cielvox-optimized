@@ -1,17 +1,17 @@
 import os
 #!/usr/bin/env python3
 """
-CrispASR regression transcript capture — Kaggle GPU kernel.
+StelnetTTS regression transcript capture — Kaggle GPU kernel.
 
-Builds CrispASR, downloads each backend's GGUF from HF, runs on JFK 11s,
+Builds StelnetTTS, downloads each backend's GGUF from HF, runs on JFK 11s,
 captures the transcript, and writes results to /kaggle/working/transcripts.json.
 """
 import json, os, subprocess, sys, time, shutil, traceback
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-_CRISPASR_DIR = WORK / "CrispASR"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+_STELNETTTS_DIR = WORK / "StelnetTTS"
 results = {}
 progress_file = WORK / "progress.txt"
 
@@ -38,10 +38,10 @@ def main():
     log("=== Starting regression capture ===")
 
     # Clone
-    if not _CRISPASR_DIR.exists():
+    if not _STELNETTTS_DIR.exists():
         subprocess.check_call(["git", "clone", "--depth", "1",
-            CRISPASR_URL, str(_CRISPASR_DIR)])
-    sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+            STELNETTTS_URL, str(_STELNETTTS_DIR)])
+    sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
     # Harness (best effort)
@@ -58,8 +58,8 @@ def main():
     except Exception as e:
         log(f"harness setup: {e}")
         # Fallback HF token
-        for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-                  "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+        for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+                  "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
             if os.path.exists(p):
                 tok = open(p).read().strip()
                 os.environ["HF_TOKEN"] = tok
@@ -74,8 +74,8 @@ def main():
     log("Building...")
     results["_status"] = "building"
     save_results()
-    build_dir = _CRISPASR_DIR / "build"
-    cmake_args = ["-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON"]
+    build_dir = _STELNETTTS_DIR / "build"
+    cmake_args = ["-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON"]
     if shutil.which("ninja"):
         cmake_args += ["-G", "Ninja"]
     if shutil.which("ccache"):
@@ -83,32 +83,32 @@ def main():
                        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"]
 
     subprocess.check_call(["cmake", "-B", str(build_dir)] + cmake_args,
-                          cwd=str(_CRISPASR_DIR))
+                          cwd=str(_STELNETTTS_DIR))
     subprocess.check_call(["cmake", "--build", str(build_dir), "-j2"],
-                          cwd=str(_CRISPASR_DIR))
+                          cwd=str(_STELNETTTS_DIR))
     log("Build OK")
 
-    CLI = str(build_dir / "bin" / "crispasr")
-    JFK = str(_CRISPASR_DIR / "samples" / "jfk.wav")
+    CLI = str(build_dir / "bin" / "stelnettts")
+    JFK = str(_STELNETTTS_DIR / "samples" / "jfk.wav")
     MDIR = WORK / "models"
     MDIR.mkdir(exist_ok=True)
 
     BACKENDS = [
-        ("qwen3-asr-0.6b", "qwen3", "cstr/qwen3-asr-0.6b-GGUF", "qwen3-asr-0.6b-q4_k.gguf"),
-        ("omniasr-ctc-1b-v2", "omniasr", "cstr/omniASR-CTC-1B-v2-GGUF", "omniasr-ctc-1b-v2-q4_k.gguf"),
-        ("kyutai-stt-1b", "kyutai-stt", "cstr/kyutai-stt-1b-GGUF", "kyutai-stt-1b-q4_k.gguf"),
-        ("funasr-nano", "funasr", "cstr/funasr-nano-GGUF", "funasr-nano-2512-q8_0.gguf"),
-        ("mini-omni2", "mini-omni2", "cstr/mini-omni2-GGUF", "mini-omni2-q4_k.gguf"),
-        ("omniasr-llm-300m", "omniasr", "cstr/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf"),
-        ("funasr-mlt-nano", "fun-asr-mlt-nano", "cstr/funasr-mlt-nano-GGUF", "funasr-mlt-nano-2512-f16.gguf"),
-        ("voxtral-mini-3b-2507", "voxtral", "cstr/voxtral-mini-3b-2507-GGUF", "voxtral-mini-3b-2507-q4_k.gguf"),
-        ("gemma4-e2b-it", "gemma4-e2b", "cstr/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf"),
-        ("granite-4.1-plus", "granite", "cstr/granite-speech-4.1-2b-plus-GGUF", "granite-speech-4.1-2b-plus-q4_k.gguf"),
-        ("granite-4.1-nar", "granite", "cstr/granite-speech-4.1-2b-nar-GGUF", "granite-speech-4.1-2b-nar-q4_k.gguf"),
-        ("voxtral4b-realtime", "voxtral4b", "cstr/voxtral-mini-4b-realtime-GGUF", "voxtral-mini-4b-realtime-q4_k.gguf"),
-        ("moss-audio-4b-instruct", "moss-audio", "cstr/MOSS-Audio-4B-Instruct-GGUF", "moss-audio-4b-instruct-q4_k.gguf"),
-        ("mimo-asr", "mimo-asr", "cstr/mimo-asr-GGUF", "mimo-asr-q4_k.gguf"),
-        ("vibevoice-asr", "vibevoice", "cstr/vibevoice-asr-GGUF", "vibevoice-asr-q4_k.gguf"),
+        ("cielvox2-asr-0.6b", "qwen3", "Xenna/cielvox2-asr-0.6b-GGUF", "cielvox2-asr-0.6b-q4_k.gguf"),
+        ("omniasr-ctc-1b-v2", "omniasr", "Xenna/omniASR-CTC-1B-v2-GGUF", "omniasr-ctc-1b-v2-q4_k.gguf"),
+        ("kyutai-stt-1b", "kyutai-stt", "Xenna/kyutai-stt-1b-GGUF", "kyutai-stt-1b-q4_k.gguf"),
+        ("funasr-nano", "funasr", "Xenna/funasr-nano-GGUF", "funasr-nano-2512-q8_0.gguf"),
+        ("mini-omni2", "mini-omni2", "Xenna/mini-omni2-GGUF", "mini-omni2-q4_k.gguf"),
+        ("omniasr-llm-300m", "omniasr", "Xenna/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf"),
+        ("funasr-mlt-nano", "fun-asr-mlt-nano", "Xenna/funasr-mlt-nano-GGUF", "funasr-mlt-nano-2512-f16.gguf"),
+        ("voxtral-mini-3b-2507", "voxtral", "Xenna/voxtral-mini-3b-2507-GGUF", "voxtral-mini-3b-2507-q4_k.gguf"),
+        ("gemma4-e2b-it", "gemma4-e2b", "Xenna/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf"),
+        ("granite-4.1-plus", "granite", "Xenna/granite-speech-4.1-2b-plus-GGUF", "granite-speech-4.1-2b-plus-q4_k.gguf"),
+        ("granite-4.1-nar", "granite", "Xenna/granite-speech-4.1-2b-nar-GGUF", "granite-speech-4.1-2b-nar-q4_k.gguf"),
+        ("voxtral4b-realtime", "voxtral4b", "Xenna/voxtral-mini-4b-realtime-GGUF", "voxtral-mini-4b-realtime-q4_k.gguf"),
+        ("moss-audio-4b-instruct", "moss-audio", "Xenna/MOSS-Audio-4B-Instruct-GGUF", "moss-audio-4b-instruct-q4_k.gguf"),
+        ("mimo-asr", "mimo-asr", "Xenna/mimo-asr-GGUF", "mimo-asr-q4_k.gguf"),
+        ("vibevoice-asr", "vibevoice", "Xenna/vibevoice-asr-GGUF", "vibevoice-asr-q4_k.gguf"),
     ]
 
     results["_status"] = "running"

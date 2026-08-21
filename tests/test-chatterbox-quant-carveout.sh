@@ -4,7 +4,7 @@ set -euo pipefail
 
 QUANT="${1:-}"
 REPO="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
-[ -x "$QUANT" ] || { echo "SKIP: crispasr-quantize binary not found"; exit 0; }
+[ -x "$QUANT" ] || { echo "SKIP: stelnettts-quantize binary not found"; exit 0; }
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

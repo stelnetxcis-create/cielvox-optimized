@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert OuteAI/OuteTTS-0.3-1B (OlmoForCausalLM, CC BY 4.0) HuggingFace
-safetensors -> GGUF F16/F32 for the CrispASR `outetts` backend.
+safetensors -> GGUF F16/F32 for the StelnetTTS `outetts` backend.
 
 OuteTTS is an LLM-based TTS: OLMo 1B generates interleaved text + audio
 tokens autoregressively; audio tokens index into a WavTokenizer single

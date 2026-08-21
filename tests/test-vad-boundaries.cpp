@@ -3,16 +3,16 @@
 // export/import serialization (issue #227).
 //
 // Pure string <-> struct round-trip; no model, no audio. Links against
-// crispasr-lib so it exercises the actually-shipped serializer/parser.
+// stelnettts-lib so it exercises the actually-shipped serializer/parser.
 
-#include "crispasr_vad.h"
+#include "stelnettts_vad.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
 #include <vector>
 
-using slices_t = std::vector<crispasr_audio_slice>;
+using slices_t = std::vector<stelnettts_audio_slice>;
 
 static slices_t sample_slices() {
     slices_t s;
@@ -34,19 +34,19 @@ static bool slices_equal(const slices_t& a, const slices_t& b) {
 
 TEST_CASE("vad boundary round-trip preserves every field", "[unit][vad]") {
     const slices_t in = sample_slices();
-    const std::string json = crispasr_serialize_vad_slices(in, 16000, 30.0f);
+    const std::string json = stelnettts_serialize_vad_slices(in, 16000, 30.0f);
 
     slices_t out;
     int sr = 0;
-    REQUIRE(crispasr_parse_vad_slices(json, out, &sr, nullptr));
+    REQUIRE(stelnettts_parse_vad_slices(json, out, &sr, nullptr));
     REQUIRE(sr == 16000);
     REQUIRE(out.size() == in.size());
     REQUIRE(slices_equal(in, out));
 }
 
 TEST_CASE("vad boundary serialization is well-formed JSON-ish", "[unit][vad]") {
-    const std::string json = crispasr_serialize_vad_slices(sample_slices(), 22050, 30.0f);
-    REQUIRE(json.find("\"crispasr_vad\"") != std::string::npos);
+    const std::string json = stelnettts_serialize_vad_slices(sample_slices(), 22050, 30.0f);
+    REQUIRE(json.find("\"stelnettts_vad\"") != std::string::npos);
     REQUIRE(json.find("\"sample_rate\": 22050") != std::string::npos);
     REQUIRE(json.find("\"num_slices\": 3") != std::string::npos);
     REQUIRE(json.find("\"start\"") != std::string::npos);
@@ -55,23 +55,23 @@ TEST_CASE("vad boundary serialization is well-formed JSON-ish", "[unit][vad]") {
 
 TEST_CASE("vad boundary empty list round-trips", "[unit][vad]") {
     const slices_t in;
-    const std::string json = crispasr_serialize_vad_slices(in, 16000, 30.0f);
+    const std::string json = stelnettts_serialize_vad_slices(in, 16000, 30.0f);
     slices_t out;
     int sr = -1;
-    REQUIRE(crispasr_parse_vad_slices(json, out, &sr, nullptr));
+    REQUIRE(stelnettts_parse_vad_slices(json, out, &sr, nullptr));
     REQUIRE(out.empty());
     REQUIRE(sr == 16000);
 }
 
 TEST_CASE("vad boundary parser tolerates whitespace and reordered fields", "[unit][vad]") {
     // Hand-authored, compact, fields out of canonical order.
-    const std::string json = R"({"crispasr_vad":{"version":1,"sample_rate":8000,"slices":[
+    const std::string json = R"({"stelnettts_vad":{"version":1,"sample_rate":8000,"slices":[
         {  "t1_cs":50 ,"start": 10,"t0_cs":0,  "end":800 },
         {"end":1600,"start":800,"t1_cs":110,"t0_cs":50}
     ]}})";
     slices_t out;
     int sr = 0;
-    REQUIRE(crispasr_parse_vad_slices(json, out, &sr, nullptr));
+    REQUIRE(stelnettts_parse_vad_slices(json, out, &sr, nullptr));
     REQUIRE(sr == 8000);
     REQUIRE(out.size() == 2);
     REQUIRE(out[0].start == 10);
@@ -85,10 +85,10 @@ TEST_CASE("vad boundary parser tolerates whitespace and reordered fields", "[uni
 TEST_CASE("vad boundary parser rejects malformed input", "[unit][vad]") {
     slices_t out;
     // No slices array at all.
-    REQUIRE_FALSE(crispasr_parse_vad_slices("{\"nope\": true}", out, nullptr, nullptr));
+    REQUIRE_FALSE(stelnettts_parse_vad_slices("{\"nope\": true}", out, nullptr, nullptr));
     REQUIRE(out.empty());
     // Slices array present but an object is missing a required field.
-    REQUIRE_FALSE(crispasr_parse_vad_slices(R"({"slices":[{"start":0,"end":10,"t0_cs":0}]})", out, nullptr, nullptr));
+    REQUIRE_FALSE(stelnettts_parse_vad_slices(R"({"slices":[{"start":0,"end":10,"t0_cs":0}]})", out, nullptr, nullptr));
     REQUIRE(out.empty());
 }
 
@@ -96,7 +96,7 @@ TEST_CASE("vad boundary parser handles absent sample_rate", "[unit][vad]") {
     const std::string json = R"({"slices":[{"start":0,"end":100,"t0_cs":0,"t1_cs":1}]})";
     slices_t out;
     int sr = 12345;
-    REQUIRE(crispasr_parse_vad_slices(json, out, &sr, nullptr));
+    REQUIRE(stelnettts_parse_vad_slices(json, out, &sr, nullptr));
     REQUIRE(sr == 0); // absent -> 0
     REQUIRE(out.size() == 1);
 }
@@ -144,11 +144,11 @@ TEST_CASE("issue227: default vad_export_file is empty", "[unit][vad][issue227]")
 // without this field they could not tell, and would silently re-chunk the audio
 // wrongly, which presents as a model regression rather than a stale file.
 TEST_CASE("vad boundaries: chunk_seconds round-trips", "[unit][vad]") {
-    const std::string json = crispasr_serialize_vad_slices(sample_slices(), 16000, 12.5f);
-    std::vector<crispasr_audio_slice> out;
+    const std::string json = stelnettts_serialize_vad_slices(sample_slices(), 16000, 12.5f);
+    std::vector<stelnettts_audio_slice> out;
     int sr = 0;
     float chunk = 0.0f;
-    REQUIRE(crispasr_parse_vad_slices(json, out, &sr, &chunk));
+    REQUIRE(stelnettts_parse_vad_slices(json, out, &sr, &chunk));
     REQUIRE(sr == 16000);
     REQUIRE(std::fabs(chunk - 12.5f) < 1e-6f);
 }
@@ -158,10 +158,10 @@ TEST_CASE("vad boundaries: a file without chunk_cs reports 0, not a wrong value"
     // "unknown" sentinel and callers skip the mismatch check rather than
     // rejecting every legacy file.
     const std::string legacy =
-        R"({"crispasr_vad":{"version":1,"sample_rate":16000,"slices":[{"start":0,"end":10,"t0_cs":0,"t1_cs":1}]}})";
-    std::vector<crispasr_audio_slice> out;
+        R"({"stelnettts_vad":{"version":1,"sample_rate":16000,"slices":[{"start":0,"end":10,"t0_cs":0,"t1_cs":1}]}})";
+    std::vector<stelnettts_audio_slice> out;
     float chunk = -1.0f;
-    REQUIRE(crispasr_parse_vad_slices(legacy, out, nullptr, &chunk));
+    REQUIRE(stelnettts_parse_vad_slices(legacy, out, nullptr, &chunk));
     REQUIRE(chunk == 0.0f);
     REQUIRE(out.size() == 1);
 }
@@ -180,45 +180,45 @@ TEST_CASE("vad boundaries: a file without chunk_cs reports 0, not a wrong value"
 // correct reuse with the advice "run with --chunk-seconds 0.00".
 TEST_CASE("vad boundaries: chunk gate compares like with like", "[unit][vad]") {
     const float exported_chunk = 30.0f;
-    const std::string json = crispasr_serialize_vad_slices(sample_slices(), 16000, exported_chunk);
+    const std::string json = stelnettts_serialize_vad_slices(sample_slices(), 16000, exported_chunk);
 
-    std::vector<crispasr_audio_slice> out;
+    std::vector<stelnettts_audio_slice> out;
     float chunk = 0.0f;
-    REQUIRE(crispasr_parse_vad_slices(json, out, nullptr, &chunk));
+    REQUIRE(stelnettts_parse_vad_slices(json, out, nullptr, &chunk));
 
     // Exercise the REAL shared decision function both surfaces call, not a copy
     // of its logic -- a test that reimplements the rule cannot catch a bug in
     // the rule. `requested` mirrors the CLI/server "0 means the 30 s default".
     auto req = [](int chunk_seconds) { return chunk_seconds > 0 ? (float)chunk_seconds : 30.0f; };
 
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(chunk, req(30))); // same explicit length -> reuse
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(chunk, req(0)));  // unset defaults to 30 -> reuse
-    REQUIRE(crispasr_vad_chunk_mismatch(chunk, req(5)));        // different -> mismatch
-    REQUIRE(crispasr_vad_chunk_mismatch(chunk, req(12)));
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(chunk, req(30))); // same explicit length -> reuse
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(chunk, req(0)));  // unset defaults to 30 -> reuse
+    REQUIRE(stelnettts_vad_chunk_mismatch(chunk, req(5)));        // different -> mismatch
+    REQUIRE(stelnettts_vad_chunk_mismatch(chunk, req(12)));
 
     // The function applies the "0 requested -> 30" default itself, so a raw 0
     // must behave the same as req(0).
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(chunk, 0.0f));
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(chunk, 0.0f));
 
     // A legacy file (no chunk_cs -> imported 0) is NEVER a mismatch: unknown
     // means "don't judge", not "wrong".
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(0.0f, req(5)));
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(0.0f, req(30)));
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(0.0f, 0.0f));
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(0.0f, req(5)));
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(0.0f, req(30)));
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(0.0f, 0.0f));
 
     // Just inside vs just outside the 0.01 s tolerance.
-    REQUIRE_FALSE(crispasr_vad_chunk_mismatch(30.005f, 30.0f));
-    REQUIRE(crispasr_vad_chunk_mismatch(30.02f, 30.0f));
+    REQUIRE_FALSE(stelnettts_vad_chunk_mismatch(30.005f, 30.0f));
+    REQUIRE(stelnettts_vad_chunk_mismatch(30.02f, 30.0f));
 }
 
 // Guards the round trip at a non-integer chunk length, since chunk_cs is stored
 // in centiseconds and a float->int conversion is an easy place to lose 0.5 s.
 TEST_CASE("vad boundaries: fractional chunk lengths survive the round trip", "[unit][vad]") {
     for (float c : {0.5f, 2.25f, 7.5f, 12.5f, 30.0f, 120.0f}) {
-        const std::string json = crispasr_serialize_vad_slices(sample_slices(), 16000, c);
-        std::vector<crispasr_audio_slice> out;
+        const std::string json = stelnettts_serialize_vad_slices(sample_slices(), 16000, c);
+        std::vector<stelnettts_audio_slice> out;
         float back = 0.0f;
-        REQUIRE(crispasr_parse_vad_slices(json, out, nullptr, &back));
+        REQUIRE(stelnettts_parse_vad_slices(json, out, nullptr, &back));
         INFO("chunk " << c);
         REQUIRE(std::fabs(back - c) < 0.011f); // centisecond quantisation
     }
@@ -233,30 +233,30 @@ TEST_CASE("vad boundaries: fractional chunk lengths survive the round trip", "[u
 TEST_CASE("vad boundaries: kind round-trips and controls chunk_cs", "[unit][vad]") {
     // Raw: kind=vad_segments, NO chunk_cs (it would be meaningless and would
     // falsely trip the mismatch gate).
-    const std::string raw = crispasr_serialize_vad_slices(sample_slices(), 16000, 0.0f, /*is_raw=*/true);
+    const std::string raw = stelnettts_serialize_vad_slices(sample_slices(), 16000, 0.0f, /*is_raw=*/true);
     REQUIRE(raw.find("\"vad_segments\"") != std::string::npos);
     REQUIRE(raw.find("chunk_cs") == std::string::npos);
 
-    std::vector<crispasr_audio_slice> out;
+    std::vector<stelnettts_audio_slice> out;
     bool is_raw = false;
     float chunk = -1.0f;
-    REQUIRE(crispasr_parse_vad_slices(raw, out, nullptr, &chunk, &is_raw));
+    REQUIRE(stelnettts_parse_vad_slices(raw, out, nullptr, &chunk, &is_raw));
     REQUIRE(is_raw);
     REQUIRE(chunk == 0.0f);
 
     // Chunk export: kind=chunks, chunk_cs present.
-    const std::string chunks = crispasr_serialize_vad_slices(sample_slices(), 16000, 30.0f, /*is_raw=*/false);
+    const std::string chunks = stelnettts_serialize_vad_slices(sample_slices(), 16000, 30.0f, /*is_raw=*/false);
     REQUIRE(chunks.find("\"chunks\"") != std::string::npos);
     REQUIRE(chunks.find("chunk_cs") != std::string::npos);
     bool is_raw2 = true;
-    REQUIRE(crispasr_parse_vad_slices(chunks, out, nullptr, nullptr, &is_raw2));
+    REQUIRE(stelnettts_parse_vad_slices(chunks, out, nullptr, nullptr, &is_raw2));
     REQUIRE_FALSE(is_raw2);
 
     // A legacy file (no "kind") is read as chunks -- the historical behaviour.
     const std::string legacy =
-        R"({"crispasr_vad":{"version":1,"sample_rate":16000,"slices":[{"start":0,"end":10,"t0_cs":0,"t1_cs":1}]}})";
+        R"({"stelnettts_vad":{"version":1,"sample_rate":16000,"slices":[{"start":0,"end":10,"t0_cs":0,"t1_cs":1}]}})";
     bool is_raw3 = true;
-    REQUIRE(crispasr_parse_vad_slices(legacy, out, nullptr, nullptr, &is_raw3));
+    REQUIRE(stelnettts_parse_vad_slices(legacy, out, nullptr, nullptr, &is_raw3));
     REQUIRE_FALSE(is_raw3);
 }
 
@@ -265,15 +265,15 @@ TEST_CASE("vad boundaries: rechunk splits only over-long segments", "[unit][vad]
     // A silent buffer is fine: the split lands on energy minima, and all-zero
     // means "any minimum", which still produces valid contiguous sub-ranges.
     std::vector<float> audio((size_t)sr * 20, 0.0f); // 20 s
-    std::vector<crispasr_audio_slice> in = {
+    std::vector<stelnettts_audio_slice> in = {
         {0, 2 * sr, 0, 200},          // 2 s -> untouched at chunk 5
         {2 * sr, 20 * sr, 200, 2000}, // 18 s -> split at chunk 5
     };
 
     // chunk_seconds <= 0 is identity.
-    REQUIRE(crispasr_rechunk_slices(in, audio.data(), (int)audio.size(), sr, 0).size() == in.size());
+    REQUIRE(stelnettts_rechunk_slices(in, audio.data(), (int)audio.size(), sr, 0).size() == in.size());
 
-    const auto out5 = crispasr_rechunk_slices(in, audio.data(), (int)audio.size(), sr, 5);
+    const auto out5 = stelnettts_rechunk_slices(in, audio.data(), (int)audio.size(), sr, 5);
     // The 2 s segment survives; the 18 s one becomes >= 4 pieces (18/5).
     REQUIRE(out5.size() > in.size());
     for (const auto& s : out5) {
@@ -285,6 +285,6 @@ TEST_CASE("vad boundaries: rechunk splits only over-long segments", "[unit][vad]
     REQUIRE(out5.back().end == in.back().end);
 
     // Re-chunking at a length longer than every segment is a no-op.
-    const auto out60 = crispasr_rechunk_slices(in, audio.data(), (int)audio.size(), sr, 60);
+    const auto out60 = stelnettts_rechunk_slices(in, audio.data(), (int)audio.size(), sr, 60);
     REQUIRE(out60.size() == in.size());
 }

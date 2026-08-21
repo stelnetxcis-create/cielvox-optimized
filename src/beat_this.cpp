@@ -10,7 +10,7 @@
 
 #include "beat_this.h"
 
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/fft.h"
 #include "core/gguf_loader.h"
 #include "ggml-backend.h"
@@ -379,7 +379,7 @@ extern "C" struct beat_this_context* beat_this_init(const char* model_path, int 
         return nullptr;
     auto* ctx = new beat_this_context();
     ctx->n_threads = n_threads > 0 ? n_threads : 4;
-    ctx->debug = crispasr_env::get("CRISPASR_BEAT_THIS_DEBUG") != nullptr;
+    ctx->debug = stelnettts_env::get("STELNETTTS_BEAT_THIS_DEBUG") != nullptr;
 
     gguf_context* gctx = core_gguf::open_metadata(model_path);
     if (!gctx) {

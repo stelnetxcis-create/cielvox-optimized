@@ -1,4 +1,4 @@
-"""Reference backend for MOSS-Transcribe-preview-2B (crispasr-diff).
+"""Reference backend for MOSS-Transcribe-preview-2B (stelnettts-diff).
 
 Captures stage-by-stage activations from the official PyTorch model to diff
 against the C++ ggml runtime. Unlike the sibling moss_audio backend, the

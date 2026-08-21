@@ -10,11 +10,11 @@ from benchmark_metrics import (
 
 
 # ---------------------------------------------------------------------------
-# Fixtures: canned crispasr JSON transcription arrays
+# Fixtures: canned stelnettts JSON transcription arrays
 # ---------------------------------------------------------------------------
 
 def _make_json(segments: list[tuple[int, int, str]]) -> dict:
-    """Build a minimal crispasr JSON dict from (from_ms, to_ms, text) tuples."""
+    """Build a minimal stelnettts JSON dict from (from_ms, to_ms, text) tuples."""
     return {
         "transcription": [
             {"offsets": {"from": f, "to": t}, "text": txt}

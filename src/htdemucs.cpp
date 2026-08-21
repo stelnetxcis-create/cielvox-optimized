@@ -13,7 +13,7 @@
 #include "ggml-cpu.h"
 #include "core/gguf_loader.h"
 #include "core/fft.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend
 
 #if defined(HAVE_ACCELERATE)
 #include <Accelerate/Accelerate.h> // cblas_sgemm — CrossTransformer is 86% of runtime
@@ -42,21 +42,21 @@
 static bool htdemucs_debug() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_DEBUG");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_DEBUG");
         v = (e && atoi(e) != 0) ? 1 : 0;
     }
     return v != 0;
 }
 
 // ---------------------------------------------------------------------------
-// Phase profiler — CRISPASR_HTDEMUCS_PROFILE=1 prints a per-phase wall-time
+// Phase profiler — STELNETTTS_HTDEMUCS_PROFILE=1 prints a per-phase wall-time
 // breakdown of one forward pass. Zero cost when off (the accumulate is guarded
 // and the clock read only happens inside the guard).
 // ---------------------------------------------------------------------------
 static bool htdemucs_profile() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_PROFILE");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_PROFILE");
         v = (e && atoi(e) != 0) ? 1 : 0;
     }
     return v != 0;
@@ -623,18 +623,18 @@ static htdemucs_context* htdemucs_init_impl(const char* model_path, htdemucs_par
     // Pass 2: load weights.
     //
     // Backend selection now honours params.use_gpu (it was hardcoded to CPU, so
-    // use_gpu and n_threads were dead fields). crispasr_init_gpu_backend() tries
+    // use_gpu and n_threads were dead fields). stelnettts_init_gpu_backend() tries
     // the compiled backends in priority order (CUDA > Metal > Vulkan) and falls
-    // back to CPU. Gated by CRISPASR_HTDEMUCS_GGML because only the graph path
+    // back to CPU. Gated by STELNETTTS_HTDEMUCS_GGML because only the graph path
     // benefits — the CPU/BLAS path wants a CPU backend for its weight reads.
     // GPU only makes sense with the graph path: under the CPU/BLAS path the
     // weights would live on the GPU and every scalar/BLAS kernel would pay a
-    // device->host read. CRISPASR_HTDEMUCS_GPU=1 requests it without having to
+    // device->host read. STELNETTTS_HTDEMUCS_GPU=1 requests it without having to
     // thread a flag through all three surfaces (CLI, session C-ABI, server).
-    const char* gpu_env = getenv("CRISPASR_HTDEMUCS_GPU");
+    const char* gpu_env = getenv("STELNETTTS_HTDEMUCS_GPU");
     const bool want_gpu = (params.use_gpu || (gpu_env && atoi(gpu_env) != 0));
     if (want_gpu && htdemucs_use_ggml()) {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
         if (!ctx->backend)
             ctx->backend = core_cpu_backend::init();
     } else {
@@ -897,12 +897,12 @@ static std::vector<float> read_tensor_f32(ggml_tensor* t) {
 // GEMM for the CrossTransformer hot path.
 //
 // The transformer is ~86% of a forward pass (self-attn 52%, cross-attn 33%,
-// measured with CRISPASR_HTDEMUCS_PROFILE=1), and every matmul in it was a
+// measured with STELNETTTS_HTDEMUCS_PROFILE=1), and every matmul in it was a
 // scalar triple loop whose innermost stride was seq_len floats — ~10 KB, so a
 // cache miss per multiply-add. Routing them through cblas_sgemm fixes both the
 // FLOP rate and the access pattern.
 //
-// Gated by CRISPASR_HTDEMUCS_BLAS (default ON where Accelerate is available).
+// Gated by STELNETTTS_HTDEMUCS_BLAS (default ON where Accelerate is available).
 // Set it to 0 to fall back to the scalar path — that is the A/B lever and the
 // regression-bisection mechanism; do not remove it.
 // ---------------------------------------------------------------------------
@@ -910,7 +910,7 @@ static bool htdemucs_use_blas() {
 #if defined(HAVE_ACCELERATE)
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_BLAS");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_BLAS");
         v = (e && atoi(e) == 0) ? 0 : 1; // default ON
     }
     return v != 0;
@@ -948,41 +948,41 @@ static void htd_gemm(int M, int N, int K, const float* A, const float* B, float*
 // ~6k redundant dequant+copy passes over the same few weights.
 //
 // Cache by tensor pointer. Weights are immutable after load, so this is safe
-// and the cache lives for the process. Gated CRISPASR_HTDEMUCS_WCACHE
+// and the cache lives for the process. Gated STELNETTTS_HTDEMUCS_WCACHE
 // (default ON) so the old behaviour stays A/B-able.
 // ---------------------------------------------------------------------------
-// GGML graph port for the CrossTransformer (CRISPASR_HTDEMUCS_GGML).
+// GGML graph port for the CrossTransformer (STELNETTTS_HTDEMUCS_GGML).
 // Default OFF pending a full A/B: per the dev-guide inverse-default rule a
 // verified-but-not-yet-faster path stays opt-in and the old path stays default.
 static bool htdemucs_use_ggml() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_GGML");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_GGML");
         v = (e && atoi(e) != 0) ? 1 : 0; // default OFF
     }
     return v != 0;
 }
 
 // FUSED: run encoder + transformer + decoder as ONE graph so activations never
-// leave the device (CRISPASR_HTDEMUCS_FUSED, default OFF, requires _GGML=1).
+// leave the device (STELNETTTS_HTDEMUCS_FUSED, default OFF, requires _GGML=1).
 // The per-layer graphs pay a host<->device roundtrip per layer, which measured
 // SLOWER than CPU+Accelerate for the encoder despite the transformer being
 // 3.3-6x faster.
 static bool htdemucs_use_fused() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_FUSED");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_FUSED");
         v = (e && atoi(e) != 0) ? 1 : 0; // default OFF
     }
     return v != 0;
 }
 
 // FASTCONV: batched im2col + gemm for the CPU convs (default ON). Set
-// CRISPASR_HTDEMUCS_FASTCONV=0 for the original per-frame scalar path.
+// STELNETTTS_HTDEMUCS_FASTCONV=0 for the original per-frame scalar path.
 static bool htdemucs_fastconv() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_FASTCONV");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_FASTCONV");
         v = (e && atoi(e) == 0) ? 0 : 1; // default ON
     }
     return v != 0;
@@ -991,7 +991,7 @@ static bool htdemucs_fastconv() {
 static bool htdemucs_use_wcache() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_HTDEMUCS_WCACHE");
+        const char* e = getenv("STELNETTTS_HTDEMUCS_WCACHE");
         v = (e && atoi(e) == 0) ? 0 : 1; // default ON
     }
     return v != 0;
@@ -999,7 +999,7 @@ static bool htdemucs_use_wcache() {
 
 // Returns a reference to the cached F32 copy of `t`. The caller must NOT
 // mutate it (all current uses are read-only weight reads).
-static size_t g_wcache_bytes = 0; // instrumentation only (CRISPASR_HTDEMUCS_MEMSTATS=1)
+static size_t g_wcache_bytes = 0; // instrumentation only (STELNETTTS_HTDEMUCS_MEMSTATS=1)
 
 static const std::vector<float>& cached_tensor_f32(ggml_tensor* t) {
     static std::map<const ggml_tensor*, std::vector<float>> cache;
@@ -1014,7 +1014,7 @@ static const std::vector<float>& cached_tensor_f32(ggml_tensor* t) {
         return it->second;
     const std::vector<float>& v = cache.emplace(t, read_tensor_f32(t)).first->second;
     g_wcache_bytes += v.size() * sizeof(float);
-    if (std::getenv("CRISPASR_HTDEMUCS_MEMSTATS"))
+    if (std::getenv("STELNETTTS_HTDEMUCS_MEMSTATS"))
         fprintf(stderr, "htdemucs: wcache += %8.2f MB (total %7.2f MB) %s\n", v.size() * 4.0 / 1048576.0,
                 g_wcache_bytes / 1048576.0, t->name);
     return v;
@@ -1044,7 +1044,7 @@ static std::vector<float> cpu_conv2d_freq(const std::vector<float>& x, int T, in
         fprintf(stderr, "htdemucs: cpu_conv2d_freq K=%d OC=%d out_Fq=%d out_size=%zu\n", K, OC, out_Fq,
                 (size_t)T * out_Fq * OC);
 
-    // FASTCONV path (CRISPASR_HTDEMUCS_FASTCONV, default ON): batched im2col +
+    // FASTCONV path (STELNETTTS_HTDEMUCS_FASTCONV, default ON): batched im2col +
     // ONE gemm. The original per-time-frame path below rebuilt patches and ran a
     // dot-product loop 336x per layer; enc.conv2d was 21.5% of the forward and is
     // ~0.2% here. The old path is KEPT and reachable with FASTCONV=0 — it is the
@@ -1128,7 +1128,7 @@ static std::vector<float> cpu_conv2d_1x1(const std::vector<float>& x, int spatia
     out_C = (int)w_tensor->ne[3];
     std::vector<float> out((size_t)spatial * out_C, 0.0f);
     // A 1x1 conv is a pure channel matmul: (out_C, IC) x (IC, spatial).
-    // Gated CRISPASR_HTDEMUCS_FASTCONV (default ON); the scalar path is kept.
+    // Gated STELNETTTS_HTDEMUCS_FASTCONV (default ON); the scalar path is kept.
     if (htdemucs_fastconv()) {
         htd_gemm(out_C, spatial, IC, w.data(), x.data(), out.data());
     } else {
@@ -1815,7 +1815,7 @@ static htdemucs_result* htdemucs_separate_full(htdemucs_context* ctx, const floa
         // --- Time branch encoder (runs before freq branch) ---
         std::vector<float> inject_buf; // injection from time→freq at merge point
         bool has_inject = false;
-        if (idx < (int)m.tencoder.size() && m.tencoder[idx].conv_w && !getenv("CRISPASR_HTDEMUCS_SKIP_TIME")) {
+        if (idx < (int)m.tencoder.size() && m.tencoder[idx].conv_w && !getenv("STELNETTTS_HTDEMUCS_SKIP_TIME")) {
             HTD_PROF(prof, "tenc[nested total]");
             auto& tenc = m.tencoder[idx];
 
@@ -3661,7 +3661,7 @@ static htdemucs_result* htdemucs_separate_full(htdemucs_context* ctx, const floa
 //
 // Short inputs (<= one segment) still take the whole-buffer path, so their
 // output is bit-identical to before this change -- there is no regression
-// surface for the case that already worked. CRISPASR_HTDEMUCS_NO_SEGMENT=1
+// surface for the case that already worked. STELNETTTS_HTDEMUCS_NO_SEGMENT=1
 // forces the old behaviour everywhere for A/B.
 htdemucs_result* htdemucs_separate(htdemucs_context* ctx, const float* pcm_stereo, int n_samples) {
     if (!ctx || !pcm_stereo || n_samples <= 0)
@@ -3669,7 +3669,7 @@ htdemucs_result* htdemucs_separate(htdemucs_context* ctx, const float* pcm_stere
 
     const auto& hp = ctx->model.hparams;
     const int seg_len = hp.training_length();
-    const bool no_seg = std::getenv("CRISPASR_HTDEMUCS_NO_SEGMENT") != nullptr;
+    const bool no_seg = std::getenv("STELNETTTS_HTDEMUCS_NO_SEGMENT") != nullptr;
 
     if (no_seg || n_samples <= seg_len || seg_len <= 0)
         return htdemucs_separate_full(ctx, pcm_stereo, n_samples);
@@ -3796,7 +3796,7 @@ const char* htdemucs_source_name(const htdemucs_context* ctx, int idx) {
 }
 
 // ---------------------------------------------------------------------------
-// Frequency encoder layer as a ggml graph (CRISPASR_HTDEMUCS_GGML=1)
+// Frequency encoder layer as a ggml graph (STELNETTTS_HTDEMUCS_GGML=1)
 //
 // The CPU buffer layout (t + fq*T + c*T*Fq) is ALREADY ggml's ne = (T, Fq, C),
 // so nothing has to be transposed here — unlike the transformer, this maps
@@ -3971,7 +3971,7 @@ static bool htdemucs_enc_freq_ggml(htdemucs_context* ctx, const htdemucs_enc_lay
 }
 
 // ---------------------------------------------------------------------------
-// Frequency decoder layer as a ggml graph (CRISPASR_HTDEMUCS_GGML=1)
+// Frequency decoder layer as a ggml graph (STELNETTTS_HTDEMUCS_GGML=1)
 //
 // The one op ggml cannot express directly is the ConvTranspose2d: it only has
 // ggml_conv_transpose_2d_p0 (a single stride, zero padding), while this model
@@ -4105,7 +4105,7 @@ static bool htdemucs_dec_freq_ggml(htdemucs_context* ctx, const htdemucs_dec_lay
 }
 
 // ---------------------------------------------------------------------------
-// CrossTransformer as a ggml graph (CRISPASR_HTDEMUCS_GGML=1)
+// CrossTransformer as a ggml graph (STELNETTTS_HTDEMUCS_GGML=1)
 //
 // The CPU/BLAS path stays the default; this is the opt-in graph port that lets
 // the transformer run on Metal/CUDA/Vulkan instead of Accelerate.
@@ -4456,7 +4456,7 @@ static bool htdemucs_fused_run(htdemucs_context* ctx, ggml_context* g, ggml_cgra
 
 // ---------------------------------------------------------------------------
 // FUSED forward: encoder + CrossTransformer + decoder in ONE ggml graph
-// (CRISPASR_HTDEMUCS_GGML=1, requires CRISPASR_HTDEMUCS_FUSED=1)
+// (STELNETTTS_HTDEMUCS_GGML=1, requires STELNETTTS_HTDEMUCS_FUSED=1)
 //
 // The per-layer graphs were measured SLOWER than CPU+Accelerate for the
 // encoder (1.2-2.1x) despite the transformer being 3.3-6x faster, because each

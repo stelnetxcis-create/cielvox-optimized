@@ -2,7 +2,7 @@
 // wrapper (docs/contributing.md §"Bindings — adding a new session setter").
 //
 // That checklist says these entry points are "kept at full parity" across nine
-// surfaces, and nothing enforced it. `crispasr_session_set_sensitivity` shipped
+// surfaces, and nothing enforced it. `stelnettts_session_set_sensitivity` shipped
 // in the C ABI and Python only, and stayed that way through two commits and a
 // release-notes pass because a hand-maintained list of nine files has no
 // machine check — the exact failure the copies-in-sync guard was built for
@@ -19,14 +19,14 @@
 #include <string>
 #include <vector>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
 
 std::string slurp(const std::string& rel) {
-    std::ifstream f(std::string(CRISPASR_SOURCE_DIR) + "/" + rel, std::ios::binary);
+    std::ifstream f(std::string(STELNETTTS_SOURCE_DIR) + "/" + rel, std::ios::binary);
     REQUIRE(f.good());
     std::ostringstream ss;
     ss << f.rdbuf();
@@ -36,25 +36,25 @@ std::string slurp(const std::string& rel) {
 // The nine surfaces from docs/contributing.md. The C ABI is the source of
 // truth; the rest must mirror it.
 const char* kSurfaces[] = {
-    "src/crispasr_c_api.cpp",
-    "python/crispasr/_binding.py",
-    "bindings/go/crispasr_session.go",
-    "crispasr-sys/src/lib.rs",
-    "crispasr/src/lib.rs",
-    "flutter/crispasr/lib/src/crispasr.dart",
+    "src/stelnettts_c_api.cpp",
+    "python/stelnettts/_binding.py",
+    "bindings/go/stelnettts_session.go",
+    "stelnettts-sys/src/lib.rs",
+    "stelnettts/src/lib.rs",
+    "flutter/stelnettts/lib/src/stelnettts.dart",
     "bindings/java/src/main/java/io/github/ggerganov/whispercpp/CrispasrSession.java",
-    "bindings/ruby/ext/ruby_crispasr_session.c",
-    "bindings/csharp/CrispASR/NativeMethods.cs",
+    "bindings/ruby/ext/ruby_stelnettts_session.c",
+    "bindings/csharp/StelnetTTS/NativeMethods.cs",
     "bindings/javascript/emscripten.cpp",
 };
 
 } // namespace
 
-TEST_CASE("crispasr_session_set_sensitivity reaches every wrapper", "[setter-parity]") {
+TEST_CASE("stelnettts_session_set_sensitivity reaches every wrapper", "[setter-parity]") {
     for (const char* rel : kSurfaces) {
         INFO("surface: " << rel);
         const std::string src = slurp(rel);
-        REQUIRE(src.find("crispasr_session_set_sensitivity") != std::string::npos);
+        REQUIRE(src.find("stelnettts_session_set_sensitivity") != std::string::npos);
     }
 }
 
@@ -64,7 +64,7 @@ TEST_CASE("the sibling it bundles is present everywhere too", "[setter-parity]")
     for (const char* rel : kSurfaces) {
         INFO("surface: " << rel);
         const std::string src = slurp(rel);
-        REQUIRE(src.find("crispasr_session_set_fallback_thresholds") != std::string::npos);
+        REQUIRE(src.find("stelnettts_session_set_fallback_thresholds") != std::string::npos);
     }
 }
 
@@ -77,7 +77,7 @@ TEST_CASE("issue #360: set_min_speech_tokens reaches every wrapper", "[setter-pa
     for (const char* rel : kSurfaces) {
         INFO("surface: " << rel);
         const std::string src = slurp(rel);
-        REQUIRE(src.find("crispasr_session_set_min_speech_tokens") != std::string::npos);
+        REQUIRE(src.find("stelnettts_session_set_min_speech_tokens") != std::string::npos);
     }
 }
 
@@ -87,14 +87,14 @@ TEST_CASE("issue #360: the max sibling stays on every wrapper too", "[setter-par
     for (const char* rel : kSurfaces) {
         INFO("surface: " << rel);
         const std::string src = slurp(rel);
-        REQUIRE(src.find("crispasr_session_set_max_speech_tokens") != std::string::npos);
+        REQUIRE(src.find("stelnettts_session_set_max_speech_tokens") != std::string::npos);
     }
 }
 
 TEST_CASE("issue #360: the CLI and the server can both set the floor", "[setter-parity]") {
     const std::string cli = slurp("examples/cli/cli.cpp");
     REQUIRE(cli.find("--tts-min-speech-tokens") != std::string::npos);
-    const std::string srv = slurp("examples/cli/crispasr_server.cpp");
+    const std::string srv = slurp("examples/cli/stelnettts_server.cpp");
     REQUIRE(srv.find("min_speech_tokens") != std::string::npos);
 }
 
@@ -104,7 +104,7 @@ TEST_CASE("C# does not swallow the unknown-preset return code", "[setter-parity]
     // set_sensitivity, -2 means "unknown preset" — routing it through Check()
     // would silently decode at the default thresholds after a typo, which is
     // precisely what the API exists to prevent.
-    const std::string src = slurp("bindings/csharp/CrispASR/Session.cs");
+    const std::string src = slurp("bindings/csharp/StelnetTTS/Session.cs");
     const size_t fn = src.find("public void SetSensitivity(");
     REQUIRE(fn != std::string::npos);
     const std::string body = src.substr(fn, 1200);
@@ -116,7 +116,7 @@ TEST_CASE("C# does not swallow the unknown-preset return code", "[setter-parity]
 TEST_CASE("the HTTP server exposes it and applies it before the raw fields", "[setter-parity]") {
     // Order matters: applied first so an explicit entropy_thold in the same
     // request still wins, matching the CLI's last-flag-wins rule.
-    const std::string src = slurp("examples/cli/crispasr_server.cpp");
+    const std::string src = slurp("examples/cli/stelnettts_server.cpp");
     const size_t sens = src.find("form_string(req, \"sensitivity\"");
     REQUIRE(sens != std::string::npos);
     const size_t ent = src.find("form_float(req, \"entropy_thold\"");

@@ -3,7 +3,7 @@
 Captures stage-by-stage activations from the official PyTorch
 `MiMoAudioForCausalLM` forward pass on the assembled `asr_sft` prompt
 so the C++ runtime in src/mimo_asr.cpp can be compared element-wise via
-crispasr-diff.
+stelnettts-diff.
 
 Pipeline (see ref/mimo/github/src/mimo_audio/modeling_mimo_audio.py):
 

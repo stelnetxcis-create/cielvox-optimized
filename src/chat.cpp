@@ -1,16 +1,16 @@
-// chat.cpp — implementation of the public crispasr_chat_* C ABI.
+// chat.cpp — implementation of the public stelnettts_chat_* C ABI.
 //
-// Sits on the private `crispasr-llama-core` static lib (vendored llama.cpp).
+// Sits on the private `stelnettts-llama-core` static lib (vendored llama.cpp).
 // llama.h types stay inside this translation unit — none leak into
-// include/crispasr_chat.h. See docs/prompts/chat-abi.md for the
+// include/stelnettts_chat.h. See docs/prompts/chat-abi.md for the
 // full design rationale.
 //
 // Threading
-//   One `crispasr_chat_session` carries its own mutex; concurrent calls
+//   One `stelnettts_chat_session` carries its own mutex; concurrent calls
 //   on the same handle serialise. Multiple sessions in the same process
 //   run independently.
 //
-//   That mutex cannot also govern teardown. `crispasr_chat_close` frees
+//   That mutex cannot also govern teardown. `stelnettts_chat_close` frees
 //   the context, the model and the session itself, and a generation holds
 //   the mutex for as long as it decodes — seconds — so a close that merely
 //   took the mutex would still free the session under a second call that
@@ -20,11 +20,11 @@
 //   for the count to fall to zero, and only then frees.
 //
 // KV cache
-//   Persisted across `crispasr_chat_generate` calls inside one session
+//   Persisted across `stelnettts_chat_generate` calls inside one session
 //   so a multi-turn chat doesn't re-prefill the history. `_reset` calls
 //   `llama_memory_clear` on the KV state.
 
-#include "crispasr_chat.h"
+#include "stelnettts_chat.h"
 
 #include "llama.h"
 
@@ -56,7 +56,7 @@ void ensure_llama_backend_init() {
     std::call_once(g_llama_backend_init_flag, []() { llama_backend_init(); });
 }
 
-void set_err(crispasr_chat_error* err, int32_t code, const char* fmt, ...) {
+void set_err(stelnettts_chat_error* err, int32_t code, const char* fmt, ...) {
     if (!err) {
         return;
     }
@@ -128,7 +128,7 @@ size_t find_first_stop(const std::string& acc, const char* const* stop, size_t n
 // With n == 0 the result is the template's own opening — for add_ass that
 // is the bare assistant prefix, which is what a token count of an empty
 // conversation should report. Returns false on failure.
-bool apply_chat_template(const char* tmpl, const crispasr_chat_message* msgs, size_t n, bool add_ass,
+bool apply_chat_template(const char* tmpl, const stelnettts_chat_message* msgs, size_t n, bool add_ass,
                          std::string& out) {
     // llama.cpp's signature expects llama_chat_message (same shape as ours).
     std::vector<llama_chat_message> chat;
@@ -173,7 +173,7 @@ const char* resolve_template(const llama_model* model, const char* override_tmpl
 // ---------------------------------------------------------------------------
 // Session impl
 // ---------------------------------------------------------------------------
-struct crispasr_chat_session {
+struct stelnettts_chat_session {
     llama_model* model = nullptr;
     llama_context* ctx = nullptr;
     const llama_vocab* vocab = nullptr;
@@ -191,7 +191,7 @@ struct crispasr_chat_session {
     // Caller's cancellation hook, consulted between prompt batches and
     // before each sampled token. Also handed to llama_set_abort_callback,
     // which reaches the CPU backend's in-graph check.
-    crispasr_chat_abort_callback abort_cb = nullptr;
+    stelnettts_chat_abort_callback abort_cb = nullptr;
     void* abort_user = nullptr;
 
     // Mutex serialising one-call-at-a-time per session.
@@ -209,7 +209,7 @@ struct crispasr_chat_session {
 namespace {
 
 // Holds the session open for the span of one call. Every entry point that
-// dereferences a session takes one; `crispasr_chat_close` waits for the
+// dereferences a session takes one; `stelnettts_chat_close` waits for the
 // count to reach zero before it frees anything.
 //
 // A hold taken on a session already retired is refused rather than granted,
@@ -219,10 +219,10 @@ namespace {
 // check lives in the memory being freed, so a call descheduled just before it
 // locks `s_->life` can have the session freed underneath it and then lock a
 // destroyed mutex. Closing that window needs storage that outlives the
-// session, which is the caller's own lock — see crispasr_chat_close.
+// session, which is the caller's own lock — see stelnettts_chat_close.
 class session_hold {
 public:
-    explicit session_hold(crispasr_chat_session* s) : s_(s) {
+    explicit session_hold(stelnettts_chat_session* s) : s_(s) {
         if (!s_) {
             return;
         }
@@ -253,12 +253,12 @@ public:
     bool held() const { return s_ != nullptr; }
 
 private:
-    crispasr_chat_session* s_;
+    stelnettts_chat_session* s_;
 };
 
 // The public callback returns false to abort; every call site asks the
 // opposite question, so invert once here.
-bool abort_requested(crispasr_chat_session* s) {
+bool abort_requested(stelnettts_chat_session* s) {
     return s->abort_cb && !s->abort_cb(s->abort_user);
 }
 
@@ -267,7 +267,7 @@ bool abort_requested(crispasr_chat_session* s) {
 // pointer: the two types differ in meaning, and casting them would be
 // undefined behaviour the moment ggml called through it.
 bool abort_trampoline(void* data) {
-    auto* s = static_cast<crispasr_chat_session*>(data);
+    auto* s = static_cast<stelnettts_chat_session*>(data);
     return s && abort_requested(s);
 }
 
@@ -276,7 +276,7 @@ bool abort_trampoline(void* data) {
 // ---------------------------------------------------------------------------
 // Default params
 // ---------------------------------------------------------------------------
-extern "C" void crispasr_chat_open_params_default(crispasr_chat_open_params* out) {
+extern "C" void stelnettts_chat_open_params_default(stelnettts_chat_open_params* out) {
     if (!out) {
         return;
     }
@@ -293,7 +293,7 @@ extern "C" void crispasr_chat_open_params_default(crispasr_chat_open_params* out
     out->chat_template = nullptr;
 }
 
-extern "C" void crispasr_chat_generate_params_default(crispasr_chat_generate_params* out) {
+extern "C" void stelnettts_chat_generate_params_default(stelnettts_chat_generate_params* out) {
     if (!out) {
         return;
     }
@@ -313,16 +313,16 @@ extern "C" void crispasr_chat_generate_params_default(crispasr_chat_generate_par
 // ---------------------------------------------------------------------------
 // Open / close
 // ---------------------------------------------------------------------------
-extern "C" crispasr_chat_session_t crispasr_chat_open(const char* model_path, const crispasr_chat_open_params* params,
-                                                      crispasr_chat_error* err) {
+extern "C" stelnettts_chat_session_t stelnettts_chat_open(const char* model_path, const stelnettts_chat_open_params* params,
+                                                      stelnettts_chat_error* err) {
     if (!model_path || !*model_path) {
         set_err(err, 1, "model_path is null or empty");
         return nullptr;
     }
     ensure_llama_backend_init();
 
-    crispasr_chat_open_params p;
-    crispasr_chat_open_params_default(&p);
+    stelnettts_chat_open_params p;
+    stelnettts_chat_open_params_default(&p);
     if (params) {
         p = *params;
     }
@@ -357,7 +357,7 @@ extern "C" crispasr_chat_session_t crispasr_chat_open(const char* model_path, co
     // ^ false positive: `new (std::nothrow) T{}` value-initializes; `s` is
     //   either nullptr or fully zeroed before the null check below.
     // cppcheck-suppress uninitvar
-    auto* s = new (std::nothrow) crispasr_chat_session{};
+    auto* s = new (std::nothrow) stelnettts_chat_session{};
     if (!s) {
         llama_free(ctx);
         llama_model_free(model);
@@ -374,7 +374,7 @@ extern "C" crispasr_chat_session_t crispasr_chat_open(const char* model_path, co
     return s;
 }
 
-extern "C" void crispasr_chat_close(crispasr_chat_session_t s) {
+extern "C" void stelnettts_chat_close(stelnettts_chat_session_t s) {
     if (!s) {
         return;
     }
@@ -403,7 +403,7 @@ extern "C" void crispasr_chat_close(crispasr_chat_session_t s) {
     delete s;
 }
 
-extern "C" int32_t crispasr_chat_reset(crispasr_chat_session_t s, crispasr_chat_error* err) {
+extern "C" int32_t stelnettts_chat_reset(stelnettts_chat_session_t s, stelnettts_chat_error* err) {
     if (!s) {
         set_err(err, 1, "session is null");
         return 1;
@@ -419,7 +419,7 @@ extern "C" int32_t crispasr_chat_reset(crispasr_chat_session_t s, crispasr_chat_
     return 0;
 }
 
-extern "C" const char* crispasr_chat_template_name(crispasr_chat_session_t s) {
+extern "C" const char* stelnettts_chat_template_name(stelnettts_chat_session_t s) {
     // The hold covers the read, not the pointer: what comes back points into
     // the session's own string and dies with the session, exactly as before.
     // Copy it before the next close, as the header says.
@@ -427,13 +427,13 @@ extern "C" const char* crispasr_chat_template_name(crispasr_chat_session_t s) {
     return hold.held() ? s->tmpl.c_str() : nullptr;
 }
 
-extern "C" int32_t crispasr_chat_n_ctx(crispasr_chat_session_t s) {
+extern "C" int32_t stelnettts_chat_n_ctx(stelnettts_chat_session_t s) {
     session_hold hold(s);
     return hold.held() ? s->n_ctx : 0;
 }
 
-extern "C" int32_t crispasr_chat_count_tokens(crispasr_chat_session_t s, const crispasr_chat_message* messages,
-                                              size_t n_messages, crispasr_chat_error* err) {
+extern "C" int32_t stelnettts_chat_count_tokens(stelnettts_chat_session_t s, const stelnettts_chat_message* messages,
+                                              size_t n_messages, stelnettts_chat_error* err) {
     if (!s) {
         set_err(err, 1, "session is null");
         return -1;
@@ -473,7 +473,7 @@ extern "C" int32_t crispasr_chat_count_tokens(crispasr_chat_session_t s, const c
     return (int32_t)tokens.size();
 }
 
-extern "C" void crispasr_chat_set_abort_callback(crispasr_chat_session_t s, crispasr_chat_abort_callback cb,
+extern "C" void stelnettts_chat_set_abort_callback(stelnettts_chat_session_t s, stelnettts_chat_abort_callback cb,
                                                  void* user) {
     if (!s) {
         return;
@@ -500,7 +500,7 @@ namespace {
 // Build a sampler chain matching `params`. Caller owns the result via
 // llama_sampler_free. Order matches llama.cpp's recommended layout in
 // examples/main: penalties → top_k → top_p → min_p → temp → dist.
-llama_sampler* build_sampler_chain(const llama_vocab* vocab, const crispasr_chat_generate_params& gp) {
+llama_sampler* build_sampler_chain(const llama_vocab* vocab, const stelnettts_chat_generate_params& gp) {
     llama_sampler_chain_params sp = llama_sampler_chain_default_params();
     sp.no_perf = true;
     llama_sampler* chain = llama_sampler_chain_init(sp);
@@ -534,9 +534,9 @@ llama_sampler* build_sampler_chain(const llama_vocab* vocab, const crispasr_chat
 // Common generation loop. `on_token`, if non-null, fires once per
 // detokenised piece. `out` accumulates the full text. Returns 0 on
 // success, non-zero on decode failure.
-int32_t generate_loop(crispasr_chat_session* s, const std::vector<llama_token>& prompt_new,
-                      const crispasr_chat_generate_params& gp, crispasr_chat_on_token on_token, void* user,
-                      std::string& out, crispasr_chat_error* err) {
+int32_t generate_loop(stelnettts_chat_session* s, const std::vector<llama_token>& prompt_new,
+                      const stelnettts_chat_generate_params& gp, stelnettts_chat_on_token on_token, void* user,
+                      std::string& out, stelnettts_chat_error* err) {
     // -- Prefill the prompt prefix in one (or several) batches. --
     if (!prompt_new.empty()) {
         // llama_decode asserts rather than erroring when a batch holds more
@@ -553,8 +553,8 @@ int32_t generate_loop(crispasr_chat_session* s, const std::vector<llama_token>& 
             if (abort_requested(s)) {
                 llama_memory_clear(llama_get_memory(s->ctx), /*data=*/true);
                 s->history.clear();
-                set_err(err, CRISPASR_CHAT_ERR_ABORTED, "generation aborted by callback during prefill");
-                return CRISPASR_CHAT_ERR_ABORTED;
+                set_err(err, STELNETTTS_CHAT_ERR_ABORTED, "generation aborted by callback during prefill");
+                return STELNETTTS_CHAT_ERR_ABORTED;
             }
             const int32_t n_piece = std::min(n_piece_max, n_total - off);
             llama_batch batch = llama_batch_get_one(tokens.data() + off, n_piece);
@@ -568,8 +568,8 @@ int32_t generate_loop(crispasr_chat_session* s, const std::vector<llama_token>& 
                 llama_memory_clear(llama_get_memory(s->ctx), /*data=*/true);
                 s->history.clear();
                 if (cancelled) {
-                    set_err(err, CRISPASR_CHAT_ERR_ABORTED, "generation aborted by callback during prefill");
-                    return CRISPASR_CHAT_ERR_ABORTED;
+                    set_err(err, STELNETTTS_CHAT_ERR_ABORTED, "generation aborted by callback during prefill");
+                    return STELNETTTS_CHAT_ERR_ABORTED;
                 }
                 set_err(err, 10, "llama_decode failed during prefill");
                 return 10;
@@ -602,8 +602,8 @@ int32_t generate_loop(crispasr_chat_session* s, const std::vector<llama_token>& 
             // prefix it would have to diverge from anyway.
             llama_memory_clear(llama_get_memory(s->ctx), /*data=*/true);
             s->history.clear();
-            set_err(err, CRISPASR_CHAT_ERR_ABORTED, "generation aborted by callback");
-            return CRISPASR_CHAT_ERR_ABORTED;
+            set_err(err, STELNETTTS_CHAT_ERR_ABORTED, "generation aborted by callback");
+            return STELNETTTS_CHAT_ERR_ABORTED;
         }
 
         new_token = llama_sampler_sample(smpl.get(), s->ctx, -1);
@@ -644,8 +644,8 @@ int32_t generate_loop(crispasr_chat_session* s, const std::vector<llama_token>& 
             llama_memory_clear(llama_get_memory(s->ctx), /*data=*/true);
             s->history.clear();
             if (cancelled) {
-                set_err(err, CRISPASR_CHAT_ERR_ABORTED, "generation aborted by callback");
-                return CRISPASR_CHAT_ERR_ABORTED;
+                set_err(err, STELNETTTS_CHAT_ERR_ABORTED, "generation aborted by callback");
+                return STELNETTTS_CHAT_ERR_ABORTED;
             }
             set_err(err, 12, "llama_decode failed during generation");
             return 12;
@@ -658,8 +658,8 @@ int32_t generate_loop(crispasr_chat_session* s, const std::vector<llama_token>& 
 // the NEW token suffix (the part not already in `s->history`). Where the
 // new prompt diverges from the history, the KV cache is truncated to
 // their common prefix so only the divergent tail is re-decoded.
-int32_t prepare_prompt(crispasr_chat_session* s, const crispasr_chat_message* messages, size_t n_messages,
-                       std::vector<llama_token>& out_new, crispasr_chat_error* err) {
+int32_t prepare_prompt(stelnettts_chat_session* s, const stelnettts_chat_message* messages, size_t n_messages,
+                       std::vector<llama_token>& out_new, stelnettts_chat_error* err) {
     if (n_messages == 0) {
         // Nothing to answer: the template would render a bare assistant
         // prefix and the model would continue from nowhere.
@@ -728,9 +728,9 @@ int32_t prepare_prompt(crispasr_chat_session* s, const crispasr_chat_message* me
 // ---------------------------------------------------------------------------
 // Public generate entrypoints
 // ---------------------------------------------------------------------------
-extern "C" char* crispasr_chat_generate(crispasr_chat_session_t s, const crispasr_chat_message* messages,
-                                        size_t n_messages, const crispasr_chat_generate_params* params,
-                                        crispasr_chat_error* err) {
+extern "C" char* stelnettts_chat_generate(stelnettts_chat_session_t s, const stelnettts_chat_message* messages,
+                                        size_t n_messages, const stelnettts_chat_generate_params* params,
+                                        stelnettts_chat_error* err) {
     if (!s) {
         set_err(err, 1, "session is null");
         return nullptr;
@@ -746,8 +746,8 @@ extern "C" char* crispasr_chat_generate(crispasr_chat_session_t s, const crispas
     }
     std::lock_guard<std::mutex> guard(s->mu);
 
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     if (params) {
         gp = *params;
     }
@@ -770,10 +770,10 @@ extern "C" char* crispasr_chat_generate(crispasr_chat_session_t s, const crispas
     return dup;
 }
 
-extern "C" int32_t crispasr_chat_generate_stream(crispasr_chat_session_t s, const crispasr_chat_message* messages,
-                                                 size_t n_messages, const crispasr_chat_generate_params* params,
-                                                 crispasr_chat_on_token on_token, void* user,
-                                                 crispasr_chat_error* err) {
+extern "C" int32_t stelnettts_chat_generate_stream(stelnettts_chat_session_t s, const stelnettts_chat_message* messages,
+                                                 size_t n_messages, const stelnettts_chat_generate_params* params,
+                                                 stelnettts_chat_on_token on_token, void* user,
+                                                 stelnettts_chat_error* err) {
     if (!s) {
         set_err(err, 1, "session is null");
         return 1;
@@ -789,8 +789,8 @@ extern "C" int32_t crispasr_chat_generate_stream(crispasr_chat_session_t s, cons
     }
     std::lock_guard<std::mutex> guard(s->mu);
 
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     if (params) {
         gp = *params;
     }
@@ -803,18 +803,18 @@ extern "C" int32_t crispasr_chat_generate_stream(crispasr_chat_session_t s, cons
     return generate_loop(s, prompt_new, gp, on_token, user, sink, err);
 }
 
-extern "C" void crispasr_chat_string_free(char* s) {
+extern "C" void stelnettts_chat_string_free(char* s) {
     if (s) {
         std::free(s);
     }
 }
 
 // The canonical Art. 50(1) disclosure for conversational products built on this
-// ABI. Deliberately parallel to crispasr_session_disclaimer_text() on the audio
+// ABI. Deliberately parallel to stelnettts_session_disclaimer_text() on the audio
 // side — same job, different modality — and kept in ONE place so the CLI, the
 // server, the Flutter binding and downstream integrators cannot each invent
 // their own wording. tests/test-compliance-wiring.cpp pins it against drift.
-extern "C" const char* crispasr_chat_ai_disclosure_text(void) {
+extern "C" const char* stelnettts_chat_ai_disclosure_text(void) {
     return "You are interacting with an AI system. Responses are generated by artificial intelligence.";
 }
 
@@ -839,8 +839,8 @@ extern "C" const char* crispasr_chat_ai_disclosure_text(void) {
 // flag, before it reads the context length, embedding length and block count —
 // precisely the three values the KV term below is built from — so the estimate
 // would silently collapse to file size + overhead while reporting success.
-extern "C" size_t crispasr_chat_memory_estimate(const char* model_path, const crispasr_chat_open_params* params,
-                                                crispasr_chat_error* err) {
+extern "C" size_t stelnettts_chat_memory_estimate(const char* model_path, const stelnettts_chat_open_params* params,
+                                                stelnettts_chat_error* err) {
     if (!model_path || !*model_path) {
         set_err(err, 1, "model_path is null");
         return 0;

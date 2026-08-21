@@ -5,7 +5,7 @@
 # our attention output is 0.3% off with an EXACT input. Prime suspect: our fused
 # ggml flash_attn_ext vs the reference's eager softmax(QK^T/sqrt d)V. Reference-FREE
 # decisive check: dump our own layer-0 Q_post_rope / Kfull / Vfull / fa_out (the
-# core_attn CRISPASR_CORE_ATTN_DUMP_FA_LAYER hook), recompute eager attention from
+# core_attn STELNETTTS_CORE_ATTN_DUMP_FA_LAYER hook), recompute eager attention from
 # those exact Q/K/V in numpy, and compare to our fa_out.
 #   eager != our fa_out -> flash_attn_ext is the bug (scale/mask/accumulation)
 #   eager == our fa_out -> flash is fine; the 0.3% is upstream in Q/K/V (rope/qk-norm)
@@ -16,19 +16,19 @@ import json, os, subprocess, sys, gc, math, shutil
 from pathlib import Path
 import numpy as np
 
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 WORK = Path("/kaggle/working")
-REF = os.environ.get("CRISPASR_REF", "fix/249-moss")
+REF = os.environ.get("STELNETTTS_REF", "fix/249-moss")
 HF = "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5"
 TEXT = "Hello world."
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", "--branch", REF,
-                           "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
                            "--recursive", "--depth", "1"], timeout=1800)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("start", ref=REF)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -71,28 +71,28 @@ def robust_download(repo, fname, local_dir, token, tries=3, timeout=900):
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=False)}")
-CLI = (BUILD / "bin" / "crispasr") if (BUILD / "bin" / "crispasr").exists() else next(iter(BUILD.rglob("crispasr")))
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=False)}")
+CLI = (BUILD / "bin" / "stelnettts") if (BUILD / "bin" / "stelnettts").exists() else next(iter(BUILD.rglob("stelnettts")))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done")
 
 MODELS = Path("/kaggle/temp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 with kh.build_heartbeat("download"):
-    CODEC = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(MODELS), TOKEN)
-    F16 = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(MODELS), TOKEN)
+    CODEC = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(MODELS), TOKEN)
+    F16 = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(MODELS), TOKEN)
 
 # ── our layer-L attention-internals dump (L=10: the divergence layer) ──────────
-LAYER = int(os.environ.get("CRISPASR_DIAG_LAYER", "10"))
+LAYER = int(os.environ.get("STELNETTTS_DIAG_LAYER", "10"))
 fa_path = WORK / "ours_fa.txt"
 sub_path = WORK / "ours_sub.txt"
 lay_path = WORK / "ours_layers.txt"  # every block's output (input to L = block L-1)
-env = {**os.environ, "CRISPASR_CORE_ATTN_DUMP_FA_LAYER": str(LAYER),
-       "CRISPASR_MOSS_TTS_LOCAL_DUMP_FA_PATH": str(fa_path),
-       "CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER": str(LAYER),
-       "CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH": str(sub_path),
-       "CRISPASR_MOSS_TTS_LOCAL_DUMP_LAYERS": str(lay_path)}
+env = {**os.environ, "STELNETTTS_CORE_ATTN_DUMP_FA_LAYER": str(LAYER),
+       "STELNETTTS_MOSS_TTS_LOCAL_DUMP_FA_PATH": str(fa_path),
+       "STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER": str(LAYER),
+       "STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH": str(sub_path),
+       "STELNETTTS_MOSS_TTS_LOCAL_DUMP_LAYERS": str(lay_path)}
 with kh.build_heartbeat("ours.synth"):
     try:
         subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", F16, "--codec-model", CODEC,

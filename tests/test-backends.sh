@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-backends.sh — regression tests for all CrispASR backends.
+# test-backends.sh — regression tests for all StelnetTTS backends.
 #
 # Downloads models via -m auto --auto-download, transcribes jfk.wav,
 # and compares output against reference transcriptions.
@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="./build/bin/crispasr"
+CRISPASR="./build/bin/stelnettts"
 SAMPLE="./samples/jfk.wav"
 PASS=0
 FAIL=0
@@ -77,7 +77,7 @@ SLOW_BACKENDS="omniasr-llm voxtral voxtral4b granite granite-4.1 granite-4.1-plu
 TTS_BACKENDS="kokoro piper speecht5 bark"
 # vibevoice variants and omniasr-llm are very slow on CPU — skip by default
 
-echo "CrispASR backend regression tests"
+echo "StelnetTTS backend regression tests"
 echo "================================="
 
 if [ $# -gt 0 ]; then
@@ -100,12 +100,12 @@ else
 
     echo ""
     echo "Slow backends (> 120s, skipping on CI):"
-    if [ "${CRISPASR_TEST_SLOW:-0}" = "1" ]; then
+    if [ "${STELNETTTS_TEST_SLOW:-0}" = "1" ]; then
         for b in $SLOW_BACKENDS; do
             test_backend "$b" 600
         done
     else
-        echo "  (set CRISPASR_TEST_SLOW=1 to run)"
+        echo "  (set STELNETTTS_TEST_SLOW=1 to run)"
         SKIP=$((SKIP + ${#SLOW_BACKENDS}))
     fi
 fi
@@ -113,7 +113,7 @@ fi
 # TTS smoke tests
 echo ""
 echo "TTS backends (smoke test):"
-if [ "${CRISPASR_TEST_TTS:-0}" = "1" ]; then
+if [ "${STELNETTTS_TEST_TTS:-0}" = "1" ]; then
     for b in $TTS_BACKENDS; do
         echo -n "  $b: "
         local_out="/tmp/tts-$b.wav"
@@ -133,7 +133,7 @@ if [ "${CRISPASR_TEST_TTS:-0}" = "1" ]; then
         fi
     done
 else
-    echo "  (set CRISPASR_TEST_TTS=1 to run)"
+    echo "  (set STELNETTTS_TEST_TTS=1 to run)"
 fi
 
 echo ""

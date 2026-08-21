@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert descript/dac_44khz HuggingFace model -> GGUF F16/F32 for the
-CrispASR `dac_decoder` core component.
+StelnetTTS `dac_decoder` core component.
 
 Descript Audio Codec (DAC) is a neural audio codec with 9 residual VQ
 codebooks at 44.1 kHz output. Used by Zonos TTS (PLAN #130) and

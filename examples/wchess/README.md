@@ -2,7 +2,7 @@
 
 Voice-controlled chess using Whisper
 
-Online demo: https://ggml.ai/crispasr/wchess.wasm/
+Online demo: https://ggml.ai/stelnettts/wchess.wasm/
 
 Demo video: see the project history and upstream example documentation.
 
@@ -10,7 +10,7 @@ Demo video: see the project history and upstream example documentation.
 
 ```bash
 mkdir build && cd build
-cmake -DCRISPASR_SDL2=1 ..
+cmake -DSTELNETTTS_SDL2=1 ..
 make -j
 
 ./bin/wchess -m ../models/ggml-base.en.bin

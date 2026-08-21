@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-#304 follow-up — Vulkan audit of every CrispASR TTS backend SubtitleEdit ships.
+#304 follow-up — Vulkan audit of every StelnetTTS TTS backend SubtitleEdit ships.
 
 SubtitleEdit downloads the *Vulkan* Windows build for every Windows user and
-drives these backends through the crispasr /v1/audio/speech server. cosyvoice3
+drives these backends through the stelnettts /v1/audio/speech server. cosyvoice3
 was confirmed to emit blank/garbled audio on Vulkan (AR decode collapses; conv
 vocoder corrupts) and fixed by routing to CPU under Vulkan. This kernel checks
 whether the OTHER SE-exposed TTS backends have the same bug on a real Vulkan
@@ -13,9 +13,9 @@ Method per backend: synthesize one sentence under --gpu-backend vulkan and under
 --no-gpu (CPU baseline), ASR-roundtrip both with whisper-tiny.en, compare. A
 backend is FLAGGED VULKAN_BROKEN when CPU is intelligible but Vulkan collapses.
 
-Uses the prebuilt crispasr-linux-x86_64-vulkan.tar.gz (v0.8.22) — so cosyvoice3
+Uses the prebuilt stelnettts-linux-x86_64-vulkan.tar.gz (v0.8.22) — so cosyvoice3
 here is UNFIXED and is the positive control (must reproduce the bug). All model
-repos are public (cstr/*). Follows the kaggle_harness regime: git-clones the
+repos are public (Xenna/*). Follows the kaggle_harness regime: git-clones the
 repo for the harness + samples/jfk.wav, init_progress, heartbeat around every
 long op.
 """
@@ -30,12 +30,12 @@ RESULTS = WORK / "audit_results.json"
 # ── kaggle_harness regime: clone repo, import harness, init progress ─────────
 # (clone gives us the harness + samples/jfk.wav; bundled copies are the fallback)
 HERE = Path(__file__).resolve().parent
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CLONE = Path("/kaggle/temp/CrispASR")
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+CLONE = Path("/kaggle/temp/StelnetTTS")
 _cloned = CLONE.exists()
 if not _cloned:
     try:
-        subprocess.run(["git", "clone", "--depth", "1", CRISPASR_URL, str(CLONE)],
+        subprocess.run(["git", "clone", "--depth", "1", STELNETTTS_URL, str(CLONE)],
                        check=True, timeout=300)
         _cloned = True
     except Exception as e:
@@ -48,7 +48,7 @@ kh.init_progress()
 def step(name, **extra):
     kh.step(name, **extra)
 
-# HF auth via the harness (env → Kaggle Secret → mounted crispasr-hf-token
+# HF auth via the harness (env → Kaggle Secret → mounted stelnettts-hf-token
 # dataset); exports HF_TOKEN + HUGGING_FACE_HUB_TOKEN + HF_HUB_ENABLE_HF_TRANSFER.
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "hf_transfer", "huggingface_hub"], check=False)
 HF_TOKEN = kh.resolve_hf_token()
@@ -56,7 +56,7 @@ step("hf.token", present=bool(HF_TOKEN))
 from huggingface_hub import hf_hub_download
 
 RELEASE = "v0.8.22"
-VK_TARBALL = f"https://github.com/CrispStrobe/CrispASR/releases/download/{RELEASE}/crispasr-linux-x86_64-vulkan.tar.gz"
+VK_TARBALL = f"https://github.com/Cyna/StelnetTTS/releases/download/{RELEASE}/stelnettts-linux-x86_64-vulkan.tar.gz"
 WHISPER_TINY = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin"
 SENT = "The quick brown fox jumps over the lazy dog near the river."
 JFK_TEXT = ("And so my fellow Americans, ask not what your country can do for you, "
@@ -94,18 +94,18 @@ def enable_vulkan():
     return devs, nvidia
 
 def fetch_binaries():
-    step("fetch.crispasr_vulkan", release=RELEASE)
-    tb = TMP / "crispasr-vulkan.tar.gz"
+    step("fetch.stelnettts_vulkan", release=RELEASE)
+    tb = TMP / "stelnettts-vulkan.tar.gz"
     urllib.request.urlretrieve(VK_TARBALL, tb)
     sh(f"cd {TMP} && tar xzf {tb}")
-    bins = [b for b in TMP.rglob("crispasr") if b.is_file()]
+    bins = [b for b in TMP.rglob("stelnettts") if b.is_file()]
     if not bins:
-        raise RuntimeError("crispasr binary not found")
+        raise RuntimeError("stelnettts binary not found")
     binp = bins[0]; sh(f"chmod +x {binp}")
     bindir = str(binp.parent)
     os.environ["LD_LIBRARY_PATH"] = bindir + ":" + os.environ.get("LD_LIBRARY_PATH", "")
     ver = sh(f"{binp} --version")
-    step("fetch.crispasr_ready", path=str(binp),
+    step("fetch.stelnettts_ready", path=str(binp),
          backends=[l.split(":")[-1].strip() for l in ver.stdout.splitlines() if "backends" in l])
     whisp = MODELS / "ggml-tiny.en.bin"
     if not whisp.exists():
@@ -155,7 +155,7 @@ def overlap(a, b):
 # Short 3 s reference — the 11 s jfk.wav makes every clone-synth enormous
 # (huge DiT/AR sequence) and burns GPU quota (gotcha #1). Trimmed in main().
 import audioop
-REF3 = str(TMP / "ref3s.wav")   # 3 s, mono, 24 kHz — qwen3-tts (and others) reject 16 kHz
+REF3 = str(TMP / "ref3s.wav")   # 3 s, mono, 24 kHz — cielvox2-tts (and others) reject 16 kHz
 JFK3_TEXT = "And so my fellow Americans, ask not what your country can do for you"
 REF_RATE = 24000
 
@@ -177,34 +177,34 @@ CLONE_NOTEXT = ["--voice", "{ref}", "--i-have-rights"]
 # Ordered fast → slow so the quick backends report before the slow/huge ones.
 # f5 (heavy DiT on CPU) and moss (10.5 GB download) run LAST.
 BACKENDS = [
-    dict(name="cosyvoice3-tts", repo="cstr/cosyvoice3-0.5b-2512-GGUF",
+    dict(name="cosyvoice3-tts", repo="Xenna/cosyvoice3-0.5b-2512-GGUF",
          main="cosyvoice3-llm-q4_k.gguf",
          files=["cosyvoice3-llm-q4_k.gguf", "cosyvoice3-flow-q8_0.gguf",
                 "cosyvoice3-hift-f16.gguf", "cosyvoice3-voices.gguf"],
          args=["--voice", "zero_shot"], control=True),
-    dict(name="qwen3-tts", repo="cstr/qwen3-tts-0.6b-base-GGUF",
-         main="qwen3-tts-12hz-0.6b-base-q8_0.gguf",
-         files=["qwen3-tts-12hz-0.6b-base-q8_0.gguf"],
-         extra=[("cstr/qwen3-tts-tokenizer-12hz-GGUF", ["qwen3-tts-tokenizer-12hz.gguf"])],
+    dict(name="cielvox2-tts", repo="Xenna/cielvox2-tts-0.6b-base-GGUF",
+         main="cielvox2-tts-12hz-0.6b-base-q8_0.gguf",
+         files=["cielvox2-tts-12hz-0.6b-base-q8_0.gguf"],
+         extra=[("Xenna/cielvox2-tts-tokenizer-12hz-GGUF", ["cielvox2-tts-tokenizer-12hz.gguf"])],
          args=CLONE_ARGS),
-    dict(name="vibevoice-1.5b", repo="cstr/vibevoice-1.5b-GGUF",
+    dict(name="vibevoice-1.5b", repo="Xenna/vibevoice-1.5b-GGUF",
          main="vibevoice-1.5b-tts-q8_0.gguf",
          files=["vibevoice-1.5b-tts-q8_0.gguf"], args=CLONE_NOTEXT),
-    dict(name="voxcpm2-tts", repo="cstr/voxcpm2-GGUF",
+    dict(name="voxcpm2-tts", repo="Xenna/voxcpm2-GGUF",
          main="voxcpm2-q4_k.gguf",
          files=["voxcpm2-q4_k.gguf", "voxcpm2-ref.gguf"], args=CLONE_ARGS),
-    dict(name="zonos", repo="cstr/zonos-v0.1-transformer-GGUF",
+    dict(name="zonos", repo="Xenna/zonos-v0.1-transformer-GGUF",
          main="zonos-v0.1-transformer-q8_0.gguf",
          files=["zonos-v0.1-transformer-q8_0.gguf"],
-         extra=[("cstr/dac-44khz-GGUF", ["dac-44khz-f16.gguf"])],
+         extra=[("Xenna/dac-44khz-GGUF", ["dac-44khz-f16.gguf"])],
          args=CLONE_NOTEXT),
-    dict(name="indextts", repo="cstr/indextts-1.5-GGUF",
+    dict(name="indextts", repo="Xenna/indextts-1.5-GGUF",
          main="indextts-gpt-q8_0.gguf",
          files=["indextts-gpt-q8_0.gguf", "indextts-bigvgan.gguf"], args=CLONE_NOTEXT),
-    dict(name="f5-tts", repo="cstr/f5-tts-GGUF",
+    dict(name="f5-tts", repo="Xenna/f5-tts-GGUF",
          main="f5-tts-v1-base-f16.gguf", files=["f5-tts-v1-base-f16.gguf"],
          args=CLONE_ARGS + ["--tts-steps", "8"], timeout=700),  # 8 ODE steps to fit the cap
-    dict(name="moss-tts", repo="cstr/moss-tts-v1.5-GGUF",
+    dict(name="moss-tts", repo="Xenna/moss-tts-v1.5-GGUF",
          main="moss-tts-v1.5-q4_k.gguf",
          files=["moss-tts-v1.5-q4_k.gguf", "moss-tts-v1.5-codec.gguf"],
          args=["--codec-model", "{dir}/moss-tts-v1.5-codec.gguf"] + CLONE_ARGS, timeout=500),

@@ -14,7 +14,7 @@ in the upstream IndexTTS repo. One launch does the full
 `replicate-pad → 2× upsample FIR → SnakeBeta → 2× downsample FIR` chain,
 keeping every intermediate in registers — no HBM round trips between stages.
 
-CrispASR currently expresses the same chain as a `ggml_map_custom1` CPU
+StelnetTTS currently expresses the same chain as a `ggml_map_custom1` CPU
 custom op (`src/indextts_voc.cpp:aa_snake_beta_op`). On M1 unified memory
 that path is fast in absolute terms (≈ 6.6 s vocoder for ≈ 6.7 s of audio)
 but it forces ggml-backend-sched to fall back the entire vocoder onto CPU —
@@ -58,7 +58,7 @@ GGML_API struct ggml_tensor * ggml_aa_snake_beta(
 ```
 
 CPU forward: `ggml/src/ggml-cpu/ops.cpp` — port the existing
-`aa_snake_beta_op` from CrispASR (`src/indextts_voc.cpp:189–321`); already
+`aa_snake_beta_op` from StelnetTTS (`src/indextts_voc.cpp:189–321`); already
 audited and shipping.
 
 Metal forward: `ggml/src/ggml-metal/ggml-metal.metal` — translated upstream
@@ -74,7 +74,7 @@ to CPU on those backends until someone ports the upstream CUDA kernel.
 
 ## Verification plan
 
-1. CPU forward bit-identity check against the CrispASR
+1. CPU forward bit-identity check against the StelnetTTS
    `aa_snake_beta_op` reference for a few synthetic inputs of varying
    `(T, C)` — same multiplies/adds in the same order, should match exactly.
 2. Metal vs CPU forward: rmsdiff target ≤ 1e-5, max|Δ| ≤ 1e-4 (the same
@@ -108,7 +108,7 @@ can stay on Metal where they belong.
 
 ## Code provenance
 
-The CPU forward is CrispASR's existing optimised op (commit `cd21faea`
+The CPU forward is StelnetTTS's existing optimised op (commit `cd21faea`
 plus the vDSP cleanups in the follow-up). The Metal kernel will be a
 re-derivation of NVIDIA's CUDA kernel (Apache 2.0) — same algorithm, MSL
 syntax, threadgroup memory instead of CUDA shared memory. Original CUDA
@@ -116,7 +116,7 @@ code referenced: `indextts/BigVGAN/alias_free_activation/cuda/anti_alias_activat
 
 ## Notes for the maintainer
 
-This is the first new-op PR from CrispASR — every previous patch (01–04)
+This is the first new-op PR from StelnetTTS — every previous patch (01–04)
 modified existing ggml internals. Expect more review surface than a pure
 perf patch. Suggest opening as `[RFC]` first to get an op-shape ack, then
 filing the implementation. Cross-backend stubs (CUDA / Vulkan / SYCL

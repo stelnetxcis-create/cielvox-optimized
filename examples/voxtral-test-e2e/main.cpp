@@ -1,6 +1,6 @@
 // voxtral-test-e2e — end-to-end audio→text smoke test for Voxtral (3B).
 //
-// Loads the reference mel spectrogram from a crispasr-diff GGUF
+// Loads the reference mel spectrogram from a stelnettts-diff GGUF
 // archive (produced by tools/dump_reference.py --backend voxtral),
 // runs the full encoder + prompt splice + LLM prefill + greedy decode
 // pipeline, and prints the resulting transcript. Unlike the other
@@ -17,7 +17,7 @@
 // Usage:
 //   voxtral-test-e2e voxtral-mini-3b-2507.gguf /tmp/voxtral-ref.gguf
 
-#include "crispasr_diff.h"
+#include "stelnettts_diff.h"
 #include "voxtral.h"
 
 #include <cstdio>
@@ -39,7 +39,7 @@ int main(int argc, char ** argv) {
     const char * ref_path   = argv[2];
 
     // Load the reference mel from the archive instead of .npy.
-    crispasr_diff::Ref ref;
+    stelnettts_diff::Ref ref;
     if (!ref.load(ref_path)) return 2;
     auto [mel_ptr, mel_n] = ref.get_f32("mel_spectrogram");
     if (!mel_ptr) {

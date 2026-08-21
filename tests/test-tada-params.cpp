@@ -12,7 +12,7 @@ TEST_CASE("tada_params: default values are sensible", "[unit][tada]") {
     REQUIRE(p.verbosity >= 0);
 }
 
-// Defaults-audit / config-parity guard (motivated by #197). crispasr-diff
+// Defaults-audit / config-parity guard (motivated by #197). stelnettts-diff
 // compares the C++ forward pass against a Python reference pinned to a
 // non-default mode (text_do_sample=False) for determinism, so it cannot catch a
 // production default diverging from upstream — the talker shipping greedy with a
@@ -33,7 +33,7 @@ TEST_CASE("tada_params: value knobs match upstream InferenceOptions", "[unit][ta
 }
 
 // The one deliberate lib-vs-production split: the LIBRARY default is
-// deterministic *text sampling* off (greedy) so crispasr-diff matches the greedy
+// deterministic *text sampling* off (greedy) so stelnettts-diff matches the greedy
 // Python reference bit-exactly, while the CLI adapter and session C ABI flip
 // text_do_sample=True (upstream production). That is the ONLY knob the adapters
 // override — num_acoustic_candidates stays at the library default of 1 in every

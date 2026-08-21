@@ -20,7 +20,7 @@
 //   inOXcrm/German_multispeaker_FastPitch_nemo (Apache 2.0)
 // Vocoder: tts_de_hui_hifigan_ft_fastpitch_multispeaker_5
 //
-// Section 133 in the CrispASR backend lineup.
+// Section 133 in the StelnetTTS backend lineup.
 
 #pragma once
 

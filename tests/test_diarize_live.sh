@@ -2,7 +2,7 @@
 # tests/test_diarize_live.sh — live integration test for global sherpa diarization (#110).
 #
 # Requires:
-#   - crispasr binary (built with sherpa support)
+#   - stelnettts binary (built with sherpa support)
 #   - sherpa-onnx-offline-speaker-diarization binary
 #   - pyannote segmentation ONNX model
 #   - speaker embedding ONNX model
@@ -12,14 +12,14 @@
 #   SHERPA_BIN=/path/to/sherpa-onnx-offline-speaker-diarization \
 #   SEG_MODEL=/path/to/model.onnx \
 #   EMB_MODEL=/path/to/embedding.onnx \
-#   CRISPASR=/path/to/crispasr \
+#   CRISPASR=/path/to/stelnettts \
 #   bash tests/test_diarize_live.sh
 #
 # Defaults (this VPS):
 SHERPA_BIN="${SHERPA_BIN:-/mnt/storage/sherpa-onnx/sherpa-onnx-v1.13.2-linux-x64-static/bin/sherpa-onnx-offline-speaker-diarization}"
 SEG_MODEL="${SEG_MODEL:-/mnt/akademie_storage/test_cohere/sherpa-onnx-pyannote-segmentation-3-0/model.onnx}"
 EMB_MODEL="${EMB_MODEL:-/mnt/storage/sherpa-onnx/models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx}"
-CRISPASR="${CRISPASR:-/tmp/build-diarize/bin/crispasr}"
+CRISPASR="${CRISPASR:-/tmp/build-diarize/bin/stelnettts}"
 PARAFORMER_MODEL="${PARAFORMER_MODEL:-/mnt/storage/paraformer-zh/paraformer-zh-q4_k.gguf}"
 JFK_WAV="${JFK_WAV:-/mnt/akademie_storage/whisper.cpp/samples/jfk.wav}"
 ZH_WAV="${ZH_WAV:-/mnt/storage/paraformer-zh-upstream/example/asr_example.wav}"

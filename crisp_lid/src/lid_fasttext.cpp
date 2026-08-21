@@ -489,7 +489,7 @@ extern "C" struct lid_fasttext_context* lid_fasttext_init_from_file(const char* 
     }
 
     // Tensor names use the .weight suffix (kokoro/parakeet convention)
-    // so crispasr-quantize's is_weight gate picks them up for K-quant
+    // so stelnettts-quantize's is_weight gate picks them up for K-quant
     // re-quantization. Older converters wrote bare "lid_fasttext.embedding"
     // / "lid_fasttext.output"; fall back to those for backward compat.
     auto* emb_t = core_gguf::try_get(ctx->wl.tensors, "lid_fasttext.embedding.weight");

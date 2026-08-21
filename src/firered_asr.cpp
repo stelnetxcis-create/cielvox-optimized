@@ -19,9 +19,9 @@
 #include "core/cpu_attention.h" // cpu_dot + cpu_online_softmax_accumulate (shared)
 #include "core/fastconformer.h" // core_conformer::rel_shift (ggml rel-pos attention)
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/repeat_break.h"     // F1: decode-time repetition-loop break (greedy runaway)
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -48,7 +48,7 @@
 static bool firered_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_FIRERED_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_FIRERED_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -58,14 +58,14 @@ static bool firered_bench_enabled() {
 // hand-rolled CPU loops. The A/B (firered-asr2-aed) showed the in-graph path
 // faster on EVERY backend — pure CPU 3.6×, CUDA up to 20× — with byte-identical
 // decoded output, so it is the default. Returns the mode via
-// CRISPASR_FIRERED_GGML_ATTN:
+// STELNETTTS_FIRERED_GGML_ATTN:
 //   unset → 2 (auto: in-graph, but fall back to CPU for very large T)
 //   "0"   → 0 (force the CPU reference path)
 //   other → 1 (force in-graph, skip the large-T guard)
 static int firered_ggml_attn_mode() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FIRERED_GGML_ATTN");
+        const char* e = std::getenv("STELNETTTS_FIRERED_GGML_ATTN");
         if (!e || !*e)
             v = 2; // unset → auto
         else if (*e == '0')
@@ -268,7 +268,7 @@ struct firered_asr_context {
     // no_alloc graph + one-time gallocr allocation lets each step just
     // tensor_set(input) → backend_graph_compute → tensor_get(output),
     // sched-free on backend_cpu (native Q4_K SIMD). Bit-identical output — same
-    // op/backend/weights. Gated by CRISPASR_FIRERED_MATVEC_CACHE (see §Env-var).
+    // op/backend/weights. Gated by STELNETTTS_FIRERED_MATVEC_CACHE (see §Env-var).
     struct dec_matvec_graph {
         ggml_context* gctx = nullptr;
         ggml_cgraph* gf = nullptr;
@@ -298,7 +298,7 @@ extern "C" struct firered_asr_context_params firered_asr_context_default_params(
 }
 
 // PLAN §90: runtime beam-size setter so session-API consumers
-// (crispasr_session_set_beam_size → s->beam_size → here) can pin a
+// (stelnettts_session_set_beam_size → s->beam_size → here) can pin a
 // beam width without having to close + reopen the context. Clamps
 // to >= 1; the actual decode at line 1744 enforces a separate
 // is_lid bypass.
@@ -364,7 +364,7 @@ extern "C" struct firered_asr_context* firered_asr_init_from_file(const char* pa
     // (70ms/step vs 587ms with F32 dequant or 2600ms with per-call CUDA graphs).
     // The encoder uses ggml_backend_sched which auto-copies CPU weights to GPU.
     ctx->backend_cpu = core_cpu_backend::init();
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend || core_cpu_backend::is_cpu(ctx->backend))
         ctx->backend = ctx->backend_cpu;
     if (params.verbosity >= 1)
@@ -375,12 +375,12 @@ extern "C" struct firered_asr_context* firered_asr_init_from_file(const char* pa
         core_cpu_backend::set_n_threads(ctx->backend, ctx->n_threads);
 
     // §176k: persistent decoder matvec graph cache (default ON; opt out with
-    // CRISPASR_FIRERED_MATVEC_CACHE=0). Bit-identical to the per-call sched path,
+    // STELNETTTS_FIRERED_MATVEC_CACHE=0). Bit-identical to the per-call sched path,
     // eliminates the per-step dispatch overhead that dominates decode.
     {
-        const char* e = getenv("CRISPASR_FIRERED_MATVEC_CACHE");
+        const char* e = getenv("STELNETTTS_FIRERED_MATVEC_CACHE");
         ctx->dec_matvec_cache_on = !(e && e[0] == '0');
-        ctx->dec_bench = crispasr_env::get("CRISPASR_FIRERED_BENCH") != nullptr;
+        ctx->dec_bench = stelnettts_env::get("STELNETTTS_FIRERED_BENCH") != nullptr;
         if (params.verbosity >= 1)
             fprintf(stderr, "firered_asr: decoder matvec cache %s\n", ctx->dec_matvec_cache_on ? "ON" : "OFF");
     }
@@ -441,9 +441,9 @@ extern "C" struct firered_asr_context* firered_asr_init_from_file(const char* pa
     // encoder ops to follow weight residency. Default ON with use_gpu —
     // verified transcript-identical with the encoder >2x faster on Metal
     // (2.3x), Vulkan/MoltenVK (2.1x) and CUDA P100 (2.2x, Kaggle §224).
-    // CRISPASR_FIRERED_ENC_CPU=1 restores CPU-resident encoder weights.
+    // STELNETTTS_FIRERED_ENC_CPU=1 restores CPU-resident encoder weights.
     const bool enc_gpu = params.use_gpu && ctx->backend != ctx->backend_cpu && [] {
-        const char* e = std::getenv("CRISPASR_FIRERED_ENC_CPU");
+        const char* e = std::getenv("STELNETTTS_FIRERED_ENC_CPU");
         return !(e && *e && *e != '0');
     }();
     if (params.verbosity >= 1)
@@ -816,8 +816,8 @@ static void read_f32_vec(ggml_tensor* t, std::vector<float>& out) {
 
 // cpu_dot + cpu_online_softmax_accumulate live in core/cpu_attention.h so
 // wav2vec2 (and future CPU-attention backends) share one implementation.
-using crispasr::cpu_attn::cpu_dot;
-using crispasr::cpu_attn::cpu_online_softmax_accumulate;
+using stelnettts::cpu_attn::cpu_dot;
+using stelnettts::cpu_attn::cpu_online_softmax_accumulate;
 
 // CPU matmul: C = A @ B^T where A is [M,K], B is [N,K] → C is [M,N]
 // (B stored as [N,K] row-major, like ggml weight [K,N] with ne[0]=K)
@@ -926,7 +926,7 @@ static void ggml_matmat_cached(firered_asr_context* ctx, ggml_tensor* weight_w, 
     ggml_backend_tensor_get(g.out, output, 0, (size_t)M * N * sizeof(float));
 }
 
-// Dispatcher: cached path when CRISPASR_FIRERED_MATVEC_CACHE is enabled, else
+// Dispatcher: cached path when STELNETTTS_FIRERED_MATVEC_CACHE is enabled, else
 // the original per-call sched graph (kept as the reference / A-B fallback).
 static inline void fr_matmat(firered_asr_context* ctx, ggml_tensor* weight_w, ggml_tensor* bias_b, const float* input,
                              float* output, int M, int K, int N) {
@@ -1325,7 +1325,7 @@ static void hybrid_encoder(const float* subsampled, int T, int flat_dim, firered
     // in-graph (ggml) path. In "auto" mode it materializes the [T,T,nh] score
     // matrix (O(T²) memory) vs the CPU path's O(T), so fall back to CPU for very
     // large single chunks (e.g. no-VAD long audio) to avoid GPU/host OOM.
-    // CRISPASR_FIRERED_GGML_ATTN=1 forces in-graph regardless of size.
+    // STELNETTTS_FIRERED_GGML_ATTN=1 forces in-graph regardless of size.
     const int ggml_attn_mode = firered_ggml_attn_mode();
     bool ggml_attn = (ggml_attn_mode != 0);
     if (ggml_attn_mode == 2) {
@@ -1335,7 +1335,7 @@ static void hybrid_encoder(const float* subsampled, int T, int flat_dim, firered
             fprintf(stderr,
                     "firered_asr: T=%d, nh=%d exceed the in-graph attention budget "
                     "(%zu score elems) — using CPU attention "
-                    "(set CRISPASR_FIRERED_GGML_ATTN=1 to force in-graph)\n",
+                    "(set STELNETTTS_FIRERED_GGML_ATTN=1 to force in-graph)\n",
                     T, nh, score_elems);
             ggml_attn = false;
         }
@@ -1442,7 +1442,7 @@ static void hybrid_encoder(const float* subsampled, int T, int flat_dim, firered
             ggml_set_name(p, "P");
             ggml_set_output(p);
 
-            // In-graph rel-pos attention (default; CRISPASR_FIRERED_GGML_ATTN=0 → CPU).
+            // In-graph rel-pos attention (default; STELNETTTS_FIRERED_GGML_ATTN=0 → CPU).
             // Mirrors the CPU path exactly:
             //   AC = (Q + bias_u)·Kᵀ            content term
             //   BD = rel_shift((Q + bias_v)·Pᵀ) relative-position term
@@ -2040,11 +2040,11 @@ static char* firered_asr_transcribe_impl(struct firered_asr_context* ctx, const 
     // If decoder weights are loaded, use decoder path; else fall back to CTC
     firered_bench_stage _b_dec("decoder");
     if (m.dec.emb_w && m.dec.prj_w && !m.dec.blocks.empty()) {
-        // CRISPASR_FIRERED_BEAM_F32=1: restore the beam path's F32-dequant
+        // STELNETTTS_FIRERED_BEAM_F32=1: restore the beam path's F32-dequant
         // matmuls (A/B ground truth). Default routes the batched beam
         // projections through the same native Q4_K mul_mat as greedy.
         const bool beam_f32 = [] {
-            const char* e = std::getenv("CRISPASR_FIRERED_BEAM_F32");
+            const char* e = std::getenv("STELNETTTS_FIRERED_BEAM_F32");
             return e && *e && *e != '0';
         }();
 
@@ -2190,7 +2190,7 @@ static char* firered_asr_transcribe_impl(struct firered_asr_context* ctx, const 
         }
 
         int64_t t_weight_cache = ggml_time_us() - t_weight_cache0;
-        if (ctx->params.verbosity >= 1 || crispasr_env::get("CRISPASR_FIRERED_BENCH"))
+        if (ctx->params.verbosity >= 1 || stelnettts_env::get("STELNETTTS_FIRERED_BENCH"))
             fprintf(stderr, "firered_asr: decoder weights cached + K/V pre-computed in %.1fms\n", t_weight_cache / 1e3);
 
         ggml_context* dec_proj_ctx = nullptr;
@@ -2267,11 +2267,11 @@ static char* firered_asr_transcribe_impl(struct firered_asr_context* ctx, const 
         // "OOH" ×35, saturating max_len=150 and burning ~350 s of decode) — the
         // same runaway moonshine had. Beam search self-terminates, so the break
         // is wired ONLY into the beam_size==1 branch below. Disable with
-        // CRISPASR_FIRERED_NO_REPEAT_BREAK=1. (firered's CLI adapter has no
+        // STELNETTTS_FIRERED_NO_REPEAT_BREAK=1. (firered's CLI adapter has no
         // core_ngram::fix_loops, so this also cleans the garbage tail from the
         // decoded output, not just compute.)
         const bool repeat_break = [] {
-            const char* e = std::getenv("CRISPASR_FIRERED_NO_REPEAT_BREAK");
+            const char* e = std::getenv("STELNETTTS_FIRERED_NO_REPEAT_BREAK");
             return !(e && e[0] && e[0] != '0');
         }();
 
@@ -2287,7 +2287,7 @@ static char* firered_asr_transcribe_impl(struct firered_asr_context* ctx, const 
                 break;
 
             if (ctx->params.verbosity >= 2 ||
-                (crispasr_env::get("CRISPASR_FIRERED_BENCH") && (step % 20 == 0 || step < 3))) {
+                (stelnettts_env::get("STELNETTTS_FIRERED_BENCH") && (step % 20 == 0 || step < 3))) {
                 int64_t t_now = ggml_time_us();
                 fprintf(stderr, "firered_asr: decode step %d/%d (%.1fms elapsed)\n", step, max_len,
                         (t_now - t_dec0) / 1e3);
@@ -2412,7 +2412,7 @@ static char* firered_asr_transcribe_impl(struct firered_asr_context* ctx, const 
                 fr_vecmat(ctx, m.dec.prj_w, nullptr, xn.data(), logits.data(), d, odim);
                 t_logit += ggml_time_us() - tl0;
 
-                if (crispasr_env::get("CRISPASR_FIRERED_BENCH") && (step < 3 || step == max_len - 1)) {
+                if (stelnettts_env::get("STELNETTTS_FIRERED_BENCH") && (step < 3 || step == max_len - 1)) {
                     int64_t t_step = ggml_time_us() - t_step0;
                     fprintf(stderr, "firered: step %d: %.1fms (logit=%.1fms)\n", step, t_step / 1e3, t_logit / 1e3);
                 }
@@ -2514,7 +2514,7 @@ static char* firered_asr_transcribe_impl(struct firered_asr_context* ctx, const 
 
             // Batched projection dispatch: default = one ggml mul_mat on the
             // native Q4_K weight (same kernels as the greedy path — the
-            // weight is read once, quantized, per step); CRISPASR_FIRERED_
+            // weight is read once, quantized, per step); STELNETTTS_FIRERED_
             // BEAM_F32=1 = the original F32-dequant cpu_matmul_bt fallback.
             // Bias (when present) is applied inside on both paths.
             static const std::vector<float> kNoBias;

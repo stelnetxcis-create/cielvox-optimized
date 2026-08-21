@@ -75,7 +75,7 @@ pipeline_tag: automatic-speech-recognition
 
 # VibeVoice-7B — GGUF
 
-GGUF conversions of [`microsoft/VibeVoice-7B`](https://huggingface.co/microsoft/VibeVoice-7B) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions of [`microsoft/VibeVoice-7B`](https://huggingface.co/microsoft/VibeVoice-7B) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 VibeVoice-7B is the **largest model** in Microsoft's VibeVoice family — a 9.3B-parameter speech-LLM (Qwen2.5-7B decoder + dual σ-VAE encoders) with state-of-the-art ASR quality across 50+ languages.
 
@@ -86,7 +86,7 @@ VibeVoice-7B is the **largest model** in Microsoft's VibeVoice family — a 9.3B
 - **50+ languages** with automatic language detection
 - **MIT licence**
 
-> **Update (April 2026):** Now includes both ASR (encoder + LM) and TTS (σ-VAE decoder + prediction head). TTS requires ≥Q4_K for good quality — Q3_K is too aggressive for the decoder. For faster/smaller TTS, use [VibeVoice-Realtime-0.5B](https://huggingface.co/cstr/vibevoice-realtime-0.5b-GGUF) or [VibeVoice-1.5B](https://huggingface.co/cstr/vibevoice-1.5b-GGUF).
+> **Update (April 2026):** Now includes both ASR (encoder + LM) and TTS (σ-VAE decoder + prediction head). TTS requires ≥Q4_K for good quality — Q3_K is too aggressive for the decoder. For faster/smaller TTS, use [VibeVoice-Realtime-0.5B](https://huggingface.co/Xenna/vibevoice-realtime-0.5b-GGUF) or [VibeVoice-1.5B](https://huggingface.co/Xenna/vibevoice-1.5b-GGUF).
 
 ## Files
 
@@ -110,18 +110,18 @@ VibeVoice-7B is the **largest model** in Microsoft's VibeVoice family — a 9.3B
 ## Quick Start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON   # macOS
 cmake --build build -j$(nproc)
 
 # 2. Download the quantised GGUF
-huggingface-cli download cstr/VibeVoice-7B-GGUF \
+huggingface-cli download Xenna/VibeVoice-7B-GGUF \
     vibevoice-7b-q4_k.gguf --local-dir .
 
 # 3. Transcribe
-./build/bin/crispasr --model vibevoice-7b-q4_k.gguf \
+./build/bin/stelnettts --model vibevoice-7b-q4_k.gguf \
     --file audio.wav --backend vibevoice
 ```
 
@@ -161,7 +161,7 @@ python3 models/convert-vibevoice-stream-gguf.py \
     --output vibevoice-7b-f16.gguf
 
 # Quantize
-./build/bin/crispasr-quantize vibevoice-7b-f16.gguf vibevoice-7b-q4_k.gguf q4_k
+./build/bin/stelnettts-quantize vibevoice-7b-f16.gguf vibevoice-7b-q4_k.gguf q4_k
 ```
 
 The streaming converter (`convert-vibevoice-stream-gguf.py`) uses memory-mapped tensor access to avoid loading the full 19 GB model into RAM.

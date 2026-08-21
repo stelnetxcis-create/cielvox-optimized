@@ -41,7 +41,7 @@ struct cosyvoice3_tts_context_params {
 struct cosyvoice3_tts_context_params cosyvoice3_tts_context_default_params(void);
 
 // Initialise from the LLM GGUF file
-// (e.g. cosyvoice3-llm-f16.gguf from `cstr/cosyvoice3-0.5b-2512-GGUF`).
+// (e.g. cosyvoice3-llm-f16.gguf from `Xenna/cosyvoice3-0.5b-2512-GGUF`).
 // Returns nullptr on failure.
 struct cosyvoice3_tts_context* cosyvoice3_tts_init_from_file(const char* path_model,
                                                              struct cosyvoice3_tts_context_params params);

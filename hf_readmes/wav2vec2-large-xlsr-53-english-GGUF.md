@@ -4,7 +4,7 @@ tags:
   - automatic-speech-recognition
   - wav2vec2
   - gguf
-  - crispasr
+  - stelnettts
   - english
 base_model: jonatasgrosman/wav2vec2-large-xlsr-53-english
 pipeline_tag: automatic-speech-recognition
@@ -30,10 +30,10 @@ GGUF conversion of [jonatasgrosman/wav2vec2-large-xlsr-53-english](https://huggi
 
 The model was pre-trained on 53 languages (XLSR-53) and fine-tuned on English Common Voice data with a CTC head. It accepts 16 kHz mono audio and outputs character-level transcriptions.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-crispasr \
+stelnettts \
   --backend wav2vec2 \
   -m wav2vec2-xlsr-en.gguf \
   audio.wav

@@ -1,4 +1,4 @@
-# crispasr/examples/talk-llama
+# stelnettts/examples/talk-llama
 
 Talk with an LLaMA AI in your terminal
 
@@ -12,7 +12,7 @@ Demo video: see the project history and upstream example documentation.
 
 ## Building
 
-The `crispasr-talk-llama` tool depends on SDL2 library to capture audio from the microphone. You can build it like this:
+The `stelnettts-talk-llama` tool depends on SDL2 library to capture audio from the microphone. You can build it like this:
 
 ```bash
 # Install SDL2
@@ -25,12 +25,12 @@ sudo dnf install SDL2 SDL2-devel
 # Install SDL2 on Mac OS
 brew install sdl2
 
-# Build the "crispasr-talk-llama" executable
-cmake -B build -S . -DCRISPASR_SDL2=ON
+# Build the "stelnettts-talk-llama" executable
+cmake -B build -S . -DSTELNETTTS_SDL2=ON
 cmake --build build --config Release
 
 # Run it
-./build/bin/crispasr-talk-llama -mw ./models/ggml-small.en.bin -ml ../llama.cpp/models/llama-13b/ggml-model-q4_0.gguf -p "Georgi" -t 8
+./build/bin/stelnettts-talk-llama -mw ./models/ggml-small.en.bin -ml ../llama.cpp/models/llama-13b/ggml-model-q4_0.gguf -p "Georgi" -t 8
 ```
 
 - The `-mw` argument specifies the Whisper model that you would like to use. Recommended `base` or `small` for real-time experience
@@ -38,16 +38,16 @@ cmake --build build --config Release
 
 ## Session
 
-The `crispasr-talk-llama` tool supports session management to enable more coherent and continuous conversations. By maintaining context from previous interactions, it can better understand and respond to user requests in a more natural way.
+The `stelnettts-talk-llama` tool supports session management to enable more coherent and continuous conversations. By maintaining context from previous interactions, it can better understand and respond to user requests in a more natural way.
 
-To enable session support, use the `--session FILE` command line option when running the program. The `crispasr-talk-llama` model state will be saved to the specified file after each interaction. If the file does not exist, it will be created. If the file exists, the model state will be loaded from it, allowing you to resume a previous session.
+To enable session support, use the `--session FILE` command line option when running the program. The `stelnettts-talk-llama` model state will be saved to the specified file after each interaction. If the file does not exist, it will be created. If the file exists, the model state will be loaded from it, allowing you to resume a previous session.
 
 This feature is especially helpful for maintaining context in long conversations or when interacting with the AI assistant across multiple sessions. It ensures that the assistant remembers the previous interactions and can provide more relevant and contextual responses.
 
 Example usage:
 
 ```bash
-./build/bin/crispasr-talk-llama --session ./my-session-file -mw ./models/ggml-small.en.bin -ml ../llama.cpp/models/llama-13b/ggml-model-q4_0.gguf -p "Georgi" -t 8
+./build/bin/stelnettts-talk-llama --session ./my-session-file -mw ./models/ggml-small.en.bin -ml ../llama.cpp/models/llama-13b/ggml-model-q4_0.gguf -p "Georgi" -t 8
 ```
 
 ## TTS

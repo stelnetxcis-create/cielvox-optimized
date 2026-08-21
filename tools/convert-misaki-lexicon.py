@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert misaki's English lexicon into CrispASR's IPA-dict format (#316).
+"""Convert misaki's English lexicon into StelnetTTS's IPA-dict format (#316).
 
 Kokoro was trained on the output of misaki, its own G2P, so the closest thing to
 "correct" Kokoro pronunciation is misaki's lexicon itself. Our CMUdict-based G2P
@@ -26,15 +26,15 @@ gold is the human-verified subset.
 **espeak-ng is GPL-3.0, and that includes its pronunciation dictionary.** A
 lexicon 87% identical to its output is at least arguably derived from that GPL
 data, which upstream may not have had the right to relicense as Apache-2.0.
-Nothing here depends on resolving that, because CrispASR does NOT redistribute
+Nothing here depends on resolving that, because StelnetTTS does NOT redistribute
 this file: you generate it locally from your own `pip install misaki`, and the
 runtime falls back to the CMUdict path when it is absent. Publishing it — to
-cstr/g2p-dicts or anywhere — is a deliberate decision that needs upstream
+Xenna/g2p-dicts or anywhere — is a deliberate decision that needs upstream
 clarification first, not a default. Engineering judgement, not legal advice.
 
 Note the practical consequence: since silver ≈ espeak output, a user who has
 espeak-ng installed already gets equivalent coverage for those words through
-CrispASR's existing espeak path. The lexicon's real value is `gold`.
+StelnetTTS's existing espeak path. The lexicon's real value is `gold`.
 
 Gold wins over silver on conflict. POS-dependent entries ({"DEFAULT": …,
 "NOUN": …}) collapse to DEFAULT: our G2P has no part-of-speech tagger, and
@@ -159,7 +159,7 @@ def main() -> int:
         rows[key] = ipa
 
     with open(args.out, "w", encoding="utf-8") as f:
-        f.write("# CrispASR IPA dict — misaki English lexicon\n")
+        f.write("# StelnetTTS IPA dict — misaki English lexicon\n")
         f.write("# Source: https://github.com/hexgrad/misaki  (Apache-2.0)\n")
         f.write(f"#   data/{prefix}_gold.json + data/{prefix}_silver.json, gold wins.\n")
         f.write("# Values are misaki's own; the runtime applies the dialect\n")
@@ -170,7 +170,7 @@ def main() -> int:
 
     final_path = args.out.replace(".txt", "") + "-final.txt"
     with open(final_path, "w", encoding="utf-8") as f:
-        f.write("# CrispASR IPA dict — misaki PHRASE-FINAL variants\n")
+        f.write("# StelnetTTS IPA dict — misaki PHRASE-FINAL variants\n")
         f.write("# Source: https://github.com/hexgrad/misaki  (Apache-2.0)\n")
         f.write("# Selected when nothing follows the word (misaki's 'None' key,\n")
         f.write("# i.e. ctx.future_vowel is None). Generated — do not hand-edit.\n")

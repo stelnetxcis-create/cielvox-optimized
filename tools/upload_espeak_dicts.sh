@@ -14,7 +14,7 @@
 set -euo pipefail
 
 DICT_DIR="${1:-/mnt/volume1/espeak-dicts}"
-REPO="cstr/g2p-dicts"
+REPO="Xenna/g2p-dicts"
 
 echo "Uploading espeak dicts from $DICT_DIR to $REPO..."
 for f in "$DICT_DIR"/espeak_*.tsv; do

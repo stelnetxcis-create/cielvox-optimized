@@ -1,5 +1,5 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — Voxtral-4B-TTS FM perf-gate A/B on a clean CUDA GPU
+# # StelnetTTS — Voxtral-4B-TTS FM perf-gate A/B on a clean CUDA GPU
 #
 # Settles, on an UNCONTENDED CUDA GPU (T4/P100), whether the two opt-in
 # flow-matching perf gates are wins — the M1 measurements were confounded
@@ -8,9 +8,9 @@
 # Matrix (backend voxtral-tts, Q4_K, seed 42, fixed text), each config run
 # 1 warmup + 3 measured, median FM ms/frame reported:
 #   A  GPU  8-step   (default / shipped)
-#   B  FM_CPU 8-step (CRISPASR_VOXTRAL_TTS_FM_CPU=1)   — FM graph on CPU
-#   C  GPU  7-step   (CRISPASR_VOXTRAL_TTS_FM_STEPS=7)
-#   D  GPU  5-step   (CRISPASR_VOXTRAL_TTS_FM_STEPS=5)
+#   B  FM_CPU 8-step (STELNETTTS_VOXTRAL_TTS_FM_CPU=1)   — FM graph on CPU
+#   C  GPU  7-step   (STELNETTTS_VOXTRAL_TTS_FM_STEPS=7)
+#   D  GPU  5-step   (STELNETTTS_VOXTRAL_TTS_FM_STEPS=5)
 #   E  FM_CPU 5-step (both)
 #
 # For each: median LLM/FM ms/frame, frame count, [END] reached, wav duration,
@@ -18,8 +18,8 @@
 # than FM-on-GPU, and does reducing ODE steps perturb the frame trajectory?
 #
 # Requirements: Kaggle GPU (T4x1 or P100), Internet ON, ~8 GB disk.
-# Secrets/datasets: chr1str/crispasr-hf-token (public GGUF, token optional),
-# chr1str/crispasr-ccache (build cache).
+# Secrets/datasets: chr1str/stelnettts-hf-token (public GGUF, token optional),
+# chr1str/stelnettts-ccache (build cache).
 
 # ─────────────────────────── cell 1 (code) — config ──────────────────────
 import json
@@ -34,17 +34,17 @@ import wave
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
 RESULTS = WORK / "results"
 for d in (MODELS, RESULTS):
     d.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 
-HF_TTS_REPO = "cstr/voxtral-4b-tts-GGUF"
+HF_TTS_REPO = "Xenna/voxtral-4b-tts-GGUF"
 HF_TTS_FILE = "voxtral-4b-tts-q4_k.gguf"
 
 TEXT = os.environ.get("VTTS_TEXT", "The quick brown fox jumps over the lazy dog.")
@@ -70,10 +70,10 @@ def run(cmd, check=True, env=None, cwd=None, timeout=None):
 
 
 # ─────────────────────────── cell 2 (code) — clone + build ───────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
@@ -100,15 +100,15 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 step("cli", path=str(CLI))
@@ -141,7 +141,7 @@ def wav_dur(path: Path) -> float:
 
 
 def synth(tag: str, gate_env: dict, out_wav: Path, timeout=900) -> dict:
-    env = {"CRISPASR_VOXTRAL_TTS_TIMING": "1", **gate_env}
+    env = {"STELNETTTS_VOXTRAL_TTS_TIMING": "1", **gate_env}
     cmd = [str(CLI), "--backend", "voxtral-tts", "-m", str(MODEL), "--seed", str(SEED),
            "--tts", TEXT, "--voice", VOICE, "--tts-output", str(out_wav)]
     t0 = time.time()
@@ -186,10 +186,10 @@ def median(xs):
 # ─────────────────────────── cell 4 (code) — A/B matrix ───────────────────
 CONFIGS = [
     ("A_gpu8", {}),
-    ("B_cpu8", {"CRISPASR_VOXTRAL_TTS_FM_CPU": "1"}),
-    ("C_gpu7", {"CRISPASR_VOXTRAL_TTS_FM_STEPS": "7"}),
-    ("D_gpu5", {"CRISPASR_VOXTRAL_TTS_FM_STEPS": "5"}),
-    ("E_cpu5", {"CRISPASR_VOXTRAL_TTS_FM_CPU": "1", "CRISPASR_VOXTRAL_TTS_FM_STEPS": "5"}),
+    ("B_cpu8", {"STELNETTTS_VOXTRAL_TTS_FM_CPU": "1"}),
+    ("C_gpu7", {"STELNETTTS_VOXTRAL_TTS_FM_STEPS": "7"}),
+    ("D_gpu5", {"STELNETTTS_VOXTRAL_TTS_FM_STEPS": "5"}),
+    ("E_cpu5", {"STELNETTTS_VOXTRAL_TTS_FM_CPU": "1", "STELNETTTS_VOXTRAL_TTS_FM_STEPS": "5"}),
 ]
 
 summary = {"gpu": gpu_name, "cuda_arch": arch, "text": TEXT, "seed": SEED, "configs": {}}

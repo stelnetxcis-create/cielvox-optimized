@@ -6,13 +6,13 @@ language:
 tags:
   - automatic-speech-recognition
   - gguf
-  - crispasr
+  - stelnettts
 pipeline_tag: automatic-speech-recognition
 ---
 
 # stt-en-fastconformer-ctc-xxlarge-GGUF
 
-GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_xxlarge](https://huggingface.co/nvidia/stt_en_fastconformer_ctc_xxlarge) for [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_xxlarge](https://huggingface.co/nvidia/stt_en_fastconformer_ctc_xxlarge) for [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 | Quant | Description |
 |---|---|
@@ -24,5 +24,5 @@ GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_xxlarge](https://huggingf
 ## Usage
 
 ```bash
-crispasr -m stt-en-fastconformer-ctc-xxlarge-q4_k.gguf -f audio.wav
+stelnettts -m stt-en-fastconformer-ctc-xxlarge-q4_k.gguf -f audio.wav
 ```

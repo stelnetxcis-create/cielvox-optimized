@@ -6,7 +6,7 @@
 //
 // Scope: PCM16 mono or multi-channel only (multi-channel is averaged to mono).
 // Returns native sample rate as-read; callers resample via
-// `crispasr::core::resample_polyphase` (see core/audio_resample.h) if they
+// `stelnettts::core::resample_polyphase` (see core/audio_resample.h) if they
 // need a specific rate.
 //
 // Header-only so callers can drop in by including this file alone.
@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-namespace crispasr::core {
+namespace stelnettts::core {
 
 // Read a PCM16 WAV (mono or N-channel, averaged to mono).
 // On success: fills `pcm` with float32 samples in [-1.0, 1.0], sets
@@ -129,4 +129,4 @@ inline bool read_wav_mono_pcm16(const std::string& path, std::vector<float>& pcm
     return true;
 }
 
-} // namespace crispasr::core
+} // namespace stelnettts::core

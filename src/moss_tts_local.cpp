@@ -331,14 +331,14 @@ static ggml_cgraph* mtl_build_graph_llm_kv(moss_tts_local_context* ctx, int n_pa
 
     // #249 per-layer diff: on the prompt prefill, expose each block's output so
     // mtl_run_backbone can dump it and compare to the reference per layer.
-    const bool dump_layers = (n_past == 0) && (getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_LAYERS") != nullptr);
+    const bool dump_layers = (n_past == 0) && (getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_LAYERS") != nullptr);
     // #249 option 2 — pin the layer-10 op: for one target layer, expose the
     // attention output and the SwiGLU-MLP output (both pre-residual, last
     // position) so the per-sublayer diff can tell whether attention or the MLP is
     // where the block first diverges from the reference (block input matches).
     int dump_sub = -1;
     if (n_past == 0) {
-        if (const char* s = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER"))
+        if (const char* s = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER"))
             dump_sub = atoi(s);
     }
     // #249 gold-standard test: inject the REFERENCE's exact block-(L-1) output as
@@ -348,7 +348,7 @@ static ggml_cgraph* mtl_build_graph_llm_kv(moss_tts_local_context* ctx, int n_pa
     // there is a real per-layer op bug. inject_in is filled in mtl_run_backbone.
     int inject_layer = -1;
     if (n_past == 0) {
-        if (const char* s = getenv("CRISPASR_MOSS_TTS_LOCAL_INJECT_LAYER"))
+        if (const char* s = getenv("STELNETTTS_MOSS_TTS_LOCAL_INJECT_LAYER"))
             inject_layer = atoi(s);
     }
     ggml_tensor* inject_in = nullptr;
@@ -422,9 +422,9 @@ static bool mtl_kv_init(moss_tts_local_context* ctx, int max_ctx) {
     // #249: the 4B's marginal binary stop head is sensitive to KV precision —
     // an f16 KV cache measurably delays/breaks the wind-down (an f32 KV moves
     // the "Hello world" stop earlier, toward the reference). Default to F32 KV;
-    // CRISPASR_KV_QUANT still overrides for users who want the smaller cache.
-    const ggml_type kv_type = core_attn::kv_dtype_parse(std::getenv("CRISPASR_KV_QUANT"), "moss_tts_local",
-                                                        "CRISPASR_KV_QUANT", GGML_TYPE_F32);
+    // STELNETTTS_KV_QUANT still overrides for users who want the smaller cache.
+    const ggml_type kv_type = core_attn::kv_dtype_parse(std::getenv("STELNETTTS_KV_QUANT"), "moss_tts_local",
+                                                        "STELNETTTS_KV_QUANT", GGML_TYPE_F32);
     ggml_init_params ip = {ggml_tensor_overhead() * 4, nullptr, true};
     ctx->kv_ctx = ggml_init(ip);
     if (!ctx->kv_ctx)
@@ -472,7 +472,7 @@ static float* mtl_run_backbone(moss_tts_local_context* ctx, const float* inputs_
     // layout [pos][dim] == our (d, T) ggml order) into the injection tensor.
     if (n_past == 0) {
         if (ggml_tensor* it = ggml_graph_get_tensor(gf, "inject_in")) {
-            const char* ip = getenv("CRISPASR_MOSS_TTS_LOCAL_INJECT_PATH");
+            const char* ip = getenv("STELNETTTS_MOSS_TTS_LOCAL_INJECT_PATH");
             if (ip) {
                 std::vector<float> buf((size_t)d * n_tokens);
                 if (FILE* f = fopen(ip, "rb")) {
@@ -493,7 +493,7 @@ static float* mtl_run_backbone(moss_tts_local_context* ctx, const float* inputs_
     ggml_backend_tensor_get(h_t, out, 0, (size_t)d * sizeof(float));
     // #249: dump each block's last-position hidden on the prompt prefill.
     if (n_past == 0) {
-        if (const char* lp = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_LAYERS")) {
+        if (const char* lp = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_LAYERS")) {
             if (FILE* lf = fopen(lp, "w")) {
                 std::vector<float> buf(d);
                 for (uint32_t il = 0; il < ctx->model.hparams.llm_layers; il++) {
@@ -513,8 +513,8 @@ static float* mtl_run_backbone(moss_tts_local_context* ctx, const float* inputs_
             }
         }
         // #249 option 2: dump one target layer's attention + MLP outputs.
-        if (const char* sl = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER")) {
-            if (const char* sp = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH")) {
+        if (const char* sl = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER")) {
+            if (const char* sp = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH")) {
                 const int il = atoi(sl);
                 if (FILE* sf = fopen(sp, "w")) {
                     std::vector<float> buf(d);
@@ -536,9 +536,9 @@ static float* mtl_run_backbone(moss_tts_local_context* ctx, const float* inputs_
             }
         }
         // #249 option 2: dump the shared-attention debug tensors (named by the
-        // core_attn CRISPASR_CORE_ATTN_DUMP_FA_LAYER hook) so a numpy flash-vs-eager
+        // core_attn STELNETTTS_CORE_ATTN_DUMP_FA_LAYER hook) so a numpy flash-vs-eager
         // self-check and the Q/K/V-vs-reference diff can localize the attention op.
-        if (const char* fp = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_FA_PATH")) {
+        if (const char* fp = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_FA_PATH")) {
             if (FILE* ff = fopen(fp, "w")) {
                 for (const char* nm : {"DBG_Q_prerope", "DBG_K_prerope", "DBG_V_new", "DBG_Q_post_rope", "DBG_Kfull",
                                        "DBG_Vfull", "DBG_fa_out", "DBG_fa_reshaped"}) {
@@ -1081,31 +1081,31 @@ static bool mtl_generate_grid(moss_tts_local_context* ctx, const char* text, con
     const int d = (int)hp.llm_hidden;
     const int aud_v = (int)hp.audio_vocab_size;
     int max_frames = sp.max_new_frames > 0 ? sp.max_new_frames : 4096;
-    if (const char* mf = getenv("CRISPASR_MOSS_TTS_LOCAL_MAX_FRAMES")) // #249 diag: bound runaways for A/B tests
+    if (const char* mf = getenv("STELNETTTS_MOSS_TTS_LOCAL_MAX_FRAMES")) // #249 diag: bound runaways for A/B tests
         max_frames = atoi(mf) > 0 ? atoi(mf) : max_frames;
     const int stride = 1 + n_vq;
     Rng rng(sp.seed ? sp.seed : ctx->seed);
-    // CRISPASR_MOSS_TTS_LOCAL_GREEDY_TEXT=1 forces the binary stop head greedy
+    // STELNETTTS_MOSS_TTS_LOCAL_GREEDY_TEXT=1 forces the binary stop head greedy
     // (argmax) — used by the #249 trajectory diff so the stop decision is
     // deterministic and directly comparable to the HF reference run greedy.
-    const bool text_greedy = (sp.text_temperature <= 0.f) || (getenv("CRISPASR_MOSS_TTS_LOCAL_GREEDY_TEXT") != nullptr);
-    // CRISPASR_MOSS_TTS_LOCAL_GREEDY_AUDIO=1 forces greedy audio codebooks (A/B the
+    const bool text_greedy = (sp.text_temperature <= 0.f) || (getenv("STELNETTTS_MOSS_TTS_LOCAL_GREEDY_TEXT") != nullptr);
+    // STELNETTTS_MOSS_TTS_LOCAL_GREEDY_AUDIO=1 forces greedy audio codebooks (A/B the
     // stop-runaway hypothesis: sampled audio feeds back and may prevent the binary
-    // stop head from firing). CRISPASR_MOSS_TTS_LOCAL_DEBUG=1 traces stop logits.
+    // stop head from firing). STELNETTTS_MOSS_TTS_LOCAL_DEBUG=1 traces stop logits.
     const bool audio_greedy =
-        (sp.audio_temperature <= 0.f) || (getenv("CRISPASR_MOSS_TTS_LOCAL_GREEDY_AUDIO") != nullptr);
-    const bool dbg = getenv("CRISPASR_MOSS_TTS_LOCAL_DEBUG") != nullptr;
-    // CRISPASR_MOSS_TTS_LOCAL_DUMP_STOP=1 emits the RAW (pre-softmax) stop-head
+        (sp.audio_temperature <= 0.f) || (getenv("STELNETTTS_MOSS_TTS_LOCAL_GREEDY_AUDIO") != nullptr);
+    const bool dbg = getenv("STELNETTTS_MOSS_TTS_LOCAL_DEBUG") != nullptr;
+    // STELNETTTS_MOSS_TTS_LOCAL_DUMP_STOP=1 emits the RAW (pre-softmax) stop-head
     // logits every frame, parseable, for the reference-vs-port trajectory diff.
-    const bool dump_stop = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_STOP") != nullptr;
+    const bool dump_stop = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_STOP") != nullptr;
 
-    // CRISPASR_MOSS_TTS_LOCAL_FORCE_FRAMES=<path>: teacher-forcing for the #249
+    // STELNETTTS_MOSS_TTS_LOCAL_FORCE_FRAMES=<path>: teacher-forcing for the #249
     // trajectory diff. The file is whitespace-separated audio codes, n_vq per
     // frame; we feed those exact frames back (skipping audio sampling) and dump
     // our stop logit per frame — directly comparable to the reference run on the
     // SAME frames, isolating forward-correctness from the sampled-code choices.
     std::vector<std::vector<int32_t>> forced;
-    if (const char* fp = getenv("CRISPASR_MOSS_TTS_LOCAL_FORCE_FRAMES")) {
+    if (const char* fp = getenv("STELNETTTS_MOSS_TTS_LOCAL_FORCE_FRAMES")) {
         if (FILE* ff = fopen(fp, "r")) {
             std::vector<int32_t> row;
             int v;
@@ -1196,7 +1196,7 @@ static bool mtl_generate_grid(moss_tts_local_context* ctx, const char* text, con
         return false;
     // #249 confirm: dump the channel-0 prompt ids to diff against the reference
     // processor's input_ids[:,0] (proves piece-wise parity).
-    if (const char* pp = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_PROMPT_IDS")) {
+    if (const char* pp = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_PROMPT_IDS")) {
         if (FILE* pf = fopen(pp, "w")) {
             for (int32_t t : id_vec)
                 fprintf(pf, "%d ", t);
@@ -1239,12 +1239,12 @@ static bool mtl_generate_grid(moss_tts_local_context* ctx, const char* text, con
             free(global_hidden);
             return false;
         }
-        // CRISPASR_MOSS_TTS_LOCAL_DUMP_HIDDEN=<path>: dump frame-0 backbone hidden
+        // STELNETTTS_MOSS_TTS_LOCAL_DUMP_HIDDEN=<path>: dump frame-0 backbone hidden
         // (global) + local-transformer output (local) for the #249 per-component
         // diff vs the HF reference — localizes whether the backbone or the depth
         // transformer diverges.
         if (f == 0) {
-            if (const char* dhp = getenv("CRISPASR_MOSS_TTS_LOCAL_DUMP_HIDDEN")) {
+            if (const char* dhp = getenv("STELNETTTS_MOSS_TTS_LOCAL_DUMP_HIDDEN")) {
                 if (FILE* hf = fopen(dhp, "w")) {
                     fprintf(hf, "GLOBAL");
                     for (int i = 0; i < d; i++)
@@ -1396,7 +1396,7 @@ extern "C" moss_tts_local_context* moss_tts_local_init_from_file(const char* pat
     moss_tts_local_context* ctx = new moss_tts_local_context();
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();

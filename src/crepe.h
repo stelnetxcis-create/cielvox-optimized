@@ -10,7 +10,7 @@
 //
 // Two capacities: "full" (~44.5 MB f16) and "tiny" (~1.0 MB f16).
 //
-// GGUF: crepe-{full,tiny}-{f16,q8_0}.gguf, cstr/crepe-GGUF.
+// GGUF: crepe-{full,tiny}-{f16,q8_0}.gguf, Xenna/crepe-GGUF.
 // Blueprint trace, geometry table and parity notes:
 //   docs/music-transcription/PLAN.md
 // Executable spec for this graph (keep in lockstep):

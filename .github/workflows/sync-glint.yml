@@ -1,10 +1,10 @@
 name: Sync glint
 
 # Keeps the in-tree glint/ encoder copy current with
-# github.com/CrispStrobe/glint so releases always ship the latest
+# github.com/Cyna/glint so releases always ship the latest
 # committed glint. Triggered by:
-#   - repository_dispatch "glint-push" (sent by glint's notify-crispasr
-#     workflow on every push to its main — needs a CRISPASR_SYNC_PAT
+#   - repository_dispatch "glint-push" (sent by glint's notify-stelnettts
+#     workflow on every push to its main — needs a STELNETTTS_SYNC_PAT
 #     secret over there)
 #   - a daily schedule (fallback when the dispatch secret is absent)
 #   - manual workflow_dispatch

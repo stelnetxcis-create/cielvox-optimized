@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <sys/sysinfo.h>
 #include <string.h>
-#include "crispasr.h"
+#include "stelnettts.h"
 #include "ggml.h"
 
 #define UNUSED(x) (void)(x)
@@ -64,7 +64,7 @@ bool inputStreamEof(void* ctx) {
 }
 void inputStreamClose(void* ctx) {}
 
-JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_initContextFromInputStream(JNIEnv* env, jobject thiz,
+JNIEXPORT jlong JNICALL Java_com_stelnettts_java_whisper_WhisperLib_initContextFromInputStream(JNIEnv* env, jobject thiz,
                                                                                              jobject input_stream) {
     UNUSED(thiz);
 
@@ -118,7 +118,7 @@ static struct whisper_context* whisper_init_from_asset(JNIEnv* env, jobject asse
     return whisper_init(&loader);
 }
 
-JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_initContextFromAsset(JNIEnv* env, jobject thiz,
+JNIEXPORT jlong JNICALL Java_com_stelnettts_java_whisper_WhisperLib_initContextFromAsset(JNIEnv* env, jobject thiz,
                                                                                        jobject assetManager,
                                                                                        jstring asset_path_str) {
     UNUSED(thiz);
@@ -129,7 +129,7 @@ JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_initContextFro
     return (jlong)context;
 }
 
-JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_initContext(JNIEnv* env, jobject thiz,
+JNIEXPORT jlong JNICALL Java_com_stelnettts_java_whisper_WhisperLib_initContext(JNIEnv* env, jobject thiz,
                                                                               jstring model_path_str) {
     UNUSED(thiz);
     struct whisper_context* context = NULL;
@@ -139,7 +139,7 @@ JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_initContext(JN
     return (jlong)context;
 }
 
-JNIEXPORT void JNICALL Java_com_crispasr_java_whisper_WhisperLib_freeContext(JNIEnv* env, jobject thiz,
+JNIEXPORT void JNICALL Java_com_stelnettts_java_whisper_WhisperLib_freeContext(JNIEnv* env, jobject thiz,
                                                                              jlong context_ptr) {
     UNUSED(env);
     UNUSED(thiz);
@@ -147,7 +147,7 @@ JNIEXPORT void JNICALL Java_com_crispasr_java_whisper_WhisperLib_freeContext(JNI
     whisper_free(context);
 }
 
-JNIEXPORT void JNICALL Java_com_crispasr_java_whisper_WhisperLib_fullTranscribe(JNIEnv* env, jobject thiz,
+JNIEXPORT void JNICALL Java_com_stelnettts_java_whisper_WhisperLib_fullTranscribe(JNIEnv* env, jobject thiz,
                                                                                 jlong context_ptr, jint num_threads,
                                                                                 jfloatArray audio_data) {
     UNUSED(thiz);
@@ -156,7 +156,7 @@ JNIEXPORT void JNICALL Java_com_crispasr_java_whisper_WhisperLib_fullTranscribe(
     const jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
 
     // The below adapted from the Objective-C iOS sample
-    struct whisper_full_params params = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+    struct whisper_full_params params = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
     params.print_realtime = true;
     params.print_progress = false;
     params.print_timestamps = true;
@@ -179,7 +179,7 @@ JNIEXPORT void JNICALL Java_com_crispasr_java_whisper_WhisperLib_fullTranscribe(
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio_data_arr, JNI_ABORT);
 }
 
-JNIEXPORT jint JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegmentCount(JNIEnv* env, jobject thiz,
+JNIEXPORT jint JNICALL Java_com_stelnettts_java_whisper_WhisperLib_getTextSegmentCount(JNIEnv* env, jobject thiz,
                                                                                      jlong context_ptr) {
     UNUSED(env);
     UNUSED(thiz);
@@ -188,7 +188,7 @@ JNIEXPORT jint JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegmentC
 }
 
 
-JNIEXPORT jstring JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegment(JNIEnv* env, jobject thiz,
+JNIEXPORT jstring JNICALL Java_com_stelnettts_java_whisper_WhisperLib_getTextSegment(JNIEnv* env, jobject thiz,
                                                                                    jlong context_ptr, jint index) {
     UNUSED(thiz);
     struct whisper_context* context = (struct whisper_context*)context_ptr;
@@ -197,7 +197,7 @@ JNIEXPORT jstring JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegme
     return string;
 }
 
-JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegmentT0(JNIEnv* env, jobject thiz,
+JNIEXPORT jlong JNICALL Java_com_stelnettts_java_whisper_WhisperLib_getTextSegmentT0(JNIEnv* env, jobject thiz,
                                                                                    jlong context_ptr, jint index) {
     UNUSED(thiz);
     struct whisper_context* context = (struct whisper_context*)context_ptr;
@@ -205,7 +205,7 @@ JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegment
     return (jlong)t0;
 }
 
-JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegmentT1(JNIEnv* env, jobject thiz,
+JNIEXPORT jlong JNICALL Java_com_stelnettts_java_whisper_WhisperLib_getTextSegmentT1(JNIEnv* env, jobject thiz,
                                                                                    jlong context_ptr, jint index) {
     UNUSED(thiz);
     struct whisper_context* context = (struct whisper_context*)context_ptr;
@@ -213,14 +213,14 @@ JNIEXPORT jlong JNICALL Java_com_crispasr_java_whisper_WhisperLib_getTextSegment
     return (jlong)t1;
 }
 
-JNIEXPORT jstring JNICALL Java_com_crispasr_java_whisper_WhisperLib_getSystemInfo(JNIEnv* env, jobject thiz) {
+JNIEXPORT jstring JNICALL Java_com_stelnettts_java_whisper_WhisperLib_getSystemInfo(JNIEnv* env, jobject thiz) {
     UNUSED(thiz);
     const char* sysinfo = whisper_print_system_info();
     jstring string = (*env)->NewStringUTF(env, sysinfo);
     return string;
 }
 
-JNIEXPORT jstring JNICALL Java_com_crispasr_java_whisper_WhisperLib_benchMemcpy(JNIEnv* env, jobject thiz,
+JNIEXPORT jstring JNICALL Java_com_stelnettts_java_whisper_WhisperLib_benchMemcpy(JNIEnv* env, jobject thiz,
                                                                                 jint n_threads) {
     UNUSED(thiz);
     const char* bench_ggml_memcpy = whisper_bench_memcpy_str(n_threads);
@@ -229,7 +229,7 @@ JNIEXPORT jstring JNICALL Java_com_crispasr_java_whisper_WhisperLib_benchMemcpy(
     return string;
 }
 
-JNIEXPORT jstring JNICALL Java_com_crispasr_java_whisper_WhisperLib_benchGgmlMulMat(JNIEnv* env, jobject thiz,
+JNIEXPORT jstring JNICALL Java_com_stelnettts_java_whisper_WhisperLib_benchGgmlMulMat(JNIEnv* env, jobject thiz,
                                                                                     jint n_threads) {
     UNUSED(thiz);
     const char* bench_ggml_mul_mat = whisper_bench_ggml_mul_mat_str(n_threads);

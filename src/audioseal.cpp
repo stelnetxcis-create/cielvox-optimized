@@ -16,8 +16,8 @@
 #include "audioseal.h"
 #include "core/conv.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -43,7 +43,7 @@
 static bool audioseal_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_AUDIOSEAL_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_AUDIOSEAL_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -471,16 +471,16 @@ static ggml_tensor* forward_encoder(ggml_context* ctx, ggml_tensor* x, const aud
                                     const audioseal_lstm_layer lstm[2], const audioseal_conv& enc_out,
                                     const uint32_t ratios[4]) {
     // Input conv
-    if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
         fprintf(stderr, "  enc_in: x ne=[%lld,%lld]\n", (long long)x->ne[0], (long long)x->ne[1]);
     if (enc_in.w) {
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  enc_in.w ne=[%lld,%lld,%lld]\n", (long long)enc_in.w->ne[0], (long long)enc_in.w->ne[1],
                     (long long)enc_in.w->ne[2]);
         x = conv1d(ctx, x, enc_in.w, enc_in.b, 1, 3, 1);
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  after enc_in: x ne=[%lld,%lld]\n", (long long)x->ne[0], (long long)x->ne[1]);
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DUMP_STAGES")) {
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DUMP_STAGES")) {
             ggml_set_name(x, "stage_enc_0");
             ggml_set_output(x);
         }
@@ -488,16 +488,16 @@ static ggml_tensor* forward_encoder(ggml_context* ctx, ggml_tensor* x, const aud
 
     // 4 blocks: resblock → ELU → downsample
     for (int i = 0; i < 4; i++) {
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  resblock %d: x ne=[%lld,%lld]\n", i, (long long)x->ne[0], (long long)x->ne[1]);
         x = build_resblock(ctx, x, res[i]);
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DUMP_STAGES")) {
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DUMP_STAGES")) {
             char nm[32];
             snprintf(nm, sizeof(nm), "stage_enc_res%d", i);
             ggml_set_name(x, nm);
             ggml_set_output(x);
         }
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  after resblock %d: x ne=[%lld,%lld]\n", i, (long long)x->ne[0], (long long)x->ne[1]);
         x = elu(ctx, x);
         if (down[i].w) {
@@ -510,18 +510,18 @@ static ggml_tensor* forward_encoder(ggml_context* ctx, ggml_tensor* x, const aud
             // ggml_conv_1d only supports symmetric padding.
             // NOTE: ggml_pad_ext convention may swap left/right — test both
             x = ggml_pad_ext(ctx, x, pad_right, pad_left, 0, 0, 0, 0, 0, 0);
-            if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+            if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
                 fprintf(stderr, "  down %d: ratio=%d K=%d pad_l=%d pad_r=%d w ne=[%lld,%lld,%lld]\n", i, ratio, K,
                         pad_left, pad_right, (long long)down[i].w->ne[0], (long long)down[i].w->ne[1],
                         (long long)down[i].w->ne[2]);
             x = conv1d(ctx, x, down[i].w, down[i].b, ratio, 0, 1); // pad=0 (done externally)
-            if (crispasr_env::get("CRISPASR_AUDIOSEAL_DUMP_STAGES")) {
+            if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DUMP_STAGES")) {
                 char nm[32];
                 snprintf(nm, sizeof(nm), "stage_enc_down%d", i);
                 ggml_set_name(x, nm);
                 ggml_set_output(x);
             }
-            if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+            if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
                 fprintf(stderr, "  after down %d: x ne=[%lld,%lld]\n", i, (long long)x->ne[0], (long long)x->ne[1]);
         }
     }
@@ -531,41 +531,41 @@ static ggml_tensor* forward_encoder(ggml_context* ctx, ggml_tensor* x, const aud
     {
         ggml_tensor* lstm_in = x;
         int hidden = (int)x->ne[1]; // x is (T, D) in ggml, ne[0]=T, ne[1]=D
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  LSTM: x ne=[%lld,%lld] hidden=%d\n", (long long)x->ne[0], (long long)x->ne[1], hidden);
         // Transpose to (D, T) for LSTM
         x = ggml_cont(ctx, ggml_transpose(ctx, x)); // (D, T)
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  LSTM after transpose: x ne=[%lld,%lld]\n", (long long)x->ne[0], (long long)x->ne[1]);
         for (int i = 0; i < 2; i++) {
             if (lstm[i].weight_ih)
                 x = lstm_layer_forward(ctx, x, lstm[i], hidden);
         }
         // Transpose back to (T, D)
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  LSTM output (before transpose back): x ne=[%lld,%lld]\n", (long long)x->ne[0],
                     (long long)x->ne[1]);
         x = ggml_cont(ctx, ggml_transpose(ctx, x));
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  LSTM output (after transpose back): x ne=[%lld,%lld]\n", (long long)x->ne[0],
                     (long long)x->ne[1]);
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  lstm_in: ne=[%lld,%lld]\n", (long long)lstm_in->ne[0], (long long)lstm_in->ne[1]);
         x = ggml_add(ctx, x, lstm_in); // skip connection
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  after skip add: x ne=[%lld,%lld]\n", (long long)x->ne[0], (long long)x->ne[1]);
     }
 
     // ELU + output conv
     x = elu(ctx, x);
-    if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+    if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
         fprintf(stderr, "  enc_out conv: x ne=[%lld,%lld]\n", (long long)x->ne[0], (long long)x->ne[1]);
     if (enc_out.w) {
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  enc_out.w ne=[%lld,%lld,%lld]\n", (long long)enc_out.w->ne[0],
                     (long long)enc_out.w->ne[1], (long long)enc_out.w->ne[2]);
         x = conv1d(ctx, x, enc_out.w, enc_out.b, 1, 3, 1);
-        if (crispasr_env::get("CRISPASR_AUDIOSEAL_DEBUG"))
+        if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DEBUG"))
             fprintf(stderr, "  after enc_out: x ne=[%lld,%lld]\n", (long long)x->ne[0], (long long)x->ne[1]);
     }
 
@@ -664,7 +664,7 @@ struct audioseal_ctx* audioseal_init_from_file(const char* path, struct audiosea
 
     // Backend
     if (params.use_gpu) {
-        c->backend = crispasr_init_gpu_backend();
+        c->backend = stelnettts_init_gpu_backend();
     }
     if (!c->backend) {
         c->backend = core_cpu_backend::init();
@@ -829,7 +829,7 @@ float* audioseal_embed(struct audioseal_ctx* ctx, const float* pcm, int n_sample
     }
 
     // Dump intermediate stages for debug/diff comparison
-    if (crispasr_env::get("CRISPASR_AUDIOSEAL_DUMP_STAGES")) {
+    if (stelnettts_env::get("STELNETTTS_AUDIOSEAL_DUMP_STAGES")) {
         const char* stage_names[] = {
             "stage_enc_0",    "stage_enc_res0",  "stage_enc_down0", "stage_enc_res1",  "stage_enc_down1",
             "stage_enc_res2", "stage_enc_down2", "stage_enc_res3",  "stage_enc_down3", "enc_output",

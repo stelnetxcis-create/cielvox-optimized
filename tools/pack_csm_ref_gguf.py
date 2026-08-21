@@ -5,8 +5,8 @@ The CSM reference (`csm_reference_manual.py`) writes per-stage activations as
 loose .npy files (it predates the unified `tools/dump_reference.py` plug-in
 API and runs a manual safetensors forward because HF transformers' dynamo
 path is broken for CSM). This script collects those .npy files into one GGUF
-tensor archive that the C++ diff harness (`crispasr-diff csm`) loads via
-`crispasr_diff::Ref`.
+tensor archive that the C++ diff harness (`stelnettts-diff csm`) loads via
+`stelnettts_diff::Ref`.
 
 No torch required — pure numpy + gguf.
 
@@ -18,8 +18,8 @@ text_tokens) are stored as F32 — every value is a small exact integer.
 
 Usage:
     python tools/pack_csm_ref_gguf.py \
-        --dump-dir /Volumes/backups/ai/crispasr/ref-dumps/csm \
-        --output   /Volumes/backups/ai/crispasr/ref-dumps/csm-ref.gguf
+        --dump-dir /Volumes/backups/ai/stelnettts/ref-dumps/csm \
+        --output   /Volumes/backups/ai/stelnettts/ref-dumps/csm-ref.gguf
 """
 
 from __future__ import annotations
@@ -55,10 +55,10 @@ def main() -> None:
         raise SystemExit(f"no .npy files in {args.dump_dir}")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    w = gguf.GGUFWriter(str(args.output), arch="crispasr.reference")
+    w = gguf.GGUFWriter(str(args.output), arch="stelnettts.reference")
     w.add_description("CSM-1B manual reference activation dump (packed from .npy)")
-    w.add_string("crispasr.ref.backend", "csm")
-    w.add_string("crispasr.ref.text", args.text)
+    w.add_string("stelnettts.ref.backend", "csm")
+    w.add_string("stelnettts.ref.text", args.text)
 
     packed = []
     for f in npy_files:

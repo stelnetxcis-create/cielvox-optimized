@@ -101,7 +101,7 @@ static inline ggml_tensor* convt1d_depthwise_2x_k3(ggml_context* ctx, ggml_tenso
 // (T_in - 1)·stride + K samples; it has no padding parameter. Most
 // callers want a smaller T_out and crop the excess from the ends:
 //
-//   - **Causal upsamplers** (qwen3-tts codec) trim the right tail only:
+//   - **Causal upsamplers** (cielvox2-tts codec) trim the right tail only:
 //     `crop_left=0, crop_right=K-stride` so T_out = T_in · stride.
 //   - **Symmetric-pad upsamplers** (SNAC, with k=2s, p=s/2) crop the
 //     same amount from each end: `crop_left=crop_right=stride/2`,

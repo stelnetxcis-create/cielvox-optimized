@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert canopylabs/orpheus-3b-0.1-ft (and the Kartoffel_Orpheus family)
-HuggingFace safetensors → GGUF F16/F32 for the CrispASR `orpheus`
+HuggingFace safetensors → GGUF F16/F32 for the StelnetTTS `orpheus`
 backend.
 
 Orpheus is Llama-3.2-3B-Instruct as the talker plus the SNAC 24 kHz
@@ -107,7 +107,7 @@ def load_model_dir(model_id: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Tensor name remapping — HF Llama → GGUF talker.* (mirrors qwen3_tts)
+# Tensor name remapping — HF Llama → GGUF talker.* (mirrors cielvox2_tts)
 # ---------------------------------------------------------------------------
 
 def map_tensor_name(hf_name: str) -> str | None:
@@ -231,7 +231,7 @@ def main():
     ap.add_argument("--speaker-identity", dest="speaker_identity", default="",
                     choices=["", "real_person", "synthetic", "unknown"],
                     help="whose voice this checkpoint's preset speakers are. Stamped into the "
-                         "GGUF as crispasr.voice.speaker_identity and read back by the runtime "
+                         "GGUF as stelnettts.voice.speaker_identity and read back by the runtime "
                          "to decide whether output needs the EU AI Act Art. 50(4) audible "
                          "disclosure. real_person for checkpoints whose speakers are "
                          "identifiable people (e.g. kartoffel-orpheus-de-natural, whose 19 "
@@ -242,7 +242,7 @@ def main():
                     help="orpheus.tts_model_type metadata. Most ft checkpoints "
                          "(canopylabs orpheus-3b-0.1-ft, Kartoffel_*) are "
                          "fixed_speaker — pass `--variant fixed_speaker` to "
-                         "have the runtime require --voice / qwen3_tts-style "
+                         "have the runtime require --voice / cielvox2_tts-style "
                          "speaker selection. Use `base` for the unfinetuned "
                          "pretrained backbone (canopylabs/orpheus-3b-0.1-pretrained).")
     args = ap.parse_args()
@@ -307,10 +307,10 @@ def main():
     # EU AI Act Art. 50(4): whose voice this checkpoint speaks as. Stamped here
     # so the runtime does not have to infer it from the file name — one orpheus
     # backend serves Canopy's base model and Kartoffel's German fine-tune, and
-    # they have different answers. See examples/cli/crispasr_speaker_identity.h.
+    # they have different answers. See examples/cli/stelnettts_speaker_identity.h.
     # Absent means "not established"; it is never written as a guess.
     if args.speaker_identity and args.speaker_identity != "unknown":
-        w.add_string("crispasr.voice.speaker_identity", args.speaker_identity)
+        w.add_string("stelnettts.voice.speaker_identity", args.speaker_identity)
 
     def u32(k, v): w.add_uint32(k, int(v))
     def f32(k, v): w.add_float32(k, float(v))

@@ -29,7 +29,7 @@
 //   English-only (.en)      eot 50256,   sot absent   -> legacy   (not multilingual,
 //                                                        so the fixup never runs)
 //   HF-converted multiling. eot 50257,   sot absent   -> legacy   <-- the #322 trap
-//   CrispASR-converted      eot/sot/beg all present   -> serialized
+//   StelnetTTS-converted      eot/sot/beg all present   -> serialized
 //
 // Weight-free and header-only.
 
@@ -54,7 +54,7 @@ struct Serialized {
 // would otherwise take the branch and leave `token_beg` at the English-layout
 // default 50363 with no `dt` shift applied — worse than either path taken whole.
 // Requiring it costs nothing for the models the serialized branch exists to serve:
-// a CrispASR-converted vocab writes all three.
+// a StelnetTTS-converted vocab writes all three.
 inline bool use_serialized(const Serialized& s) {
     return s.eot != kAbsent && s.sot != kAbsent && s.beg != kAbsent;
 }

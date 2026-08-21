@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-vad-sgemm-ldb-fix",
-  "title": "CrispASR vad sgemm ldb fix",
+  "id": "chr1str/stelnettts-vad-sgemm-ldb-fix",
+  "title": "StelnetTTS vad sgemm ldb fix",
   "code_file": "vad_sgemm_fix.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""CrispASR — Mini-Omni2 GGUF conversion + quantization bench.
+"""StelnetTTS — Mini-Omni2 GGUF conversion + quantization bench.
 
 Converts gpt-omni/mini-omni2 (Whisper-small + Qwen2-0.5B) to F16 GGUF,
 quantizes to Q8_0 and Q4_K with selective tensor protection
 (encoder/adapter/embedding at F16, only LLM layers quantized), runs
-crispasr-diff on all 3 quants, and uploads to cstr/mini-omni2-GGUF.
+stelnettts-diff on all 3 quants, and uploads to Xenna/mini-omni2-GGUF.
 """
 
 import os
@@ -14,11 +14,11 @@ import shutil
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
-BRANCH = os.environ.get("CRISPASR_REF", "main")
+BRANCH = os.environ.get("STELNETTTS_REF", "main")
 
-HF_REPO = "cstr/mini-omni2-GGUF"
+HF_REPO = "Xenna/mini-omni2-GGUF"
 HF_MODEL = "gpt-omni/mini-omni2"
 GH_MINI_OMNI2 = "https://github.com/gpt-omni/mini-omni2.git"
 
@@ -27,14 +27,14 @@ OUT_Q8  = WORK / "mini-omni2-q8_0.gguf"
 OUT_Q4K = WORK / "mini-omni2-q4_k.gguf"
 
 # ===========================================================================
-# 1. Clone CrispASR + setup
+# 1. Clone StelnetTTS + setup
 # ===========================================================================
-print(f"[1] cloning CrispASR ({BRANCH})", flush=True)
+print(f"[1] cloning StelnetTTS ({BRANCH})", flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
 subprocess.check_call([
     "git", "clone", "--depth", "1", "--branch", BRANCH,
-    "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+    "https://github.com/Cyna/StelnetTTS.git", str(REPO),
 ])
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -116,22 +116,22 @@ print(f"  F16: {OUT_F16.stat().st_size / (1024**3):.2f} GiB", flush=True)
 kh.step("f16_done", size_gb=round(OUT_F16.stat().st_size / (1024**3), 2))
 
 # ===========================================================================
-# 5. Build CrispASR (quantizer + diff harness)
+# 5. Build StelnetTTS (quantizer + diff harness)
 # ===========================================================================
-print("[5] building crispasr-quantize + crispasr-diff", flush=True)
+print("[5] building stelnettts-quantize + stelnettts-diff", flush=True)
 kh.install_build_toolchain()
 BUILD.mkdir(exist_ok=True)
 
 cmake_cfg = (
     f"cmake -G Ninja -S {REPO} -B {BUILD} "
-    f"-DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DCRISPASR_BUILD_TESTS=OFF "
+    f"-DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DSTELNETTTS_BUILD_TESTS=OFF "
     + " ".join(kh.cache_and_link_flags())
 )
 kh.sh_with_progress(cmake_cfg)
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"cmake --build {BUILD} --target crispasr-quantize crispasr-diff "
+        f"cmake --build {BUILD} --target stelnettts-quantize stelnettts-diff "
         f"-j{kh.safe_build_jobs(gpu=False)}"
     )
 kh.step("build_done")
@@ -139,7 +139,7 @@ kh.step("build_done")
 # ===========================================================================
 # 6. Quantize to Q8_0 and Q4_K
 # ===========================================================================
-QUANTIZE = BUILD / "bin" / "crispasr-quantize"
+QUANTIZE = BUILD / "bin" / "stelnettts-quantize"
 
 print("[6a] quantizing F16 -> Q8_0", flush=True)
 subprocess.check_call([str(QUANTIZE), str(OUT_F16), str(OUT_Q8), "q8_0"])
@@ -171,9 +171,9 @@ subprocess.check_call([
 kh.step("ref_dump_done")
 
 # ===========================================================================
-# 8. Run crispasr-diff on all 3 quants
+# 8. Run stelnettts-diff on all 3 quants
 # ===========================================================================
-DIFF = BUILD / "bin" / "crispasr-diff"
+DIFF = BUILD / "bin" / "stelnettts-diff"
 results = {}
 
 for label, gguf in [("F16", OUT_F16), ("Q8_0", OUT_Q8), ("Q4_K", OUT_Q4K)]:
@@ -249,14 +249,14 @@ base_model: gpt-omni/mini-omni2
 # Mini-Omni2 GGUF
 
 GGUF conversion of [gpt-omni/mini-omni2](https://huggingface.co/gpt-omni/mini-omni2)
-for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 Architecture: Whisper-small encoder (80 mel, 12L, 768d) + whisperMLP adapter
 (SwiGLU 768→4864→896) + Qwen2-0.5B LLM (896d, 24L, GQA 14/2).
 
 Supports ASR (audio→text), TTS (text→audio), and speech-to-speech (audio→audio).
 TTS/S2S require the SNAC 24kHz codec companion
-([cstr/snac-24khz-GGUF](https://huggingface.co/cstr/snac-24khz-GGUF)).
+([Xenna/snac-24khz-GGUF](https://huggingface.co/Xenna/snac-24khz-GGUF)).
 
 ## Files
 
@@ -270,10 +270,10 @@ TTS/S2S require the SNAC 24kHz codec companion
 
 ```bash
 # ASR
-crispasr -m mini-omni2-q4_k.gguf -f audio.wav --backend mini-omni2
+stelnettts -m mini-omni2-q4_k.gguf -f audio.wav --backend mini-omni2
 
 # TTS (needs SNAC codec)
-crispasr -m mini-omni2-q4_k.gguf --tts "Hello world" \\
+stelnettts -m mini-omni2-q4_k.gguf --tts "Hello world" \\
     --codec-model snac-24khz.gguf --tts-output out.wav --backend mini-omni2
 ```
 """

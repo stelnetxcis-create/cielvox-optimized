@@ -15,7 +15,7 @@
 // Shape from WhisperJAV's `modules/vad_failover.py`, with one deliberate
 // correction — see `few_segments` below. Weight-free and pure; the caller
 // decides what "transcribe the whole thing" means for its pipeline
-// (`crispasr_fixed_chunk_slices`, not one giant slice).
+// (`stelnettts_fixed_chunk_slices`, not one giant slice).
 
 #pragma once
 

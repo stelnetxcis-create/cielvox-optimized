@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cross-compile CrispASR for Android using the NDK toolchain.
+# Cross-compile StelnetTTS for Android using the NDK toolchain.
 #
 # This script is for CROSS-COMPILATION from a Linux/macOS host.
 # It requires the Android NDK installed on the host machine.
@@ -7,7 +7,7 @@
 # !! If you are building INSIDE Termux on an Android device, you do
 # !! NOT need this script. Just use plain cmake:
 # !!
-# !!   cmake -B build -DBUILD_SHARED_LIBS=OFF -DCRISPASR_BUILD_TESTS=OFF .
+# !!   cmake -B build -DBUILD_SHARED_LIBS=OFF -DSTELNETTTS_BUILD_TESTS=OFF .
 # !!   cmake --build build -j$(nproc)
 # !!
 # !! See docs/install.md "Android / Termux" for details and the
@@ -52,14 +52,14 @@ for ABI in "${ABIS[@]}"; do
         -DANDROID_NATIVE_API_LEVEL="$API_LEVEL" \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=ON \
-        -DCRISPASR_BUILD_EXAMPLES=OFF \
-        -DCRISPASR_BUILD_TESTS=OFF \
+        -DSTELNETTTS_BUILD_EXAMPLES=OFF \
+        -DSTELNETTTS_BUILD_TESTS=OFF \
         -DGGML_VULKAN="$VULKAN" \
-        -DCRISPASR_OPUS_FETCH=ON
+        -DSTELNETTTS_OPUS_FETCH=ON
 
     cmake --build "$BUILD_DIR/$ABI" -j"$(nproc 2>/dev/null || echo 4)"
 
-    ls -lh "$BUILD_DIR/$ABI/src/libcrispasr.so" 2>/dev/null || true
+    ls -lh "$BUILD_DIR/$ABI/src/libstelnettts.so" 2>/dev/null || true
 done
 
 echo "=== Android build complete ==="

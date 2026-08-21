@@ -1,4 +1,4 @@
-# CrispASR perf campaign — fleet-wide codec/CFG optimization
+# StelnetTTS perf campaign — fleet-wide codec/CFG optimization
 
 Cross-cutting speedups discovered during the OmniVoice #254 work, generalized to
 the whole backend fleet. Each item ships **env-gated** (A/B toggle, never a silent
@@ -13,19 +13,19 @@ possible. Default flips only on a proven speed AND quality win.
 DSP, sub-ms, no win). openvoice2's `ref_enc_forward` (STFT + 6-conv reference encoder →
 256-d `target_se`) IS a neural encode, re-run on every `openvoice2_convert` /
 `openvoice2_extract_speaker_embedding`. Both routed through a new `openvoice2_target_se()`
-that wraps the SHARED `crispasr_ref_cache` content-addressed helper (tag `openvoice2-se`,
+that wraps the SHARED `stelnettts_ref_cache` content-addressed helper (tag `openvoice2-se`,
 key = fnv1a(ref_pcm) ^ fnv1a(ref_sr)) — same helper as irodori-latent / indextts-cond;
-resample+STFT+ref_enc are skipped entirely on a hit. Cache dir = `CRISPASR_TTS_REF_CACHE_DIR`
-→ `$TMPDIR/crispasr-tts-refcache/`; global `CRISPASR_TTS_REF_CACHE=0` disables (helper-owned
-env, NOT the OVC1 `CRISPASR_*_VOICE_CACHE`). **A/B VERIFIED** via `test-openvoice2-hifi`
+resample+STFT+ref_enc are skipped entirely on a hit. Cache dir = `STELNETTTS_TTS_REF_CACHE_DIR`
+→ `$TMPDIR/stelnettts-tts-refcache/`; global `STELNETTTS_TTS_REF_CACHE=0` disables (helper-owned
+env, NOT the OVC1 `STELNETTTS_*_VOICE_CACHE`). **A/B VERIFIED** via `test-openvoice2-hifi`
 (clean-WAV harness, jfk src=ref, `openvoice2-tcc-f16`): run1 miss → run2 HIT (log-confirmed)
-→ run3 `CRISPASR_TTS_REF_CACHE=0` no-hit; **output byte-IDENTICAL across all 3 runs**
+→ run3 `STELNETTTS_TTS_REF_CACHE=0` no-hit; **output byte-IDENTICAL across all 3 runs**
 (cache returns bit-exact SE; the disabled fresh-encode matches too). Cache blob 1061 B
-(256×f32 + header); `CRISPASR_TTS_REF_CACHE_DIR` honored. Landed on branch
+(256×f32 + header); `STELNETTTS_TTS_REF_CACHE_DIR` honored. Landed on branch
 `perf/f5-refvoice-cache`. (dots_tts NOT viable here — speaker CAM++ GGUF not local.)
 
 **✅ [OPUS-1M] DONE (impl) 2026-07-16 — chatterbox interval-CFG (`a4a8f64de`, opt-in).**
-`CRISPASR_S3GEN_CFG_INTERVAL` in s3gen's 10-step CFM Euler solver: K>1 forces the
+`STELNETTTS_S3GEN_CFG_INTERVAL` in s3gen's 10-step CFM Euler solver: K>1 forces the
 sequential single-UNet path and skips the uncond pass every K steps; batched-B2 default
 (K=1) byte-unchanged by construction. **Verification (honest):** default byte-safe;
 K>1 ENGAGES + valid non-crash output; but K>1 now M1-VERIFIED via a fast CFM-only
@@ -71,28 +71,28 @@ TODO QUEUE below ARE the round-2 handover.
 opt-in, default OFF.** Recompute the uncond CFG forward only every K steps, reuse the
 cache in between; cond fresh; first+last always recompute. Default K=1 is
 byte-identical to legacy.
-- **cosyvoice3** `CRISPASR_COSYVOICE3_CFG_INTERVAL` (`cv3_run_solve_euler`): K=1
+- **cosyvoice3** `STELNETTTS_COSYVOICE3_CFG_INTERVAL` (`cv3_run_solve_euler`): K=1
   byte-exact (cos=1.0 twice via `cosyvoice3-flow-cfg-interval-ab`); K=2 mel cos
   0.9994, K=3 0.9915. Full ASR round-trip PENDING (synthetic-input harness).
-- **f5-tts** `CRISPASR_F5_CFG_INTERVAL` (32-step ODE sampler): verified end-to-end
+- **f5-tts** `STELNETTTS_F5_CFG_INTERVAL` (32-step ODE sampler): verified end-to-end
   via the CLI — K=1 twice PCM byte-IDENTICAL; **content preserved (ASR(K1)==ASR(K2),
   whisper base.en, word-overlap 1.0)**; K=2 acoustic divergence log-STFT cos 0.945 /
   envelope corr 0.78 (PCM corr is phase-noise per [[tts-parity-not-by-audio-corr]]).
-- **voxcpm2** `CRISPASR_VOXCPM2_CFG_INTERVAL` (per-patch CFM `cfm_euler_solve`):
+- **voxcpm2** `STELNETTTS_VOXCPM2_CFG_INTERVAL` (per-patch CFM `cfm_euler_solve`):
   verified via CLI — K=1 twice PCM byte-IDENTICAL; content preserved (ASR(K1)==ASR(K2)).
   ⚠ voxcpm2 is AR at the patch level, so K=2 shifts the stop predictor by a patch
   (3.36 s → 3.52 s) — same words, slightly different duration.
-- **dots-tts** `CRISPASR_DOTS_CFG_INTERVAL` (per-patch flow-matching `dots_flow_match_core`):
+- **dots-tts** `STELNETTTS_DOTS_CFG_INTERVAL` (per-patch flow-matching `dots_flow_match_core`):
   verified via CLI (dots-tts-soar-f16 + BigVGAN vocoder, 4.4 GB) — K=1 twice PCM
   byte-IDENTICAL; content preserved — ASR(K1)==ASR(K2) word-for-word on an unambiguous
   sentence (an earlier fox/box diff was a whisper mishearing of the K=1 baseline, not
   interval); K=2 log-STFT cos 0.940.
-- **irodori** `CRISPASR_IRODORI_CFG_INTERVAL` (40-step RF-ODE, up to 3 uncond forwards
+- **irodori** `STELNETTTS_IRODORI_CFG_INTERVAL` (40-step RF-ODE, up to 3 uncond forwards
   per step: text/speaker/caption — the heaviest CFG): verified via CLI (irodori-500m-v3
   + dacvae-ja, JA text, seed 42) — K=1 twice PCM byte-IDENTICAL; K=2 log-STFT cos 0.971.
   ⚠ ASR round-trip INCONCLUSIVE (multilingual ggml-base garbles both the exact K=1 and
   K=2 — weak JA ASR, not interval); rests on byte-exact K=1 + high STFT cosine.
-- **tada** `CRISPASR_TADA_CFG_INTERVAL` (FM Euler `fm_euler_solve`; neg is a fixed
+- **tada** `STELNETTTS_TADA_CFG_INTERVAL` (FM Euler `fm_euler_solve`; neg is a fixed
   per-solve uncond, so cleanly skippable — the neg-KV is the separate AR LLM):
   verified via CLI (tada-tts-1b-q4_k + tada-codec, text-only, seed 42) — K=1 twice PCM
   byte-IDENTICAL; content preserved ASR(K1)==ASR(K2); K=2 log-STFT cos 0.978. Covers
@@ -134,7 +134,7 @@ shipped dtypes (voc conv1d-routed kernels, ups.* excluded):
 2. At codec/vocoder load (after weights resolved, on the codec compute backend):
    collect all decode conv-kernel `ggml_tensor*` into a vector and
    `ctx-><name>_fc.bake(codec_backend, convs, env_on);` gated
-   `CRISPASR_<BACKEND>_FASTCONV` (default on — the change is numerically equivalent).
+   `STELNETTTS_<BACKEND>_FASTCONV` (default on — the change is numerically equivalent).
 3. In the decode graph, route each conv through the fc-aware overload:
    `core_dac::conv1d(g,x,w,b,K,dil,&fc)` / `dec_block(...,&fc)` /
    `build_decode_graph(...,&fc)` (DAC family) or `core_hifigan::conv1d(...,&fc)`
@@ -154,7 +154,7 @@ shipped dtypes (voc conv1d-routed kernels, ups.* excluded):
   optional `fc` (default nullptr = legacy, so all existing callers untouched).
 - ✅ **Item 6 — OmniVoice migrated to the shared helper** (`191a7ebe4`) — deleted
   its ~90-line local copy; verified equivalent (max|d| 23/32768, ASR exact).
-- ✅ **Item 7 pilot — irodori_tts** (`CRISPASR_IRODORI_FASTCONV`, default on):
+- ✅ **Item 7 pilot — irodori_tts** (`STELNETTTS_IRODORI_FASTCONV`, default on):
   bakes 92 F16 decode conv kernels → F32; wired `decode_dac_window` through
   `core_dac::conv1d(...,&fc)` + `dec_block(...,&fc)`. **Codec-only A/B (seed 42,
   isolating the flow-matching RNG): BYTE-IDENTICAL (0/32768).**
@@ -162,7 +162,7 @@ shipped dtypes (voc conv1d-routed kernels, ups.* excluded):
     `random_device`, flow-matching noise). A naive on/off byte-diff showed
     max|d|=45607 (RNG, NOT fastconv). ON-vs-ON @seed42 = 0 confirmed determinism;
     the seeded on/off = 0 confirmed the codec change. [[tts-parity-not-by-audio-corr]].
-- ✅ **zonos_tts** (`CRISPASR_ZONOS_FASTCONV`, default on): threaded the cache
+- ✅ **zonos_tts** (`STELNETTTS_ZONOS_FASTCONV`, default on): threaded the cache
   through `core_dac::build_decode_graph(...,&fc)` (extended with an optional fc
   param; nullptr = legacy). Bakes the dac-44khz F16 decode kernels. **Codec A/B
   (seed 42): BYTE-IDENTICAL (0/32768), non-silent.** So all three core_dac-family
@@ -173,7 +173,7 @@ shipped dtypes (voc conv1d-routed kernels, ups.* excluded):
   k=1→matmul, but the F16-cast kill (the main win) applies. Unit test extended
   (`core_hifigan` case, cos>0.99999); 210 assertions total. `nullptr`-default so
   nothing changes until a backend bakes + passes `&fc`.
-- ✅ **chatterbox_s3gen** (`CRISPASR_S3GEN_FASTCONV`, **default ON**) — `41dbc88cc` (wire,
+- ✅ **chatterbox_s3gen** (`STELNETTTS_S3GEN_FASTCONV`, **default ON**) — `41dbc88cc` (wire,
   opt-in) + default flip. Cast-kill only (bitwise-identical): bakes F32 copies of the
   275 F16 conv kernels (100 K>1 + 175 K=1) and pointer-swaps `c->tensors` (same idiom as
   the ctx_f16 Metal fix), so `ggml_conv_1d` skips its F16→F32 cast. Split-load aware (two
@@ -181,19 +181,19 @@ shipped dtypes (voc conv1d-routed kernels, ups.* excluded):
   **A/B (seed 42, Metal, `chatterbox-s3gen-q8_0`): ON vs OFF = 0/32768 across all 17280
   samples — audio BYTE-IDENTICAL** (only the trailing AI-provenance metadata chunk differs
   per-run, unrelated). For a flow-matching+AR pipeline that byte-identity also subsumes the
-  determinism gate. Engagement proven (ON 275 baked/swapped, OFF 0; `CRISPASR_S3GEN_FASTCONV_DEBUG`).
+  determinism gate. Engagement proven (ON 275 baked/swapped, OFF 0; `STELNETTTS_S3GEN_FASTCONV_DEBUG`).
   ⚠ Each synth is ~1–3 h on the contended M1 (load 300+), so this was one full ON+OFF pair,
   not 3 arms. ⚠ Only F16 conv kernels benefit; the 79 F32 + 3 ups kernels are untouched (correct).
   **k=1→matmul NOT done** (175 K=1 kernels) — a further win, but changes reduction order so it
   needs its own A/B on the drift-prone GPU path; left for later.
-- ✅ **speecht5_tts** (`CRISPASR_SPEECHT5_FASTCONV`, default on) — `1c558b4f0`.
+- ✅ **speecht5_tts** (`STELNETTTS_SPEECHT5_FASTCONV`, default on) — `1c558b4f0`.
   Threaded the fastconv cache through `core_hifigan::forward()`/`resblock_forward()`
   (one change wires the whole family) + `collect_fastconv_kernels()` helper (excludes
   ups.*). Bakes 74 F16 vocoder convs → F32. **A/B on `speecht5-tts-f16` (deterministic,
   no RNG): ON-vs-ON 0/32768, ON-vs-OFF 0/32768 (byte-identical).** Engagement proven
-  via `CRISPASR_SPEECHT5_FASTCONV_DEBUG`: ON bakes 74/74, OFF bakes 0. ASR roundtrip
+  via `STELNETTTS_SPEECHT5_FASTCONV_DEBUG`: ON bakes 74/74, OFF bakes 0. ASR roundtrip
   intact.
-- ✅ **cosyvoice3_tts** (`CRISPASR_COSYVOICE3_FASTCONV`, default on) — `edbe64d28`.
+- ✅ **cosyvoice3_tts** (`STELNETTTS_COSYVOICE3_FASTCONV`, default on) — `edbe64d28`.
   Cast-kill for the 85 F16 hift-vocoder conv kernels via the re-point idiom (idiom
   (a)): bake one F32 copy of each F16 kernel at hift load, re-point the named
   `cv3_hift` fields (`conv_pre_w`, `conv_post_w`, `ups_w[3]`, `resblocks[9].{c1,c2}_w[3]`,
@@ -206,7 +206,7 @@ shipped dtypes (voc conv1d-routed kernels, ups.* excluded):
   harness `tests/cosyvoice3-hift-fastconv-ab.cpp`: fixed mel+noise →
   `run_hift_inference`, no seed needed): ON vs OFF vs ON-rerun all hash
   `127fb40eeec32d8f` — BYTE-IDENTICAL, non-silent (max|a|=0.99, no NaN).**
-  Engagement proven via `CRISPASR_COSYVOICE3_FASTCONV_DEBUG`: ON bakes 85/85, OFF 0.
+  Engagement proven via `STELNETTTS_COSYVOICE3_FASTCONV_DEBUG`: ON bakes 85/85, OFF 0.
   test-fastconv still green (210 assertions; core_dac untouched). ⚠ k=1→matmul NOT
   done (reduction-order change, its own A/B) — same as chatterbox, left for later.
 ### Bespoke-lambda triage (GGUF-parsed 2026-07-16 — F16 conv kernels required)
@@ -223,7 +223,7 @@ cosyvoice3 uses `.w`) before wiring — only F16 benefits:
   conv-kernel field to a baked F32 copy at hift load (zero graph change, but must
   enumerate all ~85 fields); (b) thread `fc.get(w)` through the 3 helpers
   (`cv3_lookahead_conv1d`, `cv3_causal_conv1d`, `cv3_causal_grouped_conv1d`) + the
-  raw resblock `ggml_conv_1d` sites. Gate `CRISPASR_COSYVOICE3_FASTCONV`.
+  raw resblock `ggml_conv_1d` sites. Gate `STELNETTTS_COSYVOICE3_FASTCONV`.
   ⚠ Flow-matching (CFM) → seed-aware A/B, and each synth is slow like chatterbox;
   the hift vocoder is deterministic given mel, so the FAST verify path is the
   existing `cv3_extract_hift_decode_stage` harness driven with a fixed mel — A/B
@@ -245,8 +245,8 @@ cosyvoice3 uses `.w`) before wiring — only F16 benefits:
 ### Evidence (grep of `src/*.cpp`, 2026-07-16)
 - **26 TTS backends** route their vocoder/codec through `core_dac::conv1d` /
   `core_convt::*` (which cast the F16 kernel → F32 inside EVERY graph).
-- **Only 2** (omnivoice, qwen3_tts) have a baked-F32 fast path. **24 un-migrated.**
-- `PERFORMANCE.md` claims FASTCONV "landed for qwen3-tts, voxtral-tts, omnivoice,
+- **Only 2** (omnivoice, cielvox2_tts) have a baked-F32 fast path. **24 un-migrated.**
+- `PERFORMANCE.md` claims FASTCONV "landed for cielvox2-tts, voxtral-tts, omnivoice,
   tada, chatterbox" — but only 2 actually have it. Same overclaim class as the
   omnivoice one corrected this session; **coverage doc is unreliable, audit it.**
 - **11 backends** use classifier-free guidance (chatterbox, cosyvoice3, dia, dots,
@@ -270,7 +270,7 @@ decode, output-equivalent**.
   `fc` present+enabled: k=1 → `ggml_mul_mat` (skip im2col), K>1 → `ggml_conv_1d` with
   the baked F32 kernel (cast becomes a no-op). `fc == nullptr` → identical to today.
 - Per backend: add a `fastconv_cache` member, `bake(...)` the codec convs at load
-  (gated `CRISPASR_<BACKEND>_FASTCONV`, default per-backend after A/B), pass `&fc_`.
+  (gated `STELNETTTS_<BACKEND>_FASTCONV`, default per-backend after A/B), pass `&fc_`.
 - **Unit test** (`tests/test-fastconv.cpp`, model-free): random F16 conv kernel + input,
   assert `conv1d(...,&fc)` ≈ `conv1d(...)` within F32 tol, and k=1 path exact.
 
@@ -336,36 +336,36 @@ in the Bespoke-lambda triage above); conv helpers `cv3_lookahead_conv1d` (:2559)
      collect every F16 3D conv kernel (`conv_pre_w`, `conv_post_w`, `ups_w[3]`,
      `resblocks[9].{c1_w,c2_w}[3]`, `src_down_w[3]`, `src_resblocks[3].{c1_w,c2_w}[3]`,
      `f0_condnet_w[5]` — NOT the 2D `f0_classifier_w`/`m_source_l_linear_w`), then
-     `hift_fc.bake(hift_backend, kernels, on)` gated `CRISPASR_COSYVOICE3_FASTCONV`.
+     `hift_fc.bake(hift_backend, kernels, on)` gated `STELNETTTS_COSYVOICE3_FASTCONV`.
   3. Re-point each named field to its baked copy: `f = hift_fc.get(f)`. ⚠ INCLUDE
      `ups_w` — cosyvoice3 upsamples with REGULAR conv1d (`cv3_causal_conv1d`), not
      conv_transpose, so it benefits (do NOT copy the chatterbox/HiFi-GAN `.ups`
      exclusion). Re-point is cleaner than threading `fc` through every helper.
   4. `hift_fc.free();` in the context free, BEFORE the hift backend is freed.
-  5. Add a `CRISPASR_COSYVOICE3_FASTCONV_DEBUG` one-liner printing baked/swapped counts.
+  5. Add a `STELNETTTS_COSYVOICE3_FASTCONV_DEBUG` one-liner printing baked/swapped counts.
 **Verify (FAST path — avoids the slow flow stage):** the hift vocoder is
 deterministic given the mel. Drive `cv3_extract_hift_decode_stage(ctx, mel, T_mel,
 s_stft, "hift_decode", &n)` with a FIXED mel (dump one from a short synth, or a
 constant ramp) ON vs OFF → must be byte-identical (cast-kill). Full-pipeline synth
 A/B (seed-aware, flow-matching) is the belt-and-braces but is slow (~min–h on M1).
 Local models: `cosyvoice3-{llm-q4_k,flow-q8_0,campplus-f16,hift-f16,s3tok-f16,
-voices}.gguf` all in `/Volumes/backups/ai/crispasr-gguf/`. **⚠ Stage models to the
+voices}.gguf` all in `/Volumes/backups/ai/stelnettts-gguf/`. **⚠ Stage models to the
 internal disk first** — the external SSD reads at ~13 MB/s (near-full). Default ON
 once byte-identical.
 
 ## TODO-B [SONNET] — chatterbox_s3gen k=1→matmul (further win, on top of the landed cast-kill)
-The landed `CRISPASR_S3GEN_FASTCONV` does cast-kill only. 175 of its 275 F16 conv
+The landed `STELNETTTS_S3GEN_FASTCONV` does cast-kill only. 175 of its 275 F16 conv
 kernels are K=1 — a K=1 conv is a channel matmul, so routing them through
 `ggml_mul_mat` instead of `ggml_conv_1d`/im2col skips a pure-copy im2col
 (materialises hundreds of MB at audio-rate T). BUT this changes reduction order, so
 it is NOT bitwise-identical and needs its OWN seed-aware A/B on the drift-prone GPU
 path (chatterbox has a documented GPU mul_mat drift history — see
 handover-prompts/chatterbox-gpu-mul-mat-drift.md). Gate separately
-(`CRISPASR_S3GEN_FASTCONV_MATMUL`), default OFF until A/B'd on Metal AND CUDA.
+(`STELNETTTS_S3GEN_FASTCONV_MATMUL`), default OFF until A/B'd on Metal AND CUDA.
 Same for TODO-A's cosyvoice3 K=1 kernels once cast-kill lands.
 
 ## TODO-C — kokoro ✅ DONE · indextts_voc ✅ investigated (not applicable)
-- **kokoro** ✅ **DONE** (`323e96f23`, `CRISPASR_KOKORO_FASTCONV`, default on). GGUF
+- **kokoro** ✅ **DONE** (`323e96f23`, `STELNETTTS_KOKORO_FASTCONV`, default on). GGUF
   finding: despite the `-q8_0` default, **all 89 3D conv kernels are F16** (q8_0 hits
   matmul/linear weights only) — FASTCONV engages. Re-point idiom (bake F32 + swap
   c->tensors); ConvTranspose ups use a separate F32 `ups_w_perm` (swap harmless);
@@ -391,7 +391,7 @@ never run (the q8_0 default masks them):
    (GGUFReader → GGUFWriter, preserving exact KV `field.types` + `raw_dtype=tensor_type`)
    rewrites sequential offsets and **LOADS**. So the file data is intact; only its
    layout is malformed → the real fix is re-CONVERTING from source with a correct
-   writer (the uploaded `cstr/fastpitch-en-GGUF` f16 is malformed).
+   writer (the uploaded `Xenna/fastpitch-en-GGUF` f16 is malformed).
 2. **Then Metal aborts:** `ggml-metal-ops.cpp:3355 GGML_ASSERT(op->src[1]->type ==
    F32)` — an F16 activation feeds a Metal op that requires F32.
 3. **And CPU aborts:** `ggml_compute_forward_sub` — an F16/shape mismatch in a `sub`.
@@ -402,10 +402,10 @@ a documented dead-end; re-pack recipe above is the starting point if ever pursue
 
 ## TODO-2 [OPUS-1M ACTIVE — chatterbox impl'd + M1-verifying; off-box CUDA verify OPEN] — Interval-CFG for guidance backends (~20–40%, biggest raw win, APPROXIMATE)
 ⚠ **Coordination:** OPUS-1M has already IMPLEMENTED chatterbox interval-CFG
-(`CRISPASR_S3GEN_CFG_INTERVAL`, s3gen `cfm_euler_solve`) and is verifying on M1 (see
+(`STELNETTTS_S3GEN_CFG_INTERVAL`, s3gen `cfm_euler_solve`) and is verifying on M1 (see
 NOW claim). Fable/others: the only OPEN part is the **off-box CUDA verify** of the
 chatterbox K>1 approximation (drift-prone GPU path). Do NOT re-implement.
-✅ **cosyvoice3 landed opt-in** (`63a91a6a5`, `CRISPASR_COSYVOICE3_CFG_INTERVAL`,
+✅ **cosyvoice3 landed opt-in** (`63a91a6a5`, `STELNETTTS_COSYVOICE3_CFG_INTERVAL`,
 default 1). `cv3_run_solve_euler` gains the uncond-skip-every-K path; K>1 forces the
 separate 2-forward path (the batched `COSYVOICE3_CFG_BATCH` fuses cond+uncond, nothing
 to skip). Verified via `tests/cosyvoice3-flow-cfg-interval-ab` (fixed-input flow
@@ -414,7 +414,7 @@ vs exact; non-silent, no NaN. ⚠ mel-cosine (synthetic inputs) is a content PRO
 full real-text ASR round-trip + naturalness ear PENDING (slow CLI synth + human
 listener); no naturalness verdict claimed.
 
-✅ **f5-tts landed opt-in** (`678ee5ce1`, `CRISPASR_F5_CFG_INTERVAL`, default 1).
+✅ **f5-tts landed opt-in** (`678ee5ce1`, `STELNETTTS_F5_CFG_INTERVAL`, default 1).
 Same pattern in f5's 32-step ODE sampler; the separate 2-forward path is already the
 default (batched `F5_BATCH_CFG` is opt-in/off), interval overrides it when enabled;
 the CFG combine reads uncond via `v_unc_ptr` so K=1 is byte-unchanged. **Verified
@@ -422,9 +422,9 @@ end-to-end via the CLI (f5-tts-v1-base-f16, jfk voice, seed 42):** K=1 twice →
 byte-identical; content preserved — ASR(K1)==ASR(K2) exact (whisper base.en);
 K=2 acoustic divergence log-STFT cos 0.945 / envelope corr 0.78 (⚠ PCM corr 0.089 is
 phase-noise, NOT content — [[tts-parity-not-by-audio-corr]]). No new harness — used
-`crispasr --tts … --voice … --seed`.
+`stelnettts --tts … --voice … --seed`.
 
-✅ **voxcpm2 landed opt-in** (`2c7cc5df4`, `CRISPASR_VOXCPM2_CFG_INTERVAL`, default 1).
+✅ **voxcpm2 landed opt-in** (`2c7cc5df4`, `STELNETTTS_VOXCPM2_CFG_INTERVAL`, default 1).
 Per-patch CFM denoiser `cfm_euler_solve` — the cond/uncond forwards are already two
 separate `locdit_call()`s, so interval simply skips the uncond call every K steps.
 **Verified via CLI (voxcpm2-q4_k, jfk voice, seed 42):** K=1 twice PCM byte-identical;
@@ -432,7 +432,7 @@ content preserved — ASR(K1)==ASR(K2). ⚠ voxcpm2 is AR at the patch level, so
 shifts the stop predictor one patch (3.36 s → 3.52 s output) — same words. ~8 CFG
 backends still to do (below).
 
-✅ **irodori landed opt-in** (`d04620cba`, `CRISPASR_IRODORI_CFG_INTERVAL`, default 1).
+✅ **irodori landed opt-in** (`d04620cba`, `STELNETTTS_IRODORI_CFG_INTERVAL`, default 1).
 40-step RF-ODE with up to THREE independent uncond forwards per in-window step
 (text/speaker/caption) — the heaviest CFG in the fleet, so the biggest per-step win.
 Interval caches all three uncond velocities and recomputes them every K CFG-active
@@ -440,7 +440,7 @@ steps. **Verified via CLI (irodori-500m-v3 + dacvae-ja, JA text, seed 42):** K=1
 PCM byte-IDENTICAL; K=2 log-STFT cos 0.971. ⚠ JA ASR round-trip inconclusive (base
 multilingual whisper garbles both K=1 and K=2 — weak JA ASR, not interval).
 
-✅ **tada landed opt-in** (`3c8180cdc`, `CRISPASR_TADA_CFG_INTERVAL`, default 1).
+✅ **tada landed opt-in** (`3c8180cdc`, `STELNETTTS_TADA_CFG_INTERVAL`, default 1).
 FM Euler `fm_euler_solve`: the neg is a fixed per-solve uncond (the neg-KV cache is
 the separate AR LLM, not the FM head), and `vel_neg` persists across iterations, so a
 skip step just leaves its stale value — no cache buffer. Covers the default
@@ -464,7 +464,7 @@ stays fresh every step; ALWAYS recompute the first + last step. Reference impl: 
 `OMNIVOICE_CFG_INTERVAL` in `src/omnivoice.cpp` for the caching pattern to copy.
 **Candidates (11, all CFG):** f5 (ODE), chatterbox (CFM), vibevoice (DPM), voxcpm2,
 cosyvoice3, dia, zonos, tada, dots, voxtral, irodori — do one at a time.
-**Per backend:** gate `CRISPASR_<BACKEND>_CFG_INTERVAL` (or `<BACKEND>_CFG_INTERVAL`
+**Per backend:** gate `STELNETTTS_<BACKEND>_CFG_INTERVAL` (or `<BACKEND>_CFG_INTERVAL`
 to match omnivoice), default **1 (exact)** — this path is APPROXIMATE so it stays
 OPT-IN forever, never a default flip. **Validation:** ASR-roundtrip the decoded
 audio at K=1 vs K=2/3 — content must stay intact (word overlap ~1.0). ⚠ NATURALNESS
@@ -485,8 +485,8 @@ arm so CUDA-graph capture engages. Survey of the fleet for the same shape
    per-arm per-patch graphs, in-graph coordinate_proj, constants (prefix/mask/
    pos/g_cond) in a dedicated buffer, noise-slot-only velocity readback; shared
    dots_build_dit_body so legacy/fused cannot drift. Flow-match latents
-   BYTE-IDENTICAL on CPU and Metal (CRISPASR_DOTS_FM_AB in-process A/B).
-   Gate CRISPASR_DOTS_FUSED_STEP: default ON CPU/Metal (strict subset of legacy
+   BYTE-IDENTICAL on CPU and Metal (STELNETTTS_DOTS_FM_AB in-process A/B).
+   Gate STELNETTTS_DOTS_FUSED_STEP: default ON CPU/Metal (strict subset of legacy
    host work + identical output), OFF on CUDA pending TODO-7. Quiet-box timing
    + the voice-clone (g_cond) arm exercise ride with the TODO-7 audit.
    Original scoping (kept for reference): **dots_tts DiT/FM solver.** `dots_dit_forward`
@@ -564,10 +564,10 @@ codes-dump/cmp verification runs, ASR roundtrips, README/env-var doc sync.
 Deterministic, expensive reference encodes re-run on EVERY CLI invocation for
 voice-cloning backends. pocket_tts (PVL1 latents) and omnivoice (OVC1 codes,
 `007f82357`) now cache content-addressed (FNV-1a over PREPROCESSED audio +
-encoder-weight fingerprint, atomic tmp+rename, CRISPASR_CACHE_DIR →
-CRISPASR_MODELS_DIR → ~/.cache/crispasr, env-gated OFF switch). ~80-line
+encoder-weight fingerprint, atomic tmp+rename, STELNETTTS_CACHE_DIR →
+STELNETTTS_MODELS_DIR → ~/.cache/stelnettts, env-gated OFF switch). ~80-line
 mirror per backend. Candidates (each has a ref-audio encode in
-set-voice/prompt paths): qwen3_tts, chatterbox (campplus speaker emb + s3gen
+set-voice/prompt paths): cielvox2_tts, chatterbox (campplus speaker emb + s3gen
 prompt tokens), indextts (persist its in-memory `cond_latents`/`ref_cached`
 to disk), f5_tts (re-encodes the ref mel every call), voxcpm2, dots_tts,
 vibevoice, tada_tts, openvoice2, moss/dia (codec ref codes, same shape as
@@ -597,7 +597,7 @@ quantized embd table + in-graph GET_ROWS disables capture entirely
 ## TODO-3 [FABLE design → SONNET impl] — Metal q4_k → prefer q8 on Apple Silicon
 Measured earlier this campaign: q4_k is BOTH slower AND lower-quality than q8 on
 Metal (Apple's q4_k dequant path). Two tiers:
-- **Quick (config):** `src/crispasr_model_registry.cpp` is currently a STATIC table
+- **Quick (config):** `src/stelnettts_model_registry.cpp` is currently a STATIC table
   with ONE hardcoded quant per entry (no platform hook). Add a platform-aware
   preference: on Apple Silicon (`#ifdef __APPLE__` / runtime `ggml_backend_metal`),
   when both a q8 and q4_k variant exist for a model, PREFER q8 — but as a
@@ -648,7 +648,7 @@ one loose:
 ---
 
 ## Discipline (every item — NON-NEGOTIABLE)
-1. Env-gated (`CRISPASR_<BACKEND>_<FEATURE>`), both paths kept, never remove gates.
+1. Env-gated (`STELNETTTS_<BACKEND>_<FEATURE>`), both paths kept, never remove gates.
 2. A/B vs ground truth: byte/near-equivalence + ASR/decoded roundtrip, F16 AND quant.
    For stochastic (flow-matching/AR) backends: PASS A SEED; prove ON-vs-ON=0 (or that
    ON-vs-OFF=0 across all samples, which subsumes it) before trusting ON-vs-OFF.

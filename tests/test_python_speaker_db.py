@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Runtime tests for the Python SpeakerDB wrapper (issue #266, PLAN F4).
 
-`crispasr.SpeakerDB` (python/crispasr/_binding.py) wraps the closed-roster
-speaker profile C-ABI: consent-gated construction, `crispasr_speaker_db_open`
+`stelnettts.SpeakerDB` (python/stelnettts/_binding.py) wraps the closed-roster
+speaker profile C-ABI: consent-gated construction, `stelnettts_speaker_db_open`
 / `_enroll2` (the gated v2 entry points), and refuses the legacy ungated
-`crispasr_speaker_db_load` symbol at runtime. This had never been executed
+`stelnettts_speaker_db_load` symbol at runtime. This had never been executed
 end-to-end before this test.
 
 Requires:
   - Built shared lib (cmake -DBUILD_SHARED_LIBS=ON -B build-shared &&
-    cmake --build build-shared --target crispasr-lib)
+    cmake --build build-shared --target stelnettts-lib)
   - numpy (the default Homebrew python3 on this box lacks it; miniconda at
     /Users/christianstrobele/miniconda3/bin/python has it)
 
@@ -31,13 +31,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 
-LIB_PATH = os.environ.get("CRISPASR_LIB_PATH")
+LIB_PATH = os.environ.get("STELNETTTS_LIB_PATH")
 if not LIB_PATH:
     for candidate in [
-        os.path.join(REPO_ROOT, "build-shared", "src", "libcrispasr.dylib"),
-        os.path.join(REPO_ROOT, "build-shared", "src", "libcrispasr.so"),
-        os.path.join(REPO_ROOT, "build", "src", "libcrispasr.dylib"),
-        os.path.join(REPO_ROOT, "build", "src", "libcrispasr.so"),
+        os.path.join(REPO_ROOT, "build-shared", "src", "libstelnettts.dylib"),
+        os.path.join(REPO_ROOT, "build-shared", "src", "libstelnettts.so"),
+        os.path.join(REPO_ROOT, "build", "src", "libstelnettts.dylib"),
+        os.path.join(REPO_ROOT, "build", "src", "libstelnettts.so"),
     ]:
         if os.path.exists(candidate):
             LIB_PATH = candidate
@@ -55,15 +55,15 @@ def l2_normalize(v):
     return [x / n for x in v]
 
 
-@unittest.skipUnless(LIB_PATH, "libcrispasr not built (set CRISPASR_LIB_PATH or build build-shared)")
+@unittest.skipUnless(LIB_PATH, "libstelnettts not built (set STELNETTTS_LIB_PATH or build build-shared)")
 @unittest.skipUnless(HAVE_NUMPY, "numpy not available (try /Users/christianstrobele/miniconda3/bin/python)")
 class TestSpeakerDB(unittest.TestCase):
     """Issue #266: consent-gated, closed-roster speaker profile wrapper."""
 
     def setUp(self):
-        from crispasr import SpeakerDB
+        from stelnettts import SpeakerDB
         self.SpeakerDB = SpeakerDB
-        self.tmpdir = tempfile.mkdtemp(prefix="crispasr-speaker-db-test-")
+        self.tmpdir = tempfile.mkdtemp(prefix="stelnettts-speaker-db-test-")
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
@@ -75,7 +75,7 @@ class TestSpeakerDB(unittest.TestCase):
 
     def test_no_consent_raises_even_with_expected_names(self):
         # consent=False must refuse regardless of expected_names — the
-        # ValueError is raised before crispasr_speaker_db_open is called.
+        # ValueError is raised before stelnettts_speaker_db_open is called.
         with self.assertRaises(ValueError):
             self.SpeakerDB(self.tmpdir, expected_names="Alice", lib_path=LIB_PATH)
 
@@ -84,7 +84,7 @@ class TestSpeakerDB(unittest.TestCase):
         db = self.SpeakerDB(self.tmpdir, consent=True, lib_path=LIB_PATH)
         try:
             # No roster given at construction -> db handle stays unopened
-            # (no crispasr_speaker_db_open call at all); enroll() doesn't
+            # (no stelnettts_speaker_db_open call at all); enroll() doesn't
             # need it, it writes straight to disk via enroll2.
             self.assertEqual(db.count, 0)
 
@@ -141,8 +141,8 @@ class TestSpeakerDB(unittest.TestCase):
     # (4) the legacy ungated ABI symbol refuses at runtime (returns NULL).
     def test_legacy_speaker_db_load_refuses(self):
         lib = ctypes.CDLL(LIB_PATH)
-        lib.crispasr_speaker_db_load.argtypes = [ctypes.c_char_p]
-        lib.crispasr_speaker_db_load.restype = ctypes.c_void_p
+        lib.stelnettts_speaker_db_load.argtypes = [ctypes.c_char_p]
+        lib.stelnettts_speaker_db_load.restype = ctypes.c_void_p
         # Even against a directory with real enrolled profiles, the
         # pre-#266 open-1:N entry point must refuse (return NULL) —
         # it is kept only as a linkable symbol for old callers.
@@ -151,8 +151,8 @@ class TestSpeakerDB(unittest.TestCase):
         db0.enroll("Someone", emb)
         db0.close()
 
-        handle = lib.crispasr_speaker_db_load(self.tmpdir.encode())
-        self.assertIsNone(handle, "legacy crispasr_speaker_db_load must refuse (return NULL)")
+        handle = lib.stelnettts_speaker_db_load(self.tmpdir.encode())
+        self.assertIsNone(handle, "legacy stelnettts_speaker_db_load must refuse (return NULL)")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 # crisp_truecase — shared C++ truecasing library.
 #
 # Three backends: statistical, CRF, BiLSTM.
-# Used by CrispASR (post-ASR German truecasing) and CrispEmbed (post-OCR).
+# Used by StelnetTTS (post-ASR German truecasing) and StelnetEmbed (post-OCR).
 
 cmake_minimum_required(VERSION 3.14)
 
-if(TARGET crispasr-core)
-    set(_crisp_tc_core_target crispasr-core)
+if(TARGET stelnettts-core)
+    set(_crisp_tc_core_target stelnettts-core)
     set(_crisp_tc_core_inc    ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 elseif(TARGET crispembed-core)
     set(_crisp_tc_core_target crispembed-core)

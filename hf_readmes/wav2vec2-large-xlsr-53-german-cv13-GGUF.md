@@ -16,7 +16,7 @@ base_model: oliverguhr/wav2vec2-large-xlsr-53-german-cv13
 
 # Wav2Vec2 Large XLSR-53 German (CV13) -- GGUF
 
-GGUF conversions and quantisations of [`oliverguhr/wav2vec2-large-xlsr-53-german-cv13`](https://huggingface.co/oliverguhr/wav2vec2-large-xlsr-53-german-cv13) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`oliverguhr/wav2vec2-large-xlsr-53-german-cv13`](https://huggingface.co/oliverguhr/wav2vec2-large-xlsr-53-german-cv13) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -34,11 +34,11 @@ GGUF conversions and quantisations of [`oliverguhr/wav2vec2-large-xlsr-53-german
 - **Source:** [`oliverguhr/wav2vec2-large-xlsr-53-german-cv13`](https://huggingface.co/oliverguhr/wav2vec2-large-xlsr-53-german-cv13)
 - Fine-tuned on CommonVoice 13.0 German — newer training data than the original.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-./build/bin/crispasr --backend wav2vec2 -m wav2vec2-large-xlsr-53-german-cv13-q4_k.gguf -f german_audio.wav -l de
+./build/bin/stelnettts --backend wav2vec2 -m wav2vec2-large-xlsr-53-german-cv13-q4_k.gguf -f german_audio.wav -l de
 
 # Auto-download (default German model):
-./build/bin/crispasr --backend wav2vec2 -m auto --auto-download -l de -f audio.wav
+./build/bin/stelnettts --backend wav2vec2 -m auto --auto-download -l de -f audio.wav
 ```

@@ -18,8 +18,8 @@
 #include "core/kaldi_fbank.h"
 #include "core/lfr.h"
 #include "core/sanm.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include <algorithm>
 #include <cassert>
@@ -45,7 +45,7 @@
 static bool sensevoice_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_SENSEVOICE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_SENSEVOICE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -667,7 +667,7 @@ extern "C" sensevoice_context* sensevoice_init_from_file(const char* path, sense
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -691,7 +691,7 @@ extern "C" sensevoice_context* sensevoice_init_from_file(const char* path, sense
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
-    if (const char* s = crispasr_env::get("CRISPASR_SENSEVOICE_NO_FA")) {
+    if (const char* s = stelnettts_env::get("STELNETTTS_SENSEVOICE_NO_FA")) {
         if (*s && *s != '0')
             ctx->enc_flash_attn = false;
     }
@@ -743,7 +743,7 @@ namespace {
 //
 // The emotion marker is parsed only so it can be DROPPED. Its value is
 // classified into `emotion` and then discarded by both public entry points —
-// see the header for why CrispASR ships no emotion-recognition capability
+// see the header for why StelnetTTS ships no emotion-recognition capability
 // (EU AI Act Art. 5(1)(f) / Annex III(1)(c); docs/eu-ai-act.md).
 struct sv_prefix {
     std::string language;
@@ -809,7 +809,7 @@ extern "C" char* sensevoice_transcribe(sensevoice_context* ctx, const float* sam
     std::string s = sensevoice_transcribe_impl(ctx, samples, n_samples, language, use_itn, nullptr, nullptr);
     // Strip the `<|lang|><|emotion|><|event|><|itn|>` annotation prefix. It used
     // to be returned verbatim, so every session-ABI consumer (Python/Rust/Go/
-    // Dart/Java/C#/JS/WASM — src/crispasr_c_api.cpp routes sensevoice through
+    // Dart/Java/C#/JS/WASM — src/stelnettts_c_api.cpp routes sensevoice through
     // here) got transcripts that literally began "<|en|><|HAPPY|><|Speech|>
     // <|withitn|>". That both corrupted the transcript (docs/learnings.md:149
     // logs it as a WER-normalisation problem) and leaked a per-utterance

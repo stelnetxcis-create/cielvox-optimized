@@ -13,7 +13,7 @@
 #       quants' per-tensor {name: type} maps: any tensor F16 in q4_k but quantized
 #       in q6_k/q8_0 (or the reverse) is the suspect → keep it F16.
 #   (b) RUNTIME stop-logit trace — synth a short line per quant with
-#       CRISPASR_MOSS_TTS_LOCAL_DEBUG=1 and capture continue/stop per frame +
+#       STELNETTTS_MOSS_TTS_LOCAL_DEBUG=1 and capture continue/stop per frame +
 #       whether the stop head fires. Shows whether q6_k/q8_0's stop logit stays
 #       pinned at continue while q4_k's rises.
 #
@@ -25,10 +25,10 @@ import json, os, re, shutil, subprocess, sys
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-REPO = WORK / "CrispASR"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
-    subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", CRISPASR_URL, str(REPO)])
+    subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", STELNETTTS_URL, str(REPO)])
     # cmake needs the ggml submodule; --recursive above usually gets it, but init
     # explicitly so a shallow-submodule hiccup doesn't leave ggml/ empty.
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
@@ -36,7 +36,7 @@ if not REPO.exists():
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("script.start", sha=subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip())
 
@@ -56,25 +56,25 @@ MODELS = max([Path("/kaggle/temp/models"), Path("/tmp/models"), WORK / "models"]
              key=lambda d: _free(d.parent if d.parent.exists() else "/"))
 MODELS.mkdir(parents=True, exist_ok=True)
 
-# ── build crispasr-cli + crispasr-quantize (current main) ─────────────────────
+# ── build stelnettts-cli + stelnettts-quantize (current main) ─────────────────────
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 step("cmake.build.begin")
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli crispasr-quantize "
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli stelnettts-quantize "
                         f"-j{kh.safe_build_jobs(gpu=False)}")
 def _find(name):
     p = BUILD / "bin" / name
     return p if p.exists() else next(iter(BUILD.rglob(name)), None)
-CLI, QUANT = _find("crispasr"), _find("crispasr-quantize")
+CLI, QUANT = _find("stelnettts"), _find("stelnettts-quantize")
 assert CLI and QUANT, f"build missing: cli={CLI} quant={QUANT}"
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done", cli=str(CLI), quant=str(QUANT))
 
 # ── download 4B f16 + codec ───────────────────────────────────────────────────
-REPO_ID = "cstr/moss-tts-local-v1.5-GGUF"
+REPO_ID = "Xenna/moss-tts-local-v1.5-GGUF"
 with kh.build_heartbeat("download"):
     F16 = Path(hf_hub_download(REPO_ID, "moss-tts-local-v1.5-f16.gguf", local_dir=str(MODELS)))
     CODEC = Path(hf_hub_download(REPO_ID, "moss-tts-local-v1.5-codec.gguf", local_dir=str(MODELS)))
@@ -110,7 +110,7 @@ SHORT = "Hello world."
 def trace(model, tag):
     log = MODELS / f"trace_{tag}.log"
     wav = MODELS / f"out_{tag}.wav"
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DEBUG": "1"}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DEBUG": "1"}
     with open(log, "w") as fh, kh.build_heartbeat(f"synth.{tag}"):
         try:
             subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", str(model),

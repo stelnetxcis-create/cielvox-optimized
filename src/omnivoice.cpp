@@ -37,7 +37,7 @@
 #include "core/omnivoice_lang.h"     // ISO-639-3 resolution for the <|lang_start|> tag (#13273)
 #include "core/omnivoice_prompt.h"   // style-prefix assembly, unit-testable (#13273)
 #include "core/tts_ref_cache.h"      // shared content-addressed reference-voice cache (issue #265)
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/omnivoice_duration.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -71,16 +71,16 @@ namespace {
 // ---------------------------------------------------------------------------
 
 bool env_bool(const char* k) {
-    const char* v = crispasr_env::get(k);
+    const char* v = stelnettts_env::get(k);
     return v && *v && std::strcmp(v, "0") != 0;
 }
 const char* env_str(const char* k) {
-    const char* v = crispasr_env::get(k);
+    const char* v = stelnettts_env::get(k);
     return (v && *v) ? v : nullptr;
 }
 // For default-ON gates: unset means `dflt`, an explicit "0" always disables.
 bool env_bool_default(const char* k, bool dflt) {
-    const char* v = crispasr_env::get(k);
+    const char* v = stelnettts_env::get(k);
     if (!v || !*v)
         return dflt;
     return std::strcmp(v, "0") != 0;
@@ -93,7 +93,7 @@ bool env_bool_default(const char* k, bool dflt) {
 static bool ov_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -558,13 +558,13 @@ static bool load_model(omnivoice_context* ctx, const char* path) {
     }
 
     // Create backend + buffer. use_gpu picks the best GPU (CUDA/Metal/Vulkan);
-    // CRISPASR_OMNIVOICE_CPU=1 forces CPU. Only the LLM iterative loop runs here
+    // STELNETTTS_OMNIVOICE_CPU=1 forces CPU. Only the LLM iterative loop runs here
     // — the DAC codec stays on CPU (see load_tokenizer). Falls back to CPU if
     // GPU init fails.
     {
-        const char* e = std::getenv("CRISPASR_OMNIVOICE_CPU");
+        const char* e = std::getenv("STELNETTTS_OMNIVOICE_CPU");
         const bool force_cpu = e && *e && *e != '0';
-        ctx->backend = (ctx->use_gpu && !force_cpu) ? crispasr_init_gpu_backend() : nullptr;
+        ctx->backend = (ctx->use_gpu && !force_cpu) ? stelnettts_init_gpu_backend() : nullptr;
         if (!ctx->backend)
             ctx->backend = core_cpu_backend::init();
     }
@@ -872,7 +872,7 @@ static bool load_tokenizer(omnivoice_context* ctx, const char* path) {
     // OMNIVOICE_CODEC_GPU=0/1 overrides automatic placement. A fresh GPU backend
     // keeps the tokenizer independent of ctx->backend for clean teardown.
     const bool codec_gpu = ctx->use_gpu && codec_gpu_enabled(ctx);
-    tok.backend = codec_gpu ? crispasr_init_gpu_backend() : nullptr;
+    tok.backend = codec_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!tok.backend)
         tok.backend = core_cpu_backend::init();
     if (core_cpu_backend::is_cpu(tok.backend))
@@ -939,7 +939,7 @@ static bool load_tokenizer(omnivoice_context* ctx, const char* path) {
 //
 // The DAC decoder runs entirely on CPU and dominates RTF on a fast box (the
 // reporter's observation): 11.4 s to decode 11.7 s of audio, 6.8 s for a 2.5 s
-// tail chunk. Per the dev-guide QWEN3_TTS_CODEC_FASTCONV learning, three wastes
+// tail chunk. Per the dev-guide CIELVOX2_TTS_CODEC_FASTCONV learning, three wastes
 // in the fork's conv path dwarf the actual conv FLOPs:
 //   1. F16 kernel cast to F32 inside EVERY ggml_conv_1d/conv_transpose_1d graph
 //      (activations are F32) — bake F32 kernels ONCE at load → cast becomes a no-op.
@@ -955,7 +955,7 @@ static bool load_tokenizer(omnivoice_context* ctx, const char* path) {
 // Gated for regression bisection, default ON. OMNIVOICE_CODEC_FASTCONV=0 = legacy.
 
 static bool codec_fastconv_enabled() {
-    const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_CODEC_FASTCONV");
+    const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_CODEC_FASTCONV");
     return !(e && e[0] == '0');
 }
 
@@ -965,7 +965,7 @@ static bool codec_fastconv_enabled() {
 // dispatch-bound. Default to GPU only when the main backend is CUDA; explicit
 // OMNIVOICE_CODEC_GPU=0/1 remains the cross-platform override.
 static bool codec_gpu_enabled(const omnivoice_context* ctx) {
-    const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_CODEC_GPU");
+    const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_CODEC_GPU");
     if (e && e[0])
         return e[0] != '0';
     return ctx && ctx->backend && std::strstr(ggml_backend_name(ctx->backend), "CUDA") != nullptr;
@@ -1037,7 +1037,7 @@ static std::vector<float> higgs_decode(omnivoice_context* ctx, const int32_t* co
 
     // DAC decoder: conv1 → 5 blocks → snake → conv2
     // Input conv: Conv1d(256, 1024, k=7, p=3)
-    if (env_bool("CRISPASR_OMNIVOICE_DEBUG")) {
+    if (env_bool("STELNETTTS_OMNIVOICE_DEBUG")) {
         fprintf(stderr, "  decode: pre-fc2 z_q ne=[%ld,%ld]\n", z_q->ne[0], z_q->ne[1]);
         fprintf(stderr, "  decode: fc2_w ne=[%ld,%ld] fc2_b ne=[%ld]\n", tok.fc2_w->ne[0], tok.fc2_w->ne[1],
                 tok.fc2_b ? tok.fc2_b->ne[0] : -1);
@@ -1471,7 +1471,7 @@ struct ov_gen_result {
 static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::string& text) {
     auto& hp = ctx->hp;
     auto& gen = ctx->gen;
-    bool debug = env_bool("CRISPASR_OMNIVOICE_DEBUG");
+    bool debug = env_bool("STELNETTTS_OMNIVOICE_DEBUG");
 
     ov_gen_result result;
     result.n_codebooks = (int)hp.n_codebooks;
@@ -1524,7 +1524,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
     // the reference transcript glued to its front, so an English reference clip
     // would pull every German subtitle's guess to English.
     std::string eff_lang = ctx->language;
-    if (eff_lang.empty() && env_bool_default("CRISPASR_OMNIVOICE_AUTO_LANG", true)) {
+    if (eff_lang.empty() && env_bool_default("STELNETTTS_OMNIVOICE_AUTO_LANG", true)) {
         eff_lang = core_omnivoice_lang::auto_detect(text);
         if (debug && !eff_lang.empty())
             fprintf(stderr, "omnivoice: no language requested; detected '%s' from the target text\n", eff_lang.c_str());
@@ -1643,7 +1643,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
         g.ctx0 = nullptr;
     };
     const bool persistent = [] {
-        const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_PERSISTENT_GRAPH");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_PERSISTENT_GRAPH");
         return !(e && e[0] == '0');
     }();
     // Unified CFG: fuse cond + uncond into ONE graph (seq-concat + per-block
@@ -1652,7 +1652,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
     // there; on Metal/CPU the forward is compute-bound and fusion is ~3% slower, so
     // 2-forward stays the default. Override with OMNIVOICE_UNIFIED_CFG=0/1.
     const bool unified_cfg = [&] {
-        const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_UNIFIED_CFG");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_UNIFIED_CFG");
         if (e && e[0])
             return e[0] != '0'; // explicit override
         return ctx->backend && std::strstr(ggml_backend_name(ctx->backend), "CUDA") != nullptr;
@@ -1665,7 +1665,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
     // and validated by ASR + listening, never a silent default. Only applies to
     // the 2-forward path (unified fuses cond+uncond, so K>1 forces 2-forward).
     const int cfg_interval = [&] {
-        const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_CFG_INTERVAL");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_CFG_INTERVAL");
         int k = e ? atoi(e) : 1;
         return k >= 1 ? k : 1;
     }();
@@ -1683,7 +1683,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
     // AND on CUDA by the #254 reporter (RTX 5070 Ti, cmp identical, gen
     // 3.55 s → 1.53 s, RTF 0.17 → 0.07, single CUDA-graph warmup).
     const bool fused_step = [&] {
-        const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_FUSED_STEP");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_FUSED_STEP");
         if (e && e[0])
             return e[0] != '0';
         return persistent; // fused graphs are persistent-only
@@ -1727,7 +1727,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
         }
         if (!persistent)
             fwd_free(g);
-        if (crispasr_env::get("CRISPASR_OMNIVOICE_DEBUG_SUM")) {
+        if (stelnettts_env::get("STELNETTTS_OMNIVOICE_DEBUG_SUM")) {
             double s = 0;
             for (float v : tgt)
                 s += v;
@@ -2318,7 +2318,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
 
     // Byte-exact A/B hook: dump the raw generated codes to a file so two runs
     // (e.g. OMNIVOICE_FUSED_STEP=0 vs 1) can be diffed with cmp.
-    if (const char* dump_path = env_str("CRISPASR_OMNIVOICE_DUMP_CODES")) {
+    if (const char* dump_path = env_str("STELNETTTS_OMNIVOICE_DUMP_CODES")) {
         if (FILE* f = fopen(dump_path, "wb")) {
             fwrite(tokens.data(), sizeof(int32_t), tokens.size(), f);
             fclose(f);
@@ -2326,7 +2326,7 @@ static ov_gen_result generate_iterative(omnivoice_context* ctx, const std::strin
         }
     }
 
-    if (crispasr_env::get("CRISPASR_OMNIVOICE_DEBUG_CODES")) {
+    if (stelnettts_env::get("STELNETTTS_OMNIVOICE_DEBUG_CODES")) {
         int n_mask = 0;
         std::map<int32_t, int> hist;
         for (int32_t t : tokens) {
@@ -2978,7 +2978,7 @@ static int run_encode_diff(omnivoice_context* ctx, const char* ref_path) {
 
     // --- Stage HuBERT frontend: feed ref wav16k_pad (isolates resampling) →
     //     hb_featextract + hb_featproj. Uses a separate archive via env. ---
-    if (const char* hp = crispasr_env::get("CRISPASR_OMNIVOICE_HUBERT_REF")) {
+    if (const char* hp = stelnettts_env::get("STELNETTTS_OMNIVOICE_HUBERT_REF")) {
         ov_ref_gguf href;
         if (href.load(hp)) {
             ggml_tensor* r_wav = href.get("wav16k_pad");
@@ -3035,7 +3035,7 @@ static int run_encode_diff(omnivoice_context* ctx, const char* ref_path) {
             int T_out = 0;
             // Optional per-block bisect vs a separate intermediates archive.
             std::vector<ov_dbg_tensor> dbg;
-            const char* bisect = crispasr_env::get("CRISPASR_OMNIVOICE_ACENC_BISECT");
+            const char* bisect = stelnettts_env::get("STELNETTTS_OMNIVOICE_ACENC_BISECT");
             auto mine = higgs_acoustic_encode(ctx, (const float*)r_wav->data, T_samp, &T_out, bisect ? &dbg : nullptr);
             if (bisect) {
                 ov_ref_gguf bref;
@@ -3298,15 +3298,15 @@ struct omnivoice_context* omnivoice_init_from_file(const char* path_model, struc
 
     // Diagnostic env overrides (can set exact 0, unlike the CLI which treats 0 as
     // "use default"). Used to bisect the #254 word-dropping (CFG vs forward).
-    if (const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_GUIDANCE"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_GUIDANCE"))
         ctx->gen.guidance_scale = (float)atof(e);
-    if (const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_POS_TEMP"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_POS_TEMP"))
         ctx->gen.position_temperature = (float)atof(e);
-    if (const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_CLASS_TEMP"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_CLASS_TEMP"))
         ctx->gen.class_temperature = (float)atof(e);
     // num_steps is the dominant speed lever (stage0 = num_steps × 2 forwards).
     // Env override for quick A/B; the CLI --tts-steps / session setter also drive it.
-    if (const char* e = crispasr_env::get("CRISPASR_OMNIVOICE_NUM_STEPS")) {
+    if (const char* e = stelnettts_env::get("STELNETTTS_OMNIVOICE_NUM_STEPS")) {
         int n = atoi(e);
         if (n > 0)
             ctx->gen.num_steps = n;
@@ -3351,7 +3351,7 @@ int omnivoice_set_voice_prompt(struct omnivoice_context* ctx, const char* wav_pa
     // hop_length(960), then encode through the tokenizer (HuBERT + DAC + RVQ).
     std::vector<float> pcm;
     int sr = 0;
-    if (!crispasr::core::read_wav_mono_pcm16(wav_path, pcm, sr) || pcm.empty()) {
+    if (!stelnettts::core::read_wav_mono_pcm16(wav_path, pcm, sr) || pcm.empty()) {
         fprintf(stderr, "omnivoice: failed to read voice WAV '%s'\n", wav_path);
         return -1;
     }
@@ -3381,16 +3381,16 @@ int omnivoice_set_voice_prompt(struct omnivoice_context* ctx, const char* wav_pa
     // Content-addressed key = FNV-1a over the PREPROCESSED pcm (post
     // resample/RMS/clip — robust to container differences) + an encoder-weight
     // fingerprint (re-encode after a tokenizer re-conversion). Issue #265:
-    // stored via the shared crispasr_ref_cache so OmniVoice now uses the SAME
-    // <temp>/crispasr-tts-refcache dir (or CRISPASR_TTS_REF_CACHE_DIR) and the
-    // SAME CRISPASR_TTS_REF_CACHE=0 disable switch as every other TTS backend.
-    // CRISPASR_OMNIVOICE_VOICE_CACHE=0 is kept as a backward-compat alias.
+    // stored via the shared stelnettts_ref_cache so OmniVoice now uses the SAME
+    // <temp>/stelnettts-tts-refcache dir (or STELNETTTS_TTS_REF_CACHE_DIR) and the
+    // SAME STELNETTTS_TTS_REF_CACHE=0 disable switch as every other TTS backend.
+    // STELNETTTS_OMNIVOICE_VOICE_CACHE=0 is kept as a backward-compat alias.
     uint64_t cache_key = 0;
     bool cache_on = false;
     {
-        const char* legacy = std::getenv("CRISPASR_OMNIVOICE_VOICE_CACHE");
+        const char* legacy = std::getenv("STELNETTTS_OMNIVOICE_VOICE_CACHE");
         const bool legacy_off = legacy && *legacy && *legacy == '0';
-        cache_on = !legacy_off && !crispasr_ref_cache::disabled() && ctx->tokenizer.enc_conv1_w != nullptr;
+        cache_on = !legacy_off && !stelnettts_ref_cache::disabled() && ctx->tokenizer.enc_conv1_w != nullptr;
         if (cache_on) {
             uint64_t h = 1469598103934665603ull; // FNV-1a 64
             auto mix = [&h](const void* p, size_t n) {
@@ -3419,7 +3419,7 @@ int omnivoice_set_voice_prompt(struct omnivoice_context* ctx, const char* wav_pa
     if (cache_on) {
         std::vector<uint32_t> shape;
         std::vector<uint8_t> payload;
-        if (crispasr_ref_cache::get_bytes("omnivoice-voice", &cache_key, sizeof(cache_key), shape, payload) &&
+        if (stelnettts_ref_cache::get_bytes("omnivoice-voice", &cache_key, sizeof(cache_key), shape, payload) &&
             shape.size() == 2 && shape[0] == (uint32_t)ctx->hp.n_codebooks && shape[1] > 0 &&
             payload.size() == (size_t)shape[0] * shape[1] * sizeof(int32_t)) {
             T_ref = (int)shape[1];
@@ -3439,7 +3439,7 @@ int omnivoice_set_voice_prompt(struct omnivoice_context* ctx, const char* wav_pa
             fprintf(stderr, "omnivoice: voice prompt encoded — %d ref frames (%d codebooks)\n", T_ref,
                     (int)ctx->hp.n_codebooks);
         if (cache_on)
-            crispasr_ref_cache::put_bytes("omnivoice-voice", &cache_key, sizeof(cache_key),
+            stelnettts_ref_cache::put_bytes("omnivoice-voice", &cache_key, sizeof(cache_key),
                                           {(uint32_t)ctx->hp.n_codebooks, (uint32_t)T_ref}, codes.data(),
                                           codes.size() * sizeof(int32_t));
     }
@@ -3473,11 +3473,11 @@ int omnivoice_set_language(struct omnivoice_context* ctx, const char* lang) {
         // and is not getting it. Silence here is what made the SubtitleEdit
         // language menu look like it worked.
         const std::string hint = core_omnivoice_lang::suggest(requested);
-        fprintf(stderr, "crispasr[omnivoice]: language '%s' is not one of the model's %d language IDs",
+        fprintf(stderr, "stelnettts[omnivoice]: language '%s' is not one of the model's %d language IDs",
                 requested.c_str(), core_omnivoice_lang::kLangTableN);
         if (!hint.empty())
             fprintf(stderr, " — did you mean '%s'?", hint.c_str());
-        fprintf(stderr, "\ncrispasr[omnivoice]: falling back to language-agnostic synthesis. Pass an ISO "
+        fprintf(stderr, "\nstelnettts[omnivoice]: falling back to language-agnostic synthesis. Pass an ISO "
                         "639-3 id (e.g. 'en', 'de', 'arb') or an English name (e.g. 'German').\n");
         return -2;
     }
@@ -3497,7 +3497,7 @@ int omnivoice_set_instruct(struct omnivoice_context* ctx, const char* instruct) 
     core_omnivoice_instruct::Parsed parsed = core_omnivoice_instruct::parse(instruct ? instruct : "");
     if (parsed.status != core_omnivoice_instruct::Status::ok &&
         parsed.status != core_omnivoice_instruct::Status::cleared) {
-        fprintf(stderr, "crispasr[omnivoice]: %s\n", parsed.error.c_str());
+        fprintf(stderr, "stelnettts[omnivoice]: %s\n", parsed.error.c_str());
         ctx->instruct = core_omnivoice_instruct::Parsed{};
         return -2;
     }

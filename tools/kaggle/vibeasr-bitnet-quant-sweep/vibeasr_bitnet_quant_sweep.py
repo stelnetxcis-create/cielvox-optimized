@@ -16,7 +16,7 @@ from pathlib import Path
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 WORK = Path("/kaggle/working")
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 BUILD = REPO / "build"
 MODELS = Path("/kaggle/temp/models")
 RESULTS = WORK / "results.json"
@@ -59,15 +59,15 @@ VARIANTS = [
     ("vibevoice-asr-bitnet-aggro",     "q4_0", "q8_0"),
 ]
 
-HF_REPO = "cstr/vibevoice-asr-bitnet-GGUF"
+HF_REPO = "Xenna/vibevoice-asr-bitnet-GGUF"
 
 # ── Clone + harness ──────────────────────────────────────────────────────
 
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 if not REPO.exists():
     try:
         subprocess.check_call(
-            ["git", "clone", "--depth", "1", CRISPASR_URL, str(REPO)])
+            ["git", "clone", "--depth", "1", STELNETTTS_URL, str(REPO)])
         subprocess.check_call(
             ["git", "submodule", "update", "--init", "ggml"], cwd=str(REPO))
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -110,15 +110,15 @@ else:
     print("WARNING: no HF token")
 
 cmake_flags = " ".join(kh.cache_and_link_flags())
-crispasr_flags = " ".join(kh.crispasr_cmake_flags())
+stelnettts_flags = " ".join(kh.stelnettts_cmake_flags())
 cmake_cmd = (
     f"cmake -G Ninja -S {REPO} -B {BUILD} "
     f"-DCMAKE_BUILD_TYPE=Release "
     f"{cmake_flags} "
-    f"{crispasr_flags} "
-    f"-DCRISPASR_BUILD_TESTS=OFF "
-    f"-DCRISPASR_BUILD_EXAMPLES=ON "
-    f"-DCRISPASR_BUILD_SERVER=OFF"
+    f"{stelnettts_flags} "
+    f"-DSTELNETTTS_BUILD_TESTS=OFF "
+    f"-DSTELNETTTS_BUILD_EXAMPLES=ON "
+    f"-DSTELNETTTS_BUILD_SERVER=OFF"
 )
 print(f"cmake configure: {cmake_cmd}")
 subprocess.check_call(cmake_cmd, shell=True)
@@ -128,11 +128,11 @@ print(f"Building with {jobs} jobs")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
         f"stdbuf -oL -eL cmake --build {BUILD} "
-        f"--target crispasr-cli -j{jobs}")
+        f"--target stelnettts-cli -j{jobs}")
 
-CRISPASR_BIN = BUILD / "bin" / "crispasr"
-assert CRISPASR_BIN.exists(), f"Build failed: {CRISPASR_BIN} not found"
-print(f"Build OK: {CRISPASR_BIN}")
+STELNETTTS_BIN = BUILD / "bin" / "stelnettts"
+assert STELNETTTS_BIN.exists(), f"Build failed: {STELNETTTS_BIN} not found"
+print(f"Build OK: {STELNETTTS_BIN}")
 
 # ── Generate + test + upload variants ────────────────────────────────────
 
@@ -199,13 +199,13 @@ for label, vae_q, embed_q in VARIANTS:
             per_clip[clip_label] = None
             continue
         c = [
-            str(CRISPASR_BIN), "-m", str(out_gguf), "--backend", "vibevoice",
+            str(STELNETTTS_BIN), "-m", str(out_gguf), "--backend", "vibevoice",
             "-f", str(wav), "-t", "4", "--language", clip_lang, "--no-prints",
         ]
         try:
             rr = subprocess.run(c, capture_output=True, text=True, timeout=900)
             tl = [ln.strip() for ln in rr.stdout.strip().split("\n")
-                  if ln and not any(k in ln for k in ["firered", "whisper", "crispasr:", "Maximum"])]
+                  if ln and not any(k in ln for k in ["firered", "whisper", "stelnettts:", "Maximum"])]
             per_clip[clip_label] = " ".join(tl).strip()
             print(f"  [{clip_label}] {per_clip[clip_label][:90]}")
         except Exception as e:
@@ -215,7 +215,7 @@ for label, vae_q, embed_q in VARIANTS:
     # ── Transcribe (English reference clip, scored) ──
     t0 = time.time()
     cmd = [
-        str(CRISPASR_BIN),
+        str(STELNETTTS_BIN),
         "-m", str(out_gguf),
         "--backend", "vibevoice",
         "-f", str(REPO / JFK_AUDIO),
@@ -231,7 +231,7 @@ for label, vae_q, embed_q in VARIANTS:
         text_lines = []
         for line in r.stdout.strip().split("\n"):
             if line and not any(k in line for k in
-                               ["firered", "whisper", "crispasr:", "Maximum"]):
+                               ["firered", "whisper", "stelnettts:", "Maximum"]):
                 text_lines.append(line.strip())
         text = " ".join(text_lines).strip()
 

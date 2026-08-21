@@ -72,7 +72,7 @@ static VALUE ruby_whisper_segment_get_start_time(VALUE self) {
     ruby_whisper* rw;
     GetContext(rws->context, rw);
     const int64_t t0 = whisper_full_get_segment_t0(rw->context, rws->index);
-    // able to multiply 10 without overflow because to_timestamp() in crispasr does it
+    // able to multiply 10 without overflow because to_timestamp() in stelnettts does it
     return LONG2NUM(t0 * 10);
 }
 
@@ -88,7 +88,7 @@ static VALUE ruby_whisper_segment_get_end_time(VALUE self) {
     ruby_whisper* rw;
     GetContext(rws->context, rw);
     const int64_t t1 = whisper_full_get_segment_t1(rw->context, rws->index);
-    // able to multiply 10 without overflow because to_timestamp() in crispasr does it
+    // able to multiply 10 without overflow because to_timestamp() in stelnettts does it
     return LONG2NUM(t1 * 10);
 }
 

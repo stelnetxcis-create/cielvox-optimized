@@ -18,8 +18,8 @@
 #include "gguf.h"
 
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #if defined(HAVE_ACCELERATE)
 #include <Accelerate/Accelerate.h>
@@ -43,7 +43,7 @@
 static bool silero_lid_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_SILERO_LID_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_SILERO_LID_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -237,12 +237,12 @@ static bool lid_load(lid_model& m, const char* path, ggml_backend_t backend, ggm
 // Two forward paths, selected at init time:
 //   1. ggml graph (default) — threaded SIMD matmuls on every CPU, GPU offload
 //      via the backend sched. See silero_lid_forward_ggml().
-//   2. Legacy hand-rolled CPU (CRISPASR_SILERO_LID_LEGACY=1) — scalar loops +
+//   2. Legacy hand-rolled CPU (STELNETTTS_SILERO_LID_LEGACY=1) — scalar loops +
 //      optional Accelerate GEMM. Kept as the A/B ground truth; the ggml path
 //      is validated logit-for-logit against it.
 static bool silero_use_legacy() {
     static const bool v = [] {
-        const char* e = std::getenv("CRISPASR_SILERO_LID_LEGACY");
+        const char* e = std::getenv("STELNETTTS_SILERO_LID_LEGACY");
         return e && *e && *e != '0';
     }();
     return v;
@@ -251,10 +251,10 @@ static bool silero_use_legacy() {
 // Cap the audio fed to LID. The stage-0 self-attention is O(T^2) in time and
 // memory (T = samples/160): an unbounded slice on a 10-minute file tries to
 // allocate a ~19 GB score matrix. 30 s matches the whisper-LID slice.
-// CRISPASR_SILERO_LID_MAX_S overrides (0 = unlimited).
+// STELNETTTS_SILERO_LID_MAX_S overrides (0 = unlimited).
 static int silero_lid_max_samples() {
     static const int v = [] {
-        const char* e = std::getenv("CRISPASR_SILERO_LID_MAX_S");
+        const char* e = std::getenv("STELNETTTS_SILERO_LID_MAX_S");
         return (e && *e) ? atoi(e) : 30;
     }();
     return v > 0 ? v * 16000 : 0;
@@ -266,7 +266,7 @@ static int silero_lid_max_samples() {
 // scalar == GEMM or run on non-Apple.
 static bool silero_use_scalar() {
 #if defined(HAVE_ACCELERATE)
-    static const bool force_scalar = crispasr_env::get("CRISPASR_SILERO_FORCE_SCALAR") != nullptr;
+    static const bool force_scalar = stelnettts_env::get("STELNETTTS_SILERO_FORCE_SCALAR") != nullptr;
     return force_scalar;
 #else
     return true;
@@ -463,7 +463,7 @@ static void ffn_residual(float* x, int D, int T, const float* ff1_w, const float
 // SILERO_LID_TRACE=1: print per-checkpoint stats on both paths to localize a
 // divergence (layouts are flat-identical between the two implementations).
 static bool silero_lid_trace_enabled() {
-    static const bool v = crispasr_env::get("CRISPASR_SILERO_LID_TRACE") != nullptr;
+    static const bool v = stelnettts_env::get("STELNETTTS_SILERO_LID_TRACE") != nullptr;
     return v;
 }
 
@@ -477,7 +477,7 @@ static void silero_lid_trace(const char* path, const char* name, const float* d,
     }
     double mean = sum / n;
     double var = sq / n - mean * mean;
-    const char* oe = crispasr_env::get("CRISPASR_SILERO_LID_TRACE_OFF");
+    const char* oe = stelnettts_env::get("STELNETTTS_SILERO_LID_TRACE_OFF");
     size_t off = oe ? (size_t)atoll(oe) : 0;
     if (off + 3 >= n)
         off = 0;
@@ -715,7 +715,7 @@ static bool silero_lid_forward_ggml(silero_lid_context* ctx, const float* sample
     // the named checkpoint (genuine truncated output — appended set_output
     // snapshots can read already-reused buffers and lie).
     std::vector<std::pair<std::string, ggml_tensor*>> trace_pts;
-    if (const char* trunc = crispasr_env::get("CRISPASR_SILERO_LID_TRUNC")) {
+    if (const char* trunc = stelnettts_env::get("STELNETTTS_SILERO_LID_TRUNC")) {
         ggml_tensor* t = ggml_get_tensor(ctx0, trunc);
         if (!t && strcmp(trunc, "pooled") == 0)
             t = pooled;
@@ -751,7 +751,7 @@ static bool silero_lid_forward_ggml(silero_lid_context* ctx, const float* sample
         std::vector<float> buf(ggml_nelements(t));
         ggml_backend_tensor_get(t, buf.data(), 0, buf.size() * sizeof(float));
         silero_lid_trace("ggml", name.c_str(), buf.data(), buf.size());
-        if (const char* dir = crispasr_env::get("CRISPASR_SILERO_LID_DUMP")) {
+        if (const char* dir = stelnettts_env::get("STELNETTTS_SILERO_LID_DUMP")) {
             std::string p = std::string(dir) + "/" + name + ".bin";
             if (FILE* f = fopen(p.c_str(), "wb")) {
                 fwrite(buf.data(), sizeof(float), buf.size(), f);
@@ -792,20 +792,20 @@ extern "C" struct silero_lid_context* silero_lid_init(const char* gguf_path, int
         // and the first weight read segfaults (#222).
         ctx->backend = ctx->backend_cpu;
     } else {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
         if (ctx->backend && core_cpu_backend::is_cpu(ctx->backend)) {
             // CPU-only build: drop the duplicate instance so the sched uses
             // the one with n_threads configured.
             ggml_backend_free(ctx->backend);
             ctx->backend = nullptr;
         }
-        if (ctx->backend && !std::getenv("CRISPASR_SILERO_LID_VULKAN")) {
+        if (ctx->backend && !std::getenv("STELNETTTS_SILERO_LID_VULKAN")) {
             // ggml-vulkan miscomputes one of the transformer FFN MUL_MATs in
             // this graph (per-op GGML_VULKAN_CHECK_RESULTS pinpoints it;
             // allocation-layout dependent, same class as TADA #192) → wrong
             // language logits. Until fixed upstream, run the LID graph on
             // CPU when the GPU backend is Vulkan — still ~6× faster than the
-            // legacy scalar path. CRISPASR_SILERO_LID_VULKAN=1 opts back in.
+            // legacy scalar path. STELNETTTS_SILERO_LID_VULKAN=1 opts back in.
             ggml_backend_dev_t dev = ggml_backend_get_device(ctx->backend);
             ggml_backend_reg_t reg = dev ? ggml_backend_dev_backend_reg(dev) : nullptr;
             if (reg && strcmp(ggml_backend_reg_name(reg), "Vulkan") == 0) {
@@ -1216,7 +1216,7 @@ extern "C" const char* silero_lid_detect(struct silero_lid_context* ctx, const f
         if (logits[i] > logits[best])
             best = i;
 
-    if (crispasr_env::get("CRISPASR_SILERO_LID_DEBUG")) {
+    if (stelnettts_env::get("STELNETTTS_SILERO_LID_DEBUG")) {
         std::vector<int> order(logits.size());
         for (int i = 0; i < (int)order.size(); i++)
             order[i] = i;

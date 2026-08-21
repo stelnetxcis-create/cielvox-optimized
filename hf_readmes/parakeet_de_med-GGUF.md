@@ -20,7 +20,7 @@ base_model: johannhartmann/parakeet_de_med
 
 # Parakeet-DE-Med — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`johannhartmann/parakeet_de_med`](https://huggingface.co/johannhartmann/parakeet_de_med) for use with the `parakeet-main` CLI from **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**.
+GGUF / ggml conversions of [`johannhartmann/parakeet_de_med`](https://huggingface.co/johannhartmann/parakeet_de_med) for use with the `parakeet-main` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.
 
 `parakeet_de_med` is Johann Hartmann's PEFT decoder+joint fine-tune of [`nvidia/parakeet-tdt-0.6b-v3`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) specialised for **German medical documentation** (Arztbriefe). On the German medical test set it scores **3.28% WER** vs the base model's 11.73% — a 72% relative reduction.
 
@@ -45,13 +45,13 @@ All quantisations produce the same text on the German verification clip:
 
 ```bash
 # 1. Build the runtime
-git clone -b parakeet https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone -b parakeet https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target parakeet-main
 
 # 2. Download a quantisation
-huggingface-cli download cstr/parakeet_de_med-GGUF \
+huggingface-cli download Xenna/parakeet_de_med-GGUF \
     parakeet_de_med-q4_k.gguf --local-dir .
 
 # 3. Transcribe German audio
@@ -103,14 +103,14 @@ For German speech specifically:
 
 - **Base model:** [`nvidia/parakeet-tdt-0.6b-v3`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (CC-BY-4.0). NVIDIA NeMo team.
 - **Fine-tune:** [`johannhartmann/parakeet_de_med`](https://huggingface.co/johannhartmann/parakeet_de_med) (CC-BY-4.0). Johann Hartmann. Trained on 976 German medical documentation samples for 5 epochs with PEFT decoder+joint strategy.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR@parakeet`](https://github.com/CrispStrobe/CrispASR/tree/parakeet).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS@parakeet`](https://github.com/Cyna/StelnetTTS/tree/parakeet).
 
 ## Related
 
-- C++ runtime: **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**
-- Base multilingual model (auto-detect): [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF)
-- Encoder–decoder companion (canary, with explicit language control + speech translation): [`cstr/canary-1b-v2-GGUF`](https://huggingface.co/cstr/canary-1b-v2-GGUF)
-- Cohere Transcribe (lowest English WER): [`cstr/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF)
+- C++ runtime: **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**
+- Base multilingual model (auto-detect): [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF)
+- Encoder–decoder companion (canary, with explicit language control + speech translation): [`Xenna/canary-1b-v2-GGUF`](https://huggingface.co/Xenna/canary-1b-v2-GGUF)
+- Cohere Transcribe (lowest English WER): [`Xenna/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF)
 
 ## License
 

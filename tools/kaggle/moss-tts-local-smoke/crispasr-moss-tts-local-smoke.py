@@ -1,7 +1,7 @@
-# CrispASR — 4B MossTTSLocal runtime SMOKE test (#249, P5-lite)
+# StelnetTTS — 4B MossTTSLocal runtime SMOKE test (#249, P5-lite)
 #
 # Builds moss-tts-local-smoke, converts the real 4B weights -> GGUF (uploads it to
-# cstr/moss-tts-local-v1.5-GGUF for reuse), then runs the smoke: generate_codes
+# Xenna/moss-tts-local-v1.5-GGUF for reuse), then runs the smoke: generate_codes
 # end-to-end (backbone Qwen3-4B + 1-layer local/depth transformer + depth-first
 # 12-codebook loop) and checks it produces a valid (12, T) grid without crashing.
 # NOT parity — just "does the hand-written runtime RUN on real weights". The 4B
@@ -17,15 +17,15 @@ from pathlib import Path
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TMP / "moss-local"
 WORK = Path("/kaggle/working")
 MODELS.mkdir(parents=True, exist_ok=True)
 
-REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-parity-diff")
+REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-parity-diff")
 HF_MODEL = os.environ.get("MOSS_MODEL", "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5")
-GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "cstr/moss-tts-local-v1.5-GGUF")
+GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "Xenna/moss-tts-local-v1.5-GGUF")
 TEXT = os.environ.get("MOSS_TEXT", "The quick brown fox jumps over the lazy dog.")
 _T0 = time.time()
 
@@ -39,7 +39,7 @@ def main():
     log(f"clone {REF}")
     if not REPO.exists():
         subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF, "--recursive",
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()
@@ -48,7 +48,7 @@ def main():
         os.environ["HF_TOKEN"] = tok
         os.environ["HUGGING_FACE_HUB_TOKEN"] = tok
 
-    # ── build the smoke exe (pulls in moss_tts_local + crispasr-core + ggml-cuda) ──
+    # ── build the smoke exe (pulls in moss_tts_local + stelnettts-core + ggml-cuda) ──
     kh.install_build_toolchain()
     arch = kh.detect_cuda_arch()
     env = os.environ.copy()

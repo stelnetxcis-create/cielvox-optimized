@@ -1,13 +1,13 @@
-// test-kv-quant-roundtrip.cpp — CRISPASR_KV_QUANT write/read round-trip.
+// test-kv-quant-roundtrip.cpp — STELNETTTS_KV_QUANT write/read round-trip.
 //
 // A quantised KV cache is written with `ggml_set_rows` in one graph and read
 // back with `ggml_view_3d` + `ggml_cast(..., F32)` in a LATER graph. Nothing
 // covered that: the only KV tests were core-cross-attn (F32 only) and
-// flash-attn-defaults (flag plumbing), so every CRISPASR_KV_QUANT dtype was
+// flash-attn-defaults (flag plumbing), so every STELNETTTS_KV_QUANT dtype was
 // untested end to end.
 //
 // This test exists because a quantised KV cache was the leading suspect in an
-// ark-asr empty-transcript hunt: `CRISPASR_KV_QUANT=q8_0` produced one token
+// ark-asr empty-transcript hunt: `STELNETTTS_KV_QUANT=q8_0` produced one token
 // and then <im_end>, where q4_0 transcribed fine. It turned out NOT to be the
 // cache — the ark prompt was missing upstream's instruction text, which left
 // the first decode step marginal, and the KV dtype merely tipped it (the f16
@@ -181,7 +181,7 @@ std::vector<float> roundtrip(ggml_type type, const std::vector<float>& src, ggml
 
 } // namespace
 
-TEST_CASE("kv cache: every CRISPASR_KV_QUANT dtype survives a cross-graph round-trip", "[unit][kv-quant]") {
+TEST_CASE("kv cache: every STELNETTTS_KV_QUANT dtype survives a cross-graph round-trip", "[unit][kv-quant]") {
     struct Case {
         ggml_type type;
         const char* name;

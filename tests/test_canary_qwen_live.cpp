@@ -3,7 +3,7 @@
 //
 // Live tests: require the model + samples/jfk.wav on disk. Gated behind
 // [.live]. Run:
-//   CRISPASR_MODEL_CANARY_QWEN=/path/canary-qwen-2.5b-q8_0.gguf \
+//   STELNETTTS_MODEL_CANARY_QWEN=/path/canary-qwen-2.5b-q8_0.gguf \
 //     ctest -R test-canary-qwen-live --output-on-failure
 //
 // #247 regression: on a too-short audio window the SALM decoder echoes its task
@@ -105,9 +105,9 @@ static canary_qwen_context* open_ctx(const std::string& model) {
 }
 
 TEST_CASE("canary-qwen: init and free", "[canary-qwen][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_CANARY_QWEN");
+    std::string model = get_env("STELNETTTS_MODEL_CANARY_QWEN");
     if (model.empty())
-        SKIP("CRISPASR_MODEL_CANARY_QWEN not set");
+        SKIP("STELNETTTS_MODEL_CANARY_QWEN not set");
 
     canary_qwen_context* ctx = open_ctx(model);
     REQUIRE(ctx != nullptr);
@@ -115,9 +115,9 @@ TEST_CASE("canary-qwen: init and free", "[canary-qwen][.live]") {
 }
 
 TEST_CASE("canary-qwen: JFK English transcription (verbatim, no echo leak)", "[canary-qwen][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_CANARY_QWEN");
+    std::string model = get_env("STELNETTTS_MODEL_CANARY_QWEN");
     if (model.empty())
-        SKIP("CRISPASR_MODEL_CANARY_QWEN not set");
+        SKIP("STELNETTTS_MODEL_CANARY_QWEN not set");
 
     auto pcm = load_wav_16k_mono("samples/jfk.wav");
     REQUIRE(!pcm.empty());
@@ -141,9 +141,9 @@ TEST_CASE("canary-qwen: JFK English transcription (verbatim, no echo leak)", "[c
 }
 
 TEST_CASE("canary-qwen #247: short window must not leak 'Transcript'/'PASS'", "[canary-qwen][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_CANARY_QWEN");
+    std::string model = get_env("STELNETTTS_MODEL_CANARY_QWEN");
     if (model.empty())
-        SKIP("CRISPASR_MODEL_CANARY_QWEN not set");
+        SKIP("STELNETTTS_MODEL_CANARY_QWEN not set");
 
     auto pcm = load_wav_16k_mono("samples/jfk.wav");
     REQUIRE(!pcm.empty());

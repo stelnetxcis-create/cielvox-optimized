@@ -16,7 +16,7 @@ base_model: FireRedTeam/FireRedVAD
 
 # FireRedVAD -- GGUF
 
-GGUF conversions of [`FireRedTeam/FireRedVAD`](https://huggingface.co/FireRedTeam/FireRedVAD) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions of [`FireRedTeam/FireRedVAD`](https://huggingface.co/FireRedTeam/FireRedVAD) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 

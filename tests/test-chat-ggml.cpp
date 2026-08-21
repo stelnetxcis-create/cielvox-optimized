@@ -1,24 +1,24 @@
-// test-chat-ggml.cpp — end-to-end smoke for the crispasr_chat_* C ABI.
+// test-chat-ggml.cpp — end-to-end smoke for the stelnettts_chat_* C ABI.
 //
-// Gated on CRISPASR_CHAT_TEST_MODEL — a path to a small GGUF chat model
+// Gated on STELNETTTS_CHAT_TEST_MODEL — a path to a small GGUF chat model
 // (e.g. harrier-270m-q4_k.gguf, qwen2.5-0.5b-instruct, smollm2-360m).
 // When unset the test is reported as SKIPPED so unrelated builds stay
 // green without a model on disk.
 //
 // Verifies in one pass:
-//   • crispasr_chat_open with default params returns a session
-//   • crispasr_chat_n_ctx / _template_name return non-trivial values
-//   • crispasr_chat_generate returns non-empty UTF-8 (one-shot path)
-//   • crispasr_chat_generate_stream fires on_token at least once and
+//   • stelnettts_chat_open with default params returns a session
+//   • stelnettts_chat_n_ctx / _template_name return non-trivial values
+//   • stelnettts_chat_generate returns non-empty UTF-8 (one-shot path)
+//   • stelnettts_chat_generate_stream fires on_token at least once and
 //     the concatenated chunks equal the one-shot output for the same
 //     seed (regression guard against streaming drift)
-//   • crispasr_chat_reset clears history without crashing
+//   • stelnettts_chat_reset clears history without crashing
 //   • a prompt longer than n_batch still prefills, and the result does
 //     not depend on how many prompt batches it was split across
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_chat.h"
+#include "stelnettts_chat.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -29,7 +29,7 @@
 namespace {
 
 const char* test_model_path() {
-    return std::getenv("CRISPASR_CHAT_TEST_MODEL");
+    return std::getenv("STELNETTTS_CHAT_TEST_MODEL");
 }
 
 void on_token_appender(const char* chunk, void* user) {
@@ -57,48 +57,48 @@ std::string long_user_message() {
 // batch size. Returns the generated text; asserts the whole path
 // succeeded.
 std::string generate_over_long_prompt(const char* model, int32_t n_batch) {
-    crispasr_chat_open_params op;
-    crispasr_chat_open_params_default(&op);
+    stelnettts_chat_open_params op;
+    stelnettts_chat_open_params_default(&op);
     op.n_gpu_layers = -1;
     op.n_ctx = 2048;
     op.n_batch = n_batch;
 
-    crispasr_chat_error err{};
-    crispasr_chat_session_t s = crispasr_chat_open(model, &op, &err);
+    stelnettts_chat_error err{};
+    stelnettts_chat_session_t s = stelnettts_chat_open(model, &op, &err);
     REQUIRE(s != nullptr);
     REQUIRE(err.code == 0);
 
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = 16;
     gp.temperature = 0.0f; // greedy → reproducible across batch splits
     gp.seed = 1;
 
     const std::string user = long_user_message();
-    crispasr_chat_message messages[] = {
+    stelnettts_chat_message messages[] = {
         {"system", "You are a terse assistant. Answer in one word."},
         {"user", user.c_str()},
     };
 
-    char* out = crispasr_chat_generate(s, messages, 2, &gp, &err);
+    char* out = stelnettts_chat_generate(s, messages, 2, &gp, &err);
     REQUIRE(out != nullptr);
     REQUIRE(err.code == 0);
     const std::string text = out;
-    crispasr_chat_string_free(out);
-    crispasr_chat_close(s);
+    stelnettts_chat_string_free(out);
+    stelnettts_chat_close(s);
     return text;
 }
 
-crispasr_chat_session_t open_session(const char* model, int32_t n_ctx, int32_t n_batch) {
-    crispasr_chat_open_params op;
-    crispasr_chat_open_params_default(&op);
+stelnettts_chat_session_t open_session(const char* model, int32_t n_ctx, int32_t n_batch) {
+    stelnettts_chat_open_params op;
+    stelnettts_chat_open_params_default(&op);
     op.n_gpu_layers = -1;
     op.n_ctx = n_ctx;
     op.n_batch = n_batch;
     op.n_ubatch = n_batch;
 
-    crispasr_chat_error err{};
-    crispasr_chat_session_t s = crispasr_chat_open(model, &op, &err);
+    stelnettts_chat_error err{};
+    stelnettts_chat_session_t s = stelnettts_chat_open(model, &op, &err);
     REQUIRE(s != nullptr);
     REQUIRE(err.code == 0);
     return s;
@@ -106,28 +106,28 @@ crispasr_chat_session_t open_session(const char* model, int32_t n_ctx, int32_t n
 
 // Greedy generation over `messages` on an already-open session. Asserts
 // the call succeeded and returns the generated text.
-std::string generate_text(crispasr_chat_session_t s, const crispasr_chat_message* messages, size_t n_messages) {
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+std::string generate_text(stelnettts_chat_session_t s, const stelnettts_chat_message* messages, size_t n_messages) {
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = 24;
     gp.temperature = 0.0f; // greedy → the same prompt always yields the same text
     gp.seed = 1;
 
-    crispasr_chat_error err{};
-    char* out = crispasr_chat_generate(s, messages, n_messages, &gp, &err);
+    stelnettts_chat_error err{};
+    char* out = stelnettts_chat_generate(s, messages, n_messages, &gp, &err);
     REQUIRE(out != nullptr);
     REQUIRE(err.code == 0);
     const std::string text = out;
-    crispasr_chat_string_free(out);
+    stelnettts_chat_string_free(out);
     return text;
 }
 
 // The same generation on a session that has seen nothing else — the
 // reference every prefix-reuse case is measured against.
-std::string generate_on_fresh_session(const char* model, const crispasr_chat_message* messages, size_t n_messages) {
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+std::string generate_on_fresh_session(const char* model, const stelnettts_chat_message* messages, size_t n_messages) {
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
     const std::string text = generate_text(s, messages, n_messages);
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
     return text;
 }
 
@@ -135,8 +135,8 @@ std::string generate_on_fresh_session(const char* model, const crispasr_chat_mes
 // so a stop substring can be placed inside it and the truncation pinned
 // exactly. The Python and Go chat suites pin the same reply for the same
 // prompt and sampler settings.
-const crispasr_chat_message* counting_messages() {
-    static const crispasr_chat_message msgs[] = {
+const stelnettts_chat_message* counting_messages() {
+    static const stelnettts_chat_message msgs[] = {
         {"user", "Count from 1 to 8. Write only the numbers, one per line, nothing else."},
     };
     return msgs;
@@ -147,9 +147,9 @@ constexpr const char* kCountingReply = "1\n2\n3\n4\n5\n6\n7\n8\n";
 // itself is cut off.
 constexpr const char* kCountingStoppedAtFive = "1\n2\n3\n4\n";
 
-crispasr_chat_generate_params counting_params(int32_t max_tokens) {
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+stelnettts_chat_generate_params counting_params(int32_t max_tokens) {
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = max_tokens;
     gp.temperature = 0.0f; // greedy → the reply above is reproducible
     gp.seed = 1;
@@ -165,61 +165,61 @@ struct abort_after_pieces {
 
 } // namespace
 
-TEST_CASE("crispasr_chat one-shot generate", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat one-shot generate", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping chat smoke");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping chat smoke");
     }
 
-    crispasr_chat_open_params op;
-    crispasr_chat_open_params_default(&op);
+    stelnettts_chat_open_params op;
+    stelnettts_chat_open_params_default(&op);
     op.n_gpu_layers = -1;
     op.n_ctx = 1024;
 
-    crispasr_chat_error err{};
-    crispasr_chat_session_t s = crispasr_chat_open(model, &op, &err);
+    stelnettts_chat_error err{};
+    stelnettts_chat_session_t s = stelnettts_chat_open(model, &op, &err);
     REQUIRE(s != nullptr);
     REQUIRE(err.code == 0);
 
-    REQUIRE(crispasr_chat_n_ctx(s) > 0);
-    const char* tmpl = crispasr_chat_template_name(s);
+    REQUIRE(stelnettts_chat_n_ctx(s) > 0);
+    const char* tmpl = stelnettts_chat_template_name(s);
     REQUIRE(tmpl != nullptr);
     REQUIRE(std::strlen(tmpl) > 0);
 
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = 16;
     gp.temperature = 0.0f; // greedy → reproducible across one-shot + stream
     gp.seed = 1;
 
-    crispasr_chat_message messages[] = {
+    stelnettts_chat_message messages[] = {
         {"system", "You are a terse assistant. Answer in one word."},
         {"user", "Say hello."},
     };
 
-    char* out = crispasr_chat_generate(s, messages, 2, &gp, &err);
+    char* out = stelnettts_chat_generate(s, messages, 2, &gp, &err);
     REQUIRE(out != nullptr);
     REQUIRE(err.code == 0);
     REQUIRE(std::strlen(out) > 0);
     const std::string one_shot = out;
-    crispasr_chat_string_free(out);
+    stelnettts_chat_string_free(out);
 
     // Streaming path with the same seed + greedy must reproduce one-shot.
-    REQUIRE(crispasr_chat_reset(s, &err) == 0);
+    REQUIRE(stelnettts_chat_reset(s, &err) == 0);
     std::string streamed;
-    int32_t rc = crispasr_chat_generate_stream(s, messages, 2, &gp, on_token_appender, &streamed, &err);
+    int32_t rc = stelnettts_chat_generate_stream(s, messages, 2, &gp, on_token_appender, &streamed, &err);
     REQUIRE(rc == 0);
     REQUIRE(err.code == 0);
     REQUIRE_FALSE(streamed.empty());
     REQUIRE(streamed == one_shot);
 
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
 }
 
-TEST_CASE("crispasr_chat prompt longer than the prompt batch", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat prompt longer than the prompt batch", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping long-prompt prefill");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping long-prompt prefill");
     }
 
     // The prompt exceeds the default 512-token n_batch and fits the 2048
@@ -229,10 +229,10 @@ TEST_CASE("crispasr_chat prompt longer than the prompt batch", "[chat][gguf]") {
     REQUIRE_FALSE(text.empty());
 }
 
-TEST_CASE("crispasr_chat long-prompt output is independent of the prompt batch size", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat long-prompt output is independent of the prompt batch size", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping prompt-batch equivalence");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping prompt-batch equivalence");
     }
 
     // n_batch == n_ctx prefills in a single batch; the 512 default needs
@@ -243,10 +243,10 @@ TEST_CASE("crispasr_chat long-prompt output is independent of the prompt batch s
     REQUIRE(one_batch == many_batches);
 }
 
-TEST_CASE("crispasr_chat_memory_estimate sizes weights plus a context-scaled KV cache", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat_memory_estimate sizes weights plus a context-scaled KV cache", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping memory estimate");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping memory estimate");
     }
 
     // std::filesystem, not fseek/ftell: ftell's `long` is 32-bit on 64-bit
@@ -258,8 +258,8 @@ TEST_CASE("crispasr_chat_memory_estimate sizes weights plus a context-scaled KV 
     REQUIRE(file_size > 0);
 
     // Default params (NULL) — the model's own trained context.
-    crispasr_chat_error err{};
-    const size_t at_default = crispasr_chat_memory_estimate(model, nullptr, &err);
+    stelnettts_chat_error err{};
+    const size_t at_default = stelnettts_chat_memory_estimate(model, nullptr, &err);
     REQUIRE(err.code == 0);
     REQUIRE(at_default > file_size);
 
@@ -268,11 +268,11 @@ TEST_CASE("crispasr_chat_memory_estimate sizes weights plus a context-scaled KV 
     // reading the context / layer / embedding metadata would leave every
     // difference at zero and fail here while still reporting success.
     auto estimate_at = [&](int32_t n_ctx) {
-        crispasr_chat_open_params p;
-        crispasr_chat_open_params_default(&p);
+        stelnettts_chat_open_params p;
+        stelnettts_chat_open_params_default(&p);
         p.n_ctx = n_ctx;
-        crispasr_chat_error e{};
-        const size_t bytes = crispasr_chat_memory_estimate(model, &p, &e);
+        stelnettts_chat_error e{};
+        const size_t bytes = stelnettts_chat_memory_estimate(model, &p, &e);
         REQUIRE(e.code == 0);
         return bytes;
     };
@@ -300,43 +300,43 @@ TEST_CASE("crispasr_chat_memory_estimate sizes weights plus a context-scaled KV 
     REQUIRE(estimate_at(1025) == estimate_at(1280));
 
     // A missing path is rejected rather than estimated.
-    crispasr_chat_error bad{};
-    REQUIRE(crispasr_chat_memory_estimate(nullptr, nullptr, &bad) == 0);
+    stelnettts_chat_error bad{};
+    REQUIRE(stelnettts_chat_memory_estimate(nullptr, nullptr, &bad) == 0);
     REQUIRE(bad.code != 0);
 }
 
-TEST_CASE("crispasr_chat_count_tokens counts the templated prompt", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat_count_tokens counts the templated prompt", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping token counting");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping token counting");
     }
 
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
-    crispasr_chat_error err{};
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+    stelnettts_chat_error err{};
 
-    crispasr_chat_message one[] = {{"user", "Say hello."}};
-    const int32_t n_one = crispasr_chat_count_tokens(s, one, 1, &err);
+    stelnettts_chat_message one[] = {{"user", "Say hello."}};
+    const int32_t n_one = stelnettts_chat_count_tokens(s, one, 1, &err);
     REQUIRE(n_one > 0);
     REQUIRE(err.code == 0);
 
     // Monotone: the same message with more text on the end, then with a
     // second message after it, never counts fewer tokens.
-    crispasr_chat_message longer[] = {{"user", "Say hello. Then say it again, more slowly, in a full sentence."}};
-    const int32_t n_longer = crispasr_chat_count_tokens(s, longer, 1, &err);
+    stelnettts_chat_message longer[] = {{"user", "Say hello. Then say it again, more slowly, in a full sentence."}};
+    const int32_t n_longer = stelnettts_chat_count_tokens(s, longer, 1, &err);
     REQUIRE(n_longer > n_one);
 
-    crispasr_chat_message two[] = {
+    stelnettts_chat_message two[] = {
         {"user", "Say hello. Then say it again, more slowly, in a full sentence."},
         {"assistant", "Hello."},
     };
-    const int32_t n_two = crispasr_chat_count_tokens(s, two, 2, &err);
+    const int32_t n_two = stelnettts_chat_count_tokens(s, two, 2, &err);
     REQUIRE(n_two > n_longer);
 
     // An empty conversation counts the template's own opening. It is never
     // an error — see the template table below for the families that render
     // nothing there — and for this model's template it is a real cost a
     // caller budgeting a context window can see.
-    const int32_t n_empty = crispasr_chat_count_tokens(s, nullptr, 0, &err);
+    const int32_t n_empty = stelnettts_chat_count_tokens(s, nullptr, 0, &err);
     REQUIRE(n_empty >= 0);
     REQUIRE(err.code == 0);
     REQUIRE(n_empty > 0); // gemma opens the assistant turn for add_ass
@@ -345,68 +345,68 @@ TEST_CASE("crispasr_chat_count_tokens counts the templated prompt", "[chat][gguf
     // Counting neither prefills nor extends the history: a generation run
     // after all of the above still produces the same text as one run on a
     // session that was only ever counted against.
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = 16;
     gp.temperature = 0.0f;
     gp.seed = 1;
 
-    char* after_counting = crispasr_chat_generate(s, one, 1, &gp, &err);
+    char* after_counting = stelnettts_chat_generate(s, one, 1, &gp, &err);
     REQUIRE(after_counting != nullptr);
     REQUIRE(err.code == 0);
     const std::string counted = after_counting;
-    crispasr_chat_string_free(after_counting);
-    crispasr_chat_close(s);
+    stelnettts_chat_string_free(after_counting);
+    stelnettts_chat_close(s);
 
-    crispasr_chat_session_t fresh = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
-    char* untouched = crispasr_chat_generate(fresh, one, 1, &gp, &err);
+    stelnettts_chat_session_t fresh = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+    char* untouched = stelnettts_chat_generate(fresh, one, 1, &gp, &err);
     REQUIRE(untouched != nullptr);
     const std::string baseline = untouched;
-    crispasr_chat_string_free(untouched);
-    crispasr_chat_close(fresh);
+    stelnettts_chat_string_free(untouched);
+    stelnettts_chat_close(fresh);
 
     REQUIRE(counted == baseline);
 }
 
-TEST_CASE("crispasr_chat_count_tokens rejects bad arguments", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat_count_tokens rejects bad arguments", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
         // The NULL-session half needs no model, but the executable's exit
         // code is the gate ctest reads: skipping every case keeps a
         // model-less machine reporting SKIPPED rather than a partial pass.
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping token-count argument checks");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping token-count argument checks");
     }
 
-    crispasr_chat_message one[] = {{"user", "Say hello."}};
-    crispasr_chat_error err{};
-    REQUIRE(crispasr_chat_count_tokens(nullptr, one, 1, &err) < 0);
+    stelnettts_chat_message one[] = {{"user", "Say hello."}};
+    stelnettts_chat_error err{};
+    REQUIRE(stelnettts_chat_count_tokens(nullptr, one, 1, &err) < 0);
     REQUIRE(err.code != 0);
 
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
-    crispasr_chat_error msg_err{};
-    REQUIRE(crispasr_chat_count_tokens(s, nullptr, 2, &msg_err) < 0);
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+    stelnettts_chat_error msg_err{};
+    REQUIRE(stelnettts_chat_count_tokens(s, nullptr, 2, &msg_err) < 0);
     REQUIRE(msg_err.code != 0);
 
     // A NULL error pointer is allowed on every other entry point.
-    REQUIRE(crispasr_chat_count_tokens(nullptr, one, 1, nullptr) < 0);
+    REQUIRE(stelnettts_chat_count_tokens(nullptr, one, 1, nullptr) < 0);
 
     // Counting an empty conversation is meaningful; generating from one is
     // not, and rendering the template for the count must not have made it
     // so — the model would be continuing from nowhere.
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = 4;
-    crispasr_chat_error gen_err{};
-    REQUIRE(crispasr_chat_generate(s, nullptr, 0, &gp, &gen_err) == nullptr);
+    stelnettts_chat_error gen_err{};
+    REQUIRE(stelnettts_chat_generate(s, nullptr, 0, &gp, &gen_err) == nullptr);
     REQUIRE(gen_err.code != 0);
 
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
 }
 
-TEST_CASE("crispasr_chat_count_tokens on an empty conversation is template-dependent", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat_count_tokens on an empty conversation is template-dependent", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping empty-conversation template table");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping empty-conversation template table");
     }
 
     // What a template emits for zero messages is its own business, and the
@@ -427,19 +427,19 @@ TEST_CASE("crispasr_chat_count_tokens on an empty conversation is template-depen
     };
 
     for (const row& r : rows) {
-        crispasr_chat_open_params op;
-        crispasr_chat_open_params_default(&op);
+        stelnettts_chat_open_params op;
+        stelnettts_chat_open_params_default(&op);
         op.n_gpu_layers = -1;
         op.n_ctx = 512;
         op.chat_template = r.tmpl;
 
-        crispasr_chat_error open_err{};
-        crispasr_chat_session_t s = crispasr_chat_open(model, &op, &open_err);
+        stelnettts_chat_error open_err{};
+        stelnettts_chat_session_t s = stelnettts_chat_open(model, &op, &open_err);
         INFO("template " << r.tmpl);
         REQUIRE(s != nullptr);
 
-        crispasr_chat_error err{};
-        const int32_t n_empty = crispasr_chat_count_tokens(s, nullptr, 0, &err);
+        stelnettts_chat_error err{};
+        const int32_t n_empty = stelnettts_chat_count_tokens(s, nullptr, 0, &err);
         REQUIRE(err.code == 0);
         REQUIRE(n_empty >= 0);
         if (r.has_opening) {
@@ -449,20 +449,20 @@ TEST_CASE("crispasr_chat_count_tokens on an empty conversation is template-depen
         }
 
         // Whatever the empty count is, a real conversation still counts.
-        crispasr_chat_message one[] = {{"user", "Say hello."}};
-        crispasr_chat_error one_err{};
-        const int32_t n_one = crispasr_chat_count_tokens(s, one, 1, &one_err);
+        stelnettts_chat_message one[] = {{"user", "Say hello."}};
+        stelnettts_chat_error one_err{};
+        const int32_t n_one = stelnettts_chat_count_tokens(s, one, 1, &one_err);
         REQUIRE(one_err.code == 0);
         REQUIRE(n_one > n_empty);
 
-        crispasr_chat_close(s);
+        stelnettts_chat_close(s);
     }
 }
 
-TEST_CASE("crispasr_chat_count_tokens matches what a prefill really decodes", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat_count_tokens matches what a prefill really decodes", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping count-vs-prefill agreement");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping count-vs-prefill agreement");
     }
 
     // A count that is merely positive and monotone can still be wrong by a
@@ -473,19 +473,19 @@ TEST_CASE("crispasr_chat_count_tokens matches what a prefill really decodes", "[
     // succeeds while the prompt fits the context and fails as soon as it
     // does not. Growing the prompt one token at a time across that
     // boundary pins the count against the prefill.
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/256, /*n_batch=*/64);
-    const int32_t capacity = crispasr_chat_n_ctx(s);
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/256, /*n_batch=*/64);
+    const int32_t capacity = stelnettts_chat_n_ctx(s);
     REQUIRE(capacity >= 256);
 
-    crispasr_chat_error err{};
+    stelnettts_chat_error err{};
     std::string fits;
     std::string over;
     int32_t n_fits = 0;
     int32_t n_over = 0;
     std::string body = "Count the tokens in this sentence.";
     for (int i = 0; i < 4 * 256; ++i) {
-        crispasr_chat_message m[] = {{"user", body.c_str()}};
-        const int32_t n = crispasr_chat_count_tokens(s, m, 1, &err);
+        stelnettts_chat_message m[] = {{"user", body.c_str()}};
+        const int32_t n = stelnettts_chat_count_tokens(s, m, 1, &err);
         REQUIRE(n > 0);
         if (n > capacity) {
             over = body;
@@ -512,48 +512,48 @@ TEST_CASE("crispasr_chat_count_tokens matches what a prefill really decodes", "[
     // count against the prefill while the boundary is known exactly.
     REQUIRE(n_fits == capacity);
 
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.prefill_only = true;
     gp.temperature = 0.0f;
 
-    crispasr_chat_message fitting[] = {{"user", fits.c_str()}};
-    char* out = crispasr_chat_generate(s, fitting, 1, &gp, &err);
+    stelnettts_chat_message fitting[] = {{"user", fits.c_str()}};
+    char* out = stelnettts_chat_generate(s, fitting, 1, &gp, &err);
     REQUIRE(out != nullptr);
     REQUIRE(err.code == 0);
-    crispasr_chat_string_free(out);
+    stelnettts_chat_string_free(out);
 
-    REQUIRE(crispasr_chat_reset(s, &err) == 0);
+    REQUIRE(stelnettts_chat_reset(s, &err) == 0);
 
-    crispasr_chat_message overflowing[] = {{"user", over.c_str()}};
-    crispasr_chat_error over_err{};
-    out = crispasr_chat_generate(s, overflowing, 1, &gp, &over_err);
+    stelnettts_chat_message overflowing[] = {{"user", over.c_str()}};
+    stelnettts_chat_error over_err{};
+    out = stelnettts_chat_generate(s, overflowing, 1, &gp, &over_err);
     REQUIRE(out == nullptr);
     REQUIRE(over_err.code != 0);
-    REQUIRE(over_err.code != CRISPASR_CHAT_ERR_ABORTED);
+    REQUIRE(over_err.code != STELNETTTS_CHAT_ERR_ABORTED);
 
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
 }
 
-TEST_CASE("crispasr_chat branches two prompts off a shared system prefix", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat branches two prompts off a shared system prefix", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping shared-prefix reuse");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping shared-prefix reuse");
     }
 
     // Two questions under one instruction block: the second diverges from
     // the first at the user turn, so only the instruction block is
     // reusable. Reusing it must not change a single sampled token.
     const char* system = "You are a terse assistant. Answer with one word and nothing else.";
-    crispasr_chat_message first[] = {{"system", system}, {"user", "Name a colour."}};
-    crispasr_chat_message second[] = {{"system", system}, {"user", "Name a fruit."}};
+    stelnettts_chat_message first[] = {{"system", system}, {"user", "Name a colour."}};
+    stelnettts_chat_message second[] = {{"system", system}, {"user", "Name a fruit."}};
 
     const std::string ref_first = generate_on_fresh_session(model, first, 2);
     const std::string ref_second = generate_on_fresh_session(model, second, 2);
     REQUIRE_FALSE(ref_first.empty());
     REQUIRE_FALSE(ref_second.empty());
 
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
     const std::string reused_first = generate_text(s, first, 2);
     const std::string reused_second = generate_text(s, second, 2);
     // Back to the first question. Its tokens are still in the history the
@@ -561,44 +561,44 @@ TEST_CASE("crispasr_chat branches two prompts off a shared system prefix", "[cha
     // describes its cache keeps the second turn's tokens here and answers
     // the wrong question.
     const std::string reused_again = generate_text(s, first, 2);
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
 
     REQUIRE(reused_first == ref_first);
     REQUIRE(reused_second == ref_second);
     REQUIRE(reused_again == ref_first);
 }
 
-TEST_CASE("crispasr_chat extends a growing conversation", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat extends a growing conversation", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping append-only reuse");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping append-only reuse");
     }
 
     // The append-only case: the second prompt contains the whole first
     // prompt plus the reply it produced, so nothing in the cache is stale.
     const char* system = "You are a terse assistant. Answer with one word and nothing else.";
-    crispasr_chat_message first[] = {{"system", system}, {"user", "Name a colour."}};
+    stelnettts_chat_message first[] = {{"system", system}, {"user", "Name a colour."}};
 
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
     const std::string reply = generate_text(s, first, 2);
     REQUIRE_FALSE(reply.empty());
 
-    crispasr_chat_message grown[] = {
+    stelnettts_chat_message grown[] = {
         {"system", system},
         {"user", "Name a colour."},
         {"assistant", reply.c_str()},
         {"user", "Name a fruit."},
     };
     const std::string continued = generate_text(s, grown, 4);
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
 
     REQUIRE(continued == generate_on_fresh_session(model, grown, 4));
 }
 
-TEST_CASE("crispasr_chat regenerates a prompt that is a prefix of its history", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat regenerates a prompt that is a prefix of its history", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping prefix-of-history regeneration");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping prefix-of-history regeneration");
     }
 
     // Asking the same question twice: the second prompt is a strict prefix
@@ -607,15 +607,15 @@ TEST_CASE("crispasr_chat regenerates a prompt that is a prefix of its history", 
     // token of that reply and continue it, so one token must always be
     // re-decoded.
     const char* system = "You are a terse assistant. Answer with one word and nothing else.";
-    crispasr_chat_message ask[] = {{"system", system}, {"user", "Name a colour."}};
+    stelnettts_chat_message ask[] = {{"system", system}, {"user", "Name a colour."}};
 
     const std::string reference = generate_on_fresh_session(model, ask, 2);
     REQUIRE_FALSE(reference.empty());
 
-    crispasr_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
+    stelnettts_chat_session_t s = open_session(model, /*n_ctx=*/1024, /*n_batch=*/512);
     const std::string once = generate_text(s, ask, 2);
     const std::string twice = generate_text(s, ask, 2);
-    crispasr_chat_close(s);
+    stelnettts_chat_close(s);
 
     REQUIRE(once == reference);
     REQUIRE(twice == reference);

@@ -16,7 +16,7 @@ pipeline_tag: automatic-speech-recognition
 
 # Data2Vec Audio (GGUF)
 
-GGUF conversion of [facebook/data2vec-audio-base-960h](https://huggingface.co/facebook/data2vec-audio-base-960h) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [facebook/data2vec-audio-base-960h](https://huggingface.co/facebook/data2vec-audio-base-960h) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model Details
 
@@ -27,11 +27,11 @@ GGUF conversion of [facebook/data2vec-audio-base-960h](https://huggingface.co/fa
 - **License**: Apache 2.0
 - **WER**: 1.89% (LibriSpeech test-clean), 4.07% (test-other)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Uses the wav2vec2 backend (auto-detected from GGUF architecture)
-crispasr --backend wav2vec2 -m data2vec-audio-base-960h-q4_k.gguf -f audio.wav
+stelnettts --backend wav2vec2 -m data2vec-audio-base-960h-q4_k.gguf -f audio.wav
 ```
 
 ## Architecture Notes

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert OpenMOSS-Team/MOSS-Audio-4B-Instruct to GGUF format for CrispASR.
+"""Convert OpenMOSS-Team/MOSS-Audio-4B-Instruct to GGUF format for StelnetTTS.
 
 Architecture: 32-layer Whisper-style audio encoder (3× Conv2d stem,
 1280d, 20 heads, FFN 5120) + DeepStack 3-tap adapter +
@@ -14,7 +14,7 @@ Usage:
         --output moss-audio-4b-instruct-f16.gguf
 
     # Then quantize:
-    crispasr-quantize moss-audio-4b-instruct-f16.gguf \\
+    stelnettts-quantize moss-audio-4b-instruct-f16.gguf \\
                       moss-audio-4b-instruct-q4_k.gguf q4_k
 """
 

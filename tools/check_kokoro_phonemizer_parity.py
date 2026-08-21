@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Diff harness for the kokoro phonemizer paths (PLAN #56 #4).
 
-Compares the two espeak-ng entry points exposed by libcrispasr:
+Compares the two espeak-ng entry points exposed by libstelnettts:
 
   - `kokoro_phonemize_text_lib`   — in-process libespeak-ng (preferred,
                                     ~30-50 ms faster per call).
@@ -30,7 +30,7 @@ Usage:
 
   python tools/check_kokoro_phonemizer_parity.py
   python tools/check_kokoro_phonemizer_parity.py --strict
-  CRISPASR_LIB_PATH=/path/to/libcrispasr.dylib \\
+  STELNETTTS_LIB_PATH=/path/to/libstelnettts.dylib \\
       python tools/check_kokoro_phonemizer_parity.py
 """
 
@@ -80,25 +80,25 @@ def normalise(s: str) -> str:
 
 
 def find_lib() -> Path:
-    """Locate libcrispasr — env var first, then standard build dirs."""
-    env = os.environ.get("CRISPASR_LIB_PATH")
+    """Locate libstelnettts — env var first, then standard build dirs."""
+    env = os.environ.get("STELNETTTS_LIB_PATH")
     if env:
         return Path(env)
     repo_root = Path(__file__).resolve().parent.parent
     candidates = [
-        repo_root / "build-ninja-compile" / "src" / "libcrispasr.dylib",
-        repo_root / "build" / "src" / "libcrispasr.dylib",
-        repo_root / "build" / "src" / "libcrispasr.so",
-        Path("/opt/homebrew/lib/libcrispasr.dylib"),
-        Path("/usr/local/lib/libcrispasr.dylib"),
-        Path("/usr/lib/libcrispasr.so"),
+        repo_root / "build-ninja-compile" / "src" / "libstelnettts.dylib",
+        repo_root / "build" / "src" / "libstelnettts.dylib",
+        repo_root / "build" / "src" / "libstelnettts.so",
+        Path("/opt/homebrew/lib/libstelnettts.dylib"),
+        Path("/usr/local/lib/libstelnettts.dylib"),
+        Path("/usr/lib/libstelnettts.so"),
     ]
     for p in candidates:
         if p.exists():
             return p
     raise SystemExit(
-        "libcrispasr not found. Set CRISPASR_LIB_PATH or build with "
-        "`cmake --build <build-dir> --target crispasr-lib` first.")
+        "libstelnettts not found. Set STELNETTTS_LIB_PATH or build with "
+        "`cmake --build <build-dir> --target stelnettts-lib` first.")
 
 
 def setup_phonemize_fns(lib_path: Path):
@@ -106,7 +106,7 @@ def setup_phonemize_fns(lib_path: Path):
     for name in ("kokoro_phonemize_text_lib", "kokoro_phonemize_text_popen"):
         if not hasattr(lib, name):
             raise SystemExit(
-                f"libcrispasr at {lib_path} missing symbol '{name}'. "
+                f"libstelnettts at {lib_path} missing symbol '{name}'. "
                 f"Rebuild against PLAN #56 #4 (commit adding the diff "
                 f"harness ABI exports).")
     # Both functions return char* (malloc'd by libc) — but ctypes.c_char_p
@@ -117,7 +117,7 @@ def setup_phonemize_fns(lib_path: Path):
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         fn.restype = ctypes.c_void_p
 
-    # libc free() — same allocator that libcrispasr's malloc() uses.
+    # libc free() — same allocator that libstelnettts's malloc() uses.
     libc = ctypes.CDLL(None)
     libc.free.argtypes = [ctypes.c_void_p]
     libc.free.restype = None
@@ -142,13 +142,13 @@ def main() -> int:
                    help="Byte-exact comparison (no ZWJ/whitespace normalisation).")
     p.add_argument("--suite", type=Path,
                    help="Path to a custom suite file (one '<lang>\\t<text>' per line).")
-    p.add_argument("--lib", type=Path, help="Override libcrispasr path.")
+    p.add_argument("--lib", type=Path, help="Override libstelnettts path.")
     args = p.parse_args()
 
     if args.lib:
-        os.environ["CRISPASR_LIB_PATH"] = str(args.lib)
+        os.environ["STELNETTTS_LIB_PATH"] = str(args.lib)
     lib_path = find_lib()
-    print(f"libcrispasr: {lib_path}")
+    print(f"libstelnettts: {lib_path}")
     lib, libc = setup_phonemize_fns(lib_path)
     fn_lib = lib.kokoro_phonemize_text_lib
     fn_popen = lib.kokoro_phonemize_text_popen

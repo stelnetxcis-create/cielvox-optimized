@@ -23,13 +23,13 @@ tags:
 - flow-matching
 - voice-cloning
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # TADA-3B-ML — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`HumeAI/tada-3b-ml`](https://huggingface.co/HumeAI/tada-3b-ml) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`HumeAI/tada-3b-ml`](https://huggingface.co/HumeAI/tada-3b-ml) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 TADA-3B-ML is a multilingual text-to-speech model built on Meta Llama 3.2 3B with a flow-matching (FM) speech decoder and custom Hume codec. Key property: **1:1 token alignment** — every text token maps to exactly one speech vector, eliminating transcript hallucination. Supports 10 languages (en, es, ja, zh, de, fr, it, pt, ko, ar). 24 kHz mono output.
 
@@ -71,19 +71,19 @@ Output: float32 mono @ 24 kHz
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr
+cmake --build build -j --target stelnettts
 
 # 2. Pull model + codec + default voice reference
-huggingface-cli download cstr/tada-tts-3b-ml-GGUF \
+huggingface-cli download Xenna/tada-tts-3b-ml-GGUF \
   tada-tts-3b-ml-q4_k.gguf tada-codec-f16.gguf tada-ref.gguf \
   --local-dir .
 
 # 3. Synthesize (with default voice reference)
-./build/bin/crispasr --backend tada \
+./build/bin/stelnettts --backend tada \
   -m tada-tts-3b-ml-q4_k.gguf \
   --codec-model tada-codec-f16.gguf \
   --voice tada-ref.gguf \
@@ -94,10 +94,10 @@ huggingface-cli download cstr/tada-tts-3b-ml-GGUF \
 
 For near-lossless quality use `tada-tts-3b-ml-q8_0.gguf`; for the F16 reference quality use `tada-tts-3b-ml-f16.gguf`.
 
-Recent CrispASR builds can also resolve this repo through the model registry:
+Recent StelnetTTS builds can also resolve this repo through the model registry:
 
 ```bash
-./build/bin/crispasr --backend tada -m auto --auto-download \
+./build/bin/stelnettts --backend tada -m auto --auto-download \
   --tts "Hola, esto es una prueba del sistema TADA." \
   --tts-output hello.wav
 ```
@@ -110,13 +110,13 @@ from this repo — add `--auto-download` and they are fetched automatically:
 
 ```bash
 # 1. Build a reference GGUF from a voice sample + its EXACT transcript
-./build/bin/crispasr --backend tada-3b-ml -m tada-tts-3b-ml-f16.gguf --auto-download \
+./build/bin/stelnettts --backend tada-3b-ml -m tada-tts-3b-ml-f16.gguf --auto-download \
   --make-ref --voice your-voice.wav \
   --ref-text "Exact words spoken in your-voice.wav." \
   --make-ref-output my-voice.gguf
 
 # 2. Synthesize in that voice
-./build/bin/crispasr --backend tada-3b-ml \
+./build/bin/stelnettts --backend tada-3b-ml \
   -m tada-tts-3b-ml-q4_k.gguf --codec-model tada-codec-f16.gguf \
   --voice my-voice.gguf \
   --tts "Text to speak in the cloned voice." --tts-output output.wav
@@ -136,7 +136,7 @@ forced alignment: given audio + its transcript it emits frame-accurate word
 timings. Same assets as `--make-ref` (auto-downloaded):
 
 ```bash
-crispasr --backend tada-3b-ml -m tada-tts-3b-ml-f16.gguf --auto-download \
+stelnettts --backend tada-3b-ml -m tada-tts-3b-ml-f16.gguf --auto-download \
   --align --voice speech.wav --ref-text "exact transcript" \
   --align-format srt   # srt (default) | json | plain
 ```
@@ -152,25 +152,25 @@ a standalone recogniser.
 - **Base model:** [`meta-llama/Llama-3.2-3B`](https://huggingface.co/meta-llama/Llama-3.2-3B)
 - **Codec:** [`HumeAI/tada-codec`](https://huggingface.co/HumeAI/tada-codec)
 - **Paper:** [arXiv:2602.23068](https://arxiv.org/abs/2602.23068)
-- **Converted with:** `models/convert-tada-to-gguf.py`, `models/convert-tada-codec-to-gguf.py`, and `crispasr-quantize`
-- **Runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR)
+- **Converted with:** `models/convert-tada-to-gguf.py`, `models/convert-tada-codec-to-gguf.py`, and `stelnettts-quantize`
+- **Runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS)
 
 ## Validation
 
-The Q4_K model was validated with CrispASR by synthesizing "Please call Stella." and ASR-roundtripping the output with Whisper tiny.en:
+The Q4_K model was validated with StelnetTTS by synthesizing "Please call Stella." and ASR-roundtripping the output with Whisper tiny.en:
 
 ```
 Please call Stella.
 ```
 
-## Runtime fixes (CrispASR ≥ commit 0a95b326)
+## Runtime fixes (StelnetTTS ≥ commit 0a95b326)
 
-This GGUF was produced alongside the following CrispASR runtime fixes; use a build from that commit or later:
+This GGUF was produced alongside the following StelnetTTS runtime fixes; use a build from that commit or later:
 
 - **Voice prompt AR continuation** — C++ now correctly inserts the n_prompt PAD token slots that Python uses for the voice replay phase. Without this fix, long voice references caused the AR generation loop to run 0 iterations, producing near-silence.
 - **BF16 noise parity** — FM denoising noise is now rounded to BF16 before scaling, matching PyTorch's `torch.randn().to(bfloat16)` behaviour and eliminating subtle residual drift.
 - **Vulkan contiguity** — `ggml_cont()` wrappers added around strided 2D views in the B2 FM graph; required for Vulkan element-wise kernels.
-- **Mixed-precision Q4_K** — `crispasr-quantize` tail=14 keeps the last 14 token-embedding rows and all TADA tensors at F16, stabilising the timing path for the 3B model.
+- **Mixed-precision Q4_K** — `stelnettts-quantize` tail=14 keeps the last 14 token-embedding rows and all TADA tensors at F16, stabilising the timing path for the 3B model.
 
 ## Checksums
 

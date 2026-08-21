@@ -1,13 +1,13 @@
 {
-  "id": "chr1s4/crispasr-qwen3-mtp-fuse",
-  "title": "crispasr-qwen3-mtp-fuse",
-  "code_file": "crispasr-qwen3-tts-mtp-cuda.py",
+  "id": "chr1s4/stelnettts-qwen3-mtp-fuse",
+  "title": "stelnettts-qwen3-mtp-fuse",
+  "code_file": "stelnettts-cielvox2-tts-mtp-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

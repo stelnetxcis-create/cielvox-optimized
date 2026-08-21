@@ -5,7 +5,7 @@
 
 #include "ecapa_lid.h"
 #include "core/gguf_loader.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
@@ -37,7 +37,7 @@
 // non-Apple.
 static bool ecapa_use_scalar() {
 #if defined(HAVE_ACCELERATE)
-    static const bool force_scalar = crispasr_env::get("CRISPASR_ECAPA_FORCE_SCALAR") != nullptr;
+    static const bool force_scalar = stelnettts_env::get("STELNETTTS_ECAPA_FORCE_SCALAR") != nullptr;
     return force_scalar;
 #else
     return true;
@@ -51,7 +51,7 @@ static bool ecapa_use_scalar() {
 static bool ecapa_lid_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_ECAPA_LID_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_ECAPA_LID_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -369,7 +369,7 @@ extern "C" const char* ecapa_lid_detect(struct ecapa_lid_context* ctx, const flo
     auto& ts = m.tensors;
 
     // ECAPA-TDNN works well with 3–15 s of audio. The caller
-    // (crispasr_detect_language) already truncates to 15 s.
+    // (stelnettts_detect_language) already truncates to 15 s.
     constexpr int kMaxSamples = 16000 * 15;
     if (n_samples > kMaxSamples)
         n_samples = kMaxSamples;
@@ -393,7 +393,7 @@ extern "C" const char* ecapa_lid_detect(struct ecapa_lid_context* ctx, const flo
         return nullptr;
 
     // Debug: optionally load reference fbank
-    const char* ref_path = crispasr_env::get("CRISPASR_ECAPA_REF_FBANK");
+    const char* ref_path = stelnettts_env::get("STELNETTTS_ECAPA_REF_FBANK");
     if (ref_path && *ref_path) {
         FILE* f = fopen(ref_path, "rb");
         if (f) {
@@ -530,11 +530,11 @@ extern "C" const char* ecapa_lid_detect(struct ecapa_lid_context* ctx, const flo
     // like titanet: WITHOUT Accelerate the CPU head is scalar and costs ~3 s
     // per detect (the Linux LID hotspot) → in-graph head is default there;
     // WITH Accelerate the GEMM head (57 ms on M1) stays default.
-    // CRISPASR_ECAPA_ASP_GGML=1 / CRISPASR_ECAPA_ASP_CPU=1 force either way.
+    // STELNETTTS_ECAPA_ASP_GGML=1 / STELNETTTS_ECAPA_ASP_CPU=1 force either way.
     const bool asp_cpu = [] {
-        if (const char* e = std::getenv("CRISPASR_ECAPA_ASP_CPU"); e && *e && *e != '0')
+        if (const char* e = std::getenv("STELNETTTS_ECAPA_ASP_CPU"); e && *e && *e != '0')
             return true;
-        if (const char* e = std::getenv("CRISPASR_ECAPA_ASP_GGML"); e && *e && *e != '0')
+        if (const char* e = std::getenv("STELNETTTS_ECAPA_ASP_GGML"); e && *e && *e != '0')
             return false;
 #if defined(HAVE_ACCELERATE)
         return true;
@@ -614,7 +614,7 @@ extern "C" const char* ecapa_lid_detect(struct ecapa_lid_context* ctx, const flo
             ggml_fp16_to_fp32_row(reinterpret_cast<const ggml_fp16_t*>(tmp.data()), out.data(), n);
         } else {
             // Quantized (q8_0/q4_k/…): dequantize via the type's to_float.
-            // crispasr-quantize quantizes the CPU-read ASP/FC head weights;
+            // stelnettts-quantize quantizes the CPU-read ASP/FC head weights;
             // without this branch they read back as zeros → garbage embedding
             // (this is why the q8_0 ecapa GGUF produced near-uniform output).
             const struct ggml_type_traits* tr = ggml_get_type_traits(t->type);
@@ -807,13 +807,13 @@ extern "C" const char* ecapa_lid_detect(struct ecapa_lid_context* ctx, const flo
             emb[i] = (float)s;
         }
 
-        if (crispasr_env::get("CRISPASR_ECAPA_TIMING")) {
+        if (stelnettts_env::get("STELNETTTS_ECAPA_TIMING")) {
             double asp_ms =
                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - asp_t0).count();
             fprintf(stderr, "ecapa_lid: ASP head (T=%d) %.1f ms %s\n", T_mfa, asp_ms,
                     ecapa_use_scalar() ? "[scalar]" : "[gemm]");
         }
-    } // end CPU ASP head (CRISPASR_ECAPA_ASP_CPU=1)
+    } // end CPU ASP head (STELNETTTS_ECAPA_ASP_CPU=1)
 
     // Classifier — two types:
     // Type 0 (DNN/VoxLingua107): BN → Linear → BN → LeakyReLU → Linear

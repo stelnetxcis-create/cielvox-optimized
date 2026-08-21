@@ -8,7 +8,7 @@
 // Tensor naming follows export_gguf.py / cohere-arch.h.
 
 #include "cohere.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "cohere-arch.h"
 #include "cohere_lang.h"
 #include "core/lid_probe.h"
@@ -16,7 +16,7 @@
 #include "ggml-cpu.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #if defined(GGML_USE_METAL)
 #include "ggml-metal.h"
 #endif
@@ -57,7 +57,7 @@ static bool cohere_debug_enabled(void) {
     static bool init = false;
     static bool enabled = false;
     if (!init) {
-        enabled = crispasr_env::get("CRISPASR_COHERE_DEBUG") != nullptr;
+        enabled = stelnettts_env::get("STELNETTTS_COHERE_DEBUG") != nullptr;
         init = true;
     }
     return enabled;
@@ -67,7 +67,7 @@ static bool cohere_bench_enabled(void) {
     static bool init = false;
     static bool enabled = false;
     if (!init) {
-        enabled = crispasr_env::get("CRISPASR_COHERE_BENCH") != nullptr;
+        enabled = stelnettts_env::get("STELNETTTS_COHERE_BENCH") != nullptr;
         init = true;
     }
     return enabled;
@@ -210,7 +210,7 @@ static void cohere_perf_print(const cohere_perf& p, int n_samples, int sample_ra
     // e.g. the beam-search KV snapshot that drove the #161 regression).
     // Opt-in via COHERE_GAPS=1 (or COHERE_BENCH=1) to keep the default
     // report compact.
-    if (crispasr_env::get("CRISPASR_COHERE_GAPS") || crispasr_env::get("CRISPASR_COHERE_BENCH")) {
+    if (stelnettts_env::get("STELNETTTS_COHERE_GAPS") || stelnettts_env::get("STELNETTTS_COHERE_BENCH")) {
         const int64_t accounted = p.t_features_us + p.t_enc_build_us + p.t_enc_alloc_us + p.t_enc_compute_us +
                                   p.t_cross_kv_us + p.t_crosskv_read_us + p.t_reserve_us + p.t_dec_build_us +
                                   p.t_dec_alloc_us + p.t_dec_compute_us + p.t_dec_logits_us;
@@ -328,7 +328,7 @@ static void cohere_prof_print(const cohere_prof_state& ps) {
 // ---------------------------------------------------------------------------
 // Helpers
 
-// Like crispasr's ggml_graph_compute_helper: set n_threads on every backend
+// Like stelnettts's ggml_graph_compute_helper: set n_threads on every backend
 // in the scheduler (via registry proc address) before each compute call.
 // This ensures the thread count is applied correctly even after sched resets.
 static bool cohere_sched_graph_compute(ggml_backend_sched_t sched, struct ggml_cgraph* gf, int n_threads) {
@@ -612,8 +612,8 @@ static struct ggml_cgraph* cohere_build_graph_encoder(struct cohere_context* ctx
     const int head_dim = hp.enc_head_dim;
     const int n_mels = hp.n_mels;
     // Gated per-stage encoder snapshots (mel + per-block + pre-proj final) for
-    // the crispasr-diff / transcribe.cpp comparison. No overhead when unset.
-    const bool dump_stages = std::getenv("CRISPASR_COHERE_DUMP_STAGES") != nullptr;
+    // the stelnettts-diff / transcribe.cpp comparison. No overhead when unset.
+    const bool dump_stages = std::getenv("STELNETTTS_COHERE_DUMP_STAGES") != nullptr;
 
     struct ggml_init_params params = {
         .mem_size = ctx->compute_meta.size(),
@@ -1175,8 +1175,8 @@ static bool cohere_load_model(cohere_model& model, cohere_vocab& vocab, const ch
     // Escape hatch for the GGUFs already in circulation, which were converted
     // before that key existed: declare the model's language set without
     // reconverting 1.5 GB. Overrides the GGUF when both are present.
-    //   CRISPASR_COHERE_LANGS=en,ar
-    if (const char* env = crispasr_env::get("CRISPASR_COHERE_LANGS")) {
+    //   STELNETTTS_COHERE_LANGS=en,ar
+    if (const char* env = stelnettts_env::get("STELNETTTS_COHERE_LANGS")) {
         std::vector<std::string> from_env;
         std::string cur;
         for (const char* p = env;; p++) {
@@ -1192,7 +1192,7 @@ static bool cohere_load_model(cohere_model& model, cohere_vocab& vocab, const ch
         }
         if (!from_env.empty()) {
             hp.supported_languages = std::move(from_env);
-            fprintf(stderr, "cohere: supported languages overridden by CRISPASR_COHERE_LANGS=%s\n", env);
+            fprintf(stderr, "cohere: supported languages overridden by STELNETTTS_COHERE_LANGS=%s\n", env);
         }
     }
 
@@ -1514,7 +1514,7 @@ static void cohere_fft_r2c(const float* in, int N, float* out) {
 // ---------------------------------------------------------------------------
 
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -1698,12 +1698,12 @@ static struct ggml_cgraph* cohere_build_graph_decoder(struct cohere_context* ctx
             ggml_view_3d(ctx0, ctx->kv_v, head_dim, sa_L, n_heads, ctx->kv_v->nb[1], ctx->kv_v->nb[2],
                          il * ctx->kv_v->nb[3]); // [hd, L, n_heads]
 
-        // CRISPASR_COHERE_LEGACY_SA=1: fall back to the pre-v0.7 manual
+        // STELNETTTS_COHERE_LEGACY_SA=1: fall back to the pre-v0.7 manual
         // mul_mat self-attention path. The flash_attn_ext path (PLAN #73)
         // fuses Q·K + softmax + V into a single op, but caused a ~10×
         // CUDA regression on some Windows setups (#161). This env var
         // lets users bisect whether flash_attn_ext is the culprit.
-        static const bool legacy_sa = (getenv("CRISPASR_COHERE_LEGACY_SA") != nullptr);
+        static const bool legacy_sa = (getenv("STELNETTTS_COHERE_LEGACY_SA") != nullptr);
 
         if (legacy_sa) {
             // Legacy path: explicit mul_mat attention (pre-v0.7).
@@ -1970,7 +1970,7 @@ struct cohere_context* cohere_init_from_file(const char* path_model, struct cohe
     // NOTE: ggml_backend_cpu_set_n_threads is NOT called by default —
     // profiling showed it regressed perf for our small matrix sizes.
     {
-        const char* env = crispasr_env::get("CRISPASR_COHERE_THREADS");
+        const char* env = stelnettts_env::get("STELNETTTS_COHERE_THREADS");
         if (env) {
             int n = atoi(env);
             if (n > 0)
@@ -1988,7 +1988,7 @@ struct cohere_context* cohere_init_from_file(const char* path_model, struct cohe
     }
 
     {
-        const char* dev_env = crispasr_env::get("CRISPASR_COHERE_DEVICE");
+        const char* dev_env = stelnettts_env::get("STELNETTTS_COHERE_DEVICE");
         if (dev_env && strlen(dev_env) > 0) {
             ctx->ggml_backend = ggml_backend_init_by_name(dev_env, nullptr);
             if (!ctx->ggml_backend) {
@@ -1996,7 +1996,7 @@ struct cohere_context* cohere_init_from_file(const char* path_model, struct cohe
             }
         }
         if (!ctx->ggml_backend) {
-            ctx->ggml_backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+            ctx->ggml_backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
         }
         if (!ctx->ggml_backend) {
             fprintf(stderr, "cohere: failed to initialize any ggml backend\n");
@@ -2012,7 +2012,7 @@ struct cohere_context* cohere_init_from_file(const char* path_model, struct cohe
     COHERE_VLOG(vb, "cohere: backend: %s%s\n", ggml_backend_name(ctx->ggml_backend), using_gpu ? "" : " (CPU-only)");
 
     // Apply thread count only when explicitly requested via env var
-    if (crispasr_env::get("CRISPASR_COHERE_THREADS")) {
+    if (stelnettts_env::get("STELNETTTS_COHERE_THREADS")) {
         COHERE_VLOG(vb, "cohere: applying n_threads=%d to CPU backend [COHERE_THREADS override]\n", params.n_threads);
         core_cpu_backend::set_n_threads(ctx->ggml_backend_cpu, params.n_threads);
         if (!using_gpu) {
@@ -2056,7 +2056,7 @@ struct cohere_context* cohere_init_from_file(const char* path_model, struct cohe
         // and these KV rows are dec_head_dim wide, so a q8_0 tensor needs more
         // than nbytes — the hand-sized buffer came up short and
         // ggml_backend_tensor_alloc aborted. Only reachable with
-        // CRISPASR_KV_QUANT set, and only on CUDA.
+        // STELNETTTS_KV_QUANT set, and only on CUDA.
         //
         // (The cross-attention KV below is hardcoded F16, which is never
         // padded, so its arithmetic is safe and is left alone.)
@@ -2072,11 +2072,11 @@ struct cohere_context* cohere_init_from_file(const char* path_model, struct cohe
     if (using_gpu) {
         ggml_backend_t backends[] = {ctx->ggml_backend, ctx->ggml_backend_cpu};
         ctx->ggml_alloc = ggml_backend_sched_new(backends, nullptr, 2, 16384, false, false);
-        crispasr_imatrix_install(ctx->ggml_alloc); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->ggml_alloc); // no-op unless STELNETTTS_IMATRIX_OUT is set
     } else {
         ggml_backend_t backends[] = {ctx->ggml_backend};
         ctx->ggml_alloc = ggml_backend_sched_new(backends, nullptr, 1, 16384, false, false);
-        crispasr_imatrix_install(ctx->ggml_alloc); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->ggml_alloc); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
 
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + 1024);
@@ -2277,9 +2277,9 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
     // Gate exactly that: no signal in, empty transcript out. The threshold sits
     // below one int16 LSB so a single non-zero sample disables it — see
     // audio_chunking::is_digitally_silent for the measured headroom against real
-    // quiet speech. CRISPASR_COHERE_SILENCE_GATE=0 restores the old behaviour.
+    // quiet speech. STELNETTTS_COHERE_SILENCE_GATE=0 restores the old behaviour.
     {
-        const char* gate_env = crispasr_env::get("CRISPASR_COHERE_SILENCE_GATE");
+        const char* gate_env = stelnettts_env::get("STELNETTTS_COHERE_SILENCE_GATE");
         const bool gate_on =
             !(gate_env && (gate_env[0] == '0' || gate_env[0] == 'n' || gate_env[0] == 'N' || gate_env[0] == 'f'));
         if (gate_on && audio_chunking::is_digitally_silent(samples, (size_t)n_samples)) {
@@ -2422,7 +2422,7 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
 
     // Optional per-op profiling (COHERE_PROF=1, single-chunk only)
     cohere_prof_state prof_state;
-    bool do_prof = !do_chunked && (crispasr_env::get("CRISPASR_COHERE_PROF") != nullptr);
+    bool do_prof = !do_chunked && (stelnettts_env::get("STELNETTTS_COHERE_PROF") != nullptr);
 
     if (!reuse_enc) {
         cohere_bench_stage _b_enc("encoder (all chunks)");
@@ -2481,7 +2481,7 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
                 return nullptr;
             }
             ggml_backend_tensor_set(mel_t, mel_c.data(), 0, mel_c.size() * sizeof(float));
-            if (const char* mp = std::getenv("CRISPASR_COHERE_DUMP_MEL")) {
+            if (const char* mp = std::getenv("STELNETTTS_COHERE_DUMP_MEL")) {
                 FILE* mf = std::fopen(mp, "wb");
                 if (mf) {
                     int32_t nm = hp.n_mels, tm = T_mel_c; // mel_c layout: [n_mels, T] (n_mels contiguous)
@@ -2527,11 +2527,11 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
                 ggml_backend_sched_set_eval_callback(ctx->ggml_alloc, nullptr, nullptr);
             }
 
-            // Per-stage encoder snapshots for crispasr-diff / transcribe.cpp
-            // comparison (CRISPASR_COHERE_DUMP_STAGES=<dir>). Writes raw
+            // Per-stage encoder snapshots for stelnettts-diff / transcribe.cpp
+            // comparison (STELNETTTS_COHERE_DUMP_STAGES=<dir>). Writes raw
             // [ne0,ne1] f32 (2 int32 dims + data): crisp.mel.bin, crisp.enc_final.bin,
             // crisp.block<N>.bin — matching transcribe.cpp's TRANSCRIBE_DUMP_DIR.
-            if (const char* sd = std::getenv("CRISPASR_COHERE_DUMP_STAGES")) {
+            if (const char* sd = std::getenv("STELNETTTS_COHERE_DUMP_STAGES")) {
                 auto dump_named = [&](const char* tname, const char* fname) {
                     struct ggml_tensor* t = ggml_graph_get_tensor(gf_enc, tname);
                     if (!t)
@@ -2578,8 +2578,8 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
 
             // Debug: dump mel + pre-proj encoder output as raw [ne0,ne1] f32
             // (2 int32 header dims + data) to compare against transcribe.cpp's
-            // enc.mel.in / enc.final dumps. CRISPASR_COHERE_DUMP_STAGES=dir.
-            if (const char* sd = std::getenv("CRISPASR_COHERE_DUMP_STAGES")) {
+            // enc.mel.in / enc.final dumps. STELNETTTS_COHERE_DUMP_STAGES=dir.
+            if (const char* sd = std::getenv("STELNETTTS_COHERE_DUMP_STAGES")) {
                 auto dump_named = [&](const char* tname, const char* fname) {
                     struct ggml_tensor* t = ggml_graph_get_tensor(gf_enc, tname);
                     if (!t)
@@ -2614,8 +2614,8 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
             }
 
             // Debug: dump post-enc_proj encoder output to compare against the
-            // reference cross-attention context (CRISPASR_COHERE_DUMP_ENCOUT=path).
-            if (const char* dp = std::getenv("CRISPASR_COHERE_DUMP_ENCOUT")) {
+            // reference cross-attention context (STELNETTTS_COHERE_DUMP_ENCOUT=path).
+            if (const char* dp = std::getenv("STELNETTTS_COHERE_DUMP_ENCOUT")) {
                 std::vector<float> eo((size_t)enc_out_t->ne[0] * enc_out_t->ne[1]);
                 ggml_backend_tensor_get(enc_out_t, eo.data(), 0, eo.size() * sizeof(float));
                 FILE* f = std::fopen(dp, "wb");
@@ -3289,7 +3289,7 @@ struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const flo
         // Set COHERE_DUMP_ATTN=/path/to/file.bin to activate.
         // Format: int32 n_tok, int32 n_heads, int32 T_enc, then
         //         n_tok × n_heads × T_enc float32 row-major.
-        if (const char* dump_path = crispasr_env::get("CRISPASR_COHERE_DUMP_ATTN")) {
+        if (const char* dump_path = stelnettts_env::get("STELNETTTS_COHERE_DUMP_ATTN")) {
             if (FILE* fp = fopen(dump_path, "wb")) {
                 int32_t hdr[3] = {n_tok, n_heads, T_enc};
                 fwrite(hdr, sizeof(hdr), 1, fp);
@@ -3444,9 +3444,9 @@ bool cohere_detect_language(struct cohere_context* ctx, const float* samples, in
 
     // Encode once, decode per candidate. The encoder output and cross-KV are
     // language-independent, and encode is ~87% of a pass, so this is worth
-    // roughly (N+7)/(8N) of the naive cost. CRISPASR_COHERE_PROBE_REUSE_ENC=0
+    // roughly (N+7)/(8N) of the naive cost. STELNETTTS_COHERE_PROBE_REUSE_ENC=0
     // restores one full encode per candidate.
-    const char* reuse_env = crispasr_env::get("CRISPASR_COHERE_PROBE_REUSE_ENC");
+    const char* reuse_env = stelnettts_env::get("STELNETTTS_COHERE_PROBE_REUSE_ENC");
     const bool want_reuse =
         !(reuse_env && (reuse_env[0] == '0' || reuse_env[0] == 'n' || reuse_env[0] == 'N' || reuse_env[0] == 'f'));
     const bool saved_reuse = ctx->reuse_encoder;
@@ -3499,7 +3499,7 @@ bool cohere_detect_language(struct cohere_context* ctx, const float* samples, in
     return true;
 }
 
-// ---- Stage-level entry points for crispasr-diff ----
+// ---- Stage-level entry points for stelnettts-diff ----
 
 float* cohere_compute_mel(struct cohere_context* ctx, const float* samples, int n_samples, int* out_n_mels,
                           int* out_T_mel) {

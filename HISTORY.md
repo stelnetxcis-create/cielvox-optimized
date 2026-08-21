@@ -1,4 +1,4 @@
-# CrispASR — Port history
+# StelnetTTS — Port history
 
 Condensed chronology of the ports that built this repo. Kept for
 context, not for day-to-day reference. Live work is in `PLAN.md`;
@@ -72,7 +72,7 @@ T=419.
 Three community PRs. #343 (Juste-Leo2) adds a TOC and section links to
 `docs/tts.md` and fixes a dead anchor in `cli.md`; merged at `8da6a531`, taking
 main's corrected outetts / pocket-tts licence strings over the branch's older
-text. #361 and #362 (mculbert) make the `crispasr_chat_*` C ABI cancellable,
+text. #361 and #362 (mculbert) make the `stelnettts_chat_*` C ABI cancellable,
 countable and safe to tear down, then bind it from Python, Go, Java, Dart and
 Rust; #362 is a superset of #361, merged at `f9de92b2` and `f409a5b2`.
 
@@ -156,7 +156,7 @@ lazy at the two real consumers (x86 and ARM NVFP4 dot products), with
 An initial containment change put every GPU artifact on a generic x86-64
 baseline. It was superseded before release: CUDA, HIP, and Vulkan artifacts keep
 their optimized CPU helpers, while only explicitly legacy/portable artifacts
-use `CRISPASR_PORTABLE_CPU`. Thus the one suspected startup operation is gated
+use `STELNETTTS_PORTABLE_CPU`. Thus the one suspected startup operation is gated
 without imposing a global CPU performance regression. Exact confirmation still
 requires the reporter's exception address; the ProcDump/WinDbg recipe is in
 `docs/windows-illegal-instruction-dumps.md`.
@@ -170,21 +170,21 @@ overlap).  This proves the full Pascal CUDA path rather than only compilation.
 ## WhisperJAV port — post-decode text hardening (§W1–W7), archived from PLAN.md 2026-08-09
 
 Landed `3d64e7c5..48ae0c41`, all on `main`. Originated from a user report on
-CrispEmbed#44 asking for the best Japanese model — the reporter named
+StelnetEmbed#44 asking for the best Japanese model — the reporter named
 WhisperJAV and noted it had stopped being updated. Answered on that issue.
 
-**Still open:** `crispasr_session_set_sensitivity` is exposed in Python and the
+**Still open:** `stelnettts_session_set_sensitivity` is exposed in Python and the
 C ABI only; the other seven binding surfaces (Go, Java, C#, Ruby,
 JS/emscripten, Flutter) still lack it. Mirror `set_fallback_thresholds`.
 
 **§W4 measured end-to-end 2026-08-09** — it was written from reasoning, so it
 was worth checking against the real CLI rather than only the unit predicate.
-Two controls through `crispasr --vad -vm webrtc --vad-export` (webrtc needs no
+Two controls through `stelnettts --vad -vm webrtc --vad-export` (webrtc needs no
 model, so this is reproducible with no download):
 
 | Case | Slices | Audio reaching the model |
 |---|---|---|
-| 301 s, 1 s of speech, `CRISPASR_VAD_FAILOVER=0` (old behaviour) | 1 | **1.1 s of 301 s — 0.4%** |
+| 301 s, 1 s of speech, `STELNETTTS_VAD_FAILOVER=0` (old behaviour) | 1 | **1.1 s of 301 s — 0.4%** |
 | same file, failover on (new default) | 11 | 301 s — 100% |
 | 154 s of continuous real speech (negative control) | 6 | 154 s — 100%, failover correctly silent |
 
@@ -215,7 +215,7 @@ five signals fired independently, which is the design working as intended.
 check said the sentinel had NOT fired. It had. The CLI echoes the transcript
 through `%.80s`, which truncated the Japanese mid-UTF-8 and left an invalid
 byte in the captured output — so `grep` classified the file as binary and
-silently suppressed every match. Use `grep -a` on any captured CrispASR output
+silently suppressed every match. Use `grep -a` on any captured StelnetTTS output
 containing non-Latin text, or verify in Python. A binary-suppressed grep looks
 exactly like "the feature did not run".
 
@@ -244,7 +244,7 @@ hey hey hey hey hey         → "hey hey hey"  (changed)
 Real caller list, verified by grep (an earlier draft of this section named
 `firered_asr` — wrong, see W1b): `src/moss_transcribe.cpp:1503`,
 `src/moss_transcribe_diarize.cpp:1504`, `src/higgs_stt.cpp:1674`, and six sites
-in `src/crispasr_c_api.cpp` covering cohere, granite and glm-asr. Of those,
+in `src/stelnettts_c_api.cpp` covering cohere, granite and glm-asr. Of those,
 **moss-transcribe is zh/en and glm-asr is Mandarin + Chinese dialects +
 Cantonese** (README.md:107, :126) — the guard was dead on its two most
 CJK-exposed consumers. Same class as "prove the new code path EXECUTES":
@@ -279,7 +279,7 @@ red first — 6 of 9 failed before the fix**, and the 3 that passed were the
 must-not-change invariants (natural CJK, Latin, edge cases), which is the point.
 `test-ngram-loop-fix.cpp` (Latin, 36 assertions) unchanged and still green.
 The gate can still go red on demand: the last case asserts
-`CRISPASR_NGRAM_LOOPFIX_OFF=1` restores the raw text *and* that clearing it
+`STELNETTTS_NGRAM_LOOPFIX_OFF=1` restores the raw text *and* that clearing it
 restores the collapse — both directions, so a silently-dead path fails.
 
 **Known limitation, deliberate:** `fix_loops_keep_indices` is untouched. It
@@ -306,9 +306,9 @@ run with `beam_size > 1` has neither guard. firered-asr is Mandarin + 20+
 Chinese dialects (README.md:110) — i.e. precisely the script W1 is about, on
 the backend with the least coverage.
 
-**Landed.** `examples/cli/crispasr_backend_firered_asr.cpp` now runs
+**Landed.** `examples/cli/stelnettts_backend_firered_asr.cpp` now runs
 `fix_loops_keep_indices` over the token texts (filtering `seg.tokens` in
-lockstep, mirroring the canary-qwen path at `crispasr_c_api.cpp:5675`) and
+lockstep, mirroring the canary-qwen path at `stelnettts_c_api.cpp:5675`) and
 `fix_loops` over `seg.text`.
 
 Guard: `tests/test-loopfix-wiring.cpp`. A pure-predicate test could never have
@@ -327,7 +327,7 @@ checks separately).
 
 One header, `src/core/segment_hygiene.h`, because all three are the same kind of
 thing: a transform on the assembled segment list, downstream of the logits,
-where `crispasr-diff` reads cos 1.000000 whether they work or not. That
+where `stelnettts-diff` reads cos 1.000000 whether they work or not. That
 harness-blind zone is why they get hermetic unit tests
 (`tests/test-segment-hygiene.cpp`, 30 cases) — it is the only check available.
 
@@ -352,20 +352,20 @@ harness-blind zone is why they get hermetic unit tests
    or `【笑い】` — so the ASCII test fires on exactly zero real Japanese markers
    while claiming to support them. Found by the test suite, not by reading.
 
-**Wiring.** All three run from `merge_segments()` in `crispasr_run.cpp` — the
+**Wiring.** All three run from `merge_segments()` in `stelnettts_run.cpp` — the
 structural chokepoint all four `merge_segments(...)` call sites pass through.
 Patching the four sites by hand is the shape of bug the copies-in-sync guard
 exists for. It must also be here rather than per-slice: a repetition straddling
 a slice boundary is only visible once the slices are flat.
 
-**Every stage is OFF unless its env var is set** (`CRISPASR_SEG_MAX_CHARS`,
+**Every stage is OFF unless its env var is set** (`STELNETTTS_SEG_MAX_CHARS`,
 `_DROP_NONVERBAL`, `_LOGPROB_THOLD`, `_LOGPROB_MARGIN`, `_MERGE_REPEATS`,
 `_MERGE_SIMILARITY`, `_MERGE_GAP_CS`, `_MERGE_MIN_RUN`). Each can delete
 user-visible text and a wrong deletion is worse than a surviving artifact, so
 none may switch on by surprise. Dropped counts print to stderr — silent loss is
 the failure mode.
 
-**Both surfaces wired.** `crispasr_c_api.cpp` reimplements every backend's
+**Both surfaces wired.** `stelnettts_c_api.cpp` reimplements every backend's
 transcribe inline and never calls the CLI adapter, so it needs its own arm —
 `apply_session_hygiene()`, called from the two `transcribe_lang` paths and from
 `transcribe_vad_lang`. The other three public entries are thin wrappers over
@@ -375,11 +375,11 @@ since the length cap prefers to cut at a sentence mark and whether punctuation
 exists yet moves the cut.
 
 ⚠ **The VAD path defers the merge** (`hygiene_defer_merge`).
-`crispasr_session_transcribe_vad_lang` transcribes a STITCHED buffer — silence
+`stelnettts_session_transcribe_vad_lang` transcribes a STITCHED buffer — silence
 removed, replaced with uniform 0.1 s joins — so every segment pair looks 10 cs
 apart and the repeat-merge would collapse utterances that are minutes apart in
 the real audio. Cap and filter are timestamp-independent and still run inline;
-the merge waits until after `crispasr_vad_remap_timestamp` restores the real
+the merge waits until after `stelnettts_vad_remap_timestamp` restores the real
 timeline. Do not "simplify" this back into one call.
 
 ### W3 — aligner collapse sentinel — DONE 2026-08-09
@@ -400,13 +400,13 @@ two-word clip, or unknown audio duration is not condemned. chars/sec counts code
 points; on bytes it reads 3x high and would flag every correct Japanese
 alignment.
 
-Wired at `crispasr_align_words()`, the ONE join all three aligner backends
+Wired at `stelnettts_align_words()`, the ONE join all three aligner backends
 (qwen3-fa, wav2vec2, canary-ctc) funnel through, so CLI + session ABI + bindings
 + server are covered by one call. **The offset is subtracted before assessing** —
 a chunk at 30 s would otherwise present silent-zero words as (30.0, 30.0), a
 plausible-looking position, and the signal could never fire.
 
-Detect + warn by default. `CRISPASR_ALIGN_SENTINEL_REDISTRIBUTE=1` opts into
+Detect + warn by default. `STELNETTTS_ALIGN_SENTINEL_REDISTRIBUTE=1` opts into
 repair, `=0` disables. Repair is opt-in because this is a new heuristic against a
 failure we have never measured in the field; a wrong auto-repair would be just as
 invisible as the collapse it replaces.
@@ -417,16 +417,16 @@ cases, and the 3 that pass are the must-not-fire ones.
 ### W4 — VAD failover — DONE 2026-08-09
 
 `src/core/vad_failover.h` + `tests/test-vad-failover.cpp` (10 cases). Wired into
-`crispasr_compute_vad_slices` — again the single shared entry point.
+`stelnettts_compute_vad_slices` — again the single shared entry point.
 
 **Placed after the merge and BEFORE the re-chunk.** The re-chunk splits long
 segments at `chunk_seconds`, so one 10-minute monologue becomes ~20 slices;
 measuring segment COUNT after that reports a healthy number for any input and the
 few-segment signal could never fire.
 
-Falls back to `crispasr_fixed_chunk_slices`, not one giant slice — "transcribe
+Falls back to `stelnettts_fixed_chunk_slices`, not one giant slice — "transcribe
 everything" has to stay inside the chunk length the backend's context expects.
-`CRISPASR_VAD_FAILOVER=0` disables.
+`STELNETTTS_VAD_FAILOVER=0` disables.
 
 **Deliberate correction to WhisperJAV.** Its few-segment rule is
 `len(segments) <= 2 and duration >= 480` with no coverage condition, which
@@ -439,10 +439,10 @@ coverage <10%.
 
 `src/core/asr_sensitivity.h` + `tests/test-asr-sensitivity.cpp` (8 cases).
 `--sensitivity conservative|balanced|aggressive` on the CLI,
-`crispasr_session_set_sensitivity()` on the session ABI (both surfaces, because
+`stelnettts_session_set_sensitivity()` on the session ABI (both surfaces, because
 the C-ABI does not call the CLI).
 
-The four thresholds INTERACT: `crispasr.cpp:8499` requires `avg_logprob <
+The four thresholds INTERACT: `stelnettts.cpp:8499` requires `avg_logprob <
 logprob_thold` AND `no_speech_prob < no_speech_thold` together, so moving one
 alone produces a combination that does not mean what its name says. The tests pin
 each preset's DIRECTION against balanced and that the two sit on OPPOSITE sides
@@ -450,7 +450,7 @@ of it — asserting each against balanced separately would still allow both to
 drift the same way.
 
 `balanced` is byte-identical to the shipped defaults, and a test pins those
-defaults against `crispasr.cpp:6523` so a change there without a change here
+defaults against `stelnettts.cpp:6523` so a change there without a change here
 fails. An unknown name is REJECTED (CLI errors, ABI returns -2) rather than
 silently treated as balanced, so a typo is visible. A test also round-trips every
 name advertised in `--help` through the parser, guarding the classic
@@ -464,7 +464,7 @@ documented-but-unparseable drift.
    proven red by deleting the call sites — the §W1b state exactly.
 2. ~~No wiring guard for the hygiene call.~~ **DONE** — the `[seg-hygiene]
    [wiring]` case in `tests/test-segment-hygiene.cpp` source-scans
-   `crispasr_run.cpp` for the `config_from_env` + `apply_all` CALLS (not the
+   `stelnettts_run.cpp` for the `config_from_env` + `apply_all` CALLS (not the
    `#include` — that is exactly the state §W1b found firered in) and requires
    them inside `merge_segments`. Proven red by stubbing the call out.
 3. **The sentinel and failover thresholds have never been measured against real
@@ -532,7 +532,7 @@ Four defects, in descending order of how audible they are:
    "unnecessary emphasis on a", and it was one line away the whole time.
    The tests could not catch it: they called `core_g2p_ctxwords::lookup()`
    directly, never `text_to_ipa`. `tests/test-kokoro-misaki-wiring.cpp` now goes
-   through `crispasr::phonemize_misaki_en` — the function kokoro.cpp calls.
+   through `stelnettts::phonemize_misaki_en` — the function kokoro.cpp calls.
 2. **Punctuation was dropped from the phoneme string.** `,` `.` `;` `:` `!` `?`
    `…` `—` `"` `«»` `“”` are all in Kokoro's 178-symbol vocabulary and misaki
    emits them; they are how the model knows to pause. The reporter's two-sentence
@@ -583,7 +583,7 @@ is unchanged except the three LTS corrections and the double-space collapse.
   own tokenizer and its own punctuation-skipping join, and all three had the
   same defect plus the same quoted-word one. They now take
   `context::emit_punctuation` (default OFF, so piper is unchanged) and Kokoro
-  asks for it, gated `CRISPASR_KOKORO_PUNCT=0`. There is no misaki reference for
+  asks for it, gated `STELNETTTS_KOKORO_PUNCT=0`. There is no misaki reference for
   these languages, so the default was flipped on a round-trip A/B rather than on
   parity. That first A/B used ggml-base as the ASR and read 70.6% -> 78.4%;
   **re-measured on large-v3-turbo with a bigger set it is 85.9% -> 90.6%** —
@@ -675,7 +675,7 @@ IS the training data and our citation form is a spelling the model never saw.
 The newer `kikiri-tts` models say the same thing in their card ("G2P: misaki
 0.9.4 + espeak-ng"). So un-stressing ships **ON** on source evidence, not on the
 round-trip — which could not resolve it either way (−1.2 pts, ~3 words over 16
-clips). `CRISPASR_G2P_DE_UNSTRESS=0` reverts.
+clips). `STELNETTTS_G2P_DE_UNSTRESS=0` reverts.
 
 ### Reading the recipe turned up two more things
 
@@ -707,7 +707,7 @@ Shipped ON unconditionally for German (`Dialect::DeVocab`) — an approximate
 vowel always beats a deleted one.
 
 **(2) The tied-alphabet collapse is right by the recipe and WRONG on the model
-we ship — gated OFF (`CRISPASR_KOKORO_DE_MISAKI_ALPHABET=1`).** Applying it took
+we ship — gated OFF (`STELNETTTS_KOKORO_DE_MISAKI_ALPHABET=1`).** Applying it took
 agreement with the recipe from 81.2% to 85.9% — on one sentence, byte-identical
 to it — and the ASR round-trip got 5.3 pts *worse*. Not a dropped-symbol
 problem: `ʦ ʣ W I Y A O Q ʧ ʤ` are all in the model's vocabulary, checked.
@@ -774,9 +774,9 @@ provenance; the same generator would work). Not investigated.
 
 **Shipped:** `--vad-export FILE` writes the computed slice boundaries as JSON;
 `--vad-import FILE` reads them instead of running VAD (skips the VAD model
-entirely). Serializer/parser live in the library (`crispasr_serialize_vad_slices`
-/ `crispasr_parse_vad_slices` in `src/crispasr_vad.{h,cpp}`) so they're
-unit-tested and reusable; CLI wiring in `examples/cli/crispasr_run.cpp` +
+entirely). Serializer/parser live in the library (`stelnettts_serialize_vad_slices`
+/ `stelnettts_parse_vad_slices` in `src/stelnettts_vad.{h,cpp}`) so they're
+unit-tested and reusable; CLI wiring in `examples/cli/stelnettts_run.cpp` +
 `cli.cpp` + `whisper_params.h`. Import clamps to the current buffer, drops
 out-of-range slices, and rescales when the sample rate differs. Unit test
 `tests/test-vad-boundaries.cpp` (6 cases, round-trip + tolerant-parse +
@@ -789,9 +789,9 @@ slice loop). File paths would be an arbitrary read/write on the server host, so
 the HTTP mapping is inline: `vad_export=true` returns the boundaries in the
 response under `vad_segments`; `vad_import=<that object>` reuses them and skips
 VAD. Same wire format as the CLI's files (both go through the shared
-`crispasr_{serialize,parse}_vad_slices`), so boundaries are interchangeable
+`stelnettts_{serialize,parse}_vad_slices`), so boundaries are interchangeable
 between CLI and server. Opt-in — no `vad_segments` field unless requested.
-Verified live (`crispasr --server --backend moonshine` + curl): `vad_export=true
+Verified live (`stelnettts --server --backend moonshine` + curl): `vad_export=true
 chunk_seconds=4` → 4 slices returned; feeding them back via `vad_import` →
 identical transcript + same 4 segments; malformed → `invalid_request_error`; no
 flag → no field. Documented in `docs/server.md`.
@@ -815,7 +815,7 @@ pre-fix path emits **2.1× the speech tokens for the same sentence** (262 vs 122
 the cross-lingual path exists to remove. Three further things hid the knob: no
 way to STATE the reference language; the session ABI's cosyvoice3 arm never
 called `set_target_language` at all, so bindings/Flutter/Android had no
-cross-lingual by any route; and qwen3-tts discarded `-tl` for want of a
+cross-lingual by any route; and cielvox2-tts discarded `-tl` for want of a
 capability bit. `src/core/tts_lang.h`, `tests/test-tts-lang.cpp`,
 `docs/issue-329/PLAN.md`.
 
@@ -840,7 +840,7 @@ it reads "atmosphere I built into the prompt." with every clause boundary
 recovered from prosody. Durable lesson, third time now: a feature behind a flag
 nobody sets is not shipped, and a test that calls the helper instead of the
 product cannot tell you which. `tests/test-kokoro-misaki-wiring.cpp` goes through
-`crispasr::phonemize_misaki_en` for exactly that reason, and was watched failing
+`stelnettts::phonemize_misaki_en` for exactly that reason, and was watched failing
 before the fix. `g2p_en::style` now separates the CONSUMER's conventions from the
 dictionary, because one context serves both piper and Kokoro's fallback and
 conflating them is what made a per-context flag the wrong shape.
@@ -855,7 +855,7 @@ the identical punctuation defect (three separate tokenizers, three separate
 join loops) and Kokoro ships voices for all three; with no misaki to compare
 against, the default was flipped on a round-trip A/B instead — German word
 accuracy 70.6% → 78.4% over 3 sentences × 2 voices, one clip regressing, the
-old path kept behind `CRISPASR_KOKORO_PUNCT=0`.
+old path kept behind `STELNETTTS_KOKORO_PUNCT=0`.
 
 **#316 — first the numbers, then the units beside them.** `g2p_de`, `g2p_fr` and
 `g2p_es` had no number path at all: digits are in no pronunciation dictionary
@@ -921,7 +921,7 @@ Archived from PLAN.md. These threads are closed; the open work they left behind 
 ## DONE 2026-08-03 — the parler registry pointed at a tokenizer-broken file
 
 Not a duplicate-file cleanup, which is what the entry below assumed. The two
-name prefixes in `cstr/parler-tts-mini-v1.1-GGUF` hold **byte-identical
+name prefixes in `Xenna/parler-tts-mini-v1.1-GGUF` hold **byte-identical
 tensors** (741/741 verified) and differ by exactly one KV, +32 bytes:
 
     parler-tts-mini-v1.1-*   has  parler.tokenizer.is_bpe = true
@@ -932,7 +932,7 @@ means "Viterbi unigram" instead of "BPE merge" — a different prompt tokenizer,
 so different tokens and different speech.
 
 **The registry names the file that is missing it** (`parler-mini-v1.1-q8_0.gguf`,
-`crispasr_model_registry.cpp:1163`), so `-m auto` downloads the one that
+`stelnettts_model_registry.cpp:1163`), so `-m auto` downloads the one that
 tokenizes wrongly. Fixing the registry to the `parler-tts-` names, then removing
 the stale set.
 
@@ -949,10 +949,10 @@ Keeping those two F32 makes f16 work: synthesises in 6.71 s against q8_0's
 6.72 s, ASR-round-trips clean. The rule to remember is narrower than "no F16
 here" — **a matmul weight may be F16; an addend may not.**
 
-`cstr/fastpitch-en-GGUF`'s f16 is restored and correct. The `--ftype f16`
+`Xenna/fastpitch-en-GGUF`'s f16 is restored and correct. The `--ftype f16`
 refusal added a few hours ago is removed, along with its override flag.
 
-## RESOLVED 2026-08-03 — cstr/fastpitch-en-GGUF: the F16 weights were ~944k NaNs
+## RESOLVED 2026-08-03 — Xenna/fastpitch-en-GGUF: the F16 weights were ~944k NaNs
 
 Found while stamping the published GGUFs (below); **not** caused by that — the
 NaNs are in the file as downloaded from HF, and the stamped copy is byte-identical.
@@ -976,20 +976,20 @@ if it does, that is a second question (NaNs that never reach the output).
 
 Nobody would have noticed from the model card: the repo README recommends q8_0.
 
-## DONE 2026-08-03 — stamping speaker_identity into the published cstr/ GGUFs
+## DONE 2026-08-03 — stamping speaker_identity into the published Xenna/ GGUFs
 
 **Landed.** 25 files across 5 repos, verified live from HF.
 
 | repo | files | verdict |
 |---|---|---|
-| `cstr/kokoro-voices-GGUF` | 7 | per pack: `df_eva`/`dm_bernd` real_person, rest synthetic |
-| `cstr/piper-voices-GGUF` | 10 | real_person |
-| `cstr/piper-en_US-lessac-medium-GGUF` | 1 | real_person |
-| `cstr/fastpitch-en-GGUF` | 3 | real_person |
-| `cstr/bananamind-tts-GGUF` | 4 | real_person |
+| `Xenna/kokoro-voices-GGUF` | 7 | per pack: `df_eva`/`dm_bernd` real_person, rest synthetic |
+| `Xenna/piper-voices-GGUF` | 10 | real_person |
+| `Xenna/piper-en_US-lessac-medium-GGUF` | 1 | real_person |
+| `Xenna/fastpitch-en-GGUF` | 3 | real_person |
+| `Xenna/bananamind-tts-GGUF` | 4 | real_person |
 
 Every file: tensor data byte-identical to what was published, no KV lost, the
-verdict's evidence recorded in `crispasr.voice.speaker_identity_evidence`.
+verdict's evidence recorded in `stelnettts.voice.speaker_identity_evidence`.
 
 Proven behaviourally before uploading, not just structurally — synthesis with a
 stamped `df_eva` and ASR round-trip:
@@ -1005,33 +1005,33 @@ document preset provenance — four and three primary sources checked), and the
 large `parler` / `csm` / `kartoffel` repos, whose verdicts are recorded in the
 table and which are bandwidth-bound rather than blocked.
 
-**What.** Everything CrispASR has published to `cstr/*` on HF predates the
-`crispasr.voice.speaker_identity` stamp, so the runtime falls back to matching
-on the checkpoint FILE NAME (`crispasr_speaker_identity_models.h`). That
+**What.** Everything StelnetTTS has published to `Xenna/*` on HF predates the
+`stelnettts.voice.speaker_identity` stamp, so the runtime falls back to matching
+on the checkpoint FILE NAME (`stelnettts_speaker_identity_models.h`). That
 fallback fails safe — a rename resolves to `unknown` and warns — but it is a
 fallback, and rule 3 says not to classify by filename. Stamping the published
 files retires it for everything already out there.
 
 **How.** `models/stamp-published-voices.sh <dir>` asks
-`crispasr --print-speaker-identity` per file (the same resolution the Art. 50(4)
+`stelnettts --print-speaker-identity` per file (the same resolution the Art. 50(4)
 disclosure gate runs) and skips anything that resolves to `unknown`. No verdict
 is restated in a script; there is one source of truth and it is the binary.
 
 **Scope.** Voice packs and single-speaker checkpoints whose verdict is
-established — `cstr/kokoro-voices-GGUF` (7 packs), `cstr/piper-*`,
-`cstr/fastpitch-en-GGUF`, `cstr/bananamind-tts-GGUF`,
-`cstr/parler-tts-mini-v1.1-GGUF`, `cstr/csm-1b-GGUF`,
-`cstr/kartoffel-orpheus-3b-german-{natural,synthetic}-GGUF`. NOT `bark` or
+established — `Xenna/kokoro-voices-GGUF` (7 packs), `Xenna/piper-*`,
+`Xenna/fastpitch-en-GGUF`, `Xenna/bananamind-tts-GGUF`,
+`Xenna/parler-tts-mini-v1.1-GGUF`, `Xenna/csm-1b-GGUF`,
+`Xenna/kartoffel-orpheus-3b-german-{natural,synthetic}-GGUF`. NOT `bark` or
 `melotts`: their providers do not document preset provenance, both were checked
 against four and three primary sources respectively, and writing a guess is the
 one error that silently removes a disclosure.
 
-**Touches:** HF repos under `cstr/` (upload only), `hf_readmes/*.md`. Does not
+**Touches:** HF repos under `Xenna/` (upload only), `hf_readmes/*.md`. Does not
 touch runtime code — the reader and the tables already shipped (`64c9de2e`).
 
 ## DONE 2026-08-03 — #329 target language, reachable from every binding
 
-`crispasr_session_set_tts_reference_language` shipped in the C ABI + Python +
+`stelnettts_session_set_tts_reference_language` shipped in the C ABI + Python +
 Rust with the #329 fix (`14be8056`); Go, C#, Java, Ruby, JS and Dart had the
 sibling `set_target_language` but not this one, so cross-lingual cloning was
 reachable from them only implicitly. Closed in `76c30f9c`, mirroring each
@@ -1051,7 +1051,7 @@ both — which is exactly how mel-band-roformer stayed session-unreachable while
 being the default `--separate` model (fixed in 4eccc60cb).
 
 **PARTLY CLOSED (2026-07-20)** by a third check: declared backends vs symbols
-actually present in the built `libcrispasr.dylib`. Symbol presence is ground
+actually present in the built `libstelnettts.dylib`. Symbol presence is ground
 truth, so it has no alias false positives — 0 violations across the 63 backends
 that map to a runtime header, versus 21/76 noise from name-matching. It catches
 the state mel-band-roformer was in once registered (in `--list-backends`, but
@@ -1072,7 +1072,7 @@ binary rather than classified by name.
   already asks the binary and allowlisting would hide a regression if an alias
   broke.
 - **17 are genuine components** — parent-driven codecs, the voice-conversion
-  stages, the two text-LID models behind `crispasr_text_detect_language`,
+  stages, the two text-LID models behind `stelnettts_text_detect_language`,
   granite's sub-runtimes, audioseal, ma_sound. `openvoice2` looked like a
   candidate backend until grep showed melotts drives it as a tone-color
   converter.
@@ -1091,7 +1091,7 @@ four is exactly the ratio that teaches people to ignore an audit, which is what
 this whole section exists to avoid. The match now normalises case and separators
 on both sides; probed against fabricated names to confirm it did not simply go
 blind. The 4th, **kokoro missing from `tests/env-live-tests.sh`, was real** —
-`test-kokoro-g2p-live.sh` reads `CRISPASR_KOKORO_MODEL`/`_VOICE` and silently
+`test-kokoro-g2p-live.sh` reads `STELNETTTS_KOKORO_MODEL`/`_VOICE` and silently
 skips without them, so the G2P path that used to drop numbers was never
 exercised by a `source tests/env-live-tests.sh` run. Advisory gaps: 4 → 0.
 
@@ -1104,7 +1104,7 @@ that one is 100+ entries rather than 17.
 ## 2026-08-03 — #326 §1 verified from a clean corpus, and the harness that does it
 
 `a719c89d` claimed the pyannote+embedder path went 15.74% -> 7.81% DER by
-routing `crispasr_remap_speakers_via_embeddings` through
+routing `stelnettts_remap_speakers_via_embeddings` through
 `core_spectral::cluster_speakers`. PLAN.md still described that work as the next
 thing to do, which is how it got picked up again a week later.
 
@@ -1242,7 +1242,7 @@ number; distrust any monotonic curve measured in loop order.
 
 `wespeaker_embed_windows()` + `core_foxnose::EmbedWindowsFn` land the 2x: one
 fbank and one trunk pass per 32-window span, each window a slice of the trunk
-output. Enable with `CRISPASR_DIARIZE_SPAN_EMBED=1` (07da3f45).
+output. Enable with `STELNETTTS_DIARIZE_SPAN_EMBED=1` (07da3f45).
 
 ⚠ 07da3f45 shipped this INERT and I did not notice. Only the signature change
 landed in core_foxnose::diarize; the loop body was applied with a Python
@@ -1274,7 +1274,7 @@ ASR-only baseline, so diarization CPU goes 66.0 s -> 37.0 s = **1.78x**. Trunk
 passes drop 135 -> 18.
 
 So it is not a dud and not free: a third less diarization CPU for a third of a
-DER point. Shipped as CRISPASR_DIARIZE_SPAN_EMBED=1, default OFF, because
+DER point. Shipped as STELNETTTS_DIARIZE_SPAN_EMBED=1, default OFF, because
 accuracy is the better default for a diarizer and the user who wants throughput
 can say so.
 
@@ -1286,9 +1286,9 @@ At N=2 a span is 1.8 s against a 1.2 s window, so the CMN drift I assumed
 cannot be the mechanism. (An earlier revision of this plan said "17
 embeddings" — wrong, that was the pyannote path's ASR-segment count. foxnose
 gives this file n=134.) Since accuracy is flat in N, larger N is strictly
-faster — hence the default of 32. CRISPASR_DIARIZE_SPAN_WINDOWS overrides it.
+faster — hence the default of 32. STELNETTTS_DIARIZE_SPAN_WINDOWS overrides it.
 
-The actual mechanism, from the silhouette curve (CRISPASR_DIARIZE_DEBUG=1):
+The actual mechanism, from the silhouette curve (STELNETTTS_DIARIZE_DEBUG=1):
 
     k   per-window sil / score     shared-trunk sil / score
     3      0.3809 / 0.4248            0.4141 / 0.4581  <- wins
@@ -1306,7 +1306,7 @@ file, and it would be tuning the very constant that is the only reason the
 baseline looks right here.
 
 WORTH KNOWING INDEPENDENTLY OF THIS FEATURE — and it is NOT what I first
-claimed. Full survey, all 8 files, default path (CRISPASR_DIARIZE_DEBUG=1;
+claimed. Full survey, all 8 files, default path (STELNETTTS_DIARIZE_DEBUG=1;
 margin = winning score over the runner-up, relative):
 
     file    GT   chosen   margin   verdict
@@ -1356,7 +1356,7 @@ auto-tunes the affinity binarisation that estimate_speakers_eigengap currently
 hardcodes at 15% — and that parameter is what decides how many clusters the
 spectrum appears to have.
 
-  * Implemented, opt-in: CRISPASR_DIARIZE_COUNT=nme-sc (spectral_diarize.cpp).
+  * Implemented, opt-in: STELNETTTS_DIARIZE_COUNT=nme-sc (spectral_diarize.cpp).
   * Corpus: VoxConverse dev, all 5 shards — 216 files, 20.3 h, 1-20 speakers,
     101 tune / 115 holdout (tools/voxconverse_extract.py).
   * Metric: speaker-COUNT accuracy first, DER second. DER cannot see this
@@ -1364,12 +1364,12 @@ spectrum appears to have.
     6.88% DER.
   * Harness: tools/diarize_eval.py, --split tune so holdout is not computed
     at all.
-  * Venue: Kaggle, chr1str/crispasr-diarize-count-eval. The local box sat
+  * Venue: Kaggle, chr1str/stelnettts-diarize-count-eval. The local box sat
     between load 13 and 197 for the whole session and killed the sweep three
     times; the kernel pulls the HF parquet directly so there is no 20 GB
     dataset upload.
 
-RESULT (Kaggle chr1str/crispasr-diarize-count-eval v4, 40-file tune subset,
+RESULT (Kaggle chr1str/stelnettts-diarize-count-eval v4, 40-file tune subset,
 --diarize-max-speakers 8):
 
                     count exact   within1   under   over     DER
@@ -1386,7 +1386,7 @@ every aggregate. Auto-tuning the binarisation moves the error, it does not
 remove it.
 
 DECISION: default unchanged. NME-SC stays opt-in
-(CRISPASR_DIARIZE_COUNT=nme-sc). HOLDOUT WAS NOT COMPUTED and must stay
+(STELNETTTS_DIARIZE_COUNT=nme-sc). HOLDOUT WAS NOT COMPUTED and must stay
 unspent — it is worth more as an untouched set than as a second opinion on a
 hypothesis that already failed on tune.
 
@@ -1448,7 +1448,7 @@ a whisper model and SKIPs cleanly without one, so CI — which has none — skip
 the model-dependent half and the test passes in milliseconds. The search list
 ends in a hardcoded path:
 
-    for m in ggml-base.bin models/ggml-base.en.bin /Volumes/backups/ai/CrispASR/ggml-base.bin
+    for m in ggml-base.bin models/ggml-base.en.bin /Volumes/backups/ai/StelnetTTS/ggml-base.bin
 
 That last entry is one person's external volume. On that machine the model IS
 found, the skip does not happen, and the script proceeds to make **14 full CLI
@@ -1467,7 +1467,7 @@ has not been noticed before.
 
 **The `/Volumes/` fallback is NOT the bug** — checked before blaming it. Eight
 test scripts use that convention to find local models and it is the intended
-way in alongside `CRISPASR_MODEL_WHISPER` / `tests/env-live-tests.sh`. What
+way in alongside `STELNETTTS_MODEL_WHISPER` / `tests/env-live-tests.sh`. What
 distinguishes this one is the label:
 
 | script | model-gated | label |
@@ -1535,7 +1535,7 @@ zeroes 2).
 ALREADY FIXED UPSTREAM: 6aab1bcb "ggml-cpu: fix SVE leftover path in
 ggml_vec_dot_f32 (llama/24699)" (Tarek Dakhran, 2026-06-26), found there via 2D
 convolutions with kernel size 9. Our vendored snapshot predated it. Cherry-picked
-onto CrispStrobe/ggml crispstrobe-ops with authorship intact (bfe8ea22 ->
+onto Cyna/ggml crispstrobe-ops with authorship intact (bfe8ea22 ->
 392ac397) and the pin bumped. So for this one we were BEHIND upstream, not ahead —
 no PR to file, and nothing to add to tools/upstream-prs.
 
@@ -1603,7 +1603,7 @@ refType". crates.io does not care, so the Rust half succeeds and only Dart fails
     at staging. Worse, its smoke test was `smoke: false`, so once staging
     succeeded the job would have gone green on a wheel containing no library.
   * Windows again: `ctypes.CDLL(<path>)` does not search the DLL's own directory
-    for dependencies on Python 3.8+, so crispasr.dll could not find the ggml DLLs
+    for dependencies on Python 3.8+, so stelnettts.dll could not find the ggml DLLs
     beside it. `_find_lib` now calls `os.add_dll_directory`. Smoke test enabled
     (and made portable — it hardcoded `bin/activate`, impossible on Windows).
   * Linux: the bundle is relocatable but NOT self-contained (DT_NEEDED on
@@ -1612,9 +1612,9 @@ refType". crates.io does not care, so the Rust half succeeds and only Dart fails
   * GPU: "fail on unresolved" is wrong for libcuda.so.1 (the NVIDIA driver) and
     the CUDA runtime — those are host-provided by definition. Classified
     separately; this regressed the CUDA wheel for one run before being fixed.
-  * Every platform, all along: `crispasr.h` includes `ggml.h` from the bundle's
+  * Every platform, all along: `stelnettts.h` includes `ggml.h` from the bundle's
     `ggml/include`, which was never on the include path, so `_helpers.c` failed
-    to compile on every wheel ever built and the legacy `CrispASR` class was
+    to compile on every wheel ever built and the legacy `StelnetTTS` class was
     silently absent. The failure is deliberately non-fatal, so it was a warning
     nobody read.
 
@@ -1633,7 +1633,7 @@ is why such fixes wait for the next version instead. Now a single job can be
 rebuilt and only its asset replaced; tag pushes are unaffected. Used immediately
 for the macOS bundle above.
 
-Verified as a consumer, not by reading a green check: `pip install crispasr==0.8.24`
+Verified as a consumer, not by reading a green check: `pip install stelnettts==0.8.24`
 from PyPI, `_find_lib` resolves the in-wheel dylib, `ctypes.CDLL` loads it,
 `registry_lookup('kokoro')` returns `kokoro-82m-q8_0.gguf` through the ABI, and
 the legacy class imports.
@@ -1652,8 +1652,8 @@ Merged to `main`; listed here because three follow-ups are still open (below).
   segment's `text`, so `seg.speaker` was empty and the #300 streaming `"speaker"`
   field could never fire for it. Now parsed into per-utterance segments across
   CLI, `--stream`, `--stream-json`, server, and the session ABI (new
-  `crispasr_session_result_segment_speaker()` + all seven wrappers).
-  `CRISPASR_VIBEVOICE_RAW_TRANSCRIPT=1` keeps the old blob.
+  `stelnettts_session_result_segment_speaker()` + all seven wrappers).
+  `STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT=1` keeps the old blob.
 - **#308 audit** (`762d9e27`): the capitalisation fix had been applied to
   `src/fireredpunc.cpp` while `crisp_punc/src/fireredpunc.cpp` — the copy that
   actually links — kept the bug. Fixed in both, plus a no-double-punctuation
@@ -1663,7 +1663,7 @@ Merged to `main`; listed here because three follow-ups are still open (below).
 **OPEN follow-ups:**
 1. **C# and WASM bindings are source-only-verified.** No `dotnet` or emsdk on the
    Mac, so the `IntPtr`/`PtrToUtf8` marshalling in
-   `bindings/csharp/CrispASR/NativeMethods.cs` and the two `emscripten.cpp` sites
+   `bindings/csharp/StelnetTTS/NativeMethods.cs` and the two `emscripten.cpp` sites
    were not compiled. `bindings-csharp.yml` is the real check — watch that job.
 2. **Three ASR backends still unaudited for `CAP_PUNCTUATION_NATIVE`**:
    `lfm2-audio`, `fastconformer-ctc`, `wav2vec2` — no local GGUFs. The CTC pair
@@ -1695,11 +1695,11 @@ subset, which is exactly what the gold/silver naming conventionally means.
 87% identical to its output is at least arguably derived from GPL data, which
 upstream may not have had the right to relicense as Apache-2.0. This is
 engineering judgement, not legal advice — but it means publishing the file to
-`cstr/g2p-dicts` needs upstream clarification FIRST, not a default.
+`Xenna/g2p-dicts` needs upstream clarification FIRST, not a default.
 
 **RESOLVED 2026-07-28 by not redistributing at all:** the runtime now fetches
 misaki's JSON straight from raw.githubusercontent.com/hexgrad/misaki, pinned to
-commit fba12365. CrispASR hosts nothing, so the Apache-2.0/GPL question is
+commit fba12365. StelnetTTS hosts nothing, so the Apache-2.0/GPL question is
 upstream's to answer, not ours. `tools/convert-misaki-lexicon.py` remains for
 offline/air-gapped use.
 
@@ -1710,13 +1710,13 @@ the CMUdict path. If the question is ever forced, `--gold-only` emits just the
 hand-verified 89k entries and costs 0.58 points of parity (99.12% -> 98.54%).
 
 Practical note: since silver ~= espeak output, a user with espeak-ng installed
-already gets equivalent coverage for those words via CrispASR's existing espeak
+already gets equivalent coverage for those words via StelnetTTS's existing espeak
 path. The lexicon's distinctive value is `gold`.
 
 ## canary-qwen q4_k NaN — DONE (2026-07-23)
 
 canary-qwen emitted all-`!` (token id 0) on jfk: the published
-`cstr/canary-qwen-2.5b-GGUF/canary-qwen-2.5b-q4_k.gguf` was a **corrupt quant
+`Xenna/canary-qwen-2.5b-GGUF/canary-qwen-2.5b-q4_k.gguf` was a **corrupt quant
 artifact** producing NaN logits (q8_0, the registry default, was always fine). The
 greedy argmax seeded `best_val = logits[0]`, so a NaN froze `best_id` at 0.
 **All shipped (v0.8.22):**
@@ -1730,8 +1730,8 @@ greedy argmax seeded `best_val = logits[0]`, so a NaN froze `best_id` at 0.
 **Status:** SHIPPED (verified in code 2026-07-17). `src/moss_audio.{h,cpp}` ("public
 C API for MOSS-Audio-4B-Instruct" — 32L Whisper encoder + DeepStack + 36L Qwen3 LM),
 converter `models/convert-moss-audio-to-gguf.py`, registry entry `moss-audio`
-(`crispasr_model_registry.cpp:276`, GGUFs on `cstr/MOSS-Audio-4B-Instruct-GGUF`),
-arch-detect + dispatch in `crispasr_c_api.cpp`. NOTE: the shipped DeepStack is
+(`stelnettts_model_registry.cpp:276`, GGUFs on `Xenna/MOSS-Audio-4B-Instruct-GGUF`),
+arch-detect + dispatch in `stelnettts_c_api.cpp`. NOTE: the shipped DeepStack is
 **3-tap** (L8/L16/L24), not the "4-tap" the original scoping below guessed.
 
 <details><summary>original port scoping (superseded — kept for reference)</summary>
@@ -1743,7 +1743,7 @@ time-aware ASR w/ word+sentence timestamps. Family (4B/8B × Instruct/Thinking)
 shares one architecture — parameterize by config to cover all four.
 
 **Effort:** ~1200–1500 LOC total (comparable to PLAN #51). Mostly reuse
-(`qwen3_asr.cpp` encoder ~70%, `voxtral4b` sliding-window attn, Qwen3 LM body
+(`cielvox2_asr.cpp` encoder ~70%, `voxtral4b` sliding-window attn, Qwen3 LM body
 full reuse, `mimo_asr.cpp`/`.py` converter+harness templates). Three genuinely
 new pieces to build:
 - **DeepStack 4-tap capture** — encoder builder hooks at L8/16/24/32.
@@ -1776,29 +1776,29 @@ phases 1–2) finish (active sessions, high I/O contention).
 Parent #60 shipped 60a–g (→ HISTORY §63/§64/§71/§75); 60h–n parked.
 
 **Status:** DONE (verified in code 2026-07-17 — PLAN entry was stale). Implemented
-in `ggml/src/ggml-metal/ggml-metal-device.m`, tagged `// CrispASR patch (PLAN #88 /
-CrisperWeaver §5.18)`: `crispasr_metal_pipeline_cache_url()` (honours
+in `ggml/src/ggml-metal/ggml-metal-device.m`, tagged `// StelnetTTS patch (PLAN #88 /
+StelnetWeaver §5.18)`: `stelnettts_metal_pipeline_cache_url()` (honours
 `GGML_METAL_PIPELINE_CACHE`, default cache dir; `GGML_METAL_PIPELINE_CACHE_DISABLE`
-opt-out) → `crispasr_metal_pipeline_cache_open()` calls
+opt-out) → `stelnettts_metal_pipeline_cache_open()` calls
 `[device newBinaryArchiveWithDescriptor:]` with corrupt-archive fallback; new PSOs
 added via `[archive addComputePipelineFunctionsWithDescriptor:]`;
-`crispasr_metal_pipeline_cache_flush()` serialises to disk at device free. This is
-the source of the `crispasr_metal_pipeline_cache_open/_flush` log lines seen on every
+`stelnettts_metal_pipeline_cache_flush()` serialises to disk at device free. This is
+the source of the `stelnettts_metal_pipeline_cache_open/_flush` log lines seen on every
 CLI/server run. The whole "TO DO" below matches what shipped.
 
-**Write-path decision (2026-08-05, CrispEmbed G8=F10 coordination).** The flush
-runs only at `ggml_metal_device_free`; CrispASR binaries exit normally so it
+**Write-path decision (2026-08-05, StelnetEmbed G8=F10 coordination).** The flush
+runs only at `ggml_metal_device_free`; StelnetTTS binaries exit normally so it
 fires on every CLI/server run and the archive grows unboundedly (the shared dev
-box reached 683 MB; open costs ~1 ms/MB and CrispEmbed measured no first-encode
+box reached 683 MB; open costs ~1 ms/MB and StelnetEmbed measured no first-encode
 benefit even from the full-size archive). Decided: KEEP flush-at-device-free
 (no flush-per-run — it adds a per-run serialise and accelerates growth; no
 per-engine scoping — it fragments the cache and multiplies disk), and ADOPT the
-CrispEmbed T18/G4 open-time cap: `src/core/metal_pipeline_cache_policy.h`,
-applied in `crispasr_init_gpu_backend()`. `CRISPASR_METAL_PIPELINE_CACHE_MAX_MB`
+StelnetEmbed T18/G4 open-time cap: `src/core/metal_pipeline_cache_policy.h`,
+applied in `stelnettts_init_gpu_backend()`. `STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB`
 (default 64, `0` = uncapped) — when the largest archive exceeds the cap, ggml's
 own `GGML_METAL_PIPELINE_CACHE_DISABLE` is set, which skips the open AND leaves
 `dev->binary_archive` nil so the flush no-ops: an oversized archive stops
-growing too. CrispEmbed's `_exit()`ing one-shot CLIs deliberately never write
+growing too. StelnetEmbed's `_exit()`ing one-shot CLIs deliberately never write
 (decided on their side). Unit-tested in `tests/test-gpu-backend-pref.cpp`.
 
 <details><summary>original TODO (all satisfied — kept for reference)</summary>
@@ -1810,7 +1810,7 @@ growing too. CrispEmbed's `_exit()`ing one-shot CLIs deliberately never write
 - When `ggml_metal_compile_pipeline` produces a new `id<MTLComputePipelineState>`, also `[archive addComputePipelineFunctionsWithDescriptor:]` so the next process rehydrates it.
 - On exit (or explicit `ggml_metal_pipeline_cache_save`), `[archive serializeToURL:]`.
 - Cache invalidation: include device name + ggml-metal source hash in the archive path so a kernel change auto-busts.
-- Join the existing `// CrispASR patch` set in ggml-metal (same rebase discipline as the conv_transpose_1d perf patch).
+- Join the existing `// StelnetTTS patch` set in ggml-metal (same rebase discipline as the conv_transpose_1d perf patch).
 
 **Risk:** Low — API stable since iOS 14 / macOS 11; worst case archive fails to load and falls back to today's JIT path.
 
@@ -1822,8 +1822,8 @@ growing too. CrispEmbed's `_exit()`ing one-shot CLIs deliberately never write
 `src/omnivoice.{h,cpp}` implements k2-fsa/OmniVoice (Qwen3-0.6B backbone + masked
 iterative / NAR-diffusion decode over 8 codebooks, SoundStorm-style), converters
 `models/convert-omnivoice{,-tokenizer}-to-gguf.py`, registry `omnivoice`
-(`crispasr_model_registry.cpp:648`, GGUFs on `cstr/omnivoice-GGUF`), arch-detect +
-dispatch in `crispasr_c_api.cpp`. This is the backend the #254 session hardened
+(`stelnettts_model_registry.cpp:648`, GGUFs on `Xenna/omnivoice-GGUF`), arch-detect +
+dispatch in `stelnettts_c_api.cpp`. This is the backend the #254 session hardened
 (voice-clone / RTF / token_embd fixes). Ongoing #254 follow-ups (voice-clone
 roundtrip validation etc.) are tracked under §234, not here.
 
@@ -1845,15 +1845,15 @@ the upstream survey clears.
    footprint, faster inference), it's redundant.
 
 **Conditional port plan (only if survey clears).** Assume NAR diffusion: a text-conditioning
-LLM (~0.5–1B, qwen3-tts-talker-like) + NAR diffusion head over a discrete codec. Reuse map:
+LLM (~0.5–1B, cielvox2-tts-talker-like) + NAR diffusion head over a discrete codec. Reuse map:
 - Diffusion solver: voxcpm2 CFM (`src/voxcpm2_tts.cpp`) or Chatterbox-S3Gen CFM (HISTORY §82)
   — pick by OmniVoice's solver type (DPM-Solver++ vs Euler vs HuangEuler).
 - Codec: RVQ → mimo-tokenizer (`src/mimo_audio_tokenizer.cpp`); mel-CFM → voxcpm2 VAE.
-- Talker: another qwen3-tts-style talker port (#52 family); no new primitives.
+- Talker: another cielvox2-tts-style talker port (#52 family); no new primitives.
 
 **DECISION-GATE / triggers:** proceed only if survey clears with a permissive license AND a
 measurable advantage over voxcpm2 on one of {CJK quality, model size, latency}. Otherwise
-stays survey-only — voxcpm2 + qwen3-tts + planned melotts/openvoice2 already cover the space.
+stays survey-only — voxcpm2 + cielvox2-tts + planned melotts/openvoice2 already cover the space.
 
 </details>
 
@@ -1864,10 +1864,10 @@ stays survey-only — voxcpm2 + qwen3-tts + planned melotts/openvoice2 already c
 **Status:** SHIPPED — the full backend exists and works; PLAN entry was stale.
 Present: `src/piper_tts.{cpp,h}` (VITS text-encoder + duration predictor + flow
 coupling + HiFi-GAN), converter `models/convert-piper-to-gguf.py`, CLI adapter
-`examples/cli/crispasr_backend_piper.cpp`, factory/detect
-(`crispasr_backend.cpp`, aliases `piper`/`piper-tts`/`piper-vits`/`vits`),
+`examples/cli/stelnettts_backend_piper.cpp`, factory/detect
+(`stelnettts_backend.cpp`, aliases `piper`/`piper-tts`/`piper-vits`/`vits`),
 registry entries (`piper-en_US-lessac-medium` + German thorsten/kerstin voices on
-`cstr/piper-voices-GGUF`), and tests (`test-piper-params.cpp`,
+`Xenna/piper-voices-GGUF`), and tests (`test-piper-params.cpp`,
 `test-piper-tts.cpp`, `test-piper-roundtrip.sh`). Phonemization goes through the
 #156 permissive G2P cascade (not GPL espeak static-link). **Verified**: `--backend
 piper -m auto --auto-download --tts "The quick brown fox…"` synthesized 2.59 s
@@ -1881,7 +1881,7 @@ demand appears.
 
 Native C++ runtime for [rhasspy/piper](https://github.com/rhasspy/piper) VITS models, MIT.
 Fills the tiny-model gap: ~15 MB Q4_K/language (vs Kokoro ~75 MB), single-digit ms/sentence
-CPU, 250+ voices / 30+ langs, strong German. Best candidate for CrisperWeaver mobile + HF
+CPU, 250+ voices / 30+ langs, strong German. Best candidate for StelnetWeaver mobile + HF
 Space demos; simplest new TTS arch (no LLM, no codec, no diffusion).
 
 Architecture: VITS = text encoder (6-layer 192-d transformer) + duration predictor (2-layer
@@ -1914,9 +1914,9 @@ Steps:
    s,t via conv stack → transform → concat). Reusable by #100.
 3. **`src/piper_tts.{cpp,h}`** — `piper_tts_init_from_file(path)` (load GGUF, build encoder +
    flow + decoder graphs); `piper_tts_synthesize(ctx, text)` (espeak-ng → encoder → duration →
-   flow → HiFi-GAN → f32 PCM); wire into Session API (`crispasr_c_api.cpp`).
-4. **Registry** — add `piper` backend to `crispasr_model_registry.cpp`; host GGUFs at
-   `cstr/piper-*-GGUF` on HF.
+   flow → HiFi-GAN → f32 PCM); wire into Session API (`stelnettts_c_api.cpp`).
+4. **Registry** — add `piper` backend to `stelnettts_model_registry.cpp`; host GGUFs at
+   `Xenna/piper-*-GGUF` on HF.
 5. **Test** — ASR roundtrip (piper synth → parakeet transcribe → verify); add to
    `tools/test-all-backends.py`.
 
@@ -1953,7 +1953,7 @@ mul_mat(w_perm,x)`; `y = col2im_1d(col, stride, OC, p0)`; crop + transpose.
   `convt1d_causal_decomp()` supporting symmetric crop (crop_left = crop_right),
   not just causal right-trim.
 - Add `permute_convt1d_weight()` utility — de-dup the inline permutation lambda
-  from qwen3_tts.cpp for reuse across backends.
+  from cielvox2_tts.cpp for reuse across backends.
 
 ### Phase 2: Wire into shared decoder headers
 - **2a `src/core/hifigan.h`** (SpeechT5, FastPitch, Kokoro, MeloTTS, OpenVoice2,
@@ -1983,7 +1983,7 @@ Port the CUDA gather kernel to Metal (1 thread/output element). Files:
 ### Phase 5: Remove Kokoro Metal workaround
 Once Phase 4 lands, remove the CPU-pinning hack in kokoro.cpp (~line 2330).
 
-**Applies to** every TTS backend with strided upsampling conv: qwen3-tts codec
+**Applies to** every TTS backend with strided upsampling conv: cielvox2-tts codec
 (done), orpheus SNAC, outetts WavTokenizer, pocket-tts Mimi, Zonos/Parler/Dia
 DAC, Kokoro/SpeechT5/FastPitch HiFi-GAN, MeloTTS, OpenVoice2, Piper-TTS, IndexTTS
 BigVGAN, Chatterbox S3Gen, AudioSeal, CSM Mimi, VibéVoice, VoxCPM2, TADA codec,
@@ -1998,9 +1998,9 @@ VAD alternative. No model file, no download, no ggml — just algorithmic.
 - `045be764` feat(vad): add WebRTC GMM-based VAD backend (BSD-3, no model file)
 - `3dcd66e4` feat(vad): wire WebRTC VAD into CLI (`--vad -vm webrtc`)
 
-**Usage:** `crispasr --vad -vm webrtc -m <model> -f audio.wav`
+**Usage:** `stelnettts --vad -vm webrtc -m <model> -f audio.wav`
 
-**Env vars:** `CRISPASR_WEBRTC_VAD_MODE` (0=least aggressive, 3=most; default 1)
+**Env vars:** `STELNETTTS_WEBRTC_VAD_MODE` (0=least aggressive, 3=most; default 1)
 
 **Status:** DONE — builds, 943 unit tests pass, live tested on jfk.wav.
 
@@ -2016,7 +2016,7 @@ VAD alternative. No model file, no download, no ggml — just algorithmic.
 decode tokens + speaker embedding → waveform. Decoder-only C++ port; encoder uses WavLM
 (Python-side for now, WavLM GGUF port is separate future work).
 
-**HuggingFace:** `cstr/miocodec-v2-44k-GGUF` — F16 (259 MB), Q8_0 (155 MB), Q4_K (99 MB)
+**HuggingFace:** `Xenna/miocodec-v2-44k-GGUF` — F16 (259 MB), Q8_0 (155 MB), Q4_K (99 MB)
 
 **Parity (F16 vs Python F32 reference):**
 
@@ -2048,12 +2048,12 @@ All quants (F16, Q8_0, Q4_K) produce identical transcript:
 **Completed checklist:**
 - [x] `src/miocodec.{h,cpp}` — C runtime (decode-only)
 - [x] `src/CMakeLists.txt` — libmiocodec target
-- [x] `examples/cli/CMakeLists.txt` — crispasr-diff linked
-- [x] `examples/cli/crispasr_diff_main.cpp` — 8 stages dispatched
+- [x] `examples/cli/CMakeLists.txt` — stelnettts-diff linked
+- [x] `examples/cli/stelnettts_diff_main.cpp` — 8 stages dispatched
 - [x] `models/convert-miocodec-to-gguf.py` — GGUF converter
 - [x] `tools/reference_backends/miocodec.py` — 10-stage reference dumper
 - [x] `tools/dump_reference.py` — backend registered
-- [x] `src/crispasr_model_registry.cpp` — auto-download entry
+- [x] `src/stelnettts_model_registry.cpp` — auto-download entry
 - [x] `bindings/go/whisper.go` — cgo LDFLAGS synced
 - [x] HuggingFace upload — 3 quants + README
 
@@ -2108,8 +2108,8 @@ shipped and never executed**, each green in CI the whole time:
   silence was the diagnosis. `tests/test-punc-copies-in-sync.cpp` now fails if
   they diverge.
 - **The G2P dictionary auto-download had never fired.** Every download in
-  `phonemizer.cpp` is behind `#ifdef CRISPASR_BUILD`, defined only on
-  `crispasr-lib` — never on `kokoro`, which is where that file compiles. So
+  `phonemizer.cpp` is behind `#ifdef STELNETTTS_BUILD`, defined only on
+  `stelnettts-lib` — never on `kokoro`, which is where that file compiles. So
   CMUdict never downloaded either, and a user without a pre-seeded cache got no
   English dictionary at all and fell through to letter-to-sound rules
   (`this` → `θˈɪs`). A large part of what #316 sounded like.
@@ -2118,10 +2118,10 @@ shipped and never executed**, each green in CI the whole time:
   because it installs g++ only and GCC downgrades to a warning the `register`
   error clang raises. Now a `{gcc, clang}` matrix — both arms green on this tag.
 - **`bump-version.sh` staged a hardcoded file list that had drifted.** Caught
-  during this very cut: `python/crispasr/__init__.py` was added to
+  during this very cut: `python/stelnettts/__init__.py` was added to
   `sync-version.py` in `e3ed11eb` and never here, so the first `0.8.24` bump
   committed 6 files instead of 7 and would have tagged a tree whose
-  `crispasr.__version__` still read `0.8.23`. Fixed by computing the staged set
+  `stelnettts.__version__` still read `0.8.23`. Fixed by computing the staged set
   from a before/after `git diff --name-only` rather than listing it.
 
 Transferable: a test or guard that has never failed is not evidence it works. All
@@ -2143,24 +2143,24 @@ Edit voice-clone regression, #313 Rust on crates.io + bundled Python wheels,
 
 Wiring the misaki lexicon to download from upstream turned up why users see worse
 pronunciation than the code implies: `phonemizer.cpp` guards every auto-download
-behind `#ifdef CRISPASR_BUILD`, and that macro is set only on `crispasr-lib`, and
+behind `#ifdef STELNETTTS_BUILD`, and that macro is set only on `stelnettts-lib`, and
 only under `BUILD_SHARED_LIBS` — never on the `kokoro` target where
 phonemizer.cpp is actually compiled. So the block has never been true in any
 configuration, and **CMUdict never auto-downloaded either**. A user without a
-pre-seeded `~/.cache/crispasr/cmudict.dict` got no English dictionary at all and
+pre-seeded `~/.cache/stelnettts/cmudict.dict` got no English dictionary at all and
 fell through to the letter-to-sound rules, which render "this" as `θˈɪs` — a
 large part of what #316 sounded like, and entirely separate from the alphabet and
 number bugs.
 
-Fixed by defining `CRISPASR_BUILD` on the kokoro target. crispasr_cache.cpp lives
-in crispasr-lib, which links kokoro, so kokoro cannot link it back; kokoro is a
+Fixed by defining `STELNETTTS_BUILD` on the kokoro target. stelnettts_cache.cpp lives
+in stelnettts-lib, which links kokoro, so kokoro cannot link it back; kokoro is a
 static library, so the reference resolves at the final executable — except in
 `test-kokoro-params`, which links kokoro ALONE and now compiles that one
 translation unit itself.
 
 With it enabled, the misaki lexicon is fetched from **upstream** rather than a
-CrispASR mirror: raw.githubusercontent.com/hexgrad/misaki pinned to a commit,
-parsed by a new `load_misaki_json()`. CrispASR therefore redistributes nothing —
+StelnetTTS mirror: raw.githubusercontent.com/hexgrad/misaki pinned to a commit,
+parsed by a new `load_misaki_json()`. StelnetTTS therefore redistributes nothing —
 the user receives the data from hexgrad under hexgrad's terms, the same route
 `ensure_cmudict_loaded()` already used for cmusphinx/cmudict — and the
 Apache-2.0-in-an-MIT-repo question does not arise at all. Verified end to end
@@ -2183,7 +2183,7 @@ hand-verified subset. espeak-ng is GPL-3.0 including its dictionary, so
 redistributing silver under Apache-2.0 is a question upstream may not have had the
 right to answer.
 
-Nothing in CrispASR depends on it: the file is generated locally from the user's
+Nothing in StelnetTTS depends on it: the file is generated locally from the user's
 own install and the runtime degrades to the CMUdict path without it. Added
 `--gold-only` for the least espeak-derived subset, which costs 0.58 points
 (99.12% -> 98.54%). Also fixed a related error in the same change — the
@@ -2195,7 +2195,7 @@ tests/test-tts-phonemes-policy.cpp pins it.
 ## 2026-07-28 — #316: Kokoro skipped numbers and drifted British — both in the G2P
 
 Reported as "speaks like old English" and "it just skips the 82". Two separate
-G2P defects, and **neither is visible to `crispasr-diff`**: the kokoro harness is
+G2P defects, and **neither is visible to `stelnettts-diff`**: the kokoro harness is
 phoneme-IN (`KOKORO_PHONEMES` is embedded in the reference GGUF and both sides
 are fed the same string), so it starts at `token_ids`, downstream of everything
 that was wrong. It would have reported perfect parity while the audio was broken
@@ -2221,7 +2221,7 @@ voice, only the phonemes differed. So the acoustic side was never at fault.
    Kokoro's vocab, so nothing was dropped and nothing errored — the model just
    received tokens from outside its training distribution and drifted. `ː` is the
    RP length mark, which is most of "she becomes British", and it explains why
-   `CRISPASR_KOKORO_G2P=espeak-only` helped the reporter without fixing it:
+   `STELNETTTS_KOKORO_G2P=espeak-only` helped the reporter without fixing it:
    espeak is a better G2P, still the wrong alphabet.
 
 Fixing the alphabet was only half of it. Even with the right symbols, our
@@ -2283,7 +2283,7 @@ deep-dive + the meta-lesson in `LEARNINGS.md`.
 
 ## 2026-07-27 — #314: opencore-amr's `register` keyword breaks every clang C++17 build
 
-Reported from Termux/aarch64 with clang 21: `-DCRISPASR_AMR_FETCH=ON` dies with
+Reported from Termux/aarch64 with clang 21: `-DSTELNETTTS_AMR_FETCH=ON` dies with
 `az_lsp.cpp:492:5: error: ISO C++17 does not allow 'register' storage class
 specifier [-Wregister]`. The vendored opencore-amr is 2000s-era code that still
 declares locals `register`, a storage class C++17 REMOVED. Reproduced verbatim
@@ -2356,7 +2356,7 @@ text". It was not inline text; it was structured data nobody parsed.
 
 Fixed by parsing it: one segment per utterance, `t0`/`t1` from the model's own
 Start/End (offset into the chunk and clamped to it), speaker as `"(Speaker N) "`,
-the same form moss-diarize emits. `CRISPASR_VIBEVOICE_RAW_TRANSCRIPT=1` keeps the
+the same form moss-diarize emits. `STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT=1` keeps the
 old single-raw-segment path, which is also the fallback when nothing parses. The
 parser is a hand scanner rather than json.hpp on purpose — a decode that hits the
 token cap ends mid-array, and a strict parse of a truncated blob discards every
@@ -2376,12 +2376,12 @@ The regression pin was re-captured: `expected_transcript` had been the bare
 Content since 2026-06-15, which could never have matched what the CLI actually
 printed (the blob), so that entry cannot have been passing.
 
-The session C-ABI needed the same fix and could not express it. `crispasr_c_api.cpp`
+The session C-ABI needed the same fix and could not express it. `stelnettts_c_api.cpp`
 reimplements every backend's transcribe inline (docs/contributing.md point 6), so
 the CLI-only parse left Python/Go/Flutter still receiving the raw blob — and
-`crispasr_session_seg` had no speaker field at all, so there was nowhere to put
+`stelnettts_session_seg` had no speaker field at all, so there was nowhere to put
 the label even after parsing. Added
-`crispasr_session_result_segment_speaker()` (a new accessor, so no ABI break —
+`stelnettts_session_result_segment_speaker()` (a new accessor, so no ABI break —
 the result is opaque and read through getters), mirrored the parse in the inline
 dispatch, and split the per-token confidence list along the same utterance
 boundaries via `core_vibevoice::assign_tokens` — otherwise segment 2's "words"
@@ -2391,7 +2391,7 @@ Wired through Python (`SessionSegment.speaker`), Go (`TranscribeSegment.Speaker`
 and Dart (`SessionSegment.speaker`), each probing for the symbol so a newer
 binding keeps working against an older library.
 
-Validated on the shipping `cstr/vibevoice-asr-GGUF` q4_k both ways — Kaggle T4
+Validated on the shipping `Xenna/vibevoice-asr-GGUF` q4_k both ways — Kaggle T4
 (`tools/kaggle/vibevoice-diarize-300/`, all gates PASS: raw arm 0 labels / 5 blob
 hits, new arm 4 labels / 0 blob, `--stream` 11 labels, `--stream-json` 4 of 7
 finals carrying `speaker`) and locally on M1 Metal. The A/B flips only the env
@@ -2405,7 +2405,7 @@ title — the backend loaded fine and the failure is build-independent. Root cau
 `ac232160` (shipped in v0.8.22) made `"spoken_disclaimer": false` on a voice clone
 a **hard refusal** unless the request also carried `marking_attestation`, and SE
 only started sending that field in `5b7f225a`/`8902b89e` (2026-07-26) — *after*
-its v5.1.0-rc16 release. So every released SE build hard-failed against CrispASR
+its v5.1.0-rc16 release. So every released SE build hard-failed against StelnetTTS
 ≥ 0.8.22 the moment the `voice` kept its `.wav` extension (chatterbox is SE's only
 engine that does). The reporter's log shows it exactly: the `[CONSENT]` line is
 printed, then the request 400s two lines later. The field was also undocumented —
@@ -2429,16 +2429,16 @@ v0.8.22 (a live test, so CI never ran it).
 
 ## 2026-07-27 — Binding release automation: bundled PyPI wheels + GPU index + tag-triggered CI
 
-Moved the wrappers from "user installs libcrispasr separately" to self-contained
+Moved the wrappers from "user installs libstelnettts separately" to self-contained
 distribution. New `release-python-wheels.yml` builds native-lib-BUNDLED Python
 wheels — CPU (linux x86_64/arm64, macOS arm64/Metal, windows x86_64) → PyPI, and
 GPU (CUDA linux+windows, Vulkan windows, carrying `+cuda`/`+vulkan` local
-versions) → a PEP 503 simple index on GitHub Pages (`pip install crispasr
+versions) → a PEP 503 simple index on GitHub Pages (`pip install stelnettts
 --extra-index-url .../whl/cuda/`, llama-cpp-python style) — plus a pure-Python
-sdist fallback. It REUSES the relocatable `libcrispasr-<platform>` bundles
+sdist fallback. It REUSES the relocatable `libstelnettts-<platform>` bundles
 release.yml already attaches to the Release (no native rebuild); runs on
 `workflow_run` after release.yml. `tools/stage_libs.py` stages the libs into the
-`crispasr` package and `_binding.py:_find_lib()` now probes the package dir FIRST
+`stelnettts` package and `_binding.py:_find_lib()` now probes the package dir FIRST
 so the bundled copy always wins over a stray system lib; wheels are retagged per
 platform with `wheel tags` (ctypes package → one wheel per platform covers all
 Python 3, no cibuildwheel per-version matrix). Verified end-to-end locally on
@@ -2448,45 +2448,45 @@ macOS-arm64: assemble bundle → package-lib-bundle.sh → stage → build → r
 v*`) for crates.io + pub.dev; its PyPI job removed (owned by the wheels
 workflow); fixed its crates.io existence probe (missing User-Agent → 403 → it
 always self-skipped) + added an idempotent version-exists gate. `sync-version.py`
-now also bumps `python/crispasr/__init__.py __version__`. Secrets set via `gh`:
+now also bumps `python/stelnettts/__init__.py __version__`. Secrets set via `gh`:
 `PYPI_API_TOKEN` (pre-existing) + `CARGO_REGISTRY_TOKEN` (added, else the crates.io
 CI publish self-skipped). GPU index hosting: Pages already serves `main`/root
 (legacy Jekyll README landing), so the index is committed to `main` under `whl/`
 (Jekyll serves `.../whl/{cuda,vulkan}/`) rather than switching the Pages source —
 landing untouched. No operator setup remains.
 
-## 2026-07-27 — #313 follow-up: published crispasr + crispasr-sys to crates.io
+## 2026-07-27 — #313 follow-up: published stelnettts + stelnettts-sys to crates.io
 
 Reversed the "not on crates.io" state that #313 had documented: both crates are
-now live at 0.8.23. First hardened `crispasr-sys/build.rs` so the published
+now live at 0.8.23. First hardened `stelnettts-sys/build.rs` so the published
 crate degrades sanely off-repo — a `DOCS_RS` short-circuit (compile the FFI
 rlib without link directives so docs.rs builds) and, before the cmake fallback,
 a check for a parent `CMakeLists.txt`; absent, it panics with an actionable
-message (set `CRISPASR_LIB_DIR` or use the git dependency) instead of a cryptic
-cmake error. Published with `CRISPASR_LIB_DIR=/usr/local/lib` set so the
+message (set `STELNETTTS_LIB_DIR` or use the git dependency) instead of a cryptic
+cmake error. Published with `STELNETTTS_LIB_DIR=/usr/local/lib` set so the
 isolated verification build takes build.rs path 1 (no cmake, no vendored
 sources needed). One gotcha: crates.io rejects a first publish until the
 account has a *verified email* (400 Bad Request). Consumption is now two modes:
-git dep = build-from-source (build.rs cmakes it), or `crispasr = "0.8"` from
-crates.io + a pre-built lib via `CRISPASR_LIB_DIR` (the package does not vendor
+git dep = build-from-source (build.rs cmakes it), or `stelnettts = "0.8"` from
+crates.io + a pre-built lib via `STELNETTTS_LIB_DIR` (the package does not vendor
 the C/C++ sources). PyPI (0.8.23) and pub.dev (0.8.11) were already live, so all
 three registries are bootstrapped.
 
 ## 2026-07-27 — #313: Rust bindings docs pointed at an unpublished crates.io crate
 
-The reporter's `cargo` failed with "no matching package named `crispasr-sys`,
+The reporter's `cargo` failed with "no matching package named `stelnettts-sys`,
 location searched: crates.io index". Root cause was docs, not code: both crate
-READMEs said `crispasr = "0.1"` / `crispasr-sys = "0.1"` and `docs/bindings.md`
+READMEs said `stelnettts = "0.1"` / `stelnettts-sys = "0.1"` and `docs/bindings.md`
 claimed the crates were "published on crates.io" — but neither is published
 (both 404, confirmed via the crates.io API), so a registry dependency can never
-resolve. The `crispasr-sys` `build.rs` also *needs* the CrispASR C/C++ checkout
-to cmake `libcrispasr`, so a registry-only publish could not build even if it
+resolve. The `stelnettts-sys` `build.rs` also *needs* the StelnetTTS C/C++ checkout
+to cmake `libstelnettts`, so a registry-only publish could not build even if it
 existed — the correct consumption model is a **git dependency**
-(`crispasr = { git = "https://github.com/CrispStrobe/CrispASR" }`), which was
-verified to resolve `crispasr → crispasr-sys` cleanly via `cargo tree`. Fixed
+(`stelnettts = { git = "https://github.com/Cyna/StelnetTTS" }`), which was
+verified to resolve `stelnettts → stelnettts-sys` cleanly via `cargo tree`. Fixed
 the two READMEs (git dep + accurate build story: `build.rs` cmakes by default,
-or links a pre-built lib via `CRISPASR_LIB_DIR`), `docs/bindings.md`, and the
-misleading `crispasr/Cargo.toml` comment. Docs-only; no engine change.
+or links a pre-built lib via `STELNETTTS_LIB_DIR`), `docs/bindings.md`, and the
+misleading `stelnettts/Cargo.toml` comment. Docs-only; no engine change.
 
 ## 2026-07-26 — #310: CosyVoice3 zero-shot clone leaked the reference transcript
 
@@ -2509,7 +2509,7 @@ seeing it was the system prompt, not a bare transcript.
 
 Two quality bugs the reporter hit after the speed work. **Chinese** produced no
 audio: F5 needs Han text as pinyin (jieba + pypinyin TONE3 + sandhi, like upstream
-`convert_char_to_pinyin`) but CrispASR passed raw characters → unknown token →
+`convert_char_to_pinyin`) but StelnetTTS passed raw characters → unknown token →
 silence. Added `src/core/pinyin_g2p.*` — jieba-min forward-max-match segmentation +
 pypinyin TONE3 + 不/一/third-tone sandhi, with 41.6k char + 47.1k phrase readings
 embedded from pypinyin via `tools/gen_pinyin_data.py` (`pinyin_data.inc`, 3.3 MB);
@@ -2517,8 +2517,8 @@ embedded from pypinyin via `tools/gen_pinyin_data.py` (`pinyin_data.inc`, 3.3 MB
 gave garbled audio — f5 was concatenating the token list and re-tokenizing per
 UTF-8 byte, shattering each syllable (`zhong1`→`z,h,o,n,g,1`); fixed by mapping each
 element to its vocab id directly (`3167d014`). **English** "leaves out parts of
-sentences": a CrispASR-only rate clamp (`fixed_rate*2.5`, no upstream equivalent)
-cut the tail of a slow reference — made asymmetric/loose (`CRISPASR_F5_DURATION_CLAMP=0`
+sentences": a StelnetTTS-only rate clamp (`fixed_rate*2.5`, no upstream equivalent)
+cut the tail of a slow reference — made asymmetric/loose (`STELNETTTS_F5_DURATION_CLAMP=0`
 = exact upstream). Audio-confirmed on M1 Metal (F16 GGUF + whisper-large-v3-turbo):
 ZH `今天天气很好，我们一起去公园散步。` → ASR exact; EN full sentence, no
 truncation. Merged 9a2fd7dc + 3167d014. Lesson in LEARNINGS: token-parity ≠ working
@@ -2526,8 +2526,8 @@ audio (the char-split was invisible to the g2p's own test).
 
 ## 2026-07-25 — #301 + follow-ups: concurrency docs; moonshine GPU crash; unreadable --model
 
-#301 (how does CrispASR scale?) was a discoverability gap, not a missing feature:
-the `CRISPASR_SERVER_WORKERS` in-process pool already existed but lived only in a
+#301 (how does StelnetTTS scale?) was a discoverability gap, not a missing feature:
+the `STELNETTTS_SERVER_WORKERS` in-process pool already existed but lived only in a
 docker-compose env-table row. Added `docs/concurrency.md` (the full ggml-threads →
 mutex-serialized server → worker pool → replicas+LB → CLI bulk fan-out story, plus
 honest "PagedAttention isn't the fit" / "no batched multi-stream" answers) and a
@@ -2535,7 +2535,7 @@ honest "PagedAttention isn't the fit" / "no batched multi-stream" answers) and a
 found while testing: (1) moonshine SIGSEGV'd on the 2nd `/v1/audio/transcriptions`
 on a GPU sched — the §176s cached encoder cgraph reused across `sched_reset`/`alloc`
 left the input leaves on freed GPU memory; gated the cache to CPU, rebuild-each-call
-on GPU (`4b30ff8c`; see LEARNINGS). (2) `crispasr_resolve_model_cli` conflated a
+on GPU (`4b30ff8c`; see LEARNINGS). (2) `stelnettts_resolve_model_cli` conflated a
 missing `-m` path with an existing-but-unreadable one (dangling symlink / EPERM) and
 silently loaded a downloadable default — now a clear error, ENOENT still routes to
 the registry (`defb1db0`).
@@ -2551,7 +2551,7 @@ CLI only when explicitly set (`max_new_tokens_explicit`, so the global 512
 default can't shrink a backend) and from the session C-ABI (`s->max_new_tokens`).
 Several needed the KV cache grown alongside the cap or a raised value overflows
 `kv_max_ctx`. moonshine was correctly EXCLUDED — its 194 is a length-derived
-architectural short-form limit, not a naive constant. Part 2: `crispasr_segment`
+architectural short-form limit, not a naive constant. Part 2: `stelnettts_segment`
 gained `chunk_id` (diarize `(speaker N)` labels are chunk-local, so a consumer
 needs it to tell continuity from an ID swap), stamped per slice on multi-chunk
 runs and emitted in the .json.
@@ -2569,7 +2569,7 @@ built + CI-green throughout).
 ## 2026-07-21 — v0.8.18 → v0.8.20 release train: canary-qwen #290, lib delivery, iOS, C# #291
 
 Four releases in one session, each a genuine fix that only surfaced on a real
-tag run. All shipped to GitHub; **v0.8.20 also to pub.dev** (`crispasr 0.8.20`;
+tag run. All shipped to GitHub; **v0.8.20 also to pub.dev** (`stelnettts 0.8.20`;
 0.8.18/0.8.19 were GitHub-only — pub.dev's prior version was 0.8.17).
 
 - **#290 canary-qwen long audio** (v0.8.19). The backend advertised
@@ -2579,7 +2579,7 @@ tag run. All shipped to GitHub; **v0.8.20 also to pub.dev** (`crispasr 0.8.20`;
   Verified by the capability bitmask with parakeet/canary as controls.
 
 - **Lib-delivery bugs** (v0.8.19 rpath, v0.8.20 flat layout + gpu). CometBeat's
-  FFI integration found the released `libcrispasr` bundles could not be loaded:
+  FFI integration found the released `libstelnettts` bundles could not be loaded:
   macOS baked the CI runner's build path into `LC_RPATH`; all 5 Linux bundles
   used `$ORIGIN/../../ggml/src` (one level too high). 6 of 7 bundles affected.
   The old packaging gate only checked deps were PRESENT. New
@@ -2597,7 +2597,7 @@ tag run. All shipped to GitHub; **v0.8.20 also to pub.dev** (`crispasr 0.8.20`;
   Ships a 7-slice xcframework (iOS device+sim, macOS, tvOS, visionOS).
 
 - **#291 C# binding neglect** (v0.8.20). `VadSegments` returned centiseconds
-  while its own doc-comment promised seconds (fix: ÷100). Added `CrispASR.Logging`
+  while its own doc-comment promised seconds (fix: ÷100). Added `StelnetTTS.Logging`
   (over `whisper_log_set`, which also routes ggml logs). Bound the 7 task
   backends — tab/beats/chords/piano/pitch/separate/convert — in a new
   `SessionMusic.cs` (`Session` made `partial`), each a `readonly struct` result
@@ -2621,15 +2621,15 @@ Park et al., ISMIR 2019) end-to-end. Converter (`models/convert-btc-to-gguf.py`,
 (`tools/btc_torch_parity.py`, cos 0.99999995 / 1.00000004 vs torch), ggml
 runtime (`src/btc_chords.{h,cpp}`), `--chords` dispatcher, session C ABI,
 wasm bindings, CLI shim + `CAP_CHORDS`, docs, live + unit tests.
-**`crispasr-diff btc` = 13/13 stages at cos 1.000000 in both f32 and f16.**
+**`stelnettts-diff btc` = 13/13 stages at cos 1.000000 in both f32 and f16.**
 
 Output is `.lab`-shaped (`start end chord`), so it drops straight into
-mir_eval. Defaults to the **170-class** vocabulary with `CRISPASR_BTC_MAJ_MIN=1`
+mir_eval. Defaults to the **170-class** vocabulary with `STELNETTTS_BTC_MAJ_MIN=1`
 collapsing to maj/min — 170 reduces on demand, a 25-class model can never be
 expanded.
 
 **Weights are CC-BY-NC-SA** (Isophonics / Robbie Williams / UsPop2002
-annotations) although the upstream code and CrispASR are both MIT, so they ship
+annotations) although the upstream code and StelnetTTS are both MIT, so they ship
 behind the `--accept-license cc-by-nc-sa-4.0` registry gate.
 
 ### The real bug: `core/cqt.h` had no `scale=True`
@@ -2677,11 +2677,11 @@ music: **86.63 % → 98.56 %** (tetrads), 99.17 % root. GGUFs now carry
 
 ### Gaps closed on the second pass
 
-- `btc` was in `crispasr_detect_backend_from_gguf` but **nowhere** in
-  `examples/cli/crispasr_backend.cpp` — no roster entry, no capability bit, so
+- `btc` was in `stelnettts_detect_backend_from_gguf` but **nowhere** in
+  `examples/cli/stelnettts_backend.cpp` — no roster entry, no capability bit, so
   `--list-backends` did not know it existed and the auto-generated
   `docs/feature-matrix.md` would have dropped any hand-written row. Added
-  `CAP_CHORDS`, a redirect shim (`crispasr_backend_btc.cpp`), and the four
+  `CAP_CHORDS`, a redirect shim (`stelnettts_backend_btc.cpp`), and the four
   registration sites. The multi-surface trap, again.
 - Published sizes in `docs/cli.md` were wrong (~85 MB claimed; f16 is 5.6 MB).
 - Vocabulary + positional encoding extracted to `src/btc_chord_vocab.h` so they
@@ -2695,7 +2695,7 @@ ONCE and stamped the single matched name on every segment in the slice (wrong
 for mixed-speaker slices), and global embedding clustering — which runs
 post-merge — then overwrote those names with `(speaker N)` anyway. Fix:
 identification is now a post-merge stage per GLOBAL speaker cluster
-(`crispasr_apply_global_speaker_stages`), matching each cluster's centroid
+(`stelnettts_apply_global_speaker_stages`), matching each cluster's centroid
 (reusing the clustering embeddings) so anonymous and named labeling share one
 pipeline and matched names can't be overwritten. Compliance redesign in the
 same change (EU AI Act, Annex III 1(a) remote-biometric-identification
@@ -2743,7 +2743,7 @@ converter is fine.
 
 Fix: reconverted f16 (0 zeroed rows) + re-derived q4_k/q8_0 → the pangram *and*
 the reporter's full paragraph render every word → re-uploaded all three to
-`cstr/omnivoice-GGUF`, SHA-verified server-side (f16 `670592a5`, q8_0 `9d8835c8`,
+`Xenna/omnivoice-GGUF`, SHA-verified server-side (f16 `670592a5`, q8_0 `9d8835c8`,
 q4_k `a1a9c6fc`); registry needs no change (stores URL+size, not SHA; sizes
 unchanged). **Third corruption of this class** (cf. Cohere Arabic zeroed encoder
 norms, 2026-07-12; the OmniVoice tokenizer `block.4` zeroing earlier this
@@ -2769,7 +2769,7 @@ integration; F16-default registry.
 
 **Validated on Kaggle P100 (HARD RULE #3):** F16 synth stops naturally (15/124
 frames) and the long clip round-trips through whisper at word-overlap **0.969**.
-GGUFs hosted on `cstr/moss-tts-local-v1.5-GGUF` (F16 9.107 GB + codec 2.125 GB).
+GGUFs hosted on `Xenna/moss-tts-local-v1.5-GGUF` (F16 9.107 GB + codec 2.125 GB).
 Merged to `main` (rebased 29 commits clean; wiring PASS + unit test 30/30).
 
 Three things this cost that are now written down (`LEARNINGS.md`): the
@@ -2823,7 +2823,7 @@ Closed the two scoped follow-ups:
 - **§176l kyutai routing** — added `core_rvq::encode_euclidean_per_stage`
   (‖E[k]‖² precompute + `encode_euclidean` + transpose to `out_codes[q][t]`),
   routed `kyutai_stt.cpp::rvq_encode_group` through it behind
-  `CRISPASR_KYUTAI_RVQ_FAST` (**default OFF**, scalar remains default + fallback on
+  `STELNETTTS_KYUTAI_RVQ_FAST` (**default OFF**, scalar remains default + fallback on
   non-uniform dims). Unit-tested: `test-core-rvq` now covers the wrapper vs the
   scalar reference (identical codes). End-to-end model code-identity check +
   default-flip remain (no local Kyutai model).
@@ -2831,7 +2831,7 @@ Closed the two scoped follow-ups:
 ## 2026-07-12 — security tokenizer fuzz harness + core_rvq proof test
 
 Two test-only deliverables from the same session:
-- **`tests/fuzz/fuzz_tokenizer.cpp`** (`crispasr-fuzz-tokenizer`, `-DCRISPASR_FUZZ=ON`)
+- **`tests/fuzz/fuzz_tokenizer.cpp`** (`stelnettts-fuzz-tokenizer`, `-DSTELNETTTS_FUZZ=ON`)
   — libFuzzer over `core_bpe::tokenize_simple` + `core_wordpiece::Tokenizer::tokenize`
   on arbitrary text (the untrusted prompt/`--ref-text`/caption surface; vocab pinned
   benign, GGUF vocab covered by `fuzz_gguf_meta`). **138,705 runs / 16 s clean** under
@@ -2849,11 +2849,11 @@ Two test-only deliverables from the same session:
 
 Ran the two CUDA validation kernels on Kaggle (chr1s4). Both reached `COMPLETE`
 (the kernels `SystemExit` on failure, so COMPLETE ⇒ verdict PASS):
-- **§176n VoxCPM2** (`crispasr-voxcpm2-176n-cuda`): the default `VOXCPM2_USE_GRAPH`
+- **§176n VoxCPM2** (`stelnettts-voxcpm2-176n-cuda`): the default `VOXCPM2_USE_GRAPH`
   GPU path ran on the discrete-GPU mirror path (device-local VRAM), produced a
   valid WAV with no crash/NaN/unsupported-op, and both CPU + GPU outputs
   round-tripped through parakeet ASR. Closes the §176n "Metal-only" CUDA gap.
-- **§245 qwen3-tts CP_DIRECT** (`crispasr-qwen3-cp-direct-cuda`): base/o15/direct/
+- **§245 cielvox2-tts CP_DIRECT** (`stelnettts-qwen3-cp-direct-cuda`): base/o15/direct/
   direct_lk matrix all rc=0, md5/PCM-equivalent, ASR round-trip intact on CUDA.
 The LEARNING-35 stricter-CUDA-contiguity risk did not materialize on either.
 Detailed speedup/recall are in the Kaggle logs (`kernels_output` can't retrieve
@@ -2866,11 +2866,11 @@ throughout. Net: **1 real fix shipped, 3 stale-but-done items reclassified, 2
 low-value items deferred with data.** Detail entries below; summary:
 - **§176k FireRed** — profiling debunked the "add KV cache + flash_attn" framing
   (decode is dispatch-bound, KV already cached). Shipped a persistent per-`(weight,M)`
-  matvec graph cache (`CRISPASR_FIRERED_MATVEC_CACHE`, default ON) — bit-identical,
+  matvec graph cache (`STELNETTTS_FIRERED_MATVEC_CACHE`, default ON) — bit-identical,
   pure Pareto; ~5% at idle, up to ~1.6× under load (load-dependent).
 - **§176n VoxCPM2 Metal** — stale "CPU-only SIGSEGV"; already runs on Metal via
   `VOXCPM2_USE_GRAPH`, verified **3.75×**, correct roundtrip. Reclassified DONE.
-- **§245 qwen3-tts code_pred** — done via **CP_DIRECT**, verified on Metal (RTF
+- **§245 cielvox2-tts code_pred** — done via **CP_DIRECT**, verified on Metal (RTF
   1.2×, dispatch ~5% of code_pred). Reclassified DONE.
 - **§176c** — VoxCPM2 already device-resident (dropped); Dia **measured ~1.2%** of
   decode → deferred (not worth a non-bit-identical rewrite); SpeechT5/Pocket-TTS
@@ -2897,14 +2897,14 @@ premise is false for compute-bound transformer decoders; PLAN §176c revised to
 any rewrite. Kept the instrument (permanent gated bench) as the evidence. Same
 lesson as §176k/§208/§214: profile before optimizing. See LEARNINGS.
 
-## 2026-07-12 — §245 qwen3-tts code-predictor: DONE via CP_DIRECT (stale entry), verified on Metal
+## 2026-07-12 — §245 cielvox2-tts code-predictor: DONE via CP_DIRECT (stale entry), verified on Metal
 
 Third stale perf entry this session (after §176k framing + §176n). PLAN §245
 ("15 code_pred graphs/frame → dispatch overhead; Option A unrolled graph /
 Option C skip-sched-reset, both broken") was superseded by **CP_DIRECT**
 (§232/#245) — sched-free persistent code_pred graphs, default ON for GPU,
 md5-identical WAV validated 2026-07-10. Empirically confirmed on M1
-(`qwen3-tts-12hz-0.6b-base-q8_0.gguf`, quiet, `QWEN3_TTS_BENCH=1`): `cp_direct
+(`cielvox2-tts-12hz-0.6b-base-q8_0.gguf`, quiet, `CIELVOX2_TTS_BENCH=1`): `cp_direct
 active`; per-frame code_pred set≈2-4 ms / compute≈45-60 ms / read≈0.1 ms →
 dispatch ~5% (was ~375 ms/frame under sched), RTF 1.2×, ASR round-trip correct.
 code_pred is now compute-bound (15 sequential steps) so Option A would buy
@@ -2915,7 +2915,7 @@ nothing. Docs only (PLAN §245 → DONE). See LEARNINGS ("verify a roadmap
 
 PLAN §176n was marked OPEN ("CPU-only due to SIGSEGV from `matmul_mv_ggml`"). That
 note predates the `VOXCPM2_USE_GRAPH` fused-graph infra that has since shipped.
-Empirical check on M1 (`voxcpm2-q4_k.gguf`): `crispasr --backend voxcpm2-tts`
+Empirical check on M1 (`voxcpm2-q4_k.gguf`): `stelnettts --backend voxcpm2-tts`
 already runs on **Metal** by default (CLI `should_use_gpu`; session ABI
 `g_open_use_gpu_tls`), and the heavy pipeline — per-step TSLM/RALM/LocDiT fused
 graphs + VAE encode/decode graphs, all gated `VOXCPM2_USE_GRAPH=1` (default ON) on
@@ -2977,18 +2977,18 @@ Diagnosis chain: dequantized `enc.blk.20.conv.norm.weight` (mean≈0 = broken, �
 SHA-compared local vs upstream (`local 264b549c… ≠ upstream`, same byte count → specific
 tensors zeroed); authenticated HTTP range-read of the **gated** upstream
 `CohereLabs/cohere-transcribe-arabic-07-2026` confirmed its norms are correct
-(0.4682 / 0.9318 / 1.1523). **Upstream, the published `cstr/…-GGUF` files (q4_k, imatrix,
+(0.4682 / 0.9318 / 1.1523). **Upstream, the published `Xenna/…-GGUF` files (q4_k, imatrix,
 f16), and the reference gguf are all clean** — only the one local download was corrupt.
 The converter already repairs this class of defect (`c9a4de65`, BN-fold + ref weight patch).
 Re-downloading `cohere-hf/` restored correct weights (all 314 norm tensors non-zero).
 
 Also fixed the Python reference path (`fix(cohere-ref)`): patch zeroed norms from a
-known-good GGUF (`CRISPASR_COHERE_NORM_PATCH_GGUF`) + Arabic language override
-(`CRISPASR_COHERE_REF_LANG`); on newer transformers, reload all params from safetensors
+known-good GGUF (`STELNETTTS_COHERE_NORM_PATCH_GGUF`) + Arabic language override
+(`STELNETTTS_COHERE_REF_LANG`); on newer transformers, reload all params from safetensors
 after `from_pretrained` (its `_init_weights` randomizes Linear/Conv → garbage).
 
 **Verified end-to-end on Kaggle GPU** (`tools/kaggle/cohere-arabic-verify/`): shipped C++
-(`crispasr` from main) vs Python HF reference on 4s / 8s / 40s Arabic — both transcribe
+(`stelnettts` from main) vs Python HF reference on 4s / 8s / 40s Arabic — both transcribe
 correct Arabic (no 🎵), content-identical transcripts (word overlap ≤0.95, diffs are
 punctuation only), 40s exercises the chunking path, **mel numerical parity cos_min=0.999981**.
 
@@ -2997,8 +2997,8 @@ punctuation only), 40s exercises the chunking path, **mel numerical parity cos_m
 Arabic/Cyrillic/Greek/Hebrew/Devanagari reference text now auto-romanizes before
 CTC alignment. Fixes all-zero timestamps when the aligner vocabulary is Latin-only
 (wav2vec2-based). New `src/core/uroman.h` (lightweight Unicode→Latin mapping) +
-integration in `crispasr_aligner.cpp`. 8 unit tests. Env gate:
-`CRISPASR_ALIGN_NO_ROMANIZE=1` disables. Reporter verified the romanized path
+integration in `stelnettts_aligner.cpp`. 8 unit tests. Env gate:
+`STELNETTTS_ALIGN_NO_ROMANIZE=1` disables. Reporter verified the romanized path
 lands within ~138 ms median on Arabic word onsets.
 
 ## 2026-07-12 — §176k FireRed decoder: profiling debunked the handover, shipped a matvec graph cache
@@ -3013,7 +3013,7 @@ token's K/V); (2) per-step time is **flat vs history length** → the decode is
 (8 projections × 16 layers), each doing a full `ggml_init` + graph build +
 `sched_reset` + `sched_alloc_graph` + `ggml_free` (~45 ms/step baseline).
 
-**Fix (shipped, env-gated `CRISPASR_FIRERED_MATVEC_CACHE`, default ON):** a
+**Fix (shipped, env-gated `STELNETTTS_FIRERED_MATVEC_CACHE`, default ON):** a
 persistent per-`(weight, M)` matvec graph cache (`ggml_matmat_cached`) — the
 no_alloc graph is built once and gallocr-allocated once, then each call is just
 `tensor_set → ggml_backend_graph_compute` (sched-free on `backend_cpu`, native
@@ -3036,7 +3036,7 @@ See LEARNINGS + PLAN §176k.
 
 **MOSS-TTS-v1.5 (#249) — new `moss-tts` backend: Qwen3-8B + 32-codebook delay +
 transformer codec.** Ported `OpenMOSS-Team/MOSS-TTS-v1.5` (MossTTSDelay) by grafting
-`pwilkin/openmoss`'s validated codec + delay logic onto CrispASR's in-house Qwen3
+`pwilkin/openmoss`'s validated codec + delay logic onto StelnetTTS's in-house Qwen3
 runtime (cloned `moss_audio.cpp`'s KV path + added a `hidden_last` output for the 32
 audio heads — no libllama). New `src/moss_tts.{h,cpp}` (backbone + 32 embed/head aux
 graphs + delay state machine + AR code-gen) and `src/moss_tts_codec.{h,cpp}` (RVQ →
@@ -3050,7 +3050,7 @@ limit not a bug).
 
 **(2026-07-13) Code-parity resolved + voice cloning validated.** Greedy code-parity
 vs the HF BF16 reference exposed a real tokenizer bug — the prompt tokenizer (cloned
-from `qwen3_asr`) split `>` from a trailing `\n` where Qwen groups punctuation with
+from `cielvox2_asr`) split `>` from a trailing `\n` where Qwen groups punctuation with
 trailing newlines (`[^\s\p{L}\p{N}]+[\r\n]*`); fixed with a proper `mt_qwen_pretokenize`
 → the 67-token prompt is now byte-identical to the HF processor. The residual frame-0
 divergence is NOT a bug: the `logit0` probe shows the reference's greedy pick is the
@@ -3064,7 +3064,7 @@ embedding is much closer to the reference than the no-voice baseline (cosine 0.8
 `tools/kaggle/moss-tts-{promptdiff,parity,logit0,voiceclone}/`.
 
 **§215b tada talker — batched-CFG (B=2) is a MEASURED NON-GOAL.** Instrumented the
-talker's two per-step CFG passes (`CRISPASR_TADA_TALKER_TIMING`). They take
+talker's two per-step CFG passes (`STELNETTTS_TADA_TALKER_TIMING`). They take
 *different* graph paths — the positive pass through the §176b decode bucket (padded
 to Lk≥512), the negative on the exact-Lk graph — so they're 3.3× asymmetric and the
 "fuse two equal passes" premise fails; the talker is only ~40% of per-step wall time
@@ -3073,7 +3073,7 @@ floor wastes ~500 masked attention columns/step for short generations. Shipped a
 **backend-conditional default** (`tada_default_bucket_min`): Metal/CPU→64 (a
 byte-identical *measured* win — Metal loop 1.07–1.21×, CPU 1.53×), CUDA/ROCm/Vulkan/
 WebGPU→512 (there a bucket-width change is NOT bit-identical — GPU reduction order
-over the −inf-masked padding differs — and only ~1.02–1.06×). `CRISPASR_TADA_BUCKET_MIN`
+over the −inf-masked padding differs — and only ~1.02–1.06×). `STELNETTTS_TADA_BUCKET_MIN`
 overrides. Also added a Kaggle CUDA A/B kernel (`tools/kaggle/tada-bucket-ab`).
 
 **irodori-tts #243 — persistent cached DiT graph (opt-in).** The RF-DiT is
@@ -3082,14 +3082,14 @@ call (~100/generation: 40 ODE steps × up to 4 independent-CFG passes), so on Am
 the CUDA graph re-warmed every step (the reporter's "CUDA graph warmup complete"
 spam) instead of capture-once-replay. Cache ctx+graph+gallocr keyed on the shape
 signature, reuse across calls, re-set all inputs each call. Gated
-`CRISPASR_IRODORI_PERSIST_GRAPH`, byte-identical (CPU `6c3e16d0`, Metal `1c7f9f27`).
+`STELNETTTS_IRODORI_PERSIST_GRAPH`, byte-identical (CPU `6c3e16d0`, Metal `1c7f9f27`).
 STEP-0 showed the DiT is 98% compute-bound → no Metal/CPU win; the CUDA (Ampere+)
 warmup-once win is unmeasurable locally (ggml disables CUDA graphs below Ampere;
 Kaggle has only P100/T4) → delegated to the reporter.
 
 **parakeet-CTC auto-reroute.** `--backend parakeet` on a pure-CTC model
 (parakeet-ctc-*, encoder + CTC head, no RNN-T decoder) previously dead-ended at the
-transducer-only guard. Added `crispasr_gguf_is_pure_ctc()` (cheap tensor-info peek)
+transducer-only guard. Added `stelnettts_gguf_is_pure_ctc()` (cheap tensor-info peek)
 and a run-flow reroute → `fastconformer-ctc` with a note; the guard stays as a
 backstop, and no-`--backend` autodetection already handled it. Tested: parakeet-ctc-
 0.6b reroutes + transcribes, parakeet-tdt-0.6b-v3 is untouched.
@@ -3097,21 +3097,21 @@ backstop, and no-`--backend` autodetection already handled it. Tested: parakeet-
 **Infra fixes.** glint's clean-room codec failed the Kaggle CUDA (GCC) build with
 `'size_t' has not been declared` — added `<cstddef>` to opus_ogg.hpp / resample.cpp /
 opus_mdct.cpp (macOS clang/libc++ pulls it in transitively; libstdc++ doesn't).
-Suppressed a cppcheck `stlcstr` false-positive in `crispasr_drain_streamed_tokens`
+Suppressed a cppcheck `stlcstr` false-positive in `stelnettts_drain_streamed_tokens`
 (returns `buf.c_str()` where `buf` aliases the persistent session member, not a
 local) that had been failing main's Lint across several commits.
 
 ## 2026-07-11 — HiFi-GAN ~2× via ggml-metal im2col batch-1 occupancy fix
 
 Reversed the prior "hifigan is at the compute floor, not worth it" verdict with a
-new per-node profiler. Added `CRISPASR_METAL_PROFILE=2` (per-op GPU profiler:
+new per-node profiler. Added `STELNETTTS_METAL_PROFILE=2` (per-op GPU profiler:
 one node per command buffer, GPUEnd−GPUStart per GGML_OP, no-op nodes skipped,
 empty-buffer floor subtracted). On a **quiet** M1 it showed the melotts HiFi-GAN
 decode is **im2col 58% / cont 22% / mul_mat 12%** — not the ~1% the ideal roofline
 implied (the old 4.02e6 gpu_us was ~2× load-inflated; true quiet ≈ 1.75e6, 13× off
 roofline). Root cause: `ggml-metal` sized im2col thread-dim0 from batch N, so at
 inference N=1 threadgroups ran only KH·KW (3–11) threads → ~10–34% of one simdgroup
-→ im2col ~40× below bandwidth. Fix (fork, `CRISPASR_METAL_IM2COL_OCC`, auto-on for
+→ im2col ~40× below bandwidth. Fix (fork, `STELNETTTS_METAL_IM2COL_OCC`, auto-on for
 N==1): block OW across thread-dim0 so threadgroups fill — a bit-exact copy reorg.
 Validated bit-exact (moonshine ASR occ-on==occ-off byte-identical; melotts ASR
 round-trip valid) and ~2–3× on hifigan (gpu 1.88→0.83 s), 1.65× on moonshine, no
@@ -3127,7 +3127,7 @@ Follow-on to the audio-parser hardening, extending the multi-agent audit
 (find → adversarial-verify → fix-by-hand) to the rest of the untrusted-input
 surface.
 
-- **crispasr-server (network-facing, 7 fixes):** no `set_payload_max_length`
+- **stelnettts-server (network-facing, 7 fixes):** no `set_payload_max_length`
   meant every multipart upload buffered into RAM *before* auth → a large (even
   unauthenticated) body OOM-killed the process — capped at 512 MB + reject
   chunked uploads. Plus a `/v1/audio/speech` `voice` path-traversal (arbitrary-
@@ -3140,11 +3140,11 @@ surface.
   → wrap and pass → SIGBUS on Metal; rewritten subtractive at all 3 sites.
   SentencePiece truncated a >2 GiB input to a negative int → clamp. (bpe /
   wordpiece / SRT audited clean.)
-- **libFuzzer harnesses + CI:** `crispasr-fuzz-audio` (wired into a
-  `linux-fuzz-smoke` CI job, seeded from `samples/`) and `crispasr-fuzz-gguf`.
+- **libFuzzer harnesses + CI:** `stelnettts-fuzz-audio` (wired into a
+  `linux-fuzz-smoke` CI job, seeded from `samples/`) and `stelnettts-fuzz-gguf`.
   The GGUF harness immediately found a real crash — a malformed model with an
   empty KV key aborted via `GGML_ASSERT` in ggml's parser (a DoS on any
-  untrusted model load). Fixed in the `CrispStrobe/ggml` fork (`1dc4cb93`,
+  untrusted model load). Fixed in the `Cyna/ggml` fork (`1dc4cb93`,
   reject empty keys → return nullptr); submodule bumped. Re-fuzzed both parser
   paths against the fix — ~880K runs, 0 findings.
 
@@ -3163,7 +3163,7 @@ Full codebase audit of `cached_*_gf` for the sched-regrow UAF. Two rounds:
 (1) canary + canary_ctc; (2) kyutai_stt, moonshine_streaming, nemotron,
 paraformer, sensevoice — all fixed with rebuild-every-invocation. Previously
 patched: canary_qwen, funasr, glm_asr, granite_speech, moss_transcribe,
-moss_audio, qwen3_asr, voxtral, voxtral4b. parakeet already opt-in.
+moss_audio, cielvox2_asr, voxtral, voxtral4b. parakeet already opt-in.
 chatterbox_s3gen + granite_speech decoder safe (dedicated gallocr). 19 sites
 audited, 0 remaining.
 ## 2026-07-11 — untrusted-input parser hardening (multi-agent security audit)
@@ -3174,7 +3174,7 @@ per parser region → adversarial refutation of every finding. 10 findings, all
 verified, **6 unique real defects fixed** (`db8903d4`/`3739e70d`, plus the AU
 reader in `9871e1ac`):
 
-- **MP4 box parser** (`crispasr_audio.cpp`): `stsz`/`stco`/`co64` did
+- **MP4 box parser** (`stelnettts_audio.cpp`): `stsz`/`stco`/`co64` did
   `resize(count)` from an untrusted 32-bit box field → 16–32 GB alloc DoS
   (clamp to box/file bytes); the `co64` chunk offset flowed into
   `off + sz > file_data.size()` which wraps in uint64 → wild OOB read
@@ -3188,12 +3188,12 @@ reader in `9871e1ac`):
 - **GGUF** (`core/gguf_loader.cpp`): `load_weights_split`'s mmap branch copied
   each tensor with no bounds check vs the mapping → SIGBUS / info-leak on a
   truncated/crafted GGUF; added the guard its three sibling paths already have.
-- **AU** (`crispasr_au_decode`, earlier): `data_size`/`data_offset` clamp.
+- **AU** (`stelnettts_au_decode`, earlier): `data_size`/`data_offset` clamp.
 
 Regression tests (AU + WAV crafted-input) pass under ASan/UBSan + Release; an
-MP4 crafted-input reachability test (through the full `crispasr_audio_load`
-dispatch → `crispasr_m4a_decode`) and a libFuzzer harness over
-`crispasr_audio_load` (`tests/fuzz/`, gated `-DCRISPASR_FUZZ=ON`; mutation covers
+MP4 crafted-input reachability test (through the full `stelnettts_audio_load`
+dispatch → `stelnettts_m4a_decode`) and a libFuzzer harness over
+`stelnettts_audio_load` (`tests/fuzz/`, gated `-DSTELNETTTS_FUZZ=ON`; mutation covers
 the AU/AMR/WebM/MP4/WAV parsers under ASan) added alongside. CI guards via the
 `linux-asan-audio` job. See LEARNINGS (parser hardening) for the bug taxonomy +
 audit methodology.
@@ -3217,7 +3217,7 @@ speaker diarization + timestamps in a single 0.9B model. Stock Whisper encoder (
 time markers every 5s (bare digit tokens) → Qwen3-0.6B LM. Diff harness 4/4 stages
 cos=1.000 (mel, conv_stem, encoder, audio_embeds) on both F32 and Q4_K. Full 12-point
 checklist wired per docs/contributing.md. GGUFs (F16/Q4_K/Q8_0 + ref) uploaded to
-cstr/MOSS-Transcribe-Diarize-GGUF with README. Registry entry enables `-m auto`.
+Xenna/MOSS-Transcribe-Diarize-GGUF with README. Registry entry enables `-m auto`.
 
 Key bugs found during bring-up: (1) spurious mel transpose — MelsTime layout
 `mel[f*T+t]` IS ggml Conv1d input layout, no transposition needed; (2) wrong prompt
@@ -3264,34 +3264,34 @@ was clean. **Fixed on `main`; root-caused by reference diff, not patched over.**
   the bug was upstream in the encoder frame count.
 - **Per-conv framing tried + REJECTED** (`dcb80789`, no code change): hypothesised the
   encoder should use moshi `MimiConv1d._get_extra_padding_for_conv1d` per strided conv (the
-  scheme `qwen3_tts`'s SEANet+RVQ codec uses). Diff killed it: onset 0.0579 and
+  scheme `cielvox2_tts`'s SEANet+RVQ codec uses). Diff killed it: onset 0.0579 and
   `backbone_out0` corr vs reference **0.18** — the pre-pad already value-matches the
   reference; pocket-tts's Mimi VAE encoder pads to a whole latent frame and does NOT use
   independent per-conv extra padding. Reverted, kept the pre-pad fix. Grade conditioning
   with the deterministic pre-sampling `backbone_out0` corr, not the RNG-confounded onset RMS.
 - **Ops:** the §224 voice-latent disk cache keys on the PCM hash, not the algorithm — clear
-  `pocket-voice-*.latents` (or `CRISPASR_POCKET_VOICE_CACHE=0`) after any encoder change.
+  `pocket-voice-*.latents` (or `STELNETTTS_POCKET_VOICE_CACHE=0`) after any encoder change.
   See `LEARNINGS.md` + memory `project_pocket_tts_gong_encoder_frame`.
 ## 2026-07-11 — glint codec integration: AAC + Opus in both directions
 
 Wired the sibling **glint** codec suite (refreshed from encoder-only to the full
-MP3/AAC/Opus decoder + encoder set) into CrispASR so AAC and Opus work in both
+MP3/AAC/Opus decoder + encoder set) into StelnetTTS so AAC and Opus work in both
 directions with no libopus/fdk/ffmpeg hard dependency by default.
 
-- **Input decode (C ABI `crispasr_audio_load`)**: raw ADTS `.aac` (AAC-LC) and
+- **Input decode (C ABI `stelnettts_audio_load`)**: raw ADTS `.aac` (AAC-LC) and
   Ogg `.opus` now decode via glint (`glint_aac_decode`, `glint_decode_audio`),
   cross-platform and always available — so the bindings read `.aac`/`.opus`
-  without libopus/fdk. Default, gated `CRISPASR_AAC_DECODER` /
-  `CRISPASR_OPUS_DECODER=libopus`, with the old decoder as automatic fallback.
+  without libopus/fdk. Default, gated `STELNETTTS_AAC_DECODER` /
+  `STELNETTTS_OPUS_DECODER=libopus`, with the old decoder as automatic fallback.
   Still libopus: WebM/Matroska Opus + the stereo loader.
 - **Output encode**: CLI `--tts-output out.opus` + server `response_format=opus`
   emit a real Ogg Opus file (`audio/ogg`) via `glint_opus_encode_file`
-  (`crispasr_opus_writer.h`), fixing the server's old non-conformant framing.
-  libopus reachable via `CRISPASR_OPUS_ENCODER=libopus`.
+  (`stelnettts_opus_writer.h`), fixing the server's old non-conformant framing.
+  libopus reachable via `STELNETTTS_OPUS_ENCODER=libopus`.
 - **glint C ABI**: the one-call Ogg-Opus file + unified `glint_decode_audio`
   API landed on glint main (a concurrent effort); adopted it rather than the
   parallel API this branch first drafted.
-- `crispasr-lib` links glint PUBLIC (→ `bindings/go/whisper.go` `-lglint`
+- `stelnettts-lib` links glint PUBLIC (→ `bindings/go/whisper.go` `-lglint`
   regen). Verified: `[audio]` unit suite 87/10 + provenance 48/13; kokoro TTS →
   {mp3,aac,opus} → moonshine ASR round-trips; ffmpeg/libopus decode glint's
   `.opus`; glint's decoder sources compile clean under emscripten (WASM).
@@ -3305,7 +3305,7 @@ acoustic transformer → Voxtral codec, 24 kHz, 9 languages / 20 voices). **Ship
 - **Runtime** `src/voxtral_tts.cpp`: e2e text→LLM→FM→codec→WAV; roundtrips EN+FR
   multi-voice. Core bug during the port was RoPE variant (NORMAL/adjacent-pair, not
   NEOX — raw Mistral consolidated weights, converter doesn't permute Q/K).
-- **HF**: `cstr/voxtral-4b-tts-GGUF` Q4_K + Q8_0 + F16, all with baked
+- **HF**: `Xenna/voxtral-4b-tts-GGUF` Q4_K + Q8_0 + F16, all with baked
   `codec.semantic_cb`; model card `cc-by-nc-4.0` + attribution. Registry entry prints
   the NC restriction on auto-download.
 - **FM perf**: batched CFG cond+uncond in one cached graph via **seq-concat +
@@ -3316,11 +3316,11 @@ acoustic transformer → Voxtral codec, 24 kHz, 9 languages / 20 voices). **Ship
 - **All 12 contributing.md points wired**, incl. the per-stage diff harness:
   `tools/reference_backends/voxtral_tts.py` is a manual PyTorch LLM forward (NO vllm —
   lazy safetensors), `src/voxtral_tts.cpp::voxtral_tts_llm_diff()` +
-  `crispasr-diff voxtral-tts`, ref dump on `cstr/crispasr-regression-fixtures`.
+  `stelnettts-diff voxtral-tts`, ref dump on `Xenna/stelnettts-regression-fixtures`.
 - **Correctness verdict** (codes-level, F16 vs BF16 reference): frame 0 `|h|rel=0.0`, all
   37 codes EXACT; divergence begins ~frame 7 as F16-vs-BF16 rounding amplifies through the
   acoustic feedback loop — NOT a bug (HARD RULE #2), codec cos 0.9999, audio word-perfect.
-- **Per-LAYER crispasr-diff (F16, Kaggle P100)**: all 26 LLM layers + hidden cos
+- **Per-LAYER stelnettts-diff (F16, Kaggle P100)**: all 26 LLM layers + hidden cos
   `0.999996–1.0` — the LLM is bit-exact. The tool flagged `embed` cos=0.44 as "first
   divergence", but that was a **false positive from a bug in the harness itself**, not the
   runtime. Root cause (found via a `|mine|`/`|ref|` magnitude print, `1498534d`): the runtime
@@ -3333,51 +3333,51 @@ acoustic transformer → Voxtral codec, 24 kHz, 9 languages / 20 voices). **Ship
   via its own read, and `set_output`-less inputs get clobbered post-compute. See memory
   `project_93_voxtral_tts_backbone`.
 
-## 2026-07-10 — qwen3-asr-1.7b q4_k empty transcripts (#240)
+## 2026-07-10 — cielvox2-asr-1.7b q4_k empty transcripts (#240)
 
-Reporter (macOS/M4/Metal, v0.8.9): `cstr/qwen3-asr-1.7b-GGUF/qwen3-asr-1.7b-q4_k.gguf`
+Reporter (macOS/M4/Metal, v0.8.9): `Xenna/cielvox2-asr-1.7b-GGUF/cielvox2-asr-1.7b-q4_k.gguf`
 loads and reports success but emits an empty transcript; the q8_0 and the 0.6b q4_k
 work. Same root cause as #218: the shipped 1.7b q4_k (exported 2026-07-03) predates the
 Q8_0 audio-tower carve-out that landed the same day (`3c3ba2c7`,
-`examples/crispasr-quantize/main.cpp:772` — arch-keyed on `qwen3asr`, size-agnostic).
+`examples/stelnettts-quantize/main.cpp:772` — arch-keyed on `cielvox2asr`, size-agnostic).
 The 0.6b was re-baked; the 1.7b was not, so its 24-layer `audio.*` tower stayed q4_k and
 drifted per #218.
 
-- **Re-bake** (worktree `crispasr-quantize` at HEAD): f16 → q4_k with the fix →
+- **Re-bake** (worktree `stelnettts-quantize` at HEAD): f16 → q4_k with the fix →
   147 `audio.*` tensors floored to q8_0, LLM at q4_k (1490 MB vs 1334 MB broken).
-- **Validation** — new `examples/qwen3-asr-enc-dump` dumps the encoder output (CPU) per
+- **Validation** — new `examples/cielvox2-asr-enc-dump` dumps the encoder output (CPU) per
   GGUF; per-row cosine vs f16 on jfk (11s, 143 frames): broken cos_min 0.9632 / mean
   0.9913 (29/143 rows < 0.99) → fixed cos_min 0.9989 / mean 0.9998 (0/143). Same repair
   pattern as #218's 0.6b (cos_mean 0.9716 → 0.9997); drift compounds with frame count,
   breaking decode on long / Metal audio (the reporter's case). On CUDA the broken q4_k
   decode survives at short length (jfk 11s exact), consistent with the platform-amplified
   Metal manifestation.
-- **Ask #2 (silent-failure guard)**: `crispasr_run.cpp` now warns on stderr when a
+- **Ask #2 (silent-failure guard)**: `stelnettts_run.cpp` now warns on stderr when a
   non-silent clip (peak > ~−40 dBFS, ≥ 0.5 s) produces no non-whitespace text, across all
   three CLI transcribe paths. Peak-gate so silence never warns; suppressed by `--no-prints`.
   Validated: tone → warns, silence → no warn, speech → no warn.
 - **Incidental**: fixed a `ca_token_record` definition-ordering bug (from the per-token
   streaming C-ABI commit) that broke every Windows/MSVC build on main HEAD (C2027).
 
-Fixed GGUF replaces `qwen3-asr-1.7b-q4_k.gguf` on `cstr/qwen3-asr-1.7b-GGUF`.
+Fixed GGUF replaces `cielvox2-asr-1.7b-q4_k.gguf` on `Xenna/cielvox2-asr-1.7b-GGUF`.
 
-## 2026-07-09/10 — #218 root cause arc: quantized audio tower (qwen3-asr) + instruction-less prompts (glm-asr)
+## 2026-07-09/10 — #218 root cause arc: quantized audio tower (cielvox2-asr) + instruction-less prompts (glm-asr)
 
-Why did qwen3-asr / glm-asr loop or emit empty output on long audio at all,
+Why did cielvox2-asr / glm-asr loop or emit empty output on long audio at all,
 when the bf16 blueprints are clean on the same clip? Full detail in PLAN
 ("#218 …" sections) and four LEARNINGS entries; condensed:
 
-- **qwen3-asr**: port math faithful end-to-end (mel 0.999996, prompt ids
+- **cielvox2-asr**: port math faithful end-to-end (mel 0.999996, prompt ids
   exact, F16 logits at the F16 floor, F16 e2e verbatim on the un-chunked
   145 s clip). Root cause = q4_k quantized the 18-layer audio tower →
   compounding per-block drift (no cliff) → encoder cos_mean 0.9716 →
   greedy decode flips into loops / "language none". Fixes: **Q8_0 floor
-  for `audio.*` in crispasr-quantize** (3c3ba2c7); **blueprint prompt
+  for `audio.*` in stelnettts-quantize** (3c3ba2c7); **blueprint prompt
   contract** — forced language as assistant-turn prefill
   `language <Name><asr_text>` instead of a system instruction; tail-pad
   frame compaction pre-encoder; KV `max(4096, prompt+max_new+16)` +
   grow-on-demand; max_new fallback 512. Rebaked GGUFs live on
-  `cstr/qwen3-asr-0.6b-GGUF` (+ ja-anime; 1.7b followed via #240).
+  `Xenna/cielvox2-asr-0.6b-GGUF` (+ ja-anime; 1.7b followed via #240).
   imatrix A/B: tied-LM-head quantization re-introduces loops; long-form
   recalibration tested + REJECTED. Windowed (FA2/cu_seqlens) encoder
   attention shipped opt-in `CRISP_AUDIO_WINDOWED_ATTN=1` (46e08bc4),
@@ -3402,11 +3402,11 @@ when the bf16 blueprints are clean on the same clip? Full detail in PLAN
   model-inherent, port faithful, `--chunk-seconds 0` unsupported for mega
   at any precision (9acb951b); mega's default 30 s-chunked path verified
   clean+complete on the 145 s clip (no regression).
-- **Tooling**: crispasr-diff qwen3 stages (conv/per-block/ids/logits,
-  `CRISPASR_DIFF_STAGES`), `CRISP_AUDIO_DUMP_STAGES`, bf16 reference
+- **Tooling**: stelnettts-diff qwen3 stages (conv/per-block/ids/logits,
+  `STELNETTTS_DIFF_STAGES`), `CRISP_AUDIO_DUMP_STAGES`, bf16 reference
   dumper modes (`QWEN3_REF_DTYPE`, `QWEN3_REF_WINDOWED`), real raw-decode
-  gate `CRISPASR_NGRAM_LOOPFIX_OFF=1` (the handoff's
-  `CRISPASR_NO_NGRAM_LOOPFIX` never existed), phrase-cycle loop metric
+  gate `STELNETTTS_NGRAM_LOOPFIX_OFF=1` (the handoff's
+  `STELNETTTS_NO_NGRAM_LOOPFIX` never existed), phrase-cycle loop metric
   (unigram runs miss 2-gram "come on, come on" cycles).
 
 ## 2026-07-09 — canary-qwen backend (nvidia/canary-qwen-2.5b, #233)
@@ -3424,12 +3424,12 @@ Qwen3-1.7B LLM decoder with merged LoRA (r=128, alpha=256). English ASR only.
 - **Mel filterbank bug**: converter initially baked the filterbank as
   `(n_freqs, n_mels)` (FreqsMels) but `core_mel` expected `(n_mels, n_freqs)`
   (MelsFreqs). cos_min = −0.15 against reference → LLM hallucinated.
-  Diagnosed via `crispasr-diff` on Kaggle: `[FAIL] mel_spectrogram cos_min=-0.147`.
+  Diagnosed via `stelnettts-diff` on Kaggle: `[FAIL] mel_spectrogram cos_min=-0.147`.
   Fix: transpose in converter. After fix: cos_min = 0.999, JFK exact match.
 - **Integration**: full 12-point checklist — CLI, C API (9 edit points), CMake,
   registry (Q8_0 default), quantizer (encoder at source precision), diff harness,
   README, docs/cli.md, docs/architecture.md.
-- **HF**: `cstr/canary-qwen-2.5b-GGUF` — F16 (5.4 GB), Q8_0 (4.1 GB), Q4_K (3.5 GB).
+- **HF**: `Xenna/canary-qwen-2.5b-GGUF` — F16 (5.4 GB), Q8_0 (4.1 GB), Q4_K (3.5 GB).
 - **Perf (Kaggle P100)**: mel 22 ms, encoder+proj 248 ms, prefill 171 ms,
   decode 348 ms (22 tokens) → ~0.8 s total for 11 s JFK audio.
 
@@ -3443,7 +3443,7 @@ reuses stale handles → use-after-free → segfault or busy loop.
 
 Fix: always rebuild the encoder graph (~1 ms build, compute is the real cost).
 Applied to glm_asr + 7 other backends with the same vulnerable pattern:
-voxtral4b, moss_audio, canary_qwen, voxtral, granite_speech, funasr, qwen3_asr.
+voxtral4b, moss_audio, canary_qwen, voxtral, granite_speech, funasr, cielvox2_asr.
 
 Encoder-only backends (canary, parakeet, nemotron, kyutai_stt, moonshine,
 moonshine_streaming, paraformer) are NOT affected — no LLM decoder on the same
@@ -3452,7 +3452,7 @@ scheduler, so the allocator never regrows between slices.
 ## 2026-07-04 #220 chatterbox T3 CUDA illegal-memory-access — reset+alloc bucket sched per step
 
 Reporter hit `CUDA error: an illegal memory access was encountered` on an
-RTX 3090 Ti (`crispasr:main-cuda`, v0.8.8) for every chatterbox request; CPU
+RTX 3090 Ti (`stelnettts:main-cuda`, v0.8.8) for every chatterbox request; CPU
 worked. Root cause: the §186 Lk-bucketed T3 decode allocated its step scheduler
 once per bucket then only re-ran `graph_compute` each step (the M1
 "reuse-shortcut"). ggml-cuda keys a captured CUDA-graph executable on the split
@@ -3471,7 +3471,7 @@ CUDA-graph-bucket pattern (docs/contributing.md §210). New split uid per step �
 `cudaGraphExecUpdate` refreshes the pointers, cached cgraph keeps `nodes[0]`
 stable so capture still engages and T3 stays on GPU (no CPU fallback). Metal
 keeps the cheaper alloc-once reuse; old path A/B-gated via
-`CRISPASR_CHATTERBOX_T3_BUCKET_REUSE=1`. See LEARNINGS "A once-allocated-then-
+`STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE=1`. See LEARNINGS "A once-allocated-then-
 reused bucket step graph is a CUDA-graph-capture hazard".
 
 ## 2026-07-04 #221 issue #89 hardening (regression guard, server mirror, Vulkan, q4 guard)
@@ -3481,11 +3481,11 @@ Follow-through batch (PLAN #221) making the #89 fix durable:
 - **221a regression guard** — `tests/test_parakeet_ja_longform_live.cpp`
   (label `live`): reazon baseball fixture ×3 (42.2 s) through the session ABI
   must keep 3× 岡本, reach the third repetition, and clear a byte floor.
-  `CRISPASR_MODEL_PARAKEET_JA` + `CRISPASR_FIXTURE_PARAKEET_JA` in
+  `STELNETTTS_MODEL_PARAKEET_JA` + `STELNETTTS_FIXTURE_PARAKEET_JA` in
   env-live-tests.sh.
 - **221b server mirror** — the OpenAI-compatible server's own slice loop had
   neither the 12 s cap nor gap-fill (JA → 30 s chunks → streamed, ~58 %).
-  Gap-fill extracted to `examples/cli/crispasr_gap_fill.h` (shared with the
+  Gap-fill extracted to `examples/cli/stelnettts_gap_fill.h` (shared with the
   CLI dispatcher, code unchanged); server applies the backend slice cap +
   per-slice gap-fill. E2E: `/v1/audio/transcriptions` with baseball ×3 → 3/3.
 - **221c Vulkan sanity** — MoltenVK build, yt_60s default flags: **95.1 %
@@ -3531,42 +3531,42 @@ the boundary words). Additionally the JA backend decoded *every* slice via the
 streamed path (threshold 0), never single-pass.
 
 **Fix (3 pieces, all env-gated, old paths intact):**
-- `crispasr_vad.cpp` post-split now cuts at **energy minima** (±2 s search,
+- `stelnettts_vad.cpp` post-split now cuts at **energy minima** (±2 s search,
   100 ms RMS window, reusing `audio_chunking::split_at_energy_minima`) instead
   of equal parts.
 - New backend hook `vad_slice_cap_seconds()` (JA=12, others 0;
-  `CRISPASR_PARAKEET_VAD_SLICE_CAP`): the dispatcher re-splits VAD slices down
+  `STELNETTTS_PARAKEET_VAD_SLICE_CAP`): the dispatcher re-splits VAD slices down
   to the cap when the user didn't pass an explicit `--chunk-seconds`.
-- JA `CRISPASR_PARAKEET_STREAM_THRESHOLD` default 0 → **12**: capped slices now
+- JA `STELNETTTS_PARAKEET_STREAM_THRESHOLD` default 0 → **12**: capped slices now
   decode **single-pass (NeMo-exact)** instead of streamed.
-- Bonus gate: `CRISPASR_PARAKEET_ATT_CONTEXT="L,R"` — runtime equivalent of
+- Bonus gate: `STELNETTTS_PARAKEET_ATT_CONTEXT="L,R"` — runtime equivalent of
   NeMo's `change_attention_model("rel_pos_local_attn")`, wired to the existing
   mask support in `core/fastconformer.h` (verified char-identical to NeMo at
   [128,128]; not a win on this model — 46-67 % — but the A/B gate is free).
 
-**Session-ABI mirror (same day).** `crispasr_c_api.cpp`'s parakeet session
+**Session-ABI mirror (same day).** `stelnettts_c_api.cpp`'s parakeet session
 path (bindings / server) still routed JA long audio through the streamed
 encoder (~58 % recall). Mirrored the CLI policy at the `s->parakeet_ctx`
-site: `crispasr_energy_chunk_slices` at the 12 s cap (no VAD model needed on
+site: `stelnettts_energy_chunk_slices` at the 12 s cap (no VAD model needed on
 the session path — energy minima only), one exact pass per slice, the same
 two-round gap-fill, words merged into the session's single-segment shape
 with CJK-aware text rebuild. yt_60s via the session harness: **94.8 %
 recall / 89.2 % prec** (CLI: 97.2 — silero VAD bounds beat pure energy
-slicing slightly). `CRISPASR_PARAKEET_VAD_SLICE_CAP=0` reverts to streamed;
-an explicit `crispasr_session_transcribe_chunked` keeps the caller's sizing.
+slicing slightly). `STELNETTTS_PARAKEET_VAD_SLICE_CAP=0` reverts to streamed;
+an explicit `stelnettts_session_transcribe_chunked` keeps the caller's sizing.
 
 **Gap-fill second pass (same day, follow-up for >95 % coverage).** Even with
 capped single-pass slices the encoder sometimes emits *nothing* for a
 multi-second span inside a slice — it blanks an utterance whenever enough
 context follows it, though the same span transcribes verbatim in isolation
 (the reporter's clip's first 4.6 s: perfect alone, skipped inside any ≥8 s
-window; NeMo behaves identically). `crispasr_gap_fill_slice()` in
-`crispasr_run.cpp`: after the per-slice transcribe, spans ≥1 s with no
+window; NeMo behaves identically). `stelnettts_gap_fill_slice()` in
+`stelnettts_run.cpp`: after the per-slice transcribe, spans ≥1 s with no
 emitted words are re-transcribed in isolation and words landing inside the
 gap (and not restating covered content) are merged back. Runs inside
 `process_slice`, so all output paths (sequential / parallel / progressive)
 get it; gated on `vad_slice_cap_seconds() > 0` (JA parakeet only today),
-`CRISPASR_GAP_FILL=0` disables, `CRISPASR_GAP_FILL_MIN_CS` tunes (min-gap 60
+`STELNETTTS_GAP_FILL=0` disables, `STELNETTTS_GAP_FILL_MIN_CS` tunes (min-gap 60
 measured strictly worse than 100 — more variant noise, much slower).
 Phonetic (hiragana-reading) char-bigram recall vs whisper-large-v3-turbo:
 yt_60s 64.2 → **97.2 %**, yt_120s 61.3 → **96.9 %**, first300 → **95.9 %**,
@@ -3585,12 +3585,12 @@ JA model skips whenever the window extends past it — even NeMo emits it only
 letter-by-letter. **Non-JA regression: none** — v3 q8_0 on EN/DE FLEURS
 60 s/300 s byte-identical before/after; reazon-baseball ×3 keeps 3/3 岡本;
 777/777 unit tests. Follow-ups: mirror the cap policy into the session ABI
-(`crispasr_c_api.cpp` reimplements the CLI dispatch) and upload the
+(`stelnettts_c_api.cpp` reimplements the CLI dispatch) and upload the
 CTC-head-bearing JA GGUF so `--parakeet-decoder ctc` works.
 
 ## 2026-07 CPU weight-read hardening + Mimi codec causal default
 
-Audit follow-up to the CrispEmbed quantized-weight-read fixes; two threads.
+Audit follow-up to the StelnetEmbed quantized-weight-read fixes; two threads.
 
 **Weight readers.** Added `core_cpu::to_f32` (`src/core/cpu_ops.h`): a GPU-safe CPU weight
 reader that dequantizes F32/F16/any block-quantized type via `ggml_backend_tensor_get` + the
@@ -3608,11 +3608,11 @@ F32 fast path on a per-transcription loop; routing it would only add copies.
 `mimi_context=250` was loaded but dead). A >250-frame WER A/B (3× jfk ≈ 412 frames) showed the
 non-causal path **truncates the tail** (~25% of content dropped once the sequence exceeds the
 window); causal+window captured all of it; on short audio (<250 frames) the two tie. So
-`kyutai_stt` now **defaults to causal+sliding-window**, old path behind `CRISPASR_MIMI_NONCAUSAL=1`.
+`kyutai_stt` now **defaults to causal+sliding-window**, old path behind `STELNETTTS_MIMI_NONCAUSAL=1`.
 `csm_tts` has the identical gate and now **also defaults to causal** — a TTS→ASR A/B (~256 decoder
 frames, `T_up = 2× 128` codec frames) gave causal 9.3% WER vs non-causal 12.0% (a win, though far
 smaller than STT's, since non-causal TTS stayed intelligible rather than truncating). Opt out with
-`CRISPASR_MIMI_NONCAUSAL=1`.
+`STELNETTTS_MIMI_NONCAUSAL=1`.
 Verified on Metal + CUDA (Tesla P100). → LEARNINGS.
 
 ## #171 2026-07-03 VibeVoice TTS server "3rd-request garbage" — voice-KV stride leak
@@ -3660,12 +3660,12 @@ features. Ground truth was the real `HumeAI/tada-3b-ml` run offline via
    opposite (`75ee3d9d`, cand 4→8); that mangles 1b/q4_k too — cand=1 supersedes it.
    (b) `8ddf2bb8` ran `num_prompt + shift(5)` steps; the reference runs exactly `num_prompt`
    (the 5 trailing EOTs are already baked in by `_add_bos_eos`). The extra 5 appended trailing
-   junk frames → "…for out". Default `extra_steps=0`; `CRISPASR_TADA_EXTRA_STEPS` overrides.
+   junk frames → "…for out". Default `extra_steps=0`; `STELNETTTS_TADA_EXTRA_STEPS` overrides.
 
 2. **cand>1 made viable (`a0a0432a`).** Added duration-aware selection to `fm_solve_rank_candidates`
    and defaulted cand>1 to **`duration_median`** (a Python-provided scorer): pick the candidate
    whose per-token duration is closest to the median. Fixes cand=4/8 "four hours" across seeds.
-   `CRISPASR_TADA_SCORER=likelihood|hybrid` A/Bs. No scorer beats cand=1 on all inputs
+   `STELNETTTS_TADA_SCORER=likelihood|hybrid` A/Bs. No scorer beats cand=1 on all inputs
    (duration_median can mispick "hello world"), so cand=1 stays the recommended default and
    cand>1 is opt-in via `TADA_NUM_CANDIDATES`. German re-validated (cand=1 coherent — the old
    "cand=1 garbage" claim was a harness-artifact-era artifact).
@@ -3680,16 +3680,16 @@ features. Ground truth was the real `HumeAI/tada-3b-ml` run offline via
    encoder/aligner from the model repo (`41e46c7d`), `--language auto`→en (`bc87d360`).
 
 4. **All 10 language aligners published (q8_0).** `tada-aligner-{en(both repos),ar,ch,de,es,fr,it,ja,pl,pt}`
-   on `cstr/tada-tts-3b-ml-GGUF`; `en` also on the 1b repo. Aligner **q8_0 is bit-identical to f16**
+   on `Xenna/tada-tts-3b-ml-GGUF`; `en` also on the 1b repo. Aligner **q8_0 is bit-identical to f16**
    for alignment (positions max|Δ|=0 frames, token_values cos=1.0 — the F32 `lm_head` that drives
    the CTC alignment is preserved; only the wav2vec2 encoder layers quantize; 1.19 GB → 906 MB).
 
 5. **New `--align` verb (`fcbc8718`).** The aligner is a wav2vec2 CTC model over the Llama-3.2 BPE
    vocab; exposed forced alignment as word timestamps:
-   `crispasr --backend tada-3b-ml -m … --auto-download --align --voice a.wav --ref-text "…" --align-format srt|json|plain`.
+   `stelnettts --backend tada-3b-ml -m … --auto-download --align --voice a.wav --ref-text "…" --align-format srt|json|plain`.
    Reuses the make-ref encoder/aligner resolution; groups BPE tokens→words (space-marker boundary);
    `position/50fps = seconds`. Free (text-less) CTC decode does **not** work — argmax is all-blank
-   (`CRISPASR_TADA_CTC_ASR` probe) → it is a *forced* aligner, not a recogniser.
+   (`STELNETTTS_TADA_CTC_ASR` probe) → it is a *forced* aligner, not a recogniser.
 
 ## #205f 2026-06-30 Granite long-audio: chunk-context drops slices + spaceless rebuild (REAL no-spaces fix)
 
@@ -3699,7 +3699,7 @@ detached). Both traced to the CLI long-audio path, not the model:
 
 1. **Words concatenated without spaces.** When chunk-context is active (>1 slice,
    non-VAD), the dispatcher rebuilds each segment's text by concatenating
-   `word.text` with NO separator (crispasr_run.cpp), assuming the
+   `word.text` with NO separator (stelnettts_run.cpp), assuming the
    whisper/parakeet convention where word.text carries a leading space. Granite's
    `[T:N]`-parsed words are bare ("on", "mccloud's"), so they collapsed to
    "previouslyonmccloud's". Fixed the rebuild to insert a space unless the word
@@ -3835,8 +3835,8 @@ Qwen3-1.7B LM standalone (`Qwen3Model`, bf16, ~3.4 GB) + a tied `lm_head` via
 `MossForCausalLM` at once (see LEARNINGS). Full wiring per `docs/contributing.md`
 (runtime `src/moss_transcribe.{h,cpp}`, converter, CLI adapter + factory, c_api,
 registry, quantize keeping enc/adapter/tied-embed at F16, Go LDFLAGS, live test,
-`crispasr-diff` branch + reference backend). Shipped `9f3c5ede`; q4_k (2.63 GB) on
-`cstr/MOSS-Transcribe-preview-2B-GGUF` (card `22818f7a`). f16/q8_0 held back for
+`stelnettts-diff` branch + reference backend). Shipped `9f3c5ede`; q4_k (2.63 GB) on
+`Xenna/MOSS-Transcribe-preview-2B-GGUF` (card `22818f7a`). f16/q8_0 held back for
 bandwidth.
 
 ### #215 2026-07-02 moss-transcribe Vulkan segfault — encoder `flash_attn_ext` → manual attention
@@ -3857,17 +3857,17 @@ as TADA #192, but op-specific here.
 Fix: on Vulkan the encoder uses a manual `mul_mat + soft_max_ext + mul_mat`
 attention (identical `(hd, n_h, T)` layout as flash), keeping the encoder
 GPU-resident while avoiding the crashing op. Auto-selected when the backend name
-starts with "Vulkan"; overridable with `CRISPASR_MOSS_TRANSCRIBE_ENC_FLASH=1`
-(force flash, e.g. to retest a fixed driver) or `CRISPASR_MOSS_TRANSCRIBE_ENC_MANUAL=1`
+starts with "Vulkan"; overridable with `STELNETTTS_MOSS_TRANSCRIBE_ENC_FLASH=1`
+(force flash, e.g. to retest a fixed driver) or `STELNETTTS_MOSS_TRANSCRIBE_ENC_MANUAL=1`
 (force manual anywhere, for A/B). Verified: manual ≡ flash encoder output on CPU
-(`crispasr-diff` cos identical to 5 decimals), jfk.wav transcribes verbatim on
+(`stelnettts-diff` cos identical to 5 decimals), jfk.wav transcribes verbatim on
 CPU and on MoltenVK-Vulkan under both paths. The native NVIDIA/AMD segfault is
 not reproducible on MoltenVK (Metal-translation layer never exercises the vendor
 command-pool path).
 
 Follow-up: the sibling `moss-audio` (Qwen3-Omni) encoder has the byte-identical
 `flash_attn_ext` attention block (same `(hd,T,n_h)` Q/K/V layout, scale, F16 mask,
-reshape), so it got the same guard — auto-manual on Vulkan, `CRISPASR_MOSS_AUDIO_ENC_FLASH=1`
+reshape), so it got the same guard — auto-manual on Vulkan, `STELNETTTS_MOSS_AUDIO_ENC_FLASH=1`
 / `…_ENC_MANUAL=1` overrides, baked into the §176s cached encoder graph. The change
 touches only the Vulkan path (flash stays default on CPU/Metal/CUDA — zero regression
 risk to any working config), and the manual≡flash identity is already proven on this
@@ -3897,18 +3897,18 @@ reproducible on MoltenVK — Metal auto-manages command-buffer lifetime, so
 *and* jfk×3 run clean locally under every flash/manual combination).
 
 Fix: keep moss ON the GPU but disable Vulkan async — `setenv("GGML_VK_DISABLE_ASYNC",
-"1", 0)` before `crispasr_init_gpu_backend()` (the env is read at device creation).
+"1", 0)` before `stelnettts_init_gpu_backend()` (the env is read at device creation).
 With async off, every `graph_compute` fully drains the GPU before returning, so a
 later `command_pool_cleanup` only ever resets buffers whose work is already done →
 `vkResetCommandPool` is safe. CUDA/Metal ignore the env; `overwrite=0` respects an
-explicit user value; opt back into async with `CRISPASR_MOSS_TRANSCRIBE_VULKAN_ASYNC=1`
-/ `CRISPASR_MOSS_AUDIO_VULKAN_ASYNC=1`. Cost: ~10-15% slower than native async (vs.
+explicit user value; opt back into async with `STELNETTTS_MOSS_TRANSCRIBE_VULKAN_ASYNC=1`
+/ `STELNETTTS_MOSS_AUDIO_VULKAN_ASYNC=1`. Cost: ~10-15% slower than native async (vs.
 no GPU at all with the earlier CPU fallback — reverted). Same class as upstream
 ggml-org/llama.cpp#17302; worth an upstream fix to the async command-buffer
 lifecycle (then this env can be dropped). Verified on the local MoltenVK build:
 async on vs off produce byte-identical transcripts, moss stays on Vulkan, jfk×3
 verbatim. The crash-gone confirmation needs real RADV/NVIDIA hardware (reporter).
-The encoder manual-attn path (#215a) and the diff harness `CRISPASR_DIFF_USE_GPU=1`
+The encoder manual-attn path (#215a) and the diff harness `STELNETTTS_DIFF_USE_GPU=1`
 toggle for moss-transcribe are retained.
 
 ### #215c 2026-07-03 the proper ggml-vulkan fix — drain the queue before pool reset
@@ -3963,7 +3963,7 @@ Fix: rebuild the conv graph at every `moss_transcribe_run_encoder` entry (reuse
 across the intra-call chunk loop stays — identical allocs, no regrow in between,
 so §176s-style savings are kept); same invalidation at `moss_audio_run_encoder`
 entry. Reverted the #215d platform-gated CPU fallback — GPU is default again on
-native Vulkan; `CRISPASR_MOSS_{TRANSCRIBE,AUDIO}_FORCE_CPU=1` kept as escape
+native Vulkan; `STELNETTTS_MOSS_{TRANSCRIBE,AUDIO}_FORCE_CPU=1` kept as escape
 hatches (the `*_VULKAN_NATIVE` envs are gone). Kept: #215a manual encoder
 attention on Vulkan (re-testing flash there is a separate follow-up now that the
 repro harness exists).
@@ -4000,7 +4000,7 @@ driver → run the model on CPU; Apple(MoltenVK)/CUDA/Metal keep the GPU. The
 decision reads the backend we actually got (compile-time platform + created-device
 description for the log), with no env / device-creation-ordering race that the
 earlier attempts died on. Only AMD-on-Linux (no CUDA) loses acceleration —
-deterministically, instead of crashing. `CRISPASR_MOSS_TRANSCRIBE_VULKAN_NATIVE=1`
+deterministically, instead of crashing. `STELNETTTS_MOSS_TRANSCRIBE_VULKAN_NATIVE=1`
 (and `..._MOSS_AUDIO_...`) force the native GPU path for hardware A/B of any future
 GPU experiment (e.g. batching the conv-stem so the encoder stops churning ~11 tiny
 graphs/slice — the likely real trigger, unverifiable without native HW). Verified
@@ -4024,7 +4024,7 @@ auto-sliced into 6×30 s because moss-transcribe lacks `CAP_UNBOUNDED_INPUT`):
    `src/core/ngram_loop_fix.h` (`core_ngram::fix_loops`) and used by both. It is a
    pure text post-process (token/logit parity vs the reference is unchanged) and a
    no-op on non-degenerate slices, so clean slices stay byte-identical and the jfk
-   diff-harness is unaffected. Opt out with `CRISPASR_MOSS_TRANSCRIBE_NO_LOOPFIX=1`.
+   diff-harness is unaffected. Opt out with `STELNETTTS_MOSS_TRANSCRIBE_NO_LOOPFIX=1`.
    Shipped `3339a710`; unit test `tests/test-ngram-loop-fix.cpp`.
 2. **Seam duplication.** moss-transcribe is an LLM decoder that emits neither word
    nor token timestamps, but it was NOT on the overlap-save opt-out list, so each
@@ -4034,21 +4034,21 @@ auto-sliced into 6×30 s because moss-transcribe lacks `CAP_UNBOUNDED_INPUT`):
    ("…move much **of** the fence. Don't move much **to** the fence."). The over-long
    30 s+2×3 s buffer also pushes the greedy decoder further out of its trained window,
    worsening (1). Fixed by adding `"moss-transcribe"` to `kBlocked` in
-   `crispasr_chunk_context_gate.h` — the same opt-out its LLM-decoder peers (qwen3,
+   `stelnettts_chunk_context_gate.h` — the same opt-out its LLM-decoder peers (qwen3,
    granite, voxtral, …) already use — so long audio is sliced at a bare 30 s with no
    overlap extension. Gate unit test updated (`test-issue-114-chunk-context-gate.cpp`).
 
 ## #205 2026-06-30 `--max-len` for text-only backends + granite-plus timestamp-mode derail
 
 Reporter: `--max-len` had no effect on granite / qwen3 (worked on whisper/cohere).
-Root cause: `crispasr_make_disp_segments` could only split when a segment carried
+Root cause: `stelnettts_make_disp_segments` could only split when a segment carried
 word-level timings; granite/qwen3 (and granite-plus in plain mode) return
 text-only segments, so `--max-len` (and `-osrt`/`-ovtt`/`--split-on-punct`) were
 no-ops. Fix: when a segment has text but no usable words and `max_len > 0`, split
 the TEXT itself — greedy word-packing to ≤ max_len bytes (over-long tokens /
 space-less scripts broken at UTF-8 codepoint boundaries), timestamps interpolated
 by cumulative char length; composes with `--split-on-punct`
-(`examples/cli/crispasr_output.cpp`).
+(`examples/cli/stelnettts_output.cpp`).
 
 Second issue (granite **plus**): the model's word-timestamp instruction
 ("After each word add a timestamp tag … hello [T:45]") derailed the decoder into a
@@ -4065,7 +4065,7 @@ at max_new=200 (so not a long-decode bug): the model even emitted correctly-risi
 ignored its content. FIX: `use_v3_template = (audio_token_index < 50000) ||
 is_plus`, and build the user instruction once for both templates. The plus model
 now emits real word-level timestamps and speaker tags. (Supersedes the interim
-`CRISPASR_GRANITE_WORD_TS` opt-out from the first cut.) The text-only splitter
+`STELNETTTS_GRANITE_WORD_TS` opt-out from the first cut.) The text-only splitter
 above is still what powers `--max-len` on non-plus granite / qwen3 (which carry no
 word timings).
 
@@ -4098,15 +4098,15 @@ Metal follow-up (`862dbeca`): since the bucketed graph is shape-stable and Metal
 has no capture, allocate it **once** via a persistent `ggml_gallocr` on the
 single GPU backend and reuse it every step (`granite_dec_use_gallocr`), skipping
 the per-step `sched_reset`+`sched_alloc_graph`. Default-on for non-capture
-backends, `CRISPASR_GRANITE_DEC_GALLOCR=0` opts out; CUDA/HIP and CPU-split keep
+backends, `STELNETTTS_GRANITE_DEC_GALLOCR=0` opts out; CUDA/HIP and CPU-split keep
 the sched. Byte-identical, ctest 9/9. Measured (M1, Q4_K,
-`CRISPASR_GRANITE_DEC_PROFILE=1`): the win is modest on a quiet box (sched alloc
+`STELNETTTS_GRANITE_DEC_PROFILE=1`): the win is modest on a quiet box (sched alloc
 ~3 ms/step → ~0.02 ms) but large under memory pressure (alloc balloons to
 68-236 ms). The dominant ~100 ms/step was assumed to be Metal per-op dispatch
 that indirect command buffers (the Metal analog of CUDA-graph capture) would fix.
 
 **ICB follow-up → measured DUD.** Before building the (large, invasive) ICB
-refactor, added `CRISPASR_METAL_PROFILE` to `ggml_metal_graph_compute` to split
+refactor, added `STELNETTTS_METAL_PROFILE` to `ggml_metal_graph_compute` to split
 each step into host encode+commit vs GPU execute+sync. Result (granite-4.1-2b
 Q4_K, jfk, 27 decode steps): host encode = **1.2 ms (1.8 %)**, GPU = **64 ms
 (98 %)**, total 66 ms (cross-checks dec-profile's 70 ms). So the "dispatch floor"
@@ -4116,7 +4116,7 @@ blocker (every op binds args via `setBytes`, which `MTLIndirectComputeCommand`
 can't do). CUDA graphs win 9-13× here because the RTX 5090 is *CPU-launch-bound*;
 M1 is *GPU-bound* — opposite regime, same trick, opposite verdict. Decided by
 measuring the host/GPU ratio, not by assuming. Full write-up + table in
-[[LEARNINGS]] §210; `CRISPASR_METAL_PROFILE` kept as the reusable host-vs-GPU
+[[LEARNINGS]] §210; `STELNETTTS_METAL_PROFILE` kept as the reusable host-vs-GPU
 probe. ICB is closed, not open. Real M1-decode levers are GPU-side (quant
 bandwidth, kernel fusion).
 
@@ -4140,8 +4140,8 @@ consecutive windows at the overlap midpoint *continuing from the last committed
 word's end* (no boundary drop), then an adjacent-dedup pass removes any
 jitter-doubled seam word. Non-JA long audio uses it; JA stays on the streamed
 encoder; audio ≤ one window is a single exact pass. Knobs:
-`CRISPASR_PARAKEET_CHUNK_SECONDS` / `_CHUNK_OVERLAP`;
-`CRISPASR_PARAKEET_STREAM_THRESHOLD` now forces one exact pass up to N s
+`STELNETTTS_PARAKEET_CHUNK_SECONDS` / `_CHUNK_OVERLAP`;
+`STELNETTTS_PARAKEET_STREAM_THRESHOLD` now forces one exact pass up to N s
 (escape hatch for NeMo-exact bit-repro on known-clean audio).
 
 Validated (Q4_K v3, M1/Metal): **jfk×12 (132 s, exact ground truth = 264 words):
@@ -4156,13 +4156,13 @@ sections); Japanese 240 s: 346 vs 320. 746/746 unit tests green. See
 Reporter: the session/Rust `Session::transcribe` always ran Parakeet through the
 unchunked full-length encoder (`parakeet_transcribe_ex` → one O(T²) FastConformer
 graph), so long audio "hangs" for minutes on Metal. Fixed in the session dispatch
-(`transcribe_single`, `src/crispasr_c_api.cpp`) by mirroring the CLI adapter's
+(`transcribe_single`, `src/stelnettts_c_api.cpp`) by mirroring the CLI adapter's
 bounded long-form path: non-JA (vocab > 4096) above a memory-safe cap (300 s,
-`CRISPASR_PARAKEET_STREAM_THRESHOLD`) → NeMo-exact single-pass + silence-split
+`STELNETTTS_PARAKEET_STREAM_THRESHOLD`) → NeMo-exact single-pass + silence-split
 (`parakeet_session_longform`, ported from the CLI's `transcribe_longform`, one
 session segment per piece); JA-only → the overlapping streamed encoder; short
 audio → the exact single pass (byte-identical to before). Added option-1 explicit
-entry points `crispasr_session_transcribe_chunked[_lang]` + Rust
+entry points `stelnettts_session_transcribe_chunked[_lang]` + Rust
 `Session::transcribe_chunked[_with_language]` for batch callers that want to force
 the bounded path / size the window (inert on non-Parakeet backends).
 
@@ -4175,16 +4175,16 @@ decoder collapses to all-blank → **empty transcript**. This silently broke eve
 repeated encode: long-lived sessions (the server!), the streamed/chunked paths,
 and the new silence-split path; it hid because the CLI does one encode per process.
 Fixed by making the rebuild-every-call path the default and gating the cache
-opt-in behind `CRISPASR_PARAKEET_ENC_CACHE=1` (`src/parakeet.cpp`) until it is
+opt-in behind `STELNETTTS_PARAKEET_ENC_CACHE=1` (`src/parakeet.cpp`) until it is
 reimplemented re-entrantly. Validated on `parakeet-tdt-0.6b-v3-q4_k` (M1/Metal):
 plain transcribe ×N verbatim, chunked 0 / 5 s verbatim, 60 s silence-split path
 bounded (4.1 s) and non-empty; 739/739 unit tests green. See [[LEARNINGS]].
 
 **2026-07-01 follow-ups (reporter's two non-blocker asks).**
-(a) **Progress callback.** Added `crispasr_session_set_progress_callback(s, cb,
+(a) **Progress callback.** Added `stelnettts_session_set_progress_callback(s, cb,
 user_data)` — `cb(processed_samples, total_samples, ud)` fires once per finished
 window from `parakeet_session_chunked_merge`, monotonic to `total`. Also mirrored
-into the existing `crispasr_get_progress()` atomic so the Dart poll path (the
+into the existing `stelnettts_get_progress()` atomic so the Dart poll path (the
 project's callback-free progress mechanism) now covers chunked long-audio for
 free. Rust safe wrapper `Session::transcribe_chunked_with_progress` (scoped-closure
 trampoline). Validated live on `parakeet-tdt-0.6b-v3-q4_k` (M1/Metal) via a session
@@ -4203,14 +4203,14 @@ Real headroom = encoder GPU compute + the ~40 % overlap re-encode, not the cache
 
 On branch `fix/tada-vulkan-repeat-f16` (worktree `/Volumes/backups/code/tada-vk-stash`).
 Continues the #192 native-Vulkan work (CPU-fallback default + `TADA_MAX_EXPANDED_FRAMES`
-guard + gated `CRISPASR_TADA_VULKAN_NATIVE=1` direct-gallocr path already shipped to main).
+guard + gated `STELNETTTS_TADA_VULKAN_NATIVE=1` direct-gallocr path already shipped to main).
 
 **Shipped on the branch (commit `0c519efa`) — the REPEAT-f16 unblock.** The gated
 native path was dead for *everyone*, not just MoltenVK: the talker's GQA head-expansion
 does `ggml_repeat_4d` directly on the **F16** KV cache, and Vulkan has no `REPEAT f16→f16`
 pipeline — so it aborts with `Missing op: REPEAT for f16 to f16` (confirmed on RADV by
 contributor BergmannAtmet *and* locally on MoltenVK). Fix: a per-call `force_kv_read_f32`
-in `core_attn::KvSelfAttnParams` (OR'd with the global `CRISPASR_KV_READ_F32`) that casts
+in `core_attn::KvSelfAttnParams` (OR'd with the global `STELNETTTS_KV_READ_F32`) that casts
 K/V up to F32 *before* the GQA repeat, lowering it to a supported F32 REPEAT. TADA sets it
 only when `c->vulkan_native`; Metal/CPU keep the F16 fast path (field defaults false → no
 behaviour change anywhere else). The native path now **runs end-to-end** on MoltenVK;
@@ -4268,7 +4268,7 @@ GPU backend is Vulkan, run the whole codec on the **CPU backend**
 (`tada_codec_init_from_file_impl`). The codec is a one-shot decode (not the AR loop) and its
 input features are bit-identical Metal-vs-Vulkan (Metal renders them correctly), so CPU
 rendering is faithful. Talker/FM keep the native-Vulkan path. Debug override:
-`CRISPASR_TADA_CODEC_VULKAN_NATIVE=1`. Open follow-up: op-level repros rule out the conv
+`STELNETTTS_TADA_CODEC_VULKAN_NATIVE=1`. Open follow-up: op-level repros rule out the conv
 kernels, so the GPU-native path needs either a chunked codec decode (under the breaking
 length) or graph-scale gallocr debugging — best on RADV, not MoltenVK.
 
@@ -4295,10 +4295,10 @@ native `--make-ref` voice reference creation.
 - `tools/reference_backends/tada_encoder.py` — diff harness reference dump
   with staged model loading (aligner→free→encoder) for 8 GB RAM
 
-**GGUFs** published at [cstr/tada-encoder-GGUF](https://huggingface.co/cstr/tada-encoder-GGUF):
+**GGUFs** published at [Xenna/tada-encoder-GGUF](https://huggingface.co/Xenna/tada-encoder-GGUF):
 `tada-encoder-f16.gguf` (178 MB), `tada-aligner-en.gguf` (1.1 GB).
 
-**Diff harness** wired: `crispasr-diff tada-encoder` compares `encoder_wav_out`,
+**Diff harness** wired: `stelnettts-diff tada-encoder` compares `encoder_wav_out`,
 `encoder_attn_out`, `encoder_hidden`, `encoder_token_values`. Current parity:
 cos_mean=0.94 on wav_encoder (structural correctness confirmed, F16 precision
 debugging WIP).
@@ -4319,13 +4319,13 @@ vs dilation, tensor layout for diff comparison.
 
 ## 2026-06-22 audio — AAC/M4A/ALAC/CAF on Apple (AudioToolbox) + AIFF/W64/RF64 (free)
 
-More `crispasr_audio_load` formats, still ffmpeg-free:
+More `stelnettts_audio_load` formats, still ffmpeg-free:
 
 - **AIFF / W64 / RF64** already decode — miniaudio's bundled `ma_dr_wav` handles
   the WAV family. Verified (3 s test files round-trip to 16 kHz). No code; noted
   here so it's discoverable.
 - **AAC / M4A / ALAC / CAF on Apple** via an `ExtAudioFile` (AudioToolbox)
-  fallback in `crispasr_audio.cpp` (`__APPLE__`): when miniaudio can't open the
+  fallback in `stelnettts_audio.cpp` (`__APPLE__`): when miniaudio can't open the
   file, decode + resample + remix to f32 16 kHz through the system framework —
   **no ffmpeg, no GPL** (AudioToolbox is an OS framework; `-framework
   AudioToolbox/CoreFoundation/CoreAudio` linked on Apple). Verified on macOS: AAC
@@ -4340,17 +4340,17 @@ but not OSI-permissive + patent-disclaimed) or the optional ffmpeg fallback.
 Windows/Android native paths + the permissive codec libs (AMR via opencore-amr
 Apache-2.0; Speex/WavPack BSD; WebM demux) are follow-ups (PLAN §219).
 
-## 2026-06-22 audio — .opus decode in crispasr_audio_load (no ffmpeg)
+## 2026-06-22 audio — .opus decode in stelnettts_audio_load (no ffmpeg)
 
-`crispasr_audio_load` / `_stereo` now decode `.opus` (Ogg/Opus) alongside
+`stelnettts_audio_load` / `_stereo` now decode `.opus` (Ogg/Opus) alongside
 WAV/MP3/FLAC/OGG-Vorbis. Implemented as a miniaudio **custom decoding backend**
 (vendored `src/miniaudio_libopus.{h,c}` from mackron/miniaudio, MIT-0) wrapping
 **libopus + opusfile + libogg** (BSD-3-Clause) — so `.opus` flows through the
 same `ma_decoder` resample-to-16k + downmix + chunked-read path as the existing
 formats. No ffmpeg on the decode path.
 
-CMake `CRISPASR_OPUS` (default ON): primary path links system `opusfile` via
-pkg-config (macOS/Linux); fallback `CRISPASR_OPUS_FETCH` builds ogg/opus/opusfile
+CMake `STELNETTTS_OPUS` (default ON): primary path links system `opusfile` via
+pkg-config (macOS/Linux); fallback `STELNETTTS_OPUS_FETCH` builds ogg/opus/opusfile
 statically via FetchContent for platforms without system libs (Windows / iOS /
 Android / WASM) — opusfile is autotools-only upstream, so its HTTP-free core
 sources are compiled directly. Verified on macOS: pkg-config path decodes a 3 s
@@ -4365,9 +4365,9 @@ dynamic fallback for formats no permissive native decoder covers (e.g. AAC).
 Generated `tada-ref-{ar,ch,de,es,fr,it,ja,pl,pt}.gguf` from FLEURS CC-BY-4.0
 clips using `HumeAI/tada-codec` language-specific aligners on Kaggle
 (`chr1str/tada-language-voice-reference-ggufs`, kernel v11).  Uploaded to
-`cstr/tada-tts-1b-GGUF` and `cstr/tada-tts-3b-ml-GGUF`.
+`Xenna/tada-tts-1b-GGUF` and `Xenna/tada-tts-3b-ml-GGUF`.
 
-**How it works at runtime:** `-l fr` causes CrispASR to auto-download
+**How it works at runtime:** `-l fr` causes StelnetTTS to auto-download
 `tada-ref-fr.gguf` (132 KB), which stores the `prompt_token_values` (N×512)
 and `prompt_token_positions` (N,) acoustic fingerprint extracted offline by the
 TADA aligner from a 10 s FLEURS clip.  The decoder conditions on these tokens
@@ -4412,7 +4412,7 @@ Both WAVs saved: `tada-de.wav` (C++) and `tada-de-py.wav` (Python).
 Follow-up to the #182 cap: instead of truncating long input, chunk it. The CLI
 `--tts` path called `backend->synthesize` on the whole string; now it runs the
 same sentence-chunk pipeline the server `/v1/audio/speech` uses (#66):
-`crispasr_tts_plan_chunks_for_backend` → synthesize each chunk → `…concat_with_
+`stelnettts_tts_plan_chunks_for_backend` → synthesize each chunk → `…concat_with_
 silence` (200 ms gaps). Each chunk stays within the model's healthy horizon and
 voice consistency holds (same conditioning every call).
 
@@ -4505,7 +4505,7 @@ path dropped (it read `vocab.json` = 50257 only). Fixed the converter to merge
 `added_tokens.json`, and added `models/patch-chatterbox-turbo-tokens.py` to repair
 the already-published GGUFs in place (rewrite `tokenizer.ggml.tokens` 50257→50276;
 copy all other KV + tensors byte-for-byte, no re-quantize). Re-uploaded all three
-(`-t3-{q4_k,q8_0,f16}.gguf`) to `cstr/chatterbox-turbo-GGUF` — now internally
+(`-t3-{q4_k,q8_0,f16}.gguf`) to `Xenna/chatterbox-turbo-GGUF` — now internally
 consistent (50276==50276, no load warning), each verified to load + synthesize +
 ASR-roundtrip verbatim. Xet deduped the unchanged weights (only the tokenizer
 delta uploaded). The runtime now also emits the `[emotion]` tags (§217 above).
@@ -4549,7 +4549,7 @@ parler_tts's bucket; value-identical on every backend, no-op for the F16
 GPU path**. CPU bucket → 160 KB WAV, roundtrip verbatim. Non-bucket default
 unchanged.
 
-**Stays opt-in (`CRISPASR_ORPHEUS_BUCKET=1`, default OFF).** Now correct, but on
+**Stays opt-in (`STELNETTTS_ORPHEUS_BUCKET=1`, default OFF).** Now correct, but on
 M1's unified memory the fixed-Lk over-read makes it **~30 % slower** than the
 non-bucket path on short utterances (97 s vs 75 s), the same reason parler's
 bucket is opt-in. It may still win on discrete GPU / CUDA, where the non-bucket
@@ -4575,7 +4575,7 @@ the *divergent* re-transcription of the overlap region. A prior option matrix
 (2026-05-26, §104/§114) compared only "dispatcher chunk+merge" vs "backend
 streamed" — both inferior — and never tried whole-clip single-pass.
 
-**Fix (`examples/cli/crispasr_backend_parakeet.cpp`, one TU).** Non-JA models
+**Fix (`examples/cli/stelnettts_backend_parakeet.cpp`, one TU).** Non-JA models
 (vocab>4096: v3 / multilingual / EN) now advertise `CAP_INTERNAL_CHUNKING` so
 the dispatcher hands the whole clip to the backend, which runs:
 - ≤ cap (default 300 s): one full-attention pass — NeMo-exact. Full attention
@@ -4591,11 +4591,11 @@ on single-pass (#89) and is unchanged: no `CAP_INTERNAL_CHUNKING`, dispatcher
 keeps driving it via VAD / 30 s chunking.
 
 **Env gates** (dev-guide convention; old paths preserved for A/B, none removed):
-- `CRISPASR_PARAKEET_STREAM_THRESHOLD` — single-pass cap seconds; 0 = always
+- `STELNETTTS_PARAKEET_STREAM_THRESHOLD` — single-pass cap seconds; 0 = always
   streamed. Default JA=0, non-JA=300.
-- `CRISPASR_PARAKEET_LONGFORM` — 1 = silence-split single-pass above the cap,
+- `STELNETTTS_PARAKEET_LONGFORM` — 1 = silence-split single-pass above the cap,
   0 = streamed fallback. Default non-JA=1, JA=0.
-- `CRISPASR_PARAKEET_INTERNAL_CHUNKING` — 0 = revert to dispatcher chunk+merge.
+- `STELNETTTS_PARAKEET_INTERNAL_CHUNKING` — 0 = revert to dispatcher chunk+merge.
 CLI escape hatches unchanged: `--chunk-seconds N`, `--vad`.
 
 **Validated** (parakeet-tdt-0.6b-v3, German): default 120 s/5 min = 100.00 %
@@ -4611,7 +4611,7 @@ instead of two sequential `run_t3_kv` calls, so each T3 weight is read once for
 both passes (the AR decode is weight-bandwidth + dispatch bound on single-token
 steps — the largest synthesis stage). Reference impl gianni-cor/chatterbox.cpp
 measured **−42 % T3** from exactly this. Gated behind
-`CRISPASR_CHATTERBOX_T3_CFG_B2=1`, default OFF; legacy path bit-unchanged when off.
+`STELNETTTS_CHATTERBOX_T3_CFG_B2=1`, default OFF; legacy path bit-unchanged when off.
 
 **Design (reuse both existing caches, batch GEMMs, split attention).** New
 `build_graph_t3_kv_b2` / `run_t3_kv_b2`. Per layer, hidden is `(D,1,2)` (b0=cond,
@@ -4628,15 +4628,15 @@ replicated. Dedicated `t3_sched_b2`; graph rebuilt + re-alloc'd per step (no
 bucket cache yet — §208/§212 say rebuild is negligible on compute-bound CPU; not
 yet true for the per-step Metal alloc — see GPU caveat).
 
-**Validation — greedy (`CRISPASR_CHATTERBOX_TEMP=0`) token parity is the gate.**
+**Validation — greedy (`STELNETTTS_CHATTERBOX_TEMP=0`) token parity is the gate.**
 Since greedy + fixed seed makes the whole pipeline deterministic, identical T3
 tokens ⇒ byte-identical WAV. Results:
 - **CPU, all quants**: B2 ≡ legacy. q8 verified at the **token level**
   (seed-independent, bit-identical through EOS + count); q8/f16/q4k WAV
-  byte-identical with a pinned `CRISPASR_CHATTERBOX_SEED`. (WAV md5 is only a
+  byte-identical with a pinned `STELNETTTS_CHATTERBOX_SEED`. (WAV md5 is only a
   valid gate with a pinned seed — the S3Gen flow-matching prior is RNG-seeded;
   default seed is 0.)
-- **GPU (`CRISPASR_CHATTERBOX_T3_GPU=1`) + F16**: B2 ≡ GPU-legacy, byte-identical
+- **GPU (`STELNETTTS_CHATTERBOX_T3_GPU=1`) + F16**: B2 ≡ GPU-legacy, byte-identical
   — AND it **runs where legacy crashes**: the §186 Lk-bucket step graph segfaults
   on Metal step ≥1 (`buffer is nil`, the tightened cross-backend resolution); B2
   rebuilds each step so it sidesteps the bucket entirely. So B2 is the first
@@ -4673,10 +4673,10 @@ live):
 - `tools/reference_backends/orpheus_talker.py` — greedy codec-token stream
   (`gen_codes`) from the PyTorch talker; codec-block range env-configurable
   (orpheus-3b-0.1-ft ships offset=128256 count=28683, **not** 128266/28672).
-- `crispasr-diff orpheus-talker` branch (`ORPHEUS_DIFF_GPU` runs the AR loop
+- `stelnettts-diff orpheus-talker` branch (`ORPHEUS_DIFF_GPU` runs the AR loop
   on the GPU; `ORPHEUS_DIFF_MAXGEN` caps it).
 - Kaggle pipeline `tools/kaggle/orpheus-talker-cuda/`: build (CUDA) →
-  convert → **crispasr-quantize** Q8_0/Q4_K → ref → talker+SNAC diffs (CPU vs
+  convert → **stelnettts-quantize** Q8_0/Q4_K → ref → talker+SNAC diffs (CPU vs
   GPU) → HF upload → ccache save-back. Resilient (per-step `safe()`), so one
   failing step never aborts the run.
 
@@ -4685,9 +4685,9 @@ byte-identical to CPU** (the diff FAIL is bf16-vs-F32-ref precision, 47.6%,
 not a functional failure), and the **SNAC vocoder PASSES on GPU 8/8**. Both
 components work on CUDA → the 0-byte is the full-synthesize glue or already
 fixed; end-to-end CUDA test pending. F16/Q8_0/Q4_K GGUFs + the talker ref are
-published at `cstr/orpheus-3b-0.1-ft-GGUF`.
+published at `Xenna/orpheus-3b-0.1-ft-GGUF`.
 
-Infra fix found along the way: both `crispasr-ccache` datasets were
+Infra fix found along the way: both `stelnettts-ccache` datasets were
 mis-formatted (cache shards at the dataset root, not a `ccache.tar` /
 `.ccache/` the harness recognizes) — so the ccache had **never** warmed any
 CUDA build. Re-packaged both as `ccache.tar`; builds are warm now. See
@@ -4700,20 +4700,20 @@ LEARNINGS.
 Two configurability items from the T3-CFG perf dig.
 
 **Fix — s3gen ignored the CPU thread count.** chatterbox resolves its thread
-count (`-t` / `CRISPASR_CHATTERBOX_THREADS`, default `min(8,hw)`; §176u) and
+count (`-t` / `STELNETTTS_CHATTERBOX_THREADS`, default `min(8,hw)`; §176u) and
 calls `ggml_backend_cpu_set_n_threads` on its own backend, then passes the count
 to `chatterbox_s3gen_init_from_file` — but s3gen only *stored* it and never set
 it on its backend. So the S3Gen encoder, the CPU-route CFM, and the HiFT vocoder
 all ran at ggml's default thread count regardless of the knob. Now s3gen applies
-the count (and reads `CRISPASR_CHATTERBOX_THREADS` directly, so a standalone
-s3gen is configurable too). Verified: `CRISPASR_CHATTERBOX_THREADS=6` →
+the count (and reads `STELNETTTS_CHATTERBOX_THREADS` directly, so a standalone
+s3gen is configurable too). Verified: `STELNETTTS_CHATTERBOX_THREADS=6` →
 `chatterbox: CPU backend threads=6` **and** `s3gen: CPU backend threads=6`.
 
 **Optional gated path — cached CFG uncond T3 decode (default OFF).** The cond
 pass uses the Lk-bucketed cached graph; the uncond pass skipped it (`use_kv_k`
 set) and rebuilt + re-allocated its graph every token. Added a parallel bucket
 cache bound to `kv_k_cfg`/`kv_v_cfg` with its own scheduler
-(`CRISPASR_CHATTERBOX_T3_CFG_BUCKET=1`). Token-parity is bit-identical (greedy,
+(`STELNETTTS_CHATTERBOX_T3_CFG_BUCKET=1`). Token-parity is bit-identical (greedy,
 same graph topology — only the KV binding differs). But it is **not a default
 win**: graph-rebuild is negligible on this compute-bound decode (cf. §208), and
 the dual-scheduler path showed no improvement on the contended M1 (timing too
@@ -4776,20 +4776,20 @@ diacritics specifically* triggered it (أ إ آ ؤ ئ are the NFKD-decomposable 
   no GGUF reconversion needed.** Script-specific normalizers (zh cangjie, ja
   kakasi, he dicta, ko jamo, ru stress) remain unimplemented (need external libs).
 - **Diff-harness stage (`cc540448`).** Added a deterministic `t3_text_tokens`
-  crispasr-diff stage (`chatterbox_dump_text_tokens` C API + `CHATTERBOX_LANG`
+  stelnettts-diff stage (`chatterbox_dump_text_tokens` C API + `CHATTERBOX_LANG`
   env) + `tools/gen_chatterbox_text_token_ref.py` (tokenizer-only upstream ref).
   `[PASS] t3_text_tokens c++=139 ids ref=139 ids mismatches=0`. Ref archive at
-  `cstr/chatterbox-GGUF/diff-refs/`. Live: synth + whisper roundtrip of the
+  `Xenna/chatterbox-GGUF/diff-refs/`. Live: synth + whisper roundtrip of the
   reporter's Arabic = recognizable, no spurious onsets.
 - **Cross-repo build fix (`66dc549b`).** `core/gguf_loader.h` is shared with
-  CrispEmbed; the two repos disagree on the tensor-map type. Replaced the
+  StelnetEmbed; the two repos disagree on the tensor-map type. Replaced the
   hard-coded `std::map`/`unordered_map` (a 5-commit flip-flop) with a single
   `core_gguf::tensor_map` alias each repo defines; consumers track it. Builds in
   both repos.
 - **CPU thread wiring §176u (`3d02c082`).** chatterbox never called
   `ggml_backend_cpu_set_n_threads`, so the compute-bound T3 decode ran at
   `GGML_DEFAULT_N_THREADS=4` and `-t` was ignored. Wired it (default
-  `min(8,hw)`, env `CRISPASR_CHATTERBOX_THREADS`); output bit-identical 4-vs-8
+  `min(8,hw)`, env `STELNETTTS_CHATTERBOX_THREADS`); output bit-identical 4-vs-8
   threads. Speedup magnitude handed to §176 (box too contended to measure;
   see §176u).
 - **Rejected perf levers** (methodical A/B): smaller decode buckets (no benefit
@@ -4802,7 +4802,7 @@ diacritics specifically* triggered it (أ إ آ ؤ ئ are the NFKD-decomposable 
 ## 2026-06-21 §208 Chatterbox S3Gen CFM — single-GPU raw-gallocr cached path (correct, but a perf DUD)
 
 Built the §207 follow-up lever: an alternative, env-gated CFM compute path
-(`CRISPASR_S3GEN_UNET_GALLOCR=1`) that runs the whole batch-2 CFG UNet1D on a
+(`STELNETTTS_S3GEN_UNET_GALLOCR=1`) that runs the whole batch-2 CFG UNet1D on a
 **single GPU backend** allocated with **raw `ggml_gallocr`** (no
 `ggml_backend_sched`) and **caches the graph + allocation across all Euler
 steps**. Unlike `ggml_backend_sched_alloc_graph` (which mutates the graph with
@@ -4866,8 +4866,8 @@ CUDA failures via the §206 pattern; orpheus + cosyvoice3 remain.
 ## 2026-06-21 §175 item 2 — GPT-2 BPE decoder DRY (6 copies → core_bpe)
 
 Removed 6 copy-pasted `byte_decoder()` + `decode_token()` / `gpt2_byte_decode()`
-implementations (~440 lines) across `crispasr_c_api.cpp`, `lfm2_audio.cpp`,
-`vibevoice.cpp`, `crispasr_backend_{qwen3,moss_audio,mimo_asr}.cpp`. All now
+implementations (~440 lines) across `stelnettts_c_api.cpp`, `lfm2_audio.cpp`,
+`vibevoice.cpp`, `stelnettts_backend_{qwen3,moss_audio,mimo_asr}.cpp`. All now
 delegate to `core_bpe::token_bytes_to_utf8()` in `src/core/bpe.h` (which already
 existed with a unit test in `tests/test-core-bpe.cpp`).
 
@@ -4901,7 +4901,7 @@ the same audio, CFM nearly halved (≈20–25% off total synthesis); 4 starts to
 diverge (waveform corr drops to 0.58).
 
 `p.cfm_steps` 10→6 (`src/chatterbox.cpp`). `--tts-steps N` overrides;
-`crispasr-diff` pins 10 (`chatterbox_set_cfm_steps(ctx, 10)`) to stay
+`stelnettts-diff` pins 10 (`chatterbox_set_cfm_steps(ctx, 10)`) to stay
 apples-to-apples with the 10-step reference dump. 10 remains the
 reference-exact setting.
 
@@ -4956,19 +4956,19 @@ Q5_K mul_mat / im2col-depthwise-conv all remain candidates).
 
 **Fix.** Since CPU is correct and the GPU path is broken end-to-end, default the
 backend to CPU regardless of the global `--gpu` request;
-`CRISPASR_LFM2_AUDIO_GPU=1` opts back into the experimental GPU path for
+`STELNETTTS_LFM2_AUDIO_GPU=1` opts back into the experimental GPU path for
 debugging. On a CUDA box this now runs on CPU → no crash, correct output, so the
 sweep passes. Also fixed the CLI adapter, which hardcoded the transcribe prompt
 to `nullptr` (always Japanese) — it now forwards `-l en`/`params.language`.
 **Open:** the proper GPU-backbone miscompute fix (would restore GPU accel).
 
 **Diff-harness follow-up (`fb5b186c`).** To debug the GPU backbone with
-crispasr-diff properly: built + published the PyTorch reference dump
+stelnettts-diff properly: built + published the PyTorch reference dump
 (LiquidAI/LFM2.5-Audio-1.5B audio-only backbone stages) to
-`cstr/crispasr-regression-fixtures` (`lfm2-audio-1.5b/jfk_11s/ref.gguf`), made
+`Xenna/stelnettts-regression-fixtures` (`lfm2-audio-1.5b/jfk_11s/ref.gguf`), made
 `run_lfm` GPU-capable (sched instead of CPU-only `ggml_graph_compute_with_ctx`;
 positions/mask are now graph inputs — also fixes `lfm2_gqa_attention` writing
-`->data` under a no_alloc graph), and wired `CRISPASR_DIFF_USE_GPU=1` into the
+`->data` under a no_alloc graph), and wired `STELNETTTS_DIFF_USE_GPU=1` into the
 lfm2 diff. The CPU diff matches the ref at cos_mean≈0.999 (cos_min≈0.93 = Q5_K
 quant drift). **Findings:** mel/encoder/adapter are GPU-correct; the backbone
 diverges from layer 0 on Metal. *Ruled out:* the depthwise conv (an explicit
@@ -4994,7 +4994,7 @@ scheduler — the entire backbone is supported on the active backend (Metal &
 CUDA), so a single-backend graph never inserts the broken copy. Applied to
 `backbone_step` (ASR/TTS/S2S) and `run_lfm`. GPU now transcribes JFK verbatim and
 the GPU diff matches the PyTorch ref identically to CPU. **GPU is the default
-again**; `CRISPASR_LFM2_AUDIO_CPU=1` forces CPU (AR decode is dispatch-bound and
+again**; `STELNETTTS_LFM2_AUDIO_CPU=1` forces CPU (AR decode is dispatch-bound and
 can run faster on CPU; GPU-decode graph-caching is a perf follow-up). Lesson that
 cost the most time: per-intermediate `ggml_set_output` snapshots are unreliable
 on the Metal sched (read cos=1.0 while the real forward is garbage) — bisect on
@@ -5046,7 +5046,7 @@ uninitialised `stft_min` sentinel — every vocoder value is NaN). Pre-existing
 (the unfixed baseline NaNs identically), absent with F16 s3gen.
 
 **Properly diagnosed (an earlier write-up wrongly called this "compound F16
-accumulation" — it is not).** Instrumented with `CRISPASR_S3GEN_DUMP=1`
+accumulation" — it is not).** Instrumented with `STELNETTTS_S3GEN_DUMP=1`
 (per-Euler-step `x_rms`) + the compiled-Metal-pipeline log:
 - **Single-pass, not compounding.** The **first** Euler step is already NaN
   (`CFM step 1/10 x_rms=nan`) — one UNet forward emits it, no 10-step build-up.
@@ -5060,7 +5060,7 @@ accumulation" — it is not).** Instrumented with `CRISPASR_S3GEN_DUMP=1`
   correct — the activation requant is the q8-GPU-only defect.
 - **Batch shape decides NaN vs garbage.** The default cond+uncond **batch=2
   fused CFG graph** NaNs; the batch=1 single-pass path
-  (`CRISPASR_S3GEN_UNET_CFG_SINGLE=1`) is *finite but unintelligible* on q8-GPU
+  (`STELNETTTS_S3GEN_UNET_CFG_SINGLE=1`) is *finite but unintelligible* on q8-GPU
   (`conv_pre rms` ~2× ref, ASR → ∅). Same root cause, different blow-up.
 
 Fix (`s3gen_cfm_is_quantized()` peeks GGUF tensor types for a quantized
@@ -5079,7 +5079,7 @@ Fix (`s3gen_cfm_is_quantized()` peeks GGUF tensor types for a quantized
    GPU**, no NaN. The leftover q8 tensors (65 MiB) stay in the load buffer
    unreferenced.
 
-`CRISPASR_S3GEN_UNET_CPU=1` forces the CPU route (1); `=0` keeps the broken q8
+`STELNETTTS_S3GEN_UNET_CPU=1` forces the CPU route (1); `=0` keeps the broken q8
 GPU path for debugging. F16 s3gen is unaffected; CUDA is untouched (PLAN #83
 validated GPU+PREC_F32 to cos 1.0 on P100, so the crash fix alone should let the
 q8 sweep pass there).
@@ -5091,7 +5091,7 @@ produces good audio there with the FFT fix (the Metal CFM route is M1-only).
 
 ## 2026-06-21 §203 Parler — device-resident KV + Lk-bucketed AR decode (§176b+c, opt-in)
 
-Added an opt-in (`CRISPASR_PARLER_BUCKET=1`, default OFF) fast path to
+Added an opt-in (`STELNETTTS_PARLER_BUCKET=1`, default OFF) fast path to
 `parler_tts.cpp`: device-resident self-attn KV (written in place via
 `ggml_set_rows`, read as a fixed-Lk window), device-resident cross-attn
 KV (uploaded once per utterance), and 7 cached fixed-Lk decode-step
@@ -5124,10 +5124,10 @@ the long-utterance cost (1.86× at 600 steps on its own), and (b) reusing
 the dedicated sched allocation across steps instead of reset+alloc per step.
 Still opt-in (default path stays byte-identical; CUDA unvalidated).
 
-**Validation (crispasr-diff vs F32 PyTorch ground truth).** Generated a
+**Validation (stelnettts-diff vs F32 PyTorch ground truth).** Generated a
 parler reference (`tools/dump_reference.py --backend parler-tts`, greedy,
-seed 42) and ran `crispasr-diff parler-tts` with the bucket path off and on
-(reference at `hf.co/cstr/parler-tts-mini-v1.1-GGUF/parler-mini-v1.1-ref.gguf`):
+seed 42) and ran `stelnettts-diff parler-tts` with the bucket path off and on
+(reference at `hf.co/Xenna/parler-tts-mini-v1.1-GGUF/parler-mini-v1.1-ref.gguf`):
 - **F16: legacy 108/108 (100%) PASS, bucket 108/108 (100%) PASS** — the port
   matches PyTorch exactly and the bucket is bit-identical to both legacy and
   ground truth over the gen_codes_20 window.
@@ -5207,7 +5207,7 @@ graph), moonshine_streaming (chunk state), moss/voxtral/granite/kyutai
 ## 2026-06-20 §196 FireRed VAD context cache (§176e)
 
 Added a static `g_firered_cache_ctx` + `g_firered_cache_mtx` cache in
-`crispasr_vad.cpp` following the MarbleNet/Silero pattern. `compute_firered_vad_slices`
+`stelnettts_vad.cpp` following the MarbleNet/Silero pattern. `compute_firered_vad_slices`
 now holds the mutex and reuses the cached context across calls instead of
 calling `firered_vad_init` + `firered_vad_free` on every VAD invocation.
 `firered_vad_context` holds only immutable model weights + backend (no
@@ -5269,7 +5269,7 @@ Forward-declared `run_talker_kv_bucket` to resolve call-before-definition.
 ## 2026-06-20 §189 mel.cpp BLAS mel filterbank projection
 
 Replace scalar do_matmul triple-loop with cblas_sgemm for both MelsFreqs
-(power × fb^T) and FreqsMels (power × fb) layouts. crispasr-core now links
+(power × fb^T) and FreqsMels (power × fb) layouts. stelnettts-core now links
 Accelerate/MKL/OpenBLAS; all ~40 backends using core_mel::compute get AMX/SIMD
 SGEMM for mel projection (~50× on M1 AMX vs scalar).
 
@@ -5303,7 +5303,7 @@ vector<float>>` at model load so `read_tensor_f32()` returns cached F32
 data instead of re-reading from backend + dequanting F16→F32 on every
 synthesis call. 48 `read_tensor_f32` calls across text_encoder,
 flow_inverse, wavenet, SDP, HiFi-GAN. Gated by
-`CRISPASR_MELOTTS_WEIGHT_CACHE` (default ON). A/B: 20806 vs 24684 ms
+`STELNETTTS_MELOTTS_WEIGHT_CACHE` (default ON). A/B: 20806 vs 24684 ms
 (best of 3), 1.19× end-to-end.
 
 ---
@@ -5314,7 +5314,7 @@ Pre-populate `unordered_map<tensor*, vector<float>>` at model load so
 every `read_tensor_f32()` call returns cached F32 data instead of
 `ggml_backend_tensor_get` + F16→F32 dequant. 39 calls across text
 encoder, flow_inverse, wavenet, SDP, HiFi-GAN. Gated by
-`CRISPASR_PIPER_WEIGHT_CACHE` (default ON). Cost: ~60 MB extra RAM for
+`STELNETTTS_PIPER_WEIGHT_CACHE` (default ON). Cost: ~60 MB extra RAM for
 a 30 MB F16 model. A/B: 11444–11790 vs 13269–13287 ms, 1.13–1.16×.
 
 Also fixed `#include <array>` in orpheus.cpp, outetts.cpp, chatterbox.cpp
@@ -5325,14 +5325,14 @@ Also fixed `#include <array>` in orpheus.cpp, outetts.cpp, chatterbox.cpp
 ## 2026-06-20 §187 Embed fast path — 4 more LLM-ASR backends
 
 Extended the funasr single-token embed fast path (§180) to glm_asr,
-moss_audio, qwen3_asr, and gemma4_e2b. Same pattern: AR decode calls
+moss_audio, cielvox2_asr, and gemma4_e2b. Same pattern: AR decode calls
 `embed_tokens({next_id})` per step; fast path dequants one row directly
 from the token embedding weight tensor, skipping graph-build + sched-alloc.
 
-Each gated by `CRISPASR_XXX_EMBED_FAST` (default ON, `=0` to disable).
+Each gated by `STELNETTTS_XXX_EMBED_FAST` (default ON, `=0` to disable).
 gemma4_e2b additionally applies the Gemma `sqrt(hidden_size)` embedding
 scale in the fast path. Transcripts byte-identical on JFK for glm_asr
-(Q4_K 1.3 GB) and qwen3_asr (F16 1.8 GB).
+(Q4_K 1.3 GB) and cielvox2_asr (F16 1.8 GB).
 
 Backends surveyed but already optimized: outetts, orpheus (n==1 fast path
 at port time), lfm2_audio (direct row reads, no graph). mini_omni2 never
@@ -5400,7 +5400,7 @@ per-stage RAII timing. Pattern: static cached `getenv` check (~1 ns
 when disabled), RAII `XXX_bench_stage` struct prints
 `"  XXX_bench: %-22s %.2f ms\n"` to stderr on scope exit. Zero
 overhead when the env var is unset. Existing ad-hoc bench code
-(firered_asr, mimo_asr, qwen3_tts, voxcpm2_tts, vibevoice, etc.)
+(firered_asr, mimo_asr, cielvox2_tts, voxcpm2_tts, vibevoice, etc.)
 preserved alongside the new RAII pattern.
 
 Coverage: 13 ASR, 8 Audio-LLM, 22 TTS, 23 LID/VAD/other — plus
@@ -5412,7 +5412,7 @@ Also in this session:
   and `chatterbox_s3gen_get_perf()` declaration (needed after upstream
   `3c101c7b` added the impl without the header).
 
-**funasr: single-token embed fast path (`CRISPASR_FUNASR_EMBED_FAST`,
+**funasr: single-token embed fast path (`STELNETTTS_FUNASR_EMBED_FAST`,
 default ON).** AR decode hot path called `funasr_embed_tokens()` with
 a single token, paying full graph-build + sched-alloc overhead each
 step. New fast path dequants one row directly from `token_embd.weight`,
@@ -5452,16 +5452,16 @@ and `voxcpm2: prefill locenc X ms (N patches, X ms/patch)` (verbosity≥1).
 GH #171 reporter saw the *same* sentence give clean audio from the CLI but
 garbled/multi-voice audio from the server, and noticed the server processed
 the input as ~30 chars where the CLI saw ~100. Root cause: the server's
-long-form planner `crispasr_tts_plan_chunks_for_backend()` skips
+long-form planner `stelnettts_tts_plan_chunks_for_backend()` skips
 sentence-chunking only for `backend_name == "vibevoice"`, but the TTS
 backends register as `vibevoice-tts` / `vibevoice-1.5b` / `vibevoice-tts-base`
 (the bare `vibevoice` is the *ASR* backend). So every `vibevoice-tts` request
-fell through to `crispasr_tts_split_sentences`, splitting one utterance into
+fell through to `stelnettts_tts_split_sentences`, splitting one utterance into
 N synthesis calls — which the code's own comment warns "degrades [voice
-cloning]". The CLI `--tts` path (`crispasr_run.cpp`) never chunks, hence the
+cloning]". The CLI `--tts` path (`stelnettts_run.cpp`) never chunks, hence the
 CLI/server divergence. Fixed with a prefix match
 (`backend_name.rfind("vibevoice", 0) == 0`). Same registered-name-mismatch
-class as the `qwen3-asr`→`qwen3` Kaggle sweep bug (§174).
+class as the `cielvox2-asr`→`qwen3` Kaggle sweep bug (§174).
 
 The existing unit test had the same blind spot (it only checked the bare
 `"vibevoice"` name production never uses); added a regression case covering
@@ -5491,7 +5491,7 @@ prompt of every instruct-tuned audio-LLM ASR backend so the user can steer the
 - `moonshine-streaming`, `kyutai-stt` (English-only): warn to stderr on a
   non-EN request instead of silently ignoring it.
 
-A shared `crispasr_iso_to_english_lang()` helper (`crispasr_backend_utils.h`)
+A shared `stelnettts_iso_to_english_lang()` helper (`stelnettts_backend_utils.h`)
 maps ISO-639-1 → English language name; a bare two-letter code is unreliable in
 an LLM prompt (`de` reads as the English "of" and steers the model to Spanish).
 This replaced two duplicated per-backend maps (qwen3, granite) and the raw-code
@@ -5515,13 +5515,13 @@ default` precedence, via a C-ABI-local `ca_iso_to_english_lang()` mirror.
 `set_source_language()` was already exposed in every binding, so no
 binding-surface change was needed — this just makes that setter effective.
 
-**TTS output language (`90b2f64a`).** `qwen3_tts_set_language_by_name()` was
+**TTS output language (`90b2f64a`).** `cielvox2_tts_set_language_by_name()` was
 a dead header declaration — no `codec_language_names` table was loaded even
-though `convert-qwen3-tts-to-gguf.py` emits it. Implemented the GGUF table
+though `convert-cielvox2-tts-to-gguf.py` emits it. Implemented the GGUF table
 load + case-insensitive name→`codec_language_id` lookup, wired the CLI
 adapter from `params.language`, and brought the session synthesize path for
-kokoro / zonos / qwen3-tts to parity (resolving `target_language` →
-`source_language`). Validated end-to-end locally on a real qwen3-tts-0.6b:
+kokoro / zonos / cielvox2-tts to parity (resolving `target_language` →
+`source_language`). Validated end-to-end locally on a real cielvox2-tts-0.6b:
 CLI `-l de` and the Python `Session.set_target_language('de')` both produce
 clean German audio (peak 0.69, rms 0.096), with graceful `-2` degradation on
 older GGUFs that lack the language table.
@@ -5529,14 +5529,14 @@ older GGUFs that lack the language table.
 ## 2026-06-19 §172 Wyoming protocol server — Home Assistant Assist integration
 
 `--wyoming-port N` starts a Wyoming peer-to-peer JSONL/TCP server alongside the
-existing HTTP API (`55bc0039`). One `crispasr-server` instance now replaces both
+existing HTTP API (`55bc0039`). One `stelnettts-server` instance now replaces both
 `wyoming-faster-whisper` (STT) and `wyoming-piper` (TTS) for Home Assistant.
 
 Wire format: `{"type":"...","data":{...},"payload_length":N}\n` + binary payload.
 
 Events handled:
 
-| Wyoming event | CrispASR response |
+| Wyoming event | StelnetTTS response |
 |---|---|
 | `describe` | `info` — advertises ASR + TTS capabilities |
 | `transcribe` + `audio-start` + `audio-chunk` + `audio-stop` | buffers int16 PCM, resamples to 16 kHz float32, calls `backend->transcribe()`, returns `transcript` |
@@ -5547,7 +5547,7 @@ Architecture mirrors `ws_stream.cpp`: one listener thread, per-connection thread
 
 ## 2026-06-19 §173 `--tts-play` / `--tts-play-device` — local speaker output
 
-New `crispasr_speaker.{h,cpp}` wraps miniaudio `ma_device` playback (`c6021b43`,
+New `stelnettts_speaker.{h,cpp}` wraps miniaudio `ma_device` playback (`c6021b43`,
 `e78ad149`). The CLI plays the already-watermarked PCM buffer through the local
 speaker when `--tts-play` is passed; `--tts-play-device N` selects a non-default
 device (-1 = system default). Playback is synchronous.
@@ -5655,8 +5655,8 @@ implemented and working on all 4 context presets.
 - Conv cache fix (root cause of blank output): NeMo's `CausalConv1D` prepends
   last K-1 frames instead of zero-padding. Without this, frames 2+ had
   destroyed representations.
-- Env vars: `CRISPASR_NEMOTRON_STREAMING=1`, `CRISPASR_NEMOTRON_CONTEXT_PRESET=N`,
-  `CRISPASR_NEMOTRON_DEBUG=1`, `CRISPASR_NEMOTRON_NO_WINDOW_MASK=1`.
+- Env vars: `STELNETTTS_NEMOTRON_STREAMING=1`, `STELNETTTS_NEMOTRON_CONTEXT_PRESET=N`,
+  `STELNETTTS_NEMOTRON_DEBUG=1`, `STELNETTTS_NEMOTRON_NO_WINDOW_MASK=1`.
 
 **lfm2 Q4_K fix:** Q4_K produces 0 tokens on the hybrid conv+attention
 backbone (too precision-sensitive). Q5_K works identically to F16. Registry
@@ -5668,7 +5668,7 @@ migrated backends. 435 unit tests pass.
 **Regression manifest:** 23 of 30 PLACEHOLDER transcripts filled:
 - 10 from VPS CPU (paraformer, sensevoice, fastconformer-ctc, wav2vec2,
   hubert, data2vec, 4× parakeet variants)
-- 13 from Kaggle T4 GPU kernel (qwen3-asr, omniasr-ctc, omniasr-llm,
+- 13 from Kaggle T4 GPU kernel (cielvox2-asr, omniasr-ctc, omniasr-llm,
   kyutai-stt, funasr-nano, funasr-mlt-nano, mini-omni2, voxtral-3b,
   voxtral4b, gemma4-e2b, granite-4.1-plus, moss-audio-4b, vibevoice-asr)
 
@@ -5677,7 +5677,7 @@ invocation), granite-4.1-nar (SIGABRT on CUDA), mimo-asr (tokenizer).
 
 **Diff harness:** nemotron wired — Python reference backend
 (`tools/reference_backends/nemotron.py`) + C++ branch in
-`crispasr_diff_main.cpp` (transcript-only; per-stage API TODO).
+`stelnettts_diff_main.cpp` (transcript-only; per-stage API TODO).
 
 **Docs updated:** streaming.md (nemotron context presets), quantize.md
 (6 backends added incl. lfm2 Q5_K-minimum), architecture.md (nemotron
@@ -5685,7 +5685,7 @@ section), testing.md (new env vars + test groups), feature-matrix
 (nemotron row + beam search caps), README (nemotron + full TTS list).
 
 **Nemotron C ABI + bindings (2026-06-16):** 9 edit points in
-`crispasr_c_api.cpp` — Python/Go/Dart/server can now use nemotron via
+`stelnettts_c_api.cpp` — Python/Go/Dart/server can now use nemotron via
 the session API. All 21 items per `docs/contributing.md` checklist done.
 
 **#56 Kokoro JA kanji→kana (2026-06-16):** MeCab via dlopen (BSD-3-Clause,
@@ -5756,14 +5756,14 @@ Follow-ups after the #165 launch bug was fixed + reporter-confirmed (`--no-warmu
 The reporter profiled server-vs-CLI speed (server 16.6× vs CLI 19.0× on a 2-min
 clip); root-caused and fixed:
 
-- **Resident LID models.** The server ran `crispasr_lid_free_cache()` after every
+- **Resident LID models.** The server ran `stelnettts_lid_free_cache()` after every
   request, so a non-PnC backend with `language=auto` reloaded the whisper-LID
   model (`ggml-tiny`) per transcription. Moved the free to shutdown (mirroring the
   VAD cache, #132) → LID loads once. Also added the same process-lifetime cache to
   the silero/firered/ecapa LID backends (they were `_init`/`_free` per call; only
   whisper was cached). Verified on M1: LID model loads 1× across N requests.
 - **Server VAD slicing now matches the CLI.** The server passed raw
-  `chunk_seconds=30` to `crispasr_compute_audio_slices` even with VAD on, so VAD
+  `chunk_seconds=30` to `stelnettts_compute_audio_slices` even with VAD on, so VAD
   slices on a `CAP_UNBOUNDED_INPUT` backend (parakeet) were capped at 30 s — 4
   slices where the CLI made 2 (extra boundary-overlap recompute). Mirror the CLI:
   VAD on + `CAP_UNBOUNDED_INPUT` + `chunk_seconds` not explicit ⇒
@@ -5804,7 +5804,7 @@ Key implementation discoveries:
 - 8-stream embeddings batched into single ggml_get_rows for ~4× speedup
 
 Quantization: F16 (1.46 GB), Q8_0 (1.15 GB), Q4_K (0.99 GB) all produce
-identical ASR transcripts. Uploaded to `cstr/mini-omni2-GGUF`.
+identical ASR transcripts. Uploaded to `Xenna/mini-omni2-GGUF`.
 
 Also refactored SNAC decoder from `orpheus_snac.{h,cpp}` to `core/snac.{h,cpp}`
 as a standalone shared target — now used by both orpheus and mini-omni2.
@@ -5829,7 +5829,7 @@ driver 596.36, Windows 11).
   (3.04 s) → fully restored. Our 2.5× is milder than praxeo's ~10× (A1000 vs
   3090/3080, q4_k vs q6_k, CLI vs server-warm) but confirms DEVICE-mode delivers
   on CUDA, not just by code inspection.
-- **#155** — `QWEN3_TTS_CODEC_GPU=1` on `qwen3-tts-customvoice` 0.6b, 87-frame
+- **#155** — `CIELVOX2_TTS_CODEC_GPU=1` on `cielvox2-tts-customvoice` 0.6b, 87-frame
   utterance (past the 59-frame TDR threshold): **no driver crash**, codec
   **14027 ms (CPU) → 748 ms (GPU), 18.7×**, clean GPU teardown. First CUDA
   confirmation — Rafa only had AMD HIP + Vulkan.
@@ -5853,7 +5853,7 @@ The issue #89 reporter (AMD Vulkan, RX 7900 GRE) loses everything past ~20 s on
 `parakeet-tdt-0.6b-ja`, even after the streamed-pipeline + 30 s auto-chunk
 fixes. Tested on the RTX A1000 (CUDA).
 
-**First, a false negative worth recording:** synthetic JA (qwen3-tts, 夏目漱石
+**First, a false negative worth recording:** synthetic JA (cielvox2-tts, 夏目漱石
 text, 58.6 s) did *not* collapse — single-pass covered the full range. That was
 misleading: the bug is **input-specific** (the maintainer had already noted two
 perceptually-identical files behaving differently). Clean TTS audio doesn't
@@ -5876,7 +5876,7 @@ the collapse happens *inside* each 30 s chunk, which is exactly why the reporter
 still lost content. **`--vad` (silence-bounded slices) recovers everything.**
 Actionable: parakeet-ja's auto-chunk should use a ≤~12 s window or prefer VAD.
 
-## 2026-06-10 #155 — Vulkan col2im_1d kernel: full-GPU qwen3-tts codec on Vulkan
+## 2026-06-10 #155 — Vulkan col2im_1d kernel: full-GPU cielvox2-tts codec on Vulkan
 
 Follow-up to the #155 codec fix. The codec's ConvTranspose1d was decomposed
 into `mul_mat + col2im_1d` in `5f600f25` (~9× speedup — codec 1200→130ms on
@@ -5899,7 +5899,7 @@ Apple M1 GPU and matched the CPU reference **bit-exact (maxabs=0.0e+00)** across
 8 codec shapes including the 59-frame case from the issue (K=4/OC=512/stride-2,
 K=16/OC=256/stride-8, `p0` causal-crop variants). With `supports_op` now true,
 the Vulkan codec stays fully on-GPU instead of CPU-falling-back col2im.
-col2im_1d is a CrispASR-custom op (not upstream), so it stays in the fork — no
+col2im_1d is a StelnetTTS-custom op (not upstream), so it stays in the fork — no
 upstream PR. See LEARNINGS.
 
 ## 2026-06-10 #161 — cohere CUDA ASR 10× regression: beam-search KV snapshot through host memory
@@ -5944,16 +5944,16 @@ Diagnostic probes kept behind `COHERE_GAPS` / `COHERE_BENCH`. See LEARNINGS.
 
 ## 2026-06-10 WASM build — all backends, multithreaded
 
-Compiled the full CrispASR library (~70 ASR/TTS/LID/VAD backends) to
+Compiled the full StelnetTTS library (~70 ASR/TTS/LID/VAD backends) to
 WebAssembly via Emscripten. Multithreaded (`-pthread`, `PTHREAD_POOL_SIZE=8`,
 requires COOP/COEP headers for SharedArrayBuffer).
 
 - `build-wasm.sh`: ninja + ccache, SIMD128, CPU-only
-- `CMakeLists.txt`: `CRISPASR_WASM` option + `add_subdirectory(bindings/javascript)`
-- `crispasr_cache.cpp`: `__EMSCRIPTEN__` guards (MEMFS dir, no fetch)
+- `CMakeLists.txt`: `STELNETTTS_WASM` option + `add_subdirectory(bindings/javascript)`
+- `stelnettts_cache.cpp`: `__EMSCRIPTEN__` guards (MEMFS dir, no fetch)
 - `emscripten.cpp`: fixed stale `CrispasrSession` typedef, removed conflicting
   forward declarations
-- `kokoro.cpp`: qualified `phonemize_builtin_*` with `crispasr::` namespace
+- `kokoro.cpp`: qualified `phonemize_builtin_*` with `stelnettts::` namespace
 - `CMakeLists.txt` (src): added `phonemizer.cpp` to kokoro static lib
 - CI: `build-wasm.yml` workflow, `deploy-hf-space.yml` auto-deploy
 - Output: 103K JS + 4.3M WASM (all backends)
@@ -5966,16 +5966,16 @@ requires COOP/COEP headers for SharedArrayBuffer).
 The `hf-space/` Gradio demo only exposed its UI on the public port (7860);
 the C++ server's OpenAI-compatible API (`/v1/*`, `/health`, `/backends`,
 `/load`) ran on internal :8080 and 404'd publicly. Browser clients like the
-CrisperWeaver web/PWA (which calls `/v1/audio/transcriptions`) thus had no
+StelnetWeaver web/PWA (which calls `/v1/audio/transcriptions`) thus had no
 backend. Wrapped Gradio in a FastAPI app that reverse-proxies those routes
 to :8080 (CORS + preflight) and mounted Gradio at `/` via
 `gr.mount_gradio_app`, served by uvicorn.
 
-Deploying it surfaced that the live `cstr/CrispASR` space had bit-rotted —
+Deploying it surfaced that the live `Xenna/StelnetTTS` space had bit-rotted —
 serving an image it could no longer reproduce:
 - the space's Dockerfile built the long-removed `whisper-cli` target → every
-  rebuild failed; the server binary is now the `crispasr-cli` target
-  (OUTPUT_NAME `crispasr`), not `crispasr-lib`.
+  rebuild failed; the server binary is now the `stelnettts-cli` target
+  (OUTPUT_NAME `stelnettts`), not `stelnettts-lib`.
 - `app.py` used `gr.Code(language="text")`, which current Gradio 5 rejects.
 Fixed both in `hf-space/` and re-synced the (separate, flat) Space repo.
 Verified live: `/v1/audio/transcriptions` returns correct transcripts with
@@ -6008,8 +6008,8 @@ per-feature entries follow below; this is the user-facing summary.
 **Provenance & licensing (EU AI Act)**
 - **AudioSeal watermark** dispatch wired through CLI, server, and C-ABI;
   robust averaged-spectrum detection (alpha=0.08); post-embed verification
-  and `--detect-watermark` CLI verb; `crispasr_session_synthesize()` now
-  auto-embeds the watermark; `CRISPASR_NO_WATERMARK` debug env.
+  and `--detect-watermark` CLI verb; `stelnettts_session_synthesize()` now
+  auto-embeds the watermark; `STELNETTTS_NO_WATERMARK` debug env.
 - **Spoken AI-disclosure** opt-out for voice-cloned output (CLI
   `--no-spoken-disclaimer`, server `"spoken_disclaimer": false`); machine-
   readable provenance (watermark + C2PA) is always retained. NB: the audible
@@ -6018,7 +6018,7 @@ per-feature entries follow below; this is the user-facing summary.
 - **Registry** now warns prominently on non-commercial (CC-BY-NC) models.
 
 **C-ABI / bindings**
-- CrisperWeaver-parity functions: progress callback, stereo output, parallel
+- StelnetWeaver-parity functions: progress callback, stereo output, parallel
   synthesis, DTW; `--g2p-dict` plumbed through the C ABI, Go binding, and
   server; Zonos+Dia wired into `set_codec_path` with sibling-DAC discovery.
 
@@ -6043,7 +6043,7 @@ verbatim. Full `docs/contributing.md` integration checklist done.
 - **Delay pattern offset**: `step >= k` (was `step > k`).
 
 **Quantization — two-part fix:**
-1. `crispasr-quantize`: detect `arch="zonos"` and keep `heads.*`,
+1. `stelnettts-quantize`: detect `arch="zonos"` and keep `heads.*`,
    `embeddings.*`, `prefix_conditioner.*` at F16; quantize only the
    210 backbone projection tensors. Uniform Q4_K inflated EOS logit
    from −1.125 to >0 at AR step 0; selective precision restores
@@ -6055,18 +6055,18 @@ verbatim. Full `docs/contributing.md` integration checklist done.
 
 **DAC-44kHz codec — unquantizable:** every Conv1d weight has
 kernel-size as `ne[0]` (≤ 16 elements), below the 32-element minimum
-for Q8_0. The `crispasr-quantize` tool now detects `arch="dac*"` and
+for Q8_0. The `stelnettts-quantize` tool now detects `arch="dac*"` and
 warns immediately. F16 (104 MB) is the only viable quant.
 
 **C ABI fixes:**
 - Zonos sibling DAC discovery added (`dac-44khz-f16.gguf` first).
 - `dac-44khz-f16.gguf` added to head of Dia's sibling list too.
-- Zonos + Dia wired into `crispasr_session_set_codec_path`.
+- Zonos + Dia wired into `stelnettts_session_set_codec_path`.
 
 **GGUFs shipped to HF:**
-- `cstr/zonos-v0.1-transformer-GGUF`: F16 (3.0 GB), Q8_0 (1.6 GB),
+- `Xenna/zonos-v0.1-transformer-GGUF`: F16 (3.0 GB), Q8_0 (1.6 GB),
   selective-Q4_K (931 MB). Default `-m auto` → Q8_0.
-- `cstr/dac-44khz-GGUF`: F16 104 MB only (unquantizable).
+- `Xenna/dac-44khz-GGUF`: F16 104 MB only (unquantizable).
 
 ## 2026-06-08 §115/§52/§140 audit + pocket-tts/moonshine GPU migration
 
@@ -6117,7 +6117,7 @@ to both init params, wired via `g_open_use_gpu_tls` in C API.
 - DAC decoder graph-building in `core/dac_decoder.h`: Snake1d, Conv1d,
   ConvTranspose1d (via `core_convt::convt1d_crop`), ResidualUnit,
   DecoderBlock, full `build_decode_graph`. 104 MB GGUF converted +
-  uploaded to `cstr/dac-44khz-GGUF`.
+  uploaded to `Xenna/dac-44khz-GGUF`.
 - DAC wired into `zonos_tts_synthesize` (lazy load, replaces sine
   placeholder). Fixed `ggml_view_2d` crash in ConvTranspose1d crop.
 - **Bug found: language_id off by one** — default 25 mapped to Esperanto
@@ -6133,9 +6133,9 @@ to both init params, wired via `g_open_use_gpu_tls` in C API.
 (`f8fc8b8e`), kernel still 3× slower than CPU fallback for TTS codec.
 
 **CI fixes (20 platform failures → 0):**
-- `piper_tts.cpp` linked `crispasr_cache::ensure_cached_file` but
-  `libpiper-tts.a` doesn't link `crispasr_cache.o`. Guarded behind
-  `#ifdef CRISPASR_BUILD` + added define to CMakeLists.
+- `piper_tts.cpp` linked `stelnettts_cache::ensure_cached_file` but
+  `libpiper-tts.a` doesn't link `stelnettts_cache.o`. Guarded behind
+  `#ifdef STELNETTTS_BUILD` + added define to CMakeLists.
 - `g2p_en.h`, `ipa_convert.h`, `piper_tts.cpp` clang-format-18 fixes.
 - `bark-small` missing `voice_preset` in regression manifest.
 
@@ -6146,13 +6146,13 @@ both roots + added debug logging. Also fixed `kernel-metadata.json` to
 use string `"true"` instead of boolean `true` (matching working kernels).
 Confirmed working: v6 kernel log shows token loaded from new path.
 
-**CI piper link fix iteration.** First attempt added `CRISPASR_BUILD`
+**CI piper link fix iteration.** First attempt added `STELNETTTS_BUILD`
 to piper-tts CMake target — this backfired because it enabled the
 `ensure_cached_file` calls during piper-tts compilation, but the
-static lib still didn't link `crispasr_cache.o`. Reverted the CMake
-define; the `#ifdef CRISPASR_BUILD` guard in `piper_tts.cpp` now
-correctly excludes the calls because `CRISPASR_BUILD` is only defined
-on `crispasr-lib`, not on the standalone `piper-tts` target.
+static lib still didn't link `stelnettts_cache.o`. Reverted the CMake
+define; the `#ifdef STELNETTTS_BUILD` guard in `piper_tts.cpp` now
+correctly excludes the calls because `STELNETTTS_BUILD` is only defined
+on `stelnettts-lib`, not on the standalone `piper-tts` target.
 build.yml: 35/35 pass (was 20 failures).
 
 ---
@@ -6178,7 +6178,7 @@ GPL-covered) and ship as downloadable dicts. Binary stays MIT-clean.
 | French | 257K | 6.6 MB | OLaPh FR |
 | Spanish | 600K | 18 MB | OLaPh ES |
 
-Uploaded to HuggingFace `cstr/g2p-dicts`. Auto-downloaded on first use.
+Uploaded to HuggingFace `Xenna/g2p-dicts`. Auto-downloaded on first use.
 
 **Fallback tiers** (when word not in espeak dict):
 
@@ -6197,7 +6197,7 @@ Uploaded to HuggingFace `cstr/g2p-dicts`. Auto-downloaded on first use.
   Auslautverhärtung, open-syllable lengthening, compound splitting
 
 **Wiring:** `--g2p-dict` CLI → `whisper_params` → C API
-`crispasr_session_set_g2p_dict()` → Go `SetG2PDict()` → server.
+`stelnettts_session_set_g2p_dict()` → Go `SetG2PDict()` → server.
 
 **Benchmark:** 382-word ground truth (espeak-ng en-us/de):
 EN 99.5%, DE 100% with espeak dict; EN 76.2% with CMUdict fallback.
@@ -6223,13 +6223,13 @@ already done (stale PLAN): #93 CMake rename, #94 Go auto-gen LDFLAGS,
 Flipped `VOXCPM2_USE_GRAPH` from opt-in to default-on. Graph path was
 already validated (48.7→14.1s on M1 Metal). Tested on VPS (1.58x faster)
 and Kaggle CPU (1.46-1.61x). Both produce correct ASR roundtrip. Opt-out
-via `VOXCPM2_USE_GRAPH=0`. Kaggle kernel: `chr1str/crispasr-voxcpm2-graph-ab`.
+via `VOXCPM2_USE_GRAPH=0`. Kaggle kernel: `chr1str/stelnettts-voxcpm2-graph-ab`.
 
 ### #73 cohere FA long-form benchmark (2026-06-04)
 
 Crossover confirmed: flash-attn wins by 26% on 300s but loses by 13% on
 60s. With default 30s auto-chunking, cast-on-read is always faster. Flipped
-cohere to default cast-on-read (was flash). `CRISPASR_COHERE_FLASH=1` for
+cohere to default cast-on-read (was flash). `STELNETTTS_COHERE_FLASH=1` for
 unchunked long-form. Results in PERFORMANCE.md §5.
 
 ### #61j glm-asr translate (2026-06-04)
@@ -6251,7 +6251,7 @@ enc_q (16-layer WaveNet posterior encoder) + WaveNet coupling flow
 - `models/convert-openvoice2-to-gguf.py` — GGUF converter (346 tensors
   with 11 base speaker embeddings, 125 MB all-F32)
 - `src/openvoice2.{h,cpp}` — C runtime (~1300 LOC)
-- `examples/cli/crispasr_backend_melotts.cpp` — `--voice ref.wav` wiring
+- `examples/cli/stelnettts_backend_melotts.cpp` — `--voice ref.wav` wiring
 - `tools/reference_backends/openvoice2_ref.py` — Python diff harness
 - `tests/test-openvoice2-hifi.cpp` — standalone test
 
@@ -6290,7 +6290,7 @@ backend tagging in `mimo_asr_build_prefill_graph`. The local M1 can't hold
 the 4.2 GB model (box memory-saturated), so I debugged it on Kaggle GPU,
 driving the CLI directly and mirroring the funasr-cuda-debug kernel.
 
-Added `CRISPASR_MIMO_FORCE_GPU=1` (loads weights GPU-resident + computes
+Added `STELNETTTS_MIMO_FORCE_GPU=1` (loads weights GPU-resident + computes
 there) and `MIMO_ASR_DUMP_STAGES=1` (per-stage prefill tensor stats, like
 funasr's `FUNASR_DUMP_STAGES`). Kernel `tools/kaggle/mimo-asr-gpu-diff/`,
 three P100 round-trips:
@@ -6319,7 +6319,7 @@ CSM (sesame/csm-1b) loaded and generated frames but Whisper heard the
 output as "ethereal music / buzzing." Five bugs had already been fixed
 (F16 read, codebooks_head shape, EOS = all-32-codebooks-zero, BPE API);
 the handover guessed RoPE base or Mimi decode. Built the methodical
-diff harness instead of guessing: a `csm` branch in `crispasr-diff`
+diff harness instead of guessing: a `csm` branch in `stelnettts-diff`
 plus runtime dump entry points (`csm_tts_run_backbone_dump` /
 `run_depth_dump` / `run_generate_codes` / `run_mimi_dump`) and
 `tools/pack_csm_ref_gguf.py` to pack the manual-reference `.npy` dumps
@@ -6356,10 +6356,10 @@ moshi-codebook-cluster-usage in LEARNINGS.
 
 The benchmark failed three Kaggle runs in a row; the harness `.log`
 (fetchable via `kaggle kernels output --file-pattern`) finally showed
-why: the build completed to `[452/453]` (libcrispasr.so) then asserted
-`bin/crispasr not found`. The kernel built `--target crispasr-lib` — which
+why: the build completed to `[452/453]` (libstelnettts.so) then asserted
+`bin/stelnettts not found`. The kernel built `--target stelnettts-lib` — which
 builds only the **library**; the CLI binary comes from target
-`crispasr-cli` (it carries `OUTPUT_NAME crispasr`, see
+`stelnettts-cli` (it carries `OUTPUT_NAME stelnettts`, see
 examples/cli/CMakeLists.txt:12,232). All three failures were this, not
 the CUDA OOM I first assumed. (The arch-pin fix was still necessary and
 validated: run #4's box was a **P100 / sm_60**, not a T4 — a hard-coded
@@ -6373,8 +6373,8 @@ voxtral 3B/4B, granite 1B/4.1, kyutai, mimo (0.3× RT, CPU-forced per
 transcript, a real GPU-path backend bug, consistent with its noted
 Blackwell `!`-loop caveat; surfaces on P100 too). Two non-fatal HF
 pre-download 401s (auth API was flaking) fell back to the C++ downloader.
-Note: `issue126`/`fusion-ab` keep `--target crispasr-lib` correctly — they
-consume libcrispasr.so, not the CLI binary.
+Note: `issue126`/`fusion-ab` keep `--target stelnettts-lib` correctly — they
+consume libstelnettts.so, not the CLI binary.
 
 ## 2026-05-31 Kaggle kernels: shared `kaggle_harness.py` (one gold standard)
 
@@ -6382,14 +6382,14 @@ The all-backends benchmark OOM'd its CUDA build on a T4 (multi-arch nvcc
 × `-j4` on a ~16 GB box, died ~19 kernels into ggml-cuda). Diagnosing it
 was painful because the build was a silent `subprocess.run` and Kaggle
 only returns committed working-dir files, not stdout. Comparing all the
-kernels showed **none was complete**: `crispasr-regression.py` had the
+kernels showed **none was complete**: `stelnettts-regression.py` had the
 logging/heartbeat/ccache/mold/3-tier-auth but no CUDA arch pin;
 `fusion-ab` had auto-arch but no streaming/heartbeat/auth fallback;
 everyone else was a partial subset.
 
 Extracted the union into `tools/kaggle/kaggle_harness.py` — the single
 gold-standard helper module: `init_progress`/`step` (line-buffered I/O +
-progress.jsonl + best-effort HF mirror to `cstr/crispasr-kaggle-progress`
+progress.jsonl + best-effort HF mirror to `Xenna/stelnettts-kaggle-progress`
 for live mid-run visibility), `sh_with_progress` (Popen line-streamer
 with ninja [X/N] + TU tracking), `build_heartbeat` (30 s ticker now also
 reporting VmRSS + free-GB — the signal that would have *shown* the OOM
@@ -6421,7 +6421,7 @@ only wrapped `silero_vad_get_cached`; the returned context — which owns
 mutable per-request LSTM h/c buffers, the scheduler, and `probs`, all
 reset and rewritten inside `whisper_vad_segments_from_samples` — was then
 used unlocked. The server slices VAD *before* taking `model_mutex`
-(`crispasr_server.cpp`) and httplib serves on a thread pool, so two
+(`stelnettts_server.cpp`) and httplib serves on a thread pool, so two
 concurrent `/transcribe` requests raced on the one shared context (data
 race + corrupted VAD). Pre-#132 each request built its own context, so
 this was a regression introduced by the cache. Fix: renamed the getter to
@@ -6440,7 +6440,7 @@ tokenizer. `mimo-asr` gets a 420 s timeout (PLAN #115 forces it to CPU,
 yet in the registry and stay excluded; TTS/diarization/LID/aligner
 backends stay excluded (the benchmark measures transcription WER).
 Now 27 backends; triggered on a Kaggle T4
-(`chr1str/crispasr-all-backends-benchmark-t4`).
+(`chr1str/stelnettts-all-backends-benchmark-t4`).
 ## 2026-05-29 omniasr-ctc-300m: blank_id fix + CTC auto-chunking + omniasr-300m backend
 
 Three fixes for the OmniASR CTC backend, resolving the empty-output bug
@@ -6456,7 +6456,7 @@ on the 300M model and wiring it as a first-class named backend:
    for CTC variants. The 1B model handles all lengths.
 
 3. **`omniasr-300m` named backend**: registry entry pointing to
-   `cstr/omniASR-CTC-300M-v2-GGUF` Q4_K (~194 MB), CLI alias,
+   `Xenna/omniASR-CTC-300M-v2-GGUF` Q4_K (~194 MB), CLI alias,
    available_backends in C ABI, feature-matrix row.
 
 Root cause of the empty output: the GGUF was converted from the v1
@@ -6489,7 +6489,7 @@ native path is tried first.
   `chatterbox_campplus`; **matcha mel @ 24 kHz** for the flow ref_mel
   prefix. `cosyvoice3_tts_synth_from_wav` + `extract_{speech_tokens,
   spk_emb,ref_mel}` ABI; CLI dispatches `*.wav` voices to it.
-* **Byte-exact validation via crispasr-diff.** Extended the harness:
+* **Byte-exact validation via stelnettts-diff.** Extended the harness:
   `_capture_s3tok_stages` (ONNX with post-subsample / blocks 0,11 /
   FSQ-proj / indices edges exposed, whisper mel as `s3tok_mel_in`) +
   `cosyvoice3_tts_extract_stage` s3tok stages + a diff-main loop. On
@@ -6508,10 +6508,10 @@ native path is tried first.
   unchanged) and not the tokenizer network. Left as-is: shared mel
   infra, sub-1%, irrelevant to cloning (prompt tokens only condition
   speaker/prosody).
-* **Quants/HF**: `crispasr-quantize` s3tok→Q4_K keeps `fsq.proj.w`
+* **Quants/HF**: `stelnettts-quantize` s3tok→Q4_K keeps `fsq.proj.w`
   F16 (skip rule). s3tok-f16 (462 MB, byte-exact, what `-m auto`
   pulls) + s3tok-q4_k (139 MB, cos 0.994, optional) + campplus-f16
-  (13 MB) uploaded to `cstr/cosyvoice3-0.5b-2512-GGUF`; registry
+  (13 MB) uploaded to `Xenna/cosyvoice3-0.5b-2512-GGUF`; registry
   extras wired.
 
 ## 2026-05-28 cosyvoice3: Phase 5a + 5b — end-to-end synth + HF release
@@ -6554,7 +6554,7 @@ Phase 5a (commit `b9cd5fa7` + fix `7b04a690`):
 
 Phase 5b:
 
-* `crispasr-quantize` gained a CV3-specific skip rule
+* `stelnettts-quantize` gained a CV3-specific skip rule
   (`speech_embd.weight` + `speech_lm_head.weight` for the LLM,
   `flow.input_embd.w` + `flow.spk_affine.w` for the flow) so the
   precision-critical tables stay F16 across all quant variants.
@@ -6569,7 +6569,7 @@ Phase 5b:
   ("Hello, this is a test." → "Hello? This is a test.") but
   content is fully preserved. German smoke (same Q4_K combo)
   agrees: "Hallo, das ist ein Test." → "Hallo? Das ist ein Test."
-* HF: `cstr/cosyvoice3-0.5b-2512-GGUF` carries all 6 files (LLM
+* HF: `Xenna/cosyvoice3-0.5b-2512-GGUF` carries all 6 files (LLM
   F16 + Q4_K, flow F16 + Q8_0, HiFT F16, voices) with a full
   model card documenting the quant matrix, ASR-validation
   results, and the auto-discovery rules.
@@ -6615,7 +6615,7 @@ Implementation:
   weight-norm parametrisation loads in-place (PyTorch handles it
   automatically — we don't need to materialise like the GGUF
   converter does on the C++ side).
-- crispasr-diff cosyvoice3-tts handler picks up hift via
+- stelnettts-diff cosyvoice3-tts handler picks up hift via
   `s/llm/hift/` (or `CV3_HIFT_GGUF`); skips the hift_f0 stage
   gracefully if the hift GGUF isn't present (so phase-3 diffs still
   pass on hift-less setups).
@@ -6643,7 +6643,7 @@ with classifier-free guidance. Validates against upstream
 `CausalConditionalCFM.forward()` bit-equivalently on the seeded
 init-noise input.
 
-Result (25/25 stages PASS through `crispasr-diff cosyvoice3-tts`):
+Result (25/25 stages PASS through `stelnettts-diff cosyvoice3-tts`):
 
   flow_euler_dphi_step0  cos=1.000000   max|Δ|=4.5e-03  (single post-CFG step)
   flow_euler             cos=0.999997   max|Δ|=1.4e-02  (final mel, 10 steps)
@@ -6749,7 +6749,7 @@ Wiring:
   `DiTBlock` modules + `AdaLayerNormZero_Final` + `Linear(1024, 80)`
   from `flow.pt`, runs them on a seeded (T_mel=12, t=0.5) fixture,
   and emits `flow_dit_full_{x_in, t_emb, norm, …}` ndarrays.
-- `examples/cli/crispasr_diff_main.cpp` cosyvoice3-tts handler unpacks
+- `examples/cli/stelnettts_diff_main.cpp` cosyvoice3-tts handler unpacks
   `flow_dit_full_x_in` + `flow_dit_full_t_emb` from the reference,
   packs `[x | t_emb]`, and compares both stages at threshold 0.99
   (relaxed for the depth-22 accumulated F16 noise — same convention
@@ -6804,7 +6804,7 @@ Wiring:
 - `tools/reference_backends/cosyvoice3_tts.py::dump()` adds matching
   captures via piecewise reconstruction of the upstream modules
   (verified <1e-5 vs the monolithic forward each time).
-- `examples/cli/crispasr_diff_main.cpp::cosyvoice3-tts` handler
+- `examples/cli/stelnettts_diff_main.cpp::cosyvoice3-tts` handler
   unpacks ref inputs (ids for pre_la, packed
   `[pre_la | spk | x | cond]` for in_pipe) and drives each stage.
 
@@ -6861,7 +6861,7 @@ Built `cv3_build_flow_dit_block_graph` (~80 LOC) +
 `cv3_extract_flow_dit_stage` (private; drives the same graph for
 intermediate outputs) + new `flow_dit_blk_<N>_{lnx_a,h_a,attn,xattn,
 ff,out}` stages in `cosyvoice3_tts_extract_stage`. Wired into
-`crispasr-diff` via a new `cosyvoice3-tts` backend block; the Python
+`stelnettts-diff` via a new `cosyvoice3-tts` backend block; the Python
 side gets a `dump()` entry in `tools/reference_backends/cosyvoice3_tts.py`
 registered in `tools/dump_reference.py` REGISTERED_BACKENDS, so the
 diff goes through the unified GGUF-archive pipeline like every other
@@ -6893,7 +6893,7 @@ the upstream source:
    with `n_dims=hd` so only the first 64 channels rotate, then
    reshape into per-head layout for flash-attn.
 
-Per-stage diff result (`crispasr-diff cosyvoice3-tts ... cv3-flow-dit-ref.gguf`):
+Per-stage diff result (`stelnettts-diff cosyvoice3-tts ... cv3-flow-dit-ref.gguf`):
 
   flow_dit_blk_0_lnx_a   cos=1.000000  max|Δ|=2.4e-07
   flow_dit_blk_0_h_a     cos=1.000000  max|Δ|=6.9e-04
@@ -7019,7 +7019,7 @@ byte-identical").
 
 Phase 3 (DiT-CFM flow estimator) and Phase 4 (CausalHiFTGenerator)
 are still open; flow / hift GGUFs regenerated by this commit
-(`/Volumes/backups/ai/crispasr-models/cosyvoice3-0.5b-2512/`).
+(`/Volumes/backups/ai/stelnettts-models/cosyvoice3-0.5b-2512/`).
 
 ---
 
@@ -7032,9 +7032,9 @@ the per-fix HISTORY entries below have the engineering depth.
 **Headline themes:**
 
 - Long-form transcription 2-7× better across parakeet / canary / voxtral / cohere — see PLAN #114 and the option matrix in PERFORMANCE.md.
-- Issue [#125](https://github.com/CrispStrobe/CrispASR/issues/125) fix train: 8 backend bugs from @montvid (firered-asr / funasr / omniasr-llm / gemma4-e2b / mimo-asr / kyutai-stt ×2 / mimo-asr scheduler P0).
+- Issue [#125](https://github.com/Cyna/StelnetTTS/issues/125) fix train: 8 backend bugs from @montvid (firered-asr / funasr / omniasr-llm / gemma4-e2b / mimo-asr / kyutai-stt ×2 / mimo-asr scheduler P0).
 - Chatterbox TTS GPU path finally intelligible on M1 Metal — PLAN #83 R9 #5 sched `parallel=true` fix.
-- New CLI: `--hf-repo OWNER/REPO[:FILE]` (issue [#128](https://github.com/CrispStrobe/CrispASR/issues/128)) for llama-server-style HuggingFace model fetching.
+- New CLI: `--hf-repo OWNER/REPO[:FILE]` (issue [#128](https://github.com/Cyna/StelnetTTS/issues/128)) for llama-server-style HuggingFace model fetching.
 - Five new model ports: SenseVoiceSmall, Paraformer-zh, FunASR family (nano + mlt-nano), Parakeet-RNNT 0.6b + 1.1b.
 - Infrastructure: Kaggle rebake pipeline (4 new parakeet refs published), overlap-save A/B harness, local audio fixture mirror, CI cleanup (AVX512 + arm64 native runners).
 
@@ -7060,11 +7060,11 @@ Full option matrix (the seven knobs and three dispatcher modes) ran on en/de/ja 
   ja + JA 60s : 1674 → 1942 (+16 %)
   v3 + DE 60s : 679 → 665 (-2 %, small)
 
-**Mechanism.** The dispatcher's `should_auto_chunk_long` fallback at `examples/cli/crispasr_run.cpp:413` auto-chunks long audio iff `CAP_UNBOUNDED_INPUT && !CAP_INTERNAL_CHUNKING && !wants_vad && audio > 30 s`. Parakeet was declaring `CAP_INTERNAL_CHUNKING`, which suppressed the auto-chunk. Dropping that flag lets the auto-chunk fire for long audio.
+**Mechanism.** The dispatcher's `should_auto_chunk_long` fallback at `examples/cli/stelnettts_run.cpp:413` auto-chunks long audio iff `CAP_UNBOUNDED_INPUT && !CAP_INTERNAL_CHUNKING && !wants_vad && audio > 30 s`. Parakeet was declaring `CAP_INTERNAL_CHUNKING`, which suppressed the auto-chunk. Dropping that flag lets the auto-chunk fire for long audio.
 
 **Why the dispatcher path beats the backend's own streamed path:** the dispatcher splits the audio into ~30 s chunks with ±3 s overlap, calls the backend once per chunk (each call sees 33 s — the v3 encoder's training window), and LCS-merges boundary tokens. The backend's own `parakeet_transcribe_streamed` instead applies global mel-norm then splits the mel into chunks; per-call mel-norm (dispatcher) appears to produce better-conditioned encoder features for the TDT decoder than per-clip-then-split (backend).
 
-**Shipped (`98381810`).** Dropped `CAP_INTERNAL_CHUNKING` from `examples/cli/crispasr_backend_parakeet.cpp::capabilities()`. The empirical regression matrix:
+**Shipped (`98381810`).** Dropped `CAP_INTERNAL_CHUNKING` from `examples/cli/stelnettts_backend_parakeet.cpp::capabilities()`. The empirical regression matrix:
 
 | case | before | after | Δ |
 |---|---|---|---|
@@ -7078,7 +7078,7 @@ Full option matrix (the seven knobs and three dispatcher modes) ran on en/de/ja 
 
 6 of 7 improved, 1 small DE 60 s regression (-2 %). The longer the audio, the bigger the win — EN 300 s scales from +45 % at 60 s to +150 % at 300 s. The internal-streamed-path's quality degradation compounds with audio length; dispatcher chunks scale linearly. JFK 11 s is unchanged because the dispatcher only auto-chunks past 30 s.
 
-**Tradeoff accepted.** Wall time on long audio increases (~30 s → ~86 s for 300 s EN audio on M1 Metal, 3.5× realtime). For users who care more about wallclock than coverage, `CRISPASR_PARAKEET_STREAM_THRESHOLD=99999` still forces the older single-pass path. The CLI flags (`--chunk-seconds`, `--chunk-overlap`, `--vad`, etc.) remain available for users who want to override the auto-chunk decision.
+**Tradeoff accepted.** Wall time on long audio increases (~30 s → ~86 s for 300 s EN audio on M1 Metal, 3.5× realtime). For users who care more about wallclock than coverage, `STELNETTTS_PARAKEET_STREAM_THRESHOLD=99999` still forces the older single-pass path. The CLI flags (`--chunk-seconds`, `--chunk-overlap`, `--vad`, etc.) remain available for users who want to override the auto-chunk decision.
 
 **Architectural note.** The capabilities flag `CAP_INTERNAL_CHUNKING` was *meant* to declare "this backend handles its own long-audio chunking — don't auto-chunk me at the dispatcher level". Parakeet's `parakeet_transcribe_streamed` does technically handle long audio internally, but the empirical data showed the dispatcher's chunking + overlap-save + LCS-merge produces better output than the backend's internal path. So the flag was semantically correct but quality-wise wrong. Dropping it makes the dispatcher's auto-chunk-at-30s the de-facto default for parakeet long audio, while leaving the backend's internal streamed path as a fallback (when the dispatcher hands a per-chunk slice to the backend, the backend's streamed code still runs — but on a 33 s window where it's well-conditioned).
 
@@ -7092,7 +7092,7 @@ The multi-backend long-form comparison in PERFORMANCE.md (commit `b8588bc5`) fla
 
 User direction: "fix parakeet methodically" + "you cannot trust however what is in learnings".
 
-**Methodical sweep** on the new fixtures (`audio_samples/{en,de}/fleurs_{60,300}s.wav` mirrored from VPS, plus `long-clips/yt_60s.wav`) with `CRISPASR_PARAKEET_STREAM_CHUNK=N` overriding the c=8 default:
+**Methodical sweep** on the new fixtures (`audio_samples/{en,de}/fleurs_{60,300}s.wav` mirrored from VPS, plus `long-clips/yt_60s.wav`) with `STELNETTTS_PARAKEET_STREAM_CHUNK=N` overriding the c=8 default:
 
 | model | audio | c=8 | c=15 | c=20 | c=30 | c=40 |
 |---|---|---|---|---|---|---|
@@ -7108,7 +7108,7 @@ User direction: "fix parakeet methodically" + "you cannot trust however what is 
 - `vocab_size < 4000` (JA-only, vocab=3072) → c=8 (preserved)
 - `vocab_size >= 4000` (multilingual / v3, vocab=8192) → c=30
 
-Threshold of 4000 cleanly separates the two known variants. Backend wrapper at `crispasr_backend_parakeet.cpp` now passes `chunk=0` (sentinel for "let the C library pick") instead of the hard-coded 8. `CRISPASR_PARAKEET_STREAM_CHUNK=N` env override still wins.
+Threshold of 4000 cleanly separates the two known variants. Backend wrapper at `stelnettts_backend_parakeet.cpp` now passes `chunk=0` (sentinel for "let the C library pick") instead of the hard-coded 8. `STELNETTTS_PARAKEET_STREAM_CHUNK=N` env override still wins.
 
 **Regression matrix after the fix:**
 
@@ -7169,11 +7169,11 @@ just before "Decision: don't blanket-VAD everyone"). Two upstream patterns:
 
 - parakeet (TDT/RNN-T/CTC) → currently hybrid (NeMo overlap + single decode); voxtral pattern feasible but no quality upside
 - canary (AED) → NeMo pattern only; voxtral pattern fails by design (`<eos>` at first chunk-boundary)
-- voxtral / qwen3-asr / granite / glm-asr / mimo-asr / gemma4-e2b / kyutai-stt (AR LLM) → voxtral pattern preferred
+- voxtral / cielvox2-asr / granite / glm-asr / mimo-asr / gemma4-e2b / kyutai-stt (AR LLM) → voxtral pattern preferred
 
 **What IS a runtime knob today**: per-backend `STREAM_THRESHOLD_S` durations,
 `STREAM_CHUNK_S` overlap sizes (env vars), the `kBlocked` opt-out list in
-`crispasr_chunk_context_gate.h`. **What ISN'T (and probably shouldn't be)**:
+`stelnettts_chunk_context_gate.h`. **What ISN'T (and probably shouldn't be)**:
 the pattern choice itself. Forcing the wrong pattern via a CLI flag would
 let users misuse the binary with no quality recovery; nothing is gained
 from running canary in voxtral pattern or voxtral in NeMo pattern.
@@ -7228,7 +7228,7 @@ Three follow-ons close PLAN #114 P3:
 
 ## 2026-05-26 (P114-P3 LCS dedup) canary streamed boundary-dup polish
 
-`62766dae` lands the LCS-merge dedup inside `canary_transcribe_streamed`. Per-chunk re-injection (`63fdbe46`) closed the AED-boundary `<eos>` bug but left a boundary-duplication artifact (each chunk re-decoded the overlap_seconds of audio in the previous chunk's tail). NeMo handles this in `streaming_utils.longest_common_subsequence_merge`; we already exposed the primitive at `core/crispasr_lcs::lcs_dedup_prefix_count` for voxtral PLAN #114 P2 at the dispatcher layer. Wire it INSIDE the streamed function: for each new chunk, find the longest matching prefix against the previous chunk's tail tokens, drop it, rebuild text from surviving tokens, peel words whose `t1` ≤ surviving-tokens[0].t0.
+`62766dae` lands the LCS-merge dedup inside `canary_transcribe_streamed`. Per-chunk re-injection (`63fdbe46`) closed the AED-boundary `<eos>` bug but left a boundary-duplication artifact (each chunk re-decoded the overlap_seconds of audio in the previous chunk's tail). NeMo handles this in `streaming_utils.longest_common_subsequence_merge`; we already exposed the primitive at `core/stelnettts_lcs::lcs_dedup_prefix_count` for voxtral PLAN #114 P2 at the dispatcher layer. Wire it INSIDE the streamed function: for each new chunk, find the longest matching prefix against the previous chunk's tail tokens, drop it, rebuild text from surviving tokens, peel words whose `t1` ≤ surviving-tokens[0].t0.
 
 JFK forced streamed: `"...for you, Country can do for you. Ask…"` → `"...for you, . Ask what you can do for your country."`. The duplication is gone; the leftover `, . ` is a cosmetic punctuation artifact at the splice (LCS match fell between the `,` of chunk 1 and the `.` of chunk 2). 60 s Japanese clip: 18 s wall (3.3× RT, down from 5.3× before dedup; fewer redundant tokens emitted).
 
@@ -7236,7 +7236,7 @@ JFK forced streamed: `"...for you, Country can do for you. Ask…"` → `"...for
 
 **Promotion status.** `CANARY_STREAM_THRESHOLD_S` default stays at 30 (single-pass on short audio). Flipping to `0` (always streamed, matching parakeet) waits on a punctuation-cleanup pass for the small `, . ` splice artifact. Functionally the long-audio path is correct: no truncation, no duplication, just a cosmetic punctuation oddity.
 
-**Lesson.** The same LCS-merge primitive serves at two architectural layers — the dispatcher (voxtral PLAN #114 P2: across `crispasr_segment` slices from the outer chunk loop) and the backend (canary: across `canary_token_data` slices from the inner streamed loop). Reusing the algorithm at both layers is cleaner than each backend rolling its own; the shared `core/crispasr_lcs` makes that one primitive change once and use it twice.
+**Lesson.** The same LCS-merge primitive serves at two architectural layers — the dispatcher (voxtral PLAN #114 P2: across `stelnettts_segment` slices from the outer chunk loop) and the backend (canary: across `canary_token_data` slices from the inner streamed loop). Reusing the algorithm at both layers is cleaner than each backend rolling its own; the shared `core/stelnettts_lcs` makes that one primitive change once and use it twice.
 
 ---
 
@@ -7278,14 +7278,14 @@ Backend wrapper routes through streamed for n_samples > 30 s, `CANARY_STREAM_THR
 
 Two more landings this session:
 
-- **`dfe1af3b` canary lang-whitelist (PLAN #114 P3 first half).** canary-1b-v2's BPE vocab carries every ISO-639 `<|xx|>` language token (200+) — only en/de/fr/es are actually trained. The current build_prompt path treated the token's existence in the vocab as evidence the model could speak that language, so `-l ja` built the prompt cleanly, ran the decoder, and produced hallucinated mixed-Cyrillic/Greek garbage on JFK ("И така, мои сънародници, не питайте, τι может да направи ваша страна, ..."). Add a `{"en", "de", "fr", "es"}` whitelist in `crispasr_backend_canary.cpp` that refuses unsupported langs before invoking `canary_transcribe_ex`, with a message pointing at parakeet-tdt-0.6b-ja/zh for Japanese/Mandarin and qwen3/voxtral for the broader multilingual set. Smoke: `-l en` JFK unchanged; `-l ja` now errors out cleanly. **Second half** (`canary_transcribe_streamed` — parakeet-shape long-audio port for canary's 4 supported langs) is queued for a future session, less urgent now that the JA failure mode is closed off.
+- **`dfe1af3b` canary lang-whitelist (PLAN #114 P3 first half).** canary-1b-v2's BPE vocab carries every ISO-639 `<|xx|>` language token (200+) — only en/de/fr/es are actually trained. The current build_prompt path treated the token's existence in the vocab as evidence the model could speak that language, so `-l ja` built the prompt cleanly, ran the decoder, and produced hallucinated mixed-Cyrillic/Greek garbage on JFK ("И така, мои сънародници, не питайте, τι может да направи ваша страна, ..."). Add a `{"en", "de", "fr", "es"}` whitelist in `stelnettts_backend_canary.cpp` that refuses unsupported langs before invoking `canary_transcribe_ex`, with a message pointing at parakeet-tdt-0.6b-ja/zh for Japanese/Mandarin and qwen3/voxtral for the broader multilingual set. Smoke: `-l en` JFK unchanged; `-l ja` now errors out cleanly. **Second half** (`canary_transcribe_streamed` — parakeet-shape long-audio port for canary's 4 supported langs) is queued for a future session, less urgent now that the JA failure mode is closed off.
 - **`fe44abd2` Kaggle harness kernel for the granite-4.1/omniasr-llm chunk-context audit (PLAN #114 follow-up).** The local-M1 `tools/check-overlap-save-bug.sh` run on 2026-05-25 came back inconclusive for `granite-4.1` and `omniasr-llm` because the 20-min/run budget on M1 wasn't enough for those two LLM-AR backends to finish a 5-min clip. Kaggle CPU has 4 vCPUs + 30 GB RAM + a 9-hour wall budget. The kernel at `tools/kaggle/overlap-save-bug-check/`:
-  - Builds crispasr CPU-only from main.
-  - Downloads granite-speech-4.1-2b-q4_k.gguf + omniasr-llm-300m-v2-q4_k.gguf from `cstr/*` on HF.
+  - Builds stelnettts CPU-only from main.
+  - Downloads granite-speech-4.1-2b-q4_k.gguf + omniasr-llm-300m-v2-q4_k.gguf from `Xenna/*` on HF.
   - Synthesises ~88 s audio by concatenating `samples/jfk.wav` 8×.
   - Runs each backend twice (default `--chunk-overlap 3.0` vs `--chunk-overlap 0`).
   - Parses the SRT outputs, computes char + last-timestamp deltas, prints a verdict (OK / SUSPECTED-BUG / BOTH-FAIL / DEFAULT-FAILS) per backend.
-  Patterns lifted from `tools/kaggle/mimo-asr-cpu-vs-gpu/` (progress.jsonl + HF mirror, sh_with_progress ninja-progress streamer, HF auth via `chr1str/crispasr-hf-token` dataset). User triggers manually via `kaggle kernels push`. Result feeds the next pass of `examples/cli/crispasr_chunk_context_gate.h::kBlocked`.
+  Patterns lifted from `tools/kaggle/mimo-asr-cpu-vs-gpu/` (progress.jsonl + HF mirror, sh_with_progress ninja-progress streamer, HF auth via `chr1str/stelnettts-hf-token` dataset). User triggers manually via `kaggle kernels push`. Result feeds the next pass of `examples/cli/stelnettts_chunk_context_gate.h::kBlocked`.
 
 **Lesson** for canary P3: "the token is in the vocab" is not the same as "the model supports the language." Multi-language ASR backends with a fixed-size token table that's shared across families need an *explicit* whitelist of what was actually trained on, not a soft check on the embedding lookup. Same trap likely lurks in any future canary-3/-flash variants; the whitelist should be a load-time GGUF KV if upstream NeMo starts publishing the supported set.
 
@@ -7295,10 +7295,10 @@ Two more landings this session:
 
 Continuation of the same session as the P1-P6 fix train below; two more commits land on top:
 
-- **`043b3ae5` P6b kyutai-stt 30 s internal chunking.** Extracted the per-call transcribe logic into `transcribe_one()` and wrapped with a chunking loop in `crispasr_backend_kyutai_stt.cpp::transcribe()` that splits inputs > 30 s = 480 000 samples into 30 s windows. Each chunk gets its own P6a silence-tail flush; per-chunk `t_offset_cs` = `caller_offset + chunk_start / 16 kHz * 100 cs`. Validated locally on `first90.wav` (the 90 s Japanese clip from issue #89): 568 s wall = 6.3 s/s, finite and linear, vs the previously-reported 14 s/s degradation. Three chunks produced coherent Japanese hiragana output. JFK (11 s) stays on the single-chunk path unchanged. P6c (streaming-only design-limit guardrail) is now DEFERRED — with linear wallclock the "hung" appearance is gone, so the `--force-long-audio` cap is a UX nicety rather than a correctness fix.
-- **`9b5a0a2a` gemma4-e2b CRISPASR_GEMMA4_AUTO_CHUNK env-gated chunking.** PLAN #125 P4 left gemma4-e2b aborting on inputs > 30 s. Add an opt-in env var that chunks at the same 30 s boundary internally instead of aborting, same `t_offset_cs` arithmetic as kyutai-stt P6b. Default stays "abort with clear error" because we haven't validated chunk-boundary quality on long gemma4-e2b output; the env var lets users opt in to experimenting. JFK unchanged through the single-chunk path. Followup: long-audio quality validation → promote to default.
+- **`043b3ae5` P6b kyutai-stt 30 s internal chunking.** Extracted the per-call transcribe logic into `transcribe_one()` and wrapped with a chunking loop in `stelnettts_backend_kyutai_stt.cpp::transcribe()` that splits inputs > 30 s = 480 000 samples into 30 s windows. Each chunk gets its own P6a silence-tail flush; per-chunk `t_offset_cs` = `caller_offset + chunk_start / 16 kHz * 100 cs`. Validated locally on `first90.wav` (the 90 s Japanese clip from issue #89): 568 s wall = 6.3 s/s, finite and linear, vs the previously-reported 14 s/s degradation. Three chunks produced coherent Japanese hiragana output. JFK (11 s) stays on the single-chunk path unchanged. P6c (streaming-only design-limit guardrail) is now DEFERRED — with linear wallclock the "hung" appearance is gone, so the `--force-long-audio` cap is a UX nicety rather than a correctness fix.
+- **`9b5a0a2a` gemma4-e2b STELNETTTS_GEMMA4_AUTO_CHUNK env-gated chunking.** PLAN #125 P4 left gemma4-e2b aborting on inputs > 30 s. Add an opt-in env var that chunks at the same 30 s boundary internally instead of aborting, same `t_offset_cs` arithmetic as kyutai-stt P6b. Default stays "abort with clear error" because we haven't validated chunk-boundary quality on long gemma4-e2b output; the env var lets users opt in to experimenting. JFK unchanged through the single-chunk path. Followup: long-audio quality validation → promote to default.
 
-**Recurring pattern:** every LLM-decoder backend that's trained on a fixed audio window (~30 s) ends up wanting the same shape — extract per-call logic into a helper, wrap with a chunking loop, per-chunk `t_offset_cs` arithmetic, optional per-chunk pre/post-processing (kyutai's silence tail, gemma4's prompt). When the third such backend appears the right move is probably to extract this into a shared helper rather than copy-paste again. Note: voxtral and parakeet already chunk through their own dedicated paths (`crispasr_run_voxtral_style_pipeline_streamed`, `parakeet streamed_threshold_s`), so a shared helper would have to abstract over two pre-existing dialects + this new one.
+**Recurring pattern:** every LLM-decoder backend that's trained on a fixed audio window (~30 s) ends up wanting the same shape — extract per-call logic into a helper, wrap with a chunking loop, per-chunk `t_offset_cs` arithmetic, optional per-chunk pre/post-processing (kyutai's silence tail, gemma4's prompt). When the third such backend appears the right move is probably to extract this into a shared helper rather than copy-paste again. Note: voxtral and parakeet already chunk through their own dedicated paths (`stelnettts_run_voxtral_style_pipeline_streamed`, `parakeet streamed_threshold_s`), so a shared helper would have to abstract over two pre-existing dialects + this new one.
 
 ---
 
@@ -7306,9 +7306,9 @@ Continuation of the same session as the P1-P6 fix train below; two more commits 
 
 Distinct bug from PLAN #125 P0 (montvid's Blackwell segfault), same backend. Discovered via the overlap-save A/B sweep two days earlier (mimo flagged `BOTH_EMPTY`, the only backend out of 16 that failed both arms — meaning the bug wasn't in the overlap-save path, it was in the backend itself).
 
-**Bisect.** Bypassed `git bisect` by inspection — only ~7 commits touched `src/mimo_asr.cpp` since HISTORY §56 shipped the working baseline (`dae361f2`), and `89111260` ("perf #72: load weights to GPU when use_gpu=true") was the standout candidate: it flipped `core_gguf::load_weights(..., ctx->backend_cpu, ...)` to `..., ctx->backend, ...`. The commit message itself anticipated the regression — *"If a platform regresses, add a CRISPASR_FORCE_CPU_WEIGHTS=1 escape hatch — none seen yet"*.
+**Bisect.** Bypassed `git bisect` by inspection — only ~7 commits touched `src/mimo_asr.cpp` since HISTORY §56 shipped the working baseline (`dae361f2`), and `89111260` ("perf #72: load weights to GPU when use_gpu=true") was the standout candidate: it flipped `core_gguf::load_weights(..., ctx->backend_cpu, ...)` to `..., ctx->backend, ...`. The commit message itself anticipated the regression — *"If a platform regresses, add a STELNETTTS_FORCE_CPU_WEIGHTS=1 escape hatch — none seen yet"*.
 
-**Verification.** Couldn't safely build + load on the local M1 box (4.5 GB Q4_K + active 90 s overlap-save sweep + ~1 GB free), so pushed the build to Kaggle following the patterns in [[project_kaggle_rebake_fragilities]]. The first attempt (`chr1str/crispasr-mimo-asr-cpu-vs-gpu-bisect-plan-115`) used a GPU kernel and queue-blocked for 14+ hours on exhausted GPU quota. Switched to a CPU notebook (`chr1str/crispasr-mimo-asr-cpu-validate`) — RUNNING immediately, completed in ~8 min, JFK transcript matches HISTORY §56 reference verbatim. Confirms the regression is GPU-path specific.
+**Verification.** Couldn't safely build + load on the local M1 box (4.5 GB Q4_K + active 90 s overlap-save sweep + ~1 GB free), so pushed the build to Kaggle following the patterns in [[project_kaggle_rebake_fragilities]]. The first attempt (`chr1str/stelnettts-mimo-asr-cpu-vs-gpu-bisect-plan-115`) used a GPU kernel and queue-blocked for 14+ hours on exhausted GPU quota. Switched to a CPU notebook (`chr1str/stelnettts-mimo-asr-cpu-validate`) — RUNNING immediately, completed in ~8 min, JFK transcript matches HISTORY §56 reference verbatim. Confirms the regression is GPU-path specific.
 
 **Independence from PLAN #125 P0 / `a5a518c8` sched hardening.** Verified empirically on M1 Metal after rebuilding on HEAD with the sched-restore patch: same silent-empty symptom. Two different mimo-asr bugs surfacing as the same observable on different platforms (Blackwell sm_120 segfault vs M1 Metal silent-empty).
 
@@ -7325,7 +7325,7 @@ Distinct bug from PLAN #125 P0 (montvid's Blackwell segfault), same backend. Dis
 
 ## 2026-05-25 / -26 Overlap-save bug sweep — five new opt-outs + a reusable A/B harness
 
-Generalised PR #124 (CKwasd's cohere fix). The PR landed during this session; while reviewing it I noticed the strcmp-on-backend-name pattern in `crispasr_run.cpp` was hard-coded for cohere alone and the test gate (`should_use_chunk_context`) had no test exercising the new opt-out arg. The question "are other backends in the same bucket?" turned into an A/B sweep that surfaced five more offenders.
+Generalised PR #124 (CKwasd's cohere fix). The PR landed during this session; while reviewing it I noticed the strcmp-on-backend-name pattern in `stelnettts_run.cpp` was hard-coded for cohere alone and the test gate (`should_use_chunk_context`) had no test exercising the new opt-out arg. The question "are other backends in the same bucket?" turned into an A/B sweep that surfaced five more offenders.
 
 **Harness.** `tools/check-overlap-save-bug.sh` runs each at-risk ASR backend twice on a long clip — once with default `--chunk-overlap 3.0` and once with `--chunk-overlap 0` — and prints last-timestamp + char delta side by side. Backends flagged AT-RISK by the static survey (no `CAP_UNBOUNDED_INPUT`, no `CAP_INTERNAL_CHUNKING`): 14 of the 22 ASR backends. The empirical sweep then narrows that to the actual offenders.
 
@@ -7342,7 +7342,7 @@ Generalised PR #124 (CKwasd's cohere fix). The PR landed during this session; wh
 
 voxtral4b was **not** affected even though it's the same name family — different model architecture under the hood. canary / fastconformer-ctc / firered-asr / granite-4.1-nar / parakeet / wav2vec2 already declare `CAP_UNBOUNDED_INPUT` or `CAP_INTERNAL_CHUNKING` so the gate skips them by design. funasr / moonshine / moonshine-streaming / omniasr / sensevoice / vibevoice / voxtral4b all PASSed the A/B cleanly. granite-4.1 / omniasr-llm / mimo-asr came back inconclusive (granite/omniasr-llm just too slow on M1 in the 20 min per-run budget; mimo-asr is the separate PLAN #115 baseline regression).
 
-**Fix shape.** Pulled the per-name strcmp out of `crispasr_run.cpp` into `backend_allows_chunk_context(const char* backend_name)` in `examples/cli/crispasr_chunk_context_gate.h` (the same header that already housed `should_use_chunk_context` for unit-test reasons). The opt-out list is now the testable thing — `tests/test-issue-114-chunk-context-gate.cpp` grew from 7 to 11 test cases including a 5-dimension exhaustive sweep over the new param, an opt-out-is-master-gate test, and a default-arg parity check.
+**Fix shape.** Pulled the per-name strcmp out of `stelnettts_run.cpp` into `backend_allows_chunk_context(const char* backend_name)` in `examples/cli/stelnettts_chunk_context_gate.h` (the same header that already housed `should_use_chunk_context` for unit-test reasons). The opt-out list is now the testable thing — `tests/test-issue-114-chunk-context-gate.cpp` grew from 7 to 11 test cases including a 5-dimension exhaustive sweep over the new param, an opt-out-is-master-gate test, and a default-arg parity check.
 
 **Fix train (in push order).**
 
@@ -7352,15 +7352,15 @@ voxtral4b was **not** affected even though it's the same name family — differe
 - `6fef8790` — voxtral opt-out.
 - `e7dfb93f` — qwen3 opt-out (caught by re-running the inconclusive backends on a 90 s clip after the 5 min run was timing out).
 
-**Tooling notes.** First Kaggle kernel attempt for the bisect went wrong because I didn't read the existing `tools/kaggle/crispasr-regression.py` first — it has the `step()` / `progress.jsonl` + HF mirror / `sh_with_progress()` Popen build streamer / `build_heartbeat()` ticker patterns that [[project_kaggle_rebake_fragilities]] documents as the seven fragilities the script defends against. The second kernel (`chr1str/crispasr-mimo-asr-cpu-validate`) applied those patterns end-to-end and ran cleanly.
+**Tooling notes.** First Kaggle kernel attempt for the bisect went wrong because I didn't read the existing `tools/kaggle/stelnettts-regression.py` first — it has the `step()` / `progress.jsonl` + HF mirror / `sh_with_progress()` Popen build streamer / `build_heartbeat()` ticker patterns that [[project_kaggle_rebake_fragilities]] documents as the seven fragilities the script defends against. The second kernel (`chr1str/stelnettts-mimo-asr-cpu-validate`) applied those patterns end-to-end and ran cleanly.
 
 ---
 
 ## 2026-05-25 Registry — cohere-asr-ja-v0.1 added (issue #123)
 
-Two `{"cohere", ...}` rows added to `src/crispasr_model_registry.cpp` pointing at `TransWithAI/cohere-transcribe-ja-v0.1-GGUF` (`-q4_k`, `-q8_0`). Same backend code as the English `cohere-transcribe-03-2026` entry — Japanese fine-tune of the same base, Apache-2.0. Dropped straight in. `--model-quant` resolves the other quants in that repo (`F16/Q6/Q5`) from the registered Q4_K row. Issue closed with a thank-you to the requester (rikimtasu) and CKwasd (who published the GGUF mirror).
+Two `{"cohere", ...}` rows added to `src/stelnettts_model_registry.cpp` pointing at `TransWithAI/cohere-transcribe-ja-v0.1-GGUF` (`-q4_k`, `-q8_0`). Same backend code as the English `cohere-transcribe-03-2026` entry — Japanese fine-tune of the same base, Apache-2.0. Dropped straight in. `--model-quant` resolves the other quants in that repo (`F16/Q6/Q5`) from the registered Q4_K row. Issue closed with a thank-you to the requester (rikimtasu) and CKwasd (who published the GGUF mirror).
 
-Verified locally: `crispasr --backend cohere -m cohere-asr-ja-v0.1-q4_k.gguf --dry-run-resolve` returns the correct upstream URL. Commit `e3ded251` registry, `50b6dfda` README row alongside the English cohere entry.
+Verified locally: `stelnettts --backend cohere -m cohere-asr-ja-v0.1-q4_k.gguf --dry-run-resolve` returns the correct upstream URL. Commit `e3ded251` registry, `50b6dfda` README row alongside the English cohere entry.
 
 ---
 
@@ -7371,15 +7371,15 @@ Built on the P0 scheduler hardening from earlier in the day. Six commits land si
 **Shipped this session (in push order):**
 
 - **`72b74486` P2 firered-asr** — drop `CAP_UNBOUNDED_INPUT` (encoder's relative-PE buffer is `pe_maxlen=5000` ≈ 50 s post-subsample; declaring unbounded bypassed VAD and produced silent OOB on long audio). Add defensive length check in `firered_asr_transcribe_impl` that aborts with a clear error when `T_sub > pe_maxlen`. JFK still transcribes cleanly.
-- **`f72d3db1` P1 funasr** — degenerate-loop guard in the AR decode (bail after the same token id repeats > 20× in a row, model-agnostic stop-loss for the `!`-loop reported on Blackwell CUDA). `frames_spliced`/`fake_token_len` surfaced at `CRISPASR_VERBOSE=1` for the next reporter. Four backends added to `tools/test-all-backends.py`: funasr, fun-asr-mlt-nano, sensevoice, paraformer (all had shipped without CI coverage since the 2026-05-20 ports landed). The default werv-threshold check at line 670 would have caught the `!`-loop loud (`wer("…", "!!!!…") ≈ 1.0`).
+- **`f72d3db1` P1 funasr** — degenerate-loop guard in the AR decode (bail after the same token id repeats > 20× in a row, model-agnostic stop-loss for the `!`-loop reported on Blackwell CUDA). `frames_spliced`/`fake_token_len` surfaced at `STELNETTTS_VERBOSE=1` for the next reporter. Four backends added to `tools/test-all-backends.py`: funasr, fun-asr-mlt-nano, sensevoice, paraformer (all had shipped without CI coverage since the 2026-05-20 ports landed). The default werv-threshold check at line 670 would have caught the `!`-loop loud (`wer("…", "!!!!…") ≈ 1.0`).
 - **`5f0aefc0` P3 omniasr-llm** — chunking decision rewritten as `(is_streaming || force_seg) && T_enc > 1`. Non-streaming GGUFs were silently feeding the entire long audio to a 512-token LLM head; now they chunk by training-window length. Segment marker injection stays gated on `is_streaming` (non-streaming variants chunk without the marker — each chunk decoded as a complete utterance, which is what the model was trained on).
-- **`b936b488` P5 mimo-asr** — tokenizer `cstr/mimo-tokenizer-GGUF/mimo-tokenizer-q4_k.gguf` added to the auto-download manifest. Was previously required separately, blocking everyone whose first `crispasr --backend mimo-asr -m auto --auto-download` produced exit code 1. Error message expanded to surface `--auto-download` as option 1, manual `hf download` as option 3. `docs/architecture.md` mimo-asr section documents the requirement.
+- **`b936b488` P5 mimo-asr** — tokenizer `Xenna/mimo-tokenizer-GGUF/mimo-tokenizer-q4_k.gguf` added to the auto-download manifest. Was previously required separately, blocking everyone whose first `stelnettts --backend mimo-asr -m auto --auto-download` produced exit code 1. Error message expanded to surface `--auto-download` as option 1, manual `hf download` as option 3. `docs/architecture.md` mimo-asr section documents the requirement.
 - **`ba0e388e` P6a kyutai-stt** — append 500 ms zero-frame silence-tail before calling `kyutai_stt_transcribe_ex`. The streaming-trained LM is causal and needs the tail to flush its final-token state; the batch wrapper was passing raw samples and stopping mid-word. Locally verified: JFK now produces "...for your country." (full final word + sentence-end punctuation, was truncated to "...for your c" before).
 - **`8bfaff23` P4 gemma4-e2b** — defensive 30 s training-window guard. On long audio the model emits `<Eos>` immediately after the prompt and continues into unrelated LLM commentary; refusing the slice with a clear "use `--vad`" message stops the silently-wrong output. Followup: auto-chunk vs abort decision for the dispatcher.
 
 **Each fix verified locally on M1 Metal** by running the affected backend on `samples/jfk.wav` (the universal control test from the reporter's methodology). Output recorded inline in each PLAN P-section.
 
-**Workflow notes.** All six commits originated in `/Volumes/backups/code/CrispASR-issue125-p1p2` per `feedback_parallel_workers.md` and `feedback_storage_paths.md`; rebased + fast-forwarded into `main` per `feedback_integrate_to_main.md`. `clang-format-18` applied only to the four `src/`+`examples/cli/` files I touched per `feedback_clang_format_v18.md`'s tight scope (registry .py and docs/architecture.md are out of scope and stayed untouched by the formatter).
+**Workflow notes.** All six commits originated in `/Volumes/backups/code/StelnetTTS-issue125-p1p2` per `feedback_parallel_workers.md` and `feedback_storage_paths.md`; rebased + fast-forwarded into `main` per `feedback_integrate_to_main.md`. `clang-format-18` applied only to the four `src/`+`examples/cli/` files I touched per `feedback_clang_format_v18.md`'s tight scope (registry .py and docs/architecture.md are out of scope and stayed untouched by the formatter).
 
 **Lessons.** Two patterns recurred across the six fixes:
 
@@ -7390,7 +7390,7 @@ Built on the P0 scheduler hardening from earlier in the day. Six commits land si
 
 ## 2026-05-26 (later) PLAN #125 P0 — mimo-asr regression reattributed; sched src-mutation log hardened
 
-Closer reading of the v0.6.9 → v0.6.10 delta moved the bisect away from `6b492b2b` (FA per-head mask). The FA patch is fully `#ifdef GGML_CUDA_CRISPASR_FA_PERHEAD_MASK`-guarded; the CMake option defaults OFF (`ggml/CMakeLists.txt:211`); no CI or release script sets the flag ON (verified by `grep -rn FA_PERHEAD`). With the macro undefined, the compiled binary is byte-identical to upstream for that path. A self-built `eaee2319` (which is the reporter's binary, `/opt/crispasr-main/build/bin/crispasr`) gets OFF by default. The patch cannot be the cause of a default-build segfault.
+Closer reading of the v0.6.9 → v0.6.10 delta moved the bisect away from `6b492b2b` (FA per-head mask). The FA patch is fully `#ifdef GGML_CUDA_STELNETTTS_FA_PERHEAD_MASK`-guarded; the CMake option defaults OFF (`ggml/CMakeLists.txt:211`); no CI or release script sets the flag ON (verified by `grep -rn FA_PERHEAD`). With the macro undefined, the compiled binary is byte-identical to upstream for that path. A self-built `eaee2319` (which is the reporter's binary, `/opt/stelnettts-main/build/bin/stelnettts`) gets OFF by default. The patch cannot be the cause of a default-build segfault.
 
 The reporter's bisect missed `ggml/src/ggml-backend.cpp` because their grep filtered to `ggml/src/ggml-cuda/` + the mimo backend files. Between v0.6.9 and v0.6.10 there are *two* code-relevant deltas; the second is **`0f0f0793` "fix(#83): ggml sched src-mutation log + UNet input pin — R9 follow-up #4 v2"**. That patch is *unconditional* and adds a `src_mutations[]` log + restore to the generic scheduler, used by every backend including CUDA.
 
@@ -7408,12 +7408,12 @@ Why mimo-asr in particular: it builds a fresh cgraph per AR-decoded token, so it
 - Called on every exit path of `compute_splits` (the two early-error returns + the success path).
 - Called defensively at the start of `split_graph` and inside `sched_reset` to drop any stale entries before `ggml_free(sched->ctx)` runs. The restore writes to the user's gf (`orig_src` pointers were captured before the rewire), not to `sched->ctx`, so it is safe to call before the free.
 - Tightened the realloc-on-grow to assign-after-success.
-- Stripped the `// CrispASR patch (#83 r9 follow-up #4)` and `MUST RE-APPLY` markers per `feedback_strip_local_markers.md` — those should not have been in committed code.
+- Stripped the `// StelnetTTS patch (#83 r9 follow-up #4)` and `MUST RE-APPLY` markers per `feedback_strip_local_markers.md` — those should not have been in committed code.
 
 Local M1 Metal verification before pushing:
 
-- `crispasr --backend parakeet -f samples/jfk.wav` — produces the canonical JFK transcript via the hardened scheduler.
-- `crispasr --tts "Hello world test." --tts-output /tmp/tts-smoke.wav -m chatterbox-t3-q8_0-regen.gguf` — CFM solver runs cond+uncond and produces `vocoder mel rms=4.625` (ref rms=5.115; broken-baseline before `0f0f0793` was rms=13.938). The original chatterbox fix the patch was meant to deliver is preserved by the hardening.
+- `stelnettts --backend parakeet -f samples/jfk.wav` — produces the canonical JFK transcript via the hardened scheduler.
+- `stelnettts --tts "Hello world test." --tts-output /tmp/tts-smoke.wav -m chatterbox-t3-q8_0-regen.gguf` — CFM solver runs cond+uncond and produces `vocoder mel rms=4.625` (ref rms=5.115; broken-baseline before `0f0f0793` was rms=13.938). The original chatterbox fix the patch was meant to deliver is preserved by the hardening.
 
 Outstanding: we have no Blackwell sm_120 hardware locally, so the end-to-end mimo-asr-on-Blackwell confirmation has to come from the reporter. Ask montvid to rebuild from `95d74455` or later and rerun the mimo-asr JFK case. If the segfault persists after the hardening, next debug step is a `gdb --args` backtrace + a closer look at any non-Metal-only ggml deltas we may still be missing.
 
@@ -7421,7 +7421,7 @@ Outstanding: we have no Blackwell sm_120 hardware locally, so the end-to-end mim
 
 - A bisect grep restricted to "obviously CUDA-shaped" paths can miss the generic scheduler when an unrelated patch touches it.
 - A behaviour-changing patch in `ggml-backend.cpp` is implicitly multi-backend; "this fix is for chatterbox CFG on Metal" doesn't bound its blast radius. Hardening on all-exit paths from the start is cheaper than learning this from a user report.
-- `// CrispASR patch ... MUST RE-APPLY` markers should not enter committed code — by definition, code that's in `main` *is* the apply, and the marker carries no signal except "remind future-me." Use commit messages and PLAN entries for that, not source markers.
+- `// StelnetTTS patch ... MUST RE-APPLY` markers should not enter committed code — by definition, code that's in `main` *is* the apply, and the marker carries no signal except "remind future-me." Use commit messages and PLAN entries for that, not source markers.
 
 Cross-refs: `0f0f0793` original patch; `a5a518c8` hardening; `feedback_strip_local_markers.md` memory note; PLAN #125 P0.
 
@@ -7439,7 +7439,7 @@ The remaining eleven findings cluster by remediation cost:
 - **P2 firered-asr declares `CAP_UNBOUNDED_INPUT` but its PE window is `pe_maxlen=5000` ≈ 50 s** (report 04). One-line fix in the backend registry; JFK proves the model is fine.
 - **P3 omniasr-llm `is_streaming` chunking gate** (report 03) — for GGUFs without the streaming-mode flag, the dispatcher feeds the entire long audio to a 512-token LLM; chunking decision needs to be `(is_streaming || T_enc > seg_frames)`.
 - **P4 gemma4-e2b long-audio hallucinations** (reports 02, 07) — JFK transcribes verbatim; 50 min clip emits unrelated LLM completion starting with `<Eos>!`. Long-context chunking bug, not the audio-soft-token-id mismatch the original report #02 hypothesised before the control test.
-- **P5 mimo-asr tokenizer GGUF missing from auto-download manifest** (report 06) — verified workaround using `hf download cstr/mimo-tokenizer-GGUF`. `--codec-model` flag is undocumented in `docs/cli.md`. Blocked by P0 for testability.
+- **P5 mimo-asr tokenizer GGUF missing from auto-download manifest** (report 06) — verified workaround using `hf download Xenna/mimo-tokenizer-GGUF`. `--codec-model` flag is undocumented in `docs/cli.md`. Blocked by P0 for testability.
 - **P6 kyutai-stt** — three separate issues. P6a: drops the final word on the 11 s JFK clip (deterministic, output ends `"…can do for your c"`); causal LM needs zero-frame tail or `<eos>` flush. P6b: 0.07× RT on long file vs 0.73× on JFK (10× per-audio-second degradation; dispatcher passes raw samples in one call, KV grows O(N²)). P6c: backend is fundamentally streaming-trained, batch dispatcher is a footgun — refuse files > 5 min unless `--force-long-audio`.
 
 The reporter's most actionable methodology observation: **JFK as universal control test.** Running the project's own 11 s fixture isolates "model is dead" from "long-audio dispatcher is broken" in under 2 minutes — the two failure classes have completely different fix sites. Reports #07 and #12 both demonstrate this pattern; future "broken backend" reports should run JFK first.
@@ -7460,7 +7460,7 @@ Closing out the handover-prompts/extend-coverage-via-kaggle.md initiative. End-o
 
 ### Kaggle rebake pipeline
 
-The rebake kernel `chr1str/crispasr-auto-rebake-refs` had been latently broken since the 2026-05-12 rename of `fixture_path` → `fixture_ref_path` (commit `056493a1`). Nobody noticed for 13 days because the rebake didn't run scheduled in that window. v7 of the kernel triggered today hit four cascading issues before producing any output; each surfaced exactly one fix.
+The rebake kernel `chr1str/stelnettts-auto-rebake-refs` had been latently broken since the 2026-05-12 rename of `fixture_path` → `fixture_ref_path` (commit `056493a1`). Nobody noticed for 13 days because the rebake didn't run scheduled in that window. v7 of the kernel triggered today hit four cascading issues before producing any output; each surfaced exactly one fix.
 
 | version | symptom | root cause | fix |
 |---|---|---|---|
@@ -7468,13 +7468,13 @@ The rebake kernel `chr1str/crispasr-auto-rebake-refs` had been latently broken s
 | v8 | (same as v7, immediately) | confirmed by user it's stuck — killed | rolled into v10 |
 | v9 | KeyError `'fixture_path'` on first backend | latent rename bug from 2026-05-12 — rebake path was missed | `8cf7e931` field rename + never-done-first ordering |
 | v10 | disk-full at backend #8 during NeMo source-weight download | `/kaggle/working/hf_cache/` never freed between backends → ~16 GB cumulative across 4 parakeet variants | `0f4de5b9` rmtree HF + torch caches in `finally:` block per backend; print `free_gb_after` in heartbeat |
-| v11 | 9 successful refs, 0 uploaded; WARN downgrade to `UPLOAD=0` | Kaggle Secrets API gave `ConnectionError`; script's "anonymous" path triggered | `2ff4f1ba` 3-tier auth: env → `kaggle_secret()` 3× retry → `kaggle_token_from_dataset()` reading `/kaggle/input/crispasr-hf-token/hf_token.txt` |
+| v11 | 9 successful refs, 0 uploaded; WARN downgrade to `UPLOAD=0` | Kaggle Secrets API gave `ConnectionError`; script's "anonymous" path triggered | `2ff4f1ba` 3-tier auth: env → `kaggle_secret()` 3× retry → `kaggle_token_from_dataset()` reading `/kaggle/input/stelnettts-hf-token/hf_token.txt` |
 | v12 | HF auth resolved cleanly, but still 0 uploaded; `SystemExit: rebake had failures; refusing to upload` | all-or-nothing upload gate at line 866 blocks every partial run with the 14 known-broken backends | `c11e0648` partial-upload — failed entries never write to `REBAKE_STAGE` so `upload_folder()` only ships successes |
 | v13 | **upload landed** | — | manifest `fixtures.revision` bumped to `b61b03014bc99ecce18ac8f99988d5110c83f2d2` in `e79d1c77` |
 
-Bonus infrastructure: private Kaggle Dataset `chr1str/crispasr-hf-token` created out-of-band as the durable auth-fallback path (Kaggle's UI has no "Add-ons → Variables" option despite older script comments to the contrary — confirmed on the current UI). Mounted via `kernel-metadata.json:dataset_sources`.
+Bonus infrastructure: private Kaggle Dataset `chr1str/stelnettts-hf-token` created out-of-band as the durable auth-fallback path (Kaggle's UI has no "Add-ons → Variables" option despite older script comments to the contrary — confirmed on the current UI). Mounted via `kernel-metadata.json:dataset_sources`.
 
-### Published refs at `cstr/crispasr-regression-fixtures@b61b03014bc`
+### Published refs at `Xenna/stelnettts-regression-fixtures@b61b03014bc`
 
 **NEW** (4 of the 13 handover backends):
 
@@ -7516,7 +7516,7 @@ Bonus infrastructure: private Kaggle Dataset `chr1str/crispasr-hf-token` created
 
 ### What didn't make this commit train
 
-- skip_diff: false flips for the 4 new parakeet refs — needs `fixture_ref_path` set per entry, a transcript captured locally via `crispasr-cli + GGUF`, and `diff_thresholds` calibrated from a local `crispasr-diff` run
+- skip_diff: false flips for the 4 new parakeet refs — needs `fixture_ref_path` set per entry, a transcript captured locally via `stelnettts-cli + GGUF`, and `diff_thresholds` calibrated from a local `stelnettts-diff` run
 - Per-backend dep fixes for the 8 missing-pip cases — each is a small follow-up but needs an env-spec change in the rebake bootstrap (or a per-backend `tools/reference_envs/<name>/requirements.txt` consulted by the kernel)
 - The `cohere-transcribe` / `granite` / `moonshine-streaming-tiny` `source_model` additions — trivial 3-entry manifest edit
 
@@ -7524,8 +7524,8 @@ Bonus infrastructure: private Kaggle Dataset `chr1str/crispasr-hf-token` created
 
 - LEARNINGS "Kaggle as a batch-rebake target: seven fragilities the script has to work around" for the deep dive on each fix
 - handover-prompts/extend-coverage-via-kaggle.md for the original initiative scope
-- `tools/kaggle/crispasr-regression.py` is the canonical script (modified across `1b62776e`, `8cf7e931`, `eba52bac`, `0f4de5b9`, `2ff4f1ba`, `c11e0648`)
-- `tools/kaggle/rebake/kernel-metadata.json` now mounts `chr1str/crispasr-hf-token` as the auth fallback
+- `tools/kaggle/stelnettts-regression.py` is the canonical script (modified across `1b62776e`, `8cf7e931`, `eba52bac`, `0f4de5b9`, `2ff4f1ba`, `c11e0648`)
+- `tools/kaggle/rebake/kernel-metadata.json` now mounts `chr1str/stelnettts-hf-token` as the auth fallback
 
 ---
 
@@ -7562,11 +7562,11 @@ This is a *system-pressure* failure, not a *streaming-pipeline* failure. The alg
 | **voxtral-mini-3b** | streamed (this PR, `cc319745` → `3f20d050` → `a5165c84`); falls back to single-chunk for ≤30 s | 60-300 s: 100 % local M1; 600 s pending non-thrashing reproduce. Default-chunked path on VPS post-opt-out (`6fef8790`) was 100 % at 60-300 s and wall-time-bound at 600 s |
 | **cohere-transcribe** | default chunking with opt-out from the external overlap-save wrap (commit `dc2295b2` from earlier today) | 60-600 s: 96 / 98 / 98 / 98 % (VPS, full 22 segs at 600 s) |
 | **canary-1b-v2** | unchanged | still hallucinates English `"I am not aware…"` at every JA length — separate prompt-wiring bug (PLAN #114 P3) |
-| **qwen3-asr / granite / mimo-asr** | opt-out fixes for siblings (`46f6848d` / `eaee2319` / similar) | audit pending; not in the lenhone repro path |
+| **cielvox2-asr / granite / mimo-asr** | opt-out fixes for siblings (`46f6848d` / `eaee2319` / similar) | audit pending; not in the lenhone repro path |
 
 ### Stash relocation rule update
 
-The `/Users/.../code/issue89-stash/` accumulation of audio fixtures + JSON dumps + log files (~30 MB on top of an already 99-100 % full main volume) was contributing to the memory thrash. Consolidated everything to `/Volumes/backups/code/issue89-stash/` (the SSD, 30 GB+ free). Memory rules updated: `[[feedback_storage_paths]]` and `[[feedback_parallel_workers]]` now direct intermediate work files and worktree stashes to `/Volumes/backups/code/<topic>-stash/`, not `~/code/<topic>-stash/`. The new rule applies to this writeup itself — the worktree for this commit lives at `/Volumes/backups/code/CrispASR-final-writeup/`.
+The `/Users/.../code/issue89-stash/` accumulation of audio fixtures + JSON dumps + log files (~30 MB on top of an already 99-100 % full main volume) was contributing to the memory thrash. Consolidated everything to `/Volumes/backups/code/issue89-stash/` (the SSD, 30 GB+ free). Memory rules updated: `[[feedback_storage_paths]]` and `[[feedback_parallel_workers]]` now direct intermediate work files and worktree stashes to `/Volumes/backups/code/<topic>-stash/`, not `~/code/<topic>-stash/`. The new rule applies to this writeup itself — the worktree for this commit lives at `/Volumes/backups/code/StelnetTTS-final-writeup/`.
 
 ### What's actually open after this commit
 
@@ -7582,16 +7582,16 @@ Two things landing together:
 
 ### 1. Voxtral streamed implementation (option A — single LLM context over the whole clip)
 
-`crispasr_run_voxtral_style_pipeline_streamed` in `examples/cli/crispasr_llm_pipeline.h`: matches what `transformers.models.voxtral.processing_voxtral.VoxtralProcessor.apply_transcription_request` does upstream. For audio > 30 s:
+`stelnettts_run_voxtral_style_pipeline_streamed` in `examples/cli/stelnettts_llm_pipeline.h`: matches what `transformers.models.voxtral.processing_voxtral.VoxtralProcessor.apply_transcription_request` does upstream. For audio > 30 s:
 
 1. Loop 30 s chunks: `voxtral_compute_mel` + `voxtral_run_encoder` → per-chunk audio embeds (375 × 3072).
 2. Concatenate all chunks' audio embeds into one buffer.
 3. Build prompt with `n_chunks × 375` audio-pad placeholder tokens.
 4. Embed + splice audio embeds into placeholders, **single LLM AR decode** over the whole prompt.
 
-Differs from CrispASR's previous per-slice-LLM-call shape: there, each 30 s slice got its own LLM context, the AR decoder cold-started at every chunk boundary, and boundary words / sentence carries could drop. With the streamed path the LLM sees one continuous audio sequence, no cold-starts.
+Differs from StelnetTTS's previous per-slice-LLM-call shape: there, each 30 s slice got its own LLM context, the AR decoder cold-started at every chunk boundary, and boundary words / sentence carries could drop. With the streamed path the LLM sees one continuous audio sequence, no cold-starts.
 
-`crispasr_backend_voxtral.cpp`: voxtral now declares `CAP_UNBOUNDED_INPUT | CAP_INTERNAL_CHUNKING` so `crispasr_run.cpp`'s 30 s auto-chunk gate doesn't fire — long audio routes inside the backend via the new template. Short audio (≤ 30 s) still goes through the single-chunk pipeline (bit-identical to today).
+`stelnettts_backend_voxtral.cpp`: voxtral now declares `CAP_UNBOUNDED_INPUT | CAP_INTERNAL_CHUNKING` so `stelnettts_run.cpp`'s 30 s auto-chunk gate doesn't fire — long audio routes inside the backend via the new template. Short audio (≤ 30 s) still goes through the single-chunk pipeline (bit-identical to today).
 
 KV cache budget bumped from the fixed 4096 to `T_prompt + max_new_tokens + 64` so the longer prompt fits. On the M1 Metal smoke test (60 s clip): 2 chunks → 750 audio tokens → single decode → 11 segments / ~470 chars / full 0:00 → 1:00 coverage. Compare to the per-slice path on the same clip: 3 segments / 280 chars (still correct content, less segmentation granularity).
 
@@ -7609,7 +7609,7 @@ Matrix v1 (pre-opt-out) numbers I committed earlier today (cohere 59 %/62 % at 3
 | **voxtral-mini-3b** streamed (this PR — single LLM context) | full 0:00→1:00, 11 segs / 470 chars | running | running | running |
 | **cohere-transcribe** (default chunking, post-opt-out) | 96.3 | 97.9 | 98.1 | TBD |
 
-PERFORMANCE.md updated to keep matrix v1 *and* v2 side by side so the reader can see the cost of the missing opt-out — the same models, the same audio, just an `kBlocked` flag in `crispasr_chunk_context_gate.h` between them.
+PERFORMANCE.md updated to keep matrix v1 *and* v2 side by side so the reader can see the cost of the missing opt-out — the same models, the same audio, just an `kBlocked` flag in `stelnettts_chunk_context_gate.h` between them.
 
 ### Implication for PLAN #114 priority order
 
@@ -7621,7 +7621,7 @@ PERFORMANCE.md updated to keep matrix v1 *and* v2 side by side so the reader can
 Cross-refs:
 - HISTORY 2026-05-25 (above) "Long-form ASR — cross-backend survey" for the matrix-v1 numbers and the failure-class breakdown.
 - LEARNINGS new "Always rebuild the test box before benchmarking" note from this session.
-- `examples/cli/crispasr_chunk_context_gate.h` `kBlocked` list — the actual mechanism behind the opt-out.
+- `examples/cli/stelnettts_chunk_context_gate.h` `kBlocked` list — the actual mechanism behind the opt-out.
 
 ---
 
@@ -7646,7 +7646,7 @@ Follow-up to the 2026-05-24 "Issue #89 reopened" entry that made the streamed en
 
 1. **Conformer long-attention amplification** (parakeet, cohere, canary): bidirectional self-attention over the full utterance amplifies codec-level audio perturbations into 10-15 % activation shifts that flip downstream decisions. Fix shape: global-z-norm + chunked-encode (8 s) + concat + single decode (the parakeet `transcribe_streamed` pattern). DONE for parakeet; canary needs the same port with AED prompt re-injection at boundaries; cohere's released weights aren't trained for long inputs, so the simpler fix is VAD-default like its hosted product does.
 
-2. **LLM autoregressive decoder loses track at chunk boundaries** (voxtral, qwen3-asr, granite-speech, mimo-asr): the energy chunker hands the LLM 30 s slices, the AR decoder either runs to `max_new_tokens` before catching up to the audio or its prompt conditioning misfires on the boundary, dropping the middle of long clips. Fix shape: chunk with overlap + LCS dedup. We already have `core_lcs::merge_overlapping_hypotheses` from PLAN #80c, just need to wire it as the default for LLM-AR backends.
+2. **LLM autoregressive decoder loses track at chunk boundaries** (voxtral, cielvox2-asr, granite-speech, mimo-asr): the energy chunker hands the LLM 30 s slices, the AR decoder either runs to `max_new_tokens` before catching up to the audio or its prompt conditioning misfires on the boundary, dropping the middle of long clips. Fix shape: chunk with overlap + LCS dedup. We already have `core_lcs::merge_overlapping_hypotheses` from PLAN #80c, just need to wire it as the default for LLM-AR backends.
 
 3. **Multi-task AED language-prompt wiring** (canary): a separate bug from the long-audio one. The JA hallucination loop suggests the language prompt isn't being threaded through the decoder correctly at all, not just at chunk boundaries. Needs short-audio validation first before the long-audio port can be tested cleanly.
 
@@ -7656,7 +7656,7 @@ P0 (in progress): 60/120/300/600 s × all-multilingual-backends matrix on the VP
 
 P1: cohere `CAP_LONGFORM_PREFERS_VAD` (or similar flag) → CLI auto-enables `--vad` past 30 s. Cheapest fix, faithful to the hosted product's behaviour.
 
-P2: voxtral / qwen3-asr / granite / mimo-asr — wire `core_lcs::merge_overlapping_hypotheses` as the default for LLM-AR chunked output with overlap ≥ 2 s.
+P2: voxtral / cielvox2-asr / granite / mimo-asr — wire `core_lcs::merge_overlapping_hypotheses` as the default for LLM-AR chunked output with overlap ≥ 2 s.
 
 P3: canary — fix the JA prompt-wiring bug at short audio first, then implement `canary_transcribe_streamed` with AED prompt re-injection at chunk boundaries (parakeet pattern + extension).
 
@@ -7676,11 +7676,11 @@ PLAN #114 carries the full per-backend status table and the file list for the fo
 
 ## 2026-05-25 chatterbox hift_pcm(ref_mel) — diff harness layout bug, not vocoder drift
 
-`crispasr-diff chatterbox` had been reporting `[FAIL] hift_pcm(ref_mel) cos=0.879` since the May 2026 parity pass. Two prior investigations (May 8, May 25 addendum) concluded "fp accumulation-order divergence between ggml and torch, not fixable without rewriting ggml reduction order". Both were wrong — the bug was in the harness's input binding.
+`stelnettts-diff chatterbox` had been reporting `[FAIL] hift_pcm(ref_mel) cos=0.879` since the May 2026 parity pass. Two prior investigations (May 8, May 25 addendum) concluded "fp accumulation-order divergence between ggml and torch, not fixable without rewriting ggml reduction order". Both were wrong — the bug was in the harness's input binding.
 
 The python reference dumps `hift_source_stft` via `s_stft.permute(1, 0).contiguous()`, producing bytes in `(T=12241, C=18)` row-major (`data[t*18+c]`). The C++ vocoder allocates `s_stft = ggml_new_tensor_2d(ctx, F32, T_src, 18)` with `ne[0] = T_src` as the fast axis, so it expects `(C, T_fast)` row-major (`data[c*T_src+t]`) — the layout it uses for the internally-generated case at `src_stft[f*T_src+frame] = re`. The harness was `memcpy`'ing the gguf bytes directly into the C++ tensor without transposing, so `source_downs[0]` was reading channels and time swapped.
 
-Single transpose loop in `crispasr_diff_main.cpp` when binding `ref_source_stft` fixes it. Before / after on JFK 11 s @ 16 kHz:
+Single transpose loop in `stelnettts_diff_main.cpp` when binding `ref_source_stft` fixes it. Before / after on JFK 11 s @ 16 kHz:
 
 | stage | before | after |
 | --- | --- | --- |
@@ -7700,7 +7700,7 @@ Three small CI fixes landing together — each pre-existing latent failure that 
 
 **Test #148 rename (`4fda4be5`).** `test-issue-114-chunk-context-gate` had a Catch2 `TEST_CASE("--chunk-overlap 0 disables overlap-save", ...)` whose name was passed verbatim by `catch_discover_tests` as the positional argv to the binary. Catch2's CLI parser then read `--chunk-overlap` as an unknown option and exited with `Unrecognised token: --chunk-overlap`. The test had been failing in CI on every push since it was added. Renamed to `"chunk-overlap=0 disables overlap-save"` with an inline comment about the catch_discover_tests / CLI-parser interaction so the next contributor doesn't reintroduce a `--`-prefixed name. All 6 cases / 307 assertions in the binary still pass; ctest now reports 303/303 unit-test PASS where it had been stuck at 302/303 for weeks.
 
-**build.yml trim (`80ac00d1`).** Inherited from whisper.cpp upstream and grown to 1610 lines / 59 jobs across a matrix CrispASR doesn't actually ship for. Two long-latent failures surfaced when the file finally ran to completion: `ubuntu-22-gcc-arm64 (Release)` failed at 3 m on `qemu: uncaught target signal 11` inside libc-bin's post-install in the emulated arm64 docker guest (a known [`docker/setup-qemu-action@v3` regression](https://github.com/docker/setup-qemu-action/issues)), and `ggml-ci-x64-cpu-high-perf` failed with `crispasr-bench` SIGILL (exit 132) on first AVX512 instruction because GitHub's `ubuntu-22.04` runner pool is CPU-heterogeneous and the bench landed on a non-AVX512 VM after the build picked up AVX512 from a host that had it. Trim:
+**build.yml trim (`80ac00d1`).** Inherited from whisper.cpp upstream and grown to 1610 lines / 59 jobs across a matrix StelnetTTS doesn't actually ship for. Two long-latent failures surfaced when the file finally ran to completion: `ubuntu-22-gcc-arm64 (Release)` failed at 3 m on `qemu: uncaught target signal 11` inside libc-bin's post-install in the emulated arm64 docker guest (a known [`docker/setup-qemu-action@v3` regression](https://github.com/docker/setup-qemu-action/issues)), and `ggml-ci-x64-cpu-high-perf` failed with `stelnettts-bench` SIGILL (exit 132) on first AVX512 instruction because GitHub's `ubuntu-22.04` runner pool is CPU-heterogeneous and the bench landed on a non-AVX512 VM after the build picked up AVX512 from a host that had it. Trim:
 
 - **Removed** (not shipping targets): `ubuntu-22-arm-v7`, `ubuntu-22-gcc-arm-v7`, `ubuntu-22-cmake-sycl`, `ubuntu-22-cmake-sycl-fp16`, plus 5 ggml-ci jobs that target ggml-org's self-hosted runner pool (`-x64-nvidia-cuda`, `-x64-nvidia-vulkan-{cm,cm2}`, `-mac-metal`, `-mac-vulkan`) — they'd never schedule on this fork.
 - **Switched to native runners** (no QEMU): `ubuntu-22-arm64`, `ubuntu-22-gcc-arm64` now use `runs-on: ubuntu-22.04-arm` (GitHub-hosted native ARM64, ~5-10× faster + structurally cannot hit the QEMU/libc-bin segfault). `ubuntu-22-clang` matrix expanded to cover both amd64 and native arm64 in one job (drops ppc64le).
@@ -7741,7 +7741,7 @@ invalidation between submissions.
 Switched `chatterbox_s3gen_init_from_file` to call
 `ggml_backend_sched_new(..., /*parallel=*/true, ...)`. Removed the
 unet_input GPU pin workaround in `cfm_euler_solve::run_denoiser`
-(no longer needed). Removed the `CRISPASR_NO_INPUT_PIN` env
+(no longer needed). Removed the `STELNETTTS_NO_INPUT_PIN` env
 override.
 
 Verification on M1 (smoke, "Hello.", seed 42):
@@ -7780,7 +7780,7 @@ first resnet pass shows b1 and b2 produce bit-identical
 (no-pin). The first divergent tensor is the **residual conv
 output** (`rc.weight` × `unet_input` inside `causal_resnet_block`
 at `s3.fd.db.0.0`). Added a new probe knob
-`CRISPASR_S3GEN_UNET_PROBE_RC_OUT=1` that dumps it as
+`STELNETTTS_S3GEN_UNET_PROBE_RC_OUT=1` that dumps it as
 `dump_rc_out_db00`. Comparison:
 
 - Path X (workaround): `rc_out_db00 rms=0.3631`
@@ -7794,16 +7794,16 @@ correct data and produce identical output.
 
 **Eliminated:**
 
-1. CPU store-buffer / cache coherency — `CRISPASR_FORCE_DMB=1`
+1. CPU store-buffer / cache coherency — `STELNETTTS_FORCE_DMB=1`
    (full `__sync_synchronize` after the memcpy) doesn't help.
-2. GPU-side cache invalidation — `CRISPASR_FORCE_BLIT_COPY=1`
+2. GPU-side cache invalidation — `STELNETTTS_FORCE_BLIT_COPY=1`
    (blit-encoder copy in its own committed cb instead of host
    memcpy) doesn't help.
 3. Intra-encoder concurrency — `GGML_METAL_CONCURRENCY_DISABLE=1`
    and `GGML_METAL_GRAPH_OPTIMIZE=0` don't help.
-4. Cross-cmd-buf race — `CRISPASR_METAL_N_CB=2` doesn't worsen the
+4. Cross-cmd-buf race — `STELNETTTS_METAL_N_CB=2` doesn't worsen the
    bug.
-5. Missing `mem_ranges` barrier — `CRISPASR_METAL_FORCE_BARRIER=1`
+5. Missing `mem_ranges` barrier — `STELNETTTS_METAL_FORCE_BARRIER=1`
    (emit a Metal `memoryBarrierWithScope:Buffers` before every
    single op) doesn't help.
 
@@ -7823,14 +7823,14 @@ end-to-end correctness.
 **Diagnostic knobs added** (env-gated, no runtime impact when
 unset; committed as WIP for the next investigator):
 
-- `CRISPASR_NO_INPUT_PIN` — gates off the `unet_input` pin workaround
+- `STELNETTTS_NO_INPUT_PIN` — gates off the `unet_input` pin workaround
   in `cfm_euler_solve::run_denoiser` to reproduce Bug B.
-- `CRISPASR_IM2COL_DBG` — prints first 8 host bytes of `op->src[1]`
+- `STELNETTTS_IM2COL_DBG` — prints first 8 host bytes of `op->src[1]`
   at the FIRST UNet `kernel_im2col_f32` dispatch.
-- `CRISPASR_FORCE_DMB`, `CRISPASR_FORCE_BLIT_COPY`,
-  `CRISPASR_METAL_FORCE_BARRIER`, `CRISPASR_METAL_N_CB` — the
+- `STELNETTTS_FORCE_DMB`, `STELNETTTS_FORCE_BLIT_COPY`,
+  `STELNETTTS_METAL_FORCE_BARRIER`, `STELNETTTS_METAL_N_CB` — the
   hypothesis-elimination knobs above.
-- `CRISPASR_S3GEN_UNET_PROBE_RC_OUT` — marks the residual conv output
+- `STELNETTTS_S3GEN_UNET_PROBE_RC_OUT` — marks the residual conv output
   at `s3.fd.db.0.0` as a dump tensor.
 
 LEARNINGS Round 9 follow-up #5 records the full hypothesis table
@@ -7849,15 +7849,15 @@ Follow-up #4 found the actual root cause(s) — there are TWO independent
 bugs that both have to be fixed to make GPU-residency UNet work.
 
 **Method.** Captured CPU vs GPU bytes at every probe point in the first
-`causal_block1d` (`s3.fd.db.0.0.b1`) via `CRISPASR_S3GEN_UNET_PROBE_BLOCK1=0
-+ CRISPASR_S3GEN_DUMP_UNET=<tag> + CRISPASR_S3GEN_DUMP_UNET_NO_AUTO_MARK=1`.
+`causal_block1d` (`s3.fd.db.0.0.b1`) via `STELNETTTS_S3GEN_UNET_PROBE_BLOCK1=0
++ STELNETTTS_S3GEN_DUMP_UNET=<tag> + STELNETTTS_S3GEN_DUMP_UNET_NO_AUTO_MARK=1`.
 `tools/compare_probe_dumps.py` showed `after_im2col` already at
 cos=-0.085 between CPU and GPU — the very first GPU kernel of the
 UNet was producing structurally wrong output. `tools/inspect_im2col_dump.py`
 confirmed the kernel logic (causal zero-padding) was correct, but it
 was reading the wrong values from x.
 
-A small `CRISPASR_S3GEN_LOG_INPUT=1` diagnostic + an inline
+A small `STELNETTTS_S3GEN_LOG_INPUT=1` diagnostic + an inline
 `ggml_backend_tensor_get` right before im2col dispatch and an
 `fprintf` in `ggml_backend_sched_compute_splits` confirmed:
 
@@ -7992,7 +7992,7 @@ of the residual drift on M1 Metal.
    (the encoder/vocoder are a small fraction of total time, UNet does
    the same work).
 
-   Two layered fixes: `CRISPASR_S3GEN_UNET_GPU_RESIDENCY=1` opts out
+   Two layered fixes: `STELNETTTS_S3GEN_UNET_GPU_RESIDENCY=1` opts out
    of the split and falls back to a per-op `mul_mat_hp` helper that
    tags every UNet `mul_mat` with `GGML_PREC_F32`. Used as the
    testbed for the kernel-level path.
@@ -8014,15 +8014,15 @@ of the residual drift on M1 Metal.
      all 11 fix attempts and the diff-vs-smoke divergence finding.
    - **11** Scheduler NaN at T_mel ≥ 200 with mixed CPU+GPU ops (no
      patch — bug report).
-   All three strip CrispASR-internal markers (no `(#83)` refs, no
+   All three strip StelnetTTS-internal markers (no `(#83)` refs, no
    internal language).
 
 4. **Per-segment dump hook + PRESERVE_INTERMEDIATES bisect knob**
    (commits `c00c1493`, `2daf2a19`) — env-gated debug instrumentation
-   in `src/chatterbox_s3gen.cpp`. `CRISPASR_S3GEN_DUMP_UNET=<tag>`
+   in `src/chatterbox_s3gen.cpp`. `STELNETTTS_S3GEN_DUMP_UNET=<tag>`
    dumps step-0 intermediates from each sub-block to
    `/tmp/cb-unet-dump-<tag>-<name>.bin` for per-block diff.
-   `CRISPASR_S3GEN_UNET_PRESERVE_INTERMEDIATES=1` forces `set_output`
+   `STELNETTTS_S3GEN_UNET_PRESERVE_INTERMEDIATES=1` forces `set_output`
    on 14 block-level intermediates (subset of dump points). Neither
    affects default behavior.
 
@@ -8061,7 +8061,7 @@ production fix runs the same on Linux as on macOS. Branch
 Updated: PLAN.md #57/#83 status, LEARNINGS Round 9.
 
 **(2026-05-24 night follow-up #2)** Added a per-node gallocr
-trace (`CRISPASR_GGML_ALLOC_TRACE=1`, commit `2f4961d6`). Compared
+trace (`STELNETTTS_GGML_ALLOC_TRACE=1`, commit `2f4961d6`). Compared
 1-mark and 2-mark UNet allocator passes (n_nodes=2715 each, 3044
 events). 2108 lines diverge but **zero overlapping live ranges in
 either run** — the allocator is correct in both cases. The parity
@@ -8079,9 +8079,9 @@ to be revised; LEARNINGS Round 9 follow-up #2 records the
 methodology and pivots the investigation.
 
 **(2026-05-24 late follow-up #3)** Pushed the bisect inside the
-first UNet block. Added `CRISPASR_S3GEN_DUMP_UNET_NO_AUTO_MARK=1`
+first UNet block. Added `STELNETTTS_S3GEN_DUMP_UNET_NO_AUTO_MARK=1`
 to decouple `DUMP_UNET` from its implicit "mark every dump point"
-behavior, and `CRISPASR_S3GEN_UNET_PROBE_BLOCK1=<N>` to inline-
+behavior, and `STELNETTTS_S3GEN_UNET_PROBE_BLOCK1=<N>` to inline-
 probe one specific `causal_block1d` call (names + marks
 intermediate stages: im2col, mul_mat, conv1d, transpose_in, norm,
 ln_mul, ln_bias, transpose_out, mish). With clean A/B against
@@ -8095,7 +8095,7 @@ first resnet block, then block2's `K=3` conv expands it to 5.
 
 Tested `GGML_PREC_F32` on conv1d's internal `mul_mat` — no effect
 (rms 13.938 → 13.942). Re-tested per-op CPU pin workarounds with
-the fixed `crispasr-diff`: `PIN_CPU_OP=norm/mul_mat/add/cont` all
+the fixed `stelnettts-diff`: `PIN_CPU_OP=norm/mul_mat/add/cont` all
 FAIL with `non_finite=8160/8160`. The handover's earlier "pinning
 any frequent op restores cos=1.0" was the same `PASS`-of-NaN
 artifact that `4c2e54c0` fixed; with it gone, **no per-op pin
@@ -8106,7 +8106,7 @@ Conclusion: GPU-residency UNet on Apple Metal is fundamentally
 broken in a way no in-tree workaround addresses. A real fix needs
 shader-level Metal investigation against the address pattern this
 graph produces — out of scope for a normal session. Until then
-`CRISPASR_S3GEN_UNET_GPU_RESIDENCY` remains an investigation-only
+`STELNETTTS_S3GEN_UNET_GPU_RESIDENCY` remains an investigation-only
 knob; production keeps the `s3.fd.*` split on CPU.
 
 LEARNINGS Round 9 follow-up #3 records the methodology and the
@@ -8116,7 +8116,7 @@ updated lesson 2'''.
 
 ## 2026-05-23 PLAN #52 — Qwen3-TTS perf bench (FUSED_QKV Q8_0 decision)
 
-Ran interleaved A/B bench for `QWEN3_TTS_FUSED_QKV=1` on M1 Metal,
+Ran interleaved A/B bench for `CIELVOX2_TTS_FUSED_QKV=1` on M1 Metal,
 Q8_0 0.6B CustomVoice, 94-frame synthesis:
 
 | Condition | ms/frame |
@@ -8136,7 +8136,7 @@ at normal load; quiet-machine confirmation still pending.
 
 **Still open:** F16 FUSED_QKV quiet-machine bench; Q4_K bench; fusing 15 cp steps into one graph; Q8_0 KV cache (blocked on Metal `cont(Q8_0)` kernel patch).
 
-Updated: PLAN.md #52 perf notes + `src/qwen3_tts.cpp:5023` comment.
+Updated: PLAN.md #52 perf notes + `src/cielvox2_tts.cpp:5023` comment.
 See LEARNINGS.md §Qwen3-TTS FUSED_QKV.
 
 ---
@@ -8161,17 +8161,17 @@ variants; RNNT needed a separate greedy loop.
 - Q4_K quantization with F16 fallback for LSTM-shaped tensors (last dim not divisible by 256)
 
 **Model:** downloaded `nvidia/parakeet-rnnt-0.6b` (2.3 GB nemo) to internal disk.
-Converted to F16 (1235 MB) then `crispasr-quantize` to Q4_K (447 MB).
+Converted to F16 (1235 MB) then `stelnettts-quantize` to Q4_K (447 MB).
 
 **Smoke test:** JFK 11 s → *"and so my fellow americans ask not what your country can do for you ask what you can do for your country"* — correct.
 
-**Upload:** Q4_K + F16 + README to `cstr/parakeet-rnnt-0.6b-GGUF`.
+**Upload:** Q4_K + F16 + README to `Xenna/parakeet-rnnt-0.6b-GGUF`.
 
-**Registry:** `parakeet-rnnt-0.6b` entry added to `crispasr_model_registry.cpp` (~447 MB).
+**Registry:** `parakeet-rnnt-0.6b` entry added to `stelnettts_model_registry.cpp` (~447 MB).
 
-Committed `48ac6f06` to main. Worktree `CrispASR-parakeet-rnnt` (branch `parakeet-rnnt`) rebased + fast-forwarded into main.
+Committed `48ac6f06` to main. Worktree `StelnetTTS-parakeet-rnnt` (branch `parakeet-rnnt`) rebased + fast-forwarded into main.
 
-**Follow-up — parakeet-rnnt-1.1b (same day):** External disk freed after the 0.6b cleanup; downloaded 1.1b nemo (4.0 GB), converted to F16 (2144 MB) + Q4_K (770 MB) with the same converter (42-layer encoder vs 24 for 0.6b — auto-handled by `n_layers` lookup). Smoke test on JFK: correct transcript at 5.4× realtime (caches warm). Uploaded to `cstr/parakeet-rnnt-1.1b-GGUF`; registry entry added. Committed `b9509548`.
+**Follow-up — parakeet-rnnt-1.1b (same day):** External disk freed after the 0.6b cleanup; downloaded 1.1b nemo (4.0 GB), converted to F16 (2144 MB) + Q4_K (770 MB) with the same converter (42-layer encoder vs 24 for 0.6b — auto-handled by `n_layers` lookup). Smoke test on JFK: correct transcript at 5.4× realtime (caches warm). Uploaded to `Xenna/parakeet-rnnt-1.1b-GGUF`; registry entry added. Committed `b9509548`.
 
 **Still open in #97:** realtime-EOU; unified-en-0.6b.
 
@@ -8188,10 +8188,10 @@ slice 1 might be a different person from `speaker_00` in slice 3.
 
 1. New `CrispasrSherpaCache` struct holds the pre-computed global
    speaker-turn timeline with absolute timestamps.
-2. `crispasr_compute_sherpa_cache()` writes the full mono audio to
+2. `stelnettts_compute_sherpa_cache()` writes the full mono audio to
    one temp WAV, runs the sherpa subprocess once, parses all speaker
    regions.
-3. `crispasr_run.cpp` pre-computes the cache alongside the existing
+3. `stelnettts_run.cpp` pre-computes the cache alongside the existing
    pyannote cache block and threads it through every `process_slice`.
 4. `assign_speakers_from_global_sherpa()` assigns each ASR segment
    its dominant speaker from the global timeline AND splits segments
@@ -8205,8 +8205,8 @@ integration test suite (`test_diarize_live.sh`). All pass.
 
 | File | Change |
 |------|--------|
-| `examples/cli/crispasr_diarize_cli.{h,cpp}` | `CrispasrSherpaCache` + `crispasr_compute_sherpa_cache()` + `assign_speakers_from_global_sherpa()` with word-level splitting |
-| `examples/cli/crispasr_run.cpp` | Global sherpa pre-compute block + cache threading |
+| `examples/cli/stelnettts_diarize_cli.{h,cpp}` | `CrispasrSherpaCache` + `stelnettts_compute_sherpa_cache()` + `assign_speakers_from_global_sherpa()` with word-level splitting |
+| `examples/cli/stelnettts_run.cpp` | Global sherpa pre-compute block + cache threading |
 | `tests/test_diarize_global.cpp` | 13 Catch2 unit tests |
 | `tests/test_diarize_live.sh` | 8-assertion live integration suite |
 
@@ -8226,7 +8226,7 @@ supported: `"Berenz^5.0"`.
 **Phase B — LLM prompt injection.** For LLM-based ASR backends that
 accept free-text instructions, `--hotwords` appends a hint to the
 system/instruction prompt:
-- **qwen3-asr:** appends to ChatML system instruction
+- **cielvox2-asr:** appends to ChatML system instruction
 - **voxtral:** inserts into `[INST]` turn before `[TRANSCRIBE]`
 
 Not wired (architecture reasons): voxtral4b (fixed streaming prompt),
@@ -8248,7 +8248,7 @@ byte-match, Q4_K==F16 parity).
 | `src/parakeet.{h,cpp}` | `parakeet_set_hotwords()` API + CTC/TDT decode wiring |
 | `examples/cli/cli.cpp` | `--hotwords`, `--hotwords-file`, `--hotwords-boost` |
 | `examples/cli/whisper_params.h` | `hotwords` + `hotwords_boost` fields |
-| `examples/cli/crispasr_backend_{parakeet,qwen3,voxtral}.cpp` | Wire hotwords into each backend |
+| `examples/cli/stelnettts_backend_{parakeet,qwen3,voxtral}.cpp` | Wire hotwords into each backend |
 | `tests/test_context_bias.cpp` | 13 unit tests |
 | `tests/test_paraformer.cpp` | 4 live integration tests |
 
@@ -8261,11 +8261,11 @@ byte-match, Q4_K==F16 parity).
 ```
 yt-dlp -f 'bestaudio/best' -x --audio-format wav <url>
 ffmpeg -i <wav> -ar 16000 -ac 1 -t 60 -c:a pcm_s16le yt60.wav
-crispasr -m parakeet-tdt-0.6b-ja.gguf -l ja -f yt60.wav -osrt
+stelnettts -m parakeet-tdt-0.6b-ja.gguf -l ja -f yt60.wav -osrt
   → output stops at 00:00:20.080 (33 % coverage, not 99.5 %)
 ```
 
-Same crispasr binary on `/mnt/storage/test-audio/ja/yt_60s.wav` (the file the 2026-05-23 benchmark was actually run against, cached on the VPS): full 60 s coverage. Both WAVs have identical duration, 16 kHz mono pcm_s16le, ~0.3 % RMS difference, **0.9977 zero-lag waveform correlation**. The "99.5 %" benchmark was run against the cached MP3-derived copy, not a fresh `yt-dlp` extract of the same YouTube video; the doc wording was misleading.
+Same stelnettts binary on `/mnt/storage/test-audio/ja/yt_60s.wav` (the file the 2026-05-23 benchmark was actually run against, cached on the VPS): full 60 s coverage. Both WAVs have identical duration, 16 kHz mono pcm_s16le, ~0.3 % RMS difference, **0.9977 zero-lag waveform correlation**. The "99.5 %" benchmark was run against the cached MP3-derived copy, not a fresh `yt-dlp` extract of the same YouTube video; the doc wording was misleading.
 
 **Diff harness against NeMo on the bad audio:** our pipeline tracks NeMo bit-for-bit through the entire encoder.
 
@@ -8280,7 +8280,7 @@ So this is **not a port-fidelity bug.** It's a model-level numerical instability
 
 **Mechanism (from per-frame trace).** With single-pass encoding over 60 s, the bidirectional FastConformer encoder's attention amplifies the 0.3 % audio-level codec quantisation difference into a 14 % shift in encoder output std (0.2069 vs 0.2415 on the two audio variants). That shift is enough to flip the TDT joint network's argmax from real-token to blank starting at frame ~250 (~20 s @ 100 Hz mel / 8× subsampling). Once blank dominates, the decoder stays in that regime for the rest of the utterance. The streamed path (overlapping 8 s encoder chunks → concatenate → single TDT decode) keeps the attention window short enough that the noise doesn't amplify; the decoder still sees one contiguous encoder sequence so there's no LSTM cold-start.
 
-**Fix (`33f9a162`).** Make the streamed path the default for any duration. `examples/cli/crispasr_backend_parakeet.cpp`: `stream_threshold_s` default 60 → 0; condition flipped so 0 means "always streamed" (matching what the docs at `docs/cli.md:147` had already claimed). Single-pass is preserved as an opt-in escape hatch via `CRISPASR_PARAKEET_STREAM_THRESHOLD=999` for callers that want bit-exact NeMo reproduction on test data.
+**Fix (`33f9a162`).** Make the streamed path the default for any duration. `examples/cli/stelnettts_backend_parakeet.cpp`: `stream_threshold_s` default 60 → 0; condition flipped so 0 means "always streamed" (matching what the docs at `docs/cli.md:147` had already claimed). Single-pass is preserved as an opt-in escape hatch via `STELNETTTS_PARAKEET_STREAM_THRESHOLD=999` for callers that want bit-exact NeMo reproduction on test data.
 
 **Verified** on Apple Silicon Metal and Linux x86 CPU, on both audio variants, identical transcription content:
 
@@ -8290,7 +8290,7 @@ So this is **not a port-fidelity bug.** It's a model-level numerical instability
 
 **Doc updates landing with this fix:**
 - `README.md`: corrected the "99.5 % coverage" claim to "model-level numerical fragility; streamed encode is the default workaround"
-- `docs/cli.md`: rewrote the parakeet streaming section + fixed the `CRISPASR_PARAKEET_STREAM_THRESHOLD=0` semantic mismatch (doc said "always streamed", code said "never streamed" — fix flipped the code to match the doc)
+- `docs/cli.md`: rewrote the parakeet streaming section + fixed the `STELNETTTS_PARAKEET_STREAM_THRESHOLD=0` semantic mismatch (doc said "always streamed", code said "never streamed" — fix flipped the code to match the doc)
 - `PERFORMANCE.md`: corrected the issue #89 fix-verification table to show both audio variants side-by-side, annotated the earlier byte-identical-streamed-vs-single-pass claim as "only on the cached MP3 derivation"
 
 ---
@@ -8331,18 +8331,18 @@ runtime issue). Commented #85 (noise-robust ASR recommendations).
 
 **Commit:** `0c24178e`
 
-`crispasr_session_set_beam_size` now threads through every session backend.
+`stelnettts_session_set_beam_size` now threads through every session backend.
 Three remaining backend families were wired using `core_beam_decode::run_with_probs`
 alongside the existing greedy path (unchanged when `beam_size == 1`):
 
 | Backend | Replay lambda | KV reset |
 |---|---|---|
-| qwen3-asr | `qwen3_asr_embed_tokens` + `qwen3_asr_run_llm_kv` | `qwen3_asr_kv_reset` |
+| cielvox2-asr | `cielvox2_asr_embed_tokens` + `cielvox2_asr_run_llm_kv` | `cielvox2_asr_kv_reset` |
 | granite / granite-4.1 / granite-4.1-plus / granite-4.1-nar | `granite_speech_embed_tokens` + `granite_speech_run_llm_kv` | `granite_speech_kv_reset` |
 | voxtral | `run_voxtral_family` gained a `beam_size` parameter; a shared `decode_piece` lambda handles U+2581→space detokenisation for both paths | `ops.kv_reset(ctx)` |
 
 `voxtral4b` (streaming path) is not in scope. Implementation is in
-`src/crispasr_c_api.cpp`. The `#include "core/beam_decode.h"` is the only new dependency.
+`src/stelnettts_c_api.cpp`. The `#include "core/beam_decode.h"` is the only new dependency.
 
 ---
 
@@ -8355,24 +8355,24 @@ Four items completed in one session:
 `-l ar` routes to `lahgtna-chatterbox`. Only fires when `-m auto` is active.
 
 **74b — capability regression gate** (`tests/test_backend_caps.py`, new):
-`TestCapabilityJSON` runs `crispasr --list-backends-json` and asserts:
+`TestCapabilityJSON` runs `stelnettts --list-backends-json` and asserts:
 - known translate backends declare `translate`
 - known src-tgt backends declare `src-tgt-language`
 - known voice-cloning backends declare `voice-cloning`
-- preset-speaker backends (`qwen3-tts-customvoice`, `voicedesign`, `vibevoice`) do NOT declare `voice-cloning`
+- preset-speaker backends (`cielvox2-tts-customvoice`, `voicedesign`, `vibevoice`) do NOT declare `voice-cloning`
 - whisper does NOT declare `src-tgt-language` (uses `-l` for target, not `-sl/-tl`)
 
 `TestTranslateLive` is a live smoke-test (whisper-tiny on `samples/jfk.wav`) that auto-skips when the model is absent. 6/6 tests pass.
 
-**74c — `CAP_VOICE_CLONING` for qwen3-tts base variants**:
+**74c — `CAP_VOICE_CLONING` for cielvox2-tts base variants**:
 `Qwen3TtsBackend` gained an `is_base_` constructor flag. The two base aliases
-(`qwen3-tts`, `qwen3-tts-1.7b-base`) dispatch to a new `crispasr_make_qwen3_tts_base_backend()`
+(`cielvox2-tts`, `cielvox2-tts-1.7b-base`) dispatch to a new `stelnettts_make_cielvox2_tts_base_backend()`
 factory that sets `is_base_=true` and includes `CAP_VOICE_CLONING` in `capabilities()`.
 The customvoice/voicedesign aliases keep the original factory (`is_base_=false`).
 
 **74d — feature matrix regenerated** (`docs/feature-matrix.md` + `.html`):
-`python tools/gen-feature-matrix.py` — 52 backends × 19 caps. `qwen3-tts`
-and `qwen3-tts-1.7b-base` now show ✓ in the Voice cloning column.
+`python tools/gen-feature-matrix.py` — 52 backends × 19 caps. `cielvox2-tts`
+and `cielvox2-tts-1.7b-base` now show ✓ in the Voice cloning column.
 
 ---
 
@@ -8380,11 +8380,11 @@ and `qwen3-tts-1.7b-base` now show ✓ in the Voice cloning column.
 
 **Outcome.** Routed the CLI/server `--seed` knob through the TTS paths
 that actually sample, then verified the behavior on the local backup
-models in `/Volumes/backups/ai/crispasr`.
+models in `/Volumes/backups/ai/stelnettts`.
 
 **What changed.**
-- `qwen3-tts-customvoice` now lets an explicit request/CLI seed win
-  over `QWEN3_TTS_SEED`.
+- `cielvox2-tts-customvoice` now lets an explicit request/CLI seed win
+  over `CIELVOX2_TTS_SEED`.
 - Chatterbox now reseeds both the T3 sampler and the S3Gen diffusion
   noise path from `--seed`.
 - VibeVoice now seeds both the realtime and base TTS paths from
@@ -8395,8 +8395,8 @@ models in `/Volumes/backups/ai/crispasr`.
   decode path.
 
 **Live verification.**
-- `qwen3-tts-customvoice`: same request seed is bit-identical even when
-  `QWEN3_TTS_SEED=999`; different request seed changes the WAV hash.
+- `cielvox2-tts-customvoice`: same request seed is bit-identical even when
+  `CIELVOX2_TTS_SEED=999`; different request seed changes the WAV hash.
 - `chatterbox`: same seed is bit-identical; different seed changes the
   WAV hash.
 - `vibevoice-tts` and `vibevoice-1.5b`: same seed is bit-identical;
@@ -8410,13 +8410,13 @@ models in `/Volumes/backups/ai/crispasr`.
   GGUF in the backup set to exercise it here.
 
 **Files.**
-- `src/qwen3_tts.{cpp,h}`
+- `src/cielvox2_tts.{cpp,h}`
 - `src/chatterbox.{cpp,h}` / `src/chatterbox_s3gen.{cpp,h}`
 - `src/vibevoice.{cpp,h}`
 - `src/indextts.{cpp,h}`
 - `src/orpheus.{cpp,h}`
 - `src/voxcpm2_tts.{cpp,h}`
-- `examples/cli/crispasr_backend_*.cpp`
+- `examples/cli/stelnettts_backend_*.cpp`
 - `docs/cli.md`
 - `docs/tts.md`
 
@@ -8433,7 +8433,7 @@ tokens covering 0-5 s → full coverage.  The 60 s case went from 0 chars
    statistics computed over >30 s shift from the training distribution.
 2. Decoder cold-start: each independently-chunked slice resets the LSTM
    predictor to SOS, losing 5-20 s of interior content per chunk.
-3. `crispasr_run.cpp` auto-chunked at 60 s → 30 s before the backend
+3. `stelnettts_run.cpp` auto-chunked at 60 s → 30 s before the backend
    could handle it internally.
 
 **Fix (6 commits).**
@@ -8454,9 +8454,9 @@ chunks, concatenate encoder outputs, decode in one TDT pass.  The
 encoder is bidirectional so each 8 s chunk gets independent context; the
 decoder sees a single continuous sequence (no LSTM reset).
 
-**Env knobs:** `CRISPASR_PARAKEET_STREAM_THRESHOLD` (default 60 s),
-`CRISPASR_PARAKEET_STREAM_CHUNK` (default 8 s),
-`CRISPASR_PARAKEET_STREAM_OVERLAP` (default 2 s).
+**Env knobs:** `STELNETTTS_PARAKEET_STREAM_THRESHOLD` (default 60 s),
+`STELNETTTS_PARAKEET_STREAM_CHUNK` (default 8 s),
+`STELNETTTS_PARAKEET_STREAM_OVERLAP` (default 2 s).
 
 **Benchmark framework.** New `tests/benchmark_asr.py` driver + audio
 corpus in `/mnt/storage/test-audio/` (en/de/ja/zh × 4 durations from
@@ -8469,10 +8469,10 @@ FLEURS + reporter's audio).  14 pytest unit tests for metric computation
 |------|--------|
 | `src/parakeet.cpp` | `parakeet_encode_chunked`, `parakeet_transcribe_chunked`, `parakeet_transcribe_streamed`, `parakeet_compute_mel_raw`, `parakeet_apply_znorm` |
 | `src/parakeet.h` | New public API declarations |
-| `examples/cli/crispasr_backend_parakeet.cpp` | Path selection + env knobs, `CAP_INTERNAL_CHUNKING` |
-| `examples/cli/crispasr_backend.h` | `CAP_INTERNAL_CHUNKING` flag |
-| `examples/cli/crispasr_long_audio_fallback.h` | `CAP_INTERNAL_CHUNKING_FLAG` gate |
-| `examples/cli/crispasr_run.cpp` | 30 s auto-chunk default |
+| `examples/cli/stelnettts_backend_parakeet.cpp` | Path selection + env knobs, `CAP_INTERNAL_CHUNKING` |
+| `examples/cli/stelnettts_backend.h` | `CAP_INTERNAL_CHUNKING` flag |
+| `examples/cli/stelnettts_long_audio_fallback.h` | `CAP_INTERNAL_CHUNKING_FLAG` gate |
+| `examples/cli/stelnettts_run.cpp` | 30 s auto-chunk default |
 | `tests/benchmark_asr.py` | Multi-backend benchmark driver |
 | `tests/benchmark_metrics.py` | Coverage metric computation |
 | `tests/benchmark_corpus.py` | FLEURS audio corpus builder |
@@ -8487,7 +8487,7 @@ FLEURS + reporter's audio).  14 pytest unit tests for metric computation
 Mandarin Chinese + English) as a new `--backend paraformer`. Character-level
 tokenizer (8404 vocab), single-pass decode via CIF (continuous integrate-and-fire)
 predictor. Published F16 (421 MB), Q4_K (123 MB), Q8_0 (227 MB) at
-`cstr/paraformer-zh-GGUF`; Q4_K is the registry default. All three produce
+`Xenna/paraformer-zh-GGUF`; Q4_K is the registry default. All three produce
 byte-identical transcripts vs Python on both Chinese test audio and JFK English.
 
 **Architecture:** 50 SANM encoder blocks (reusing `core_sanm::build_block()`)
@@ -8519,25 +8519,25 @@ generated_text matches byte-for-byte on both Chinese and English.
 |------|--------|
 | `models/convert-paraformer-to-gguf.py` | New: converter (model.pt → 956-tensor GGUF) |
 | `src/paraformer.{h,cpp}` | New: ~850 LOC runtime |
-| `examples/cli/crispasr_backend_paraformer.cpp` | New: CLI adapter |
+| `examples/cli/stelnettts_backend_paraformer.cpp` | New: CLI adapter |
 | `tools/reference_backends/paraformer.py` | New: 73-stage reference backend |
 
 ---
 
-## 2026-05-21 sensevoice: Q4_K + Q8_0 quants + fix crispasr-quantize `.w` suffix gate
+## 2026-05-21 sensevoice: Q4_K + Q8_0 quants + fix stelnettts-quantize `.w` suffix gate
 
 **Outcome.** Published Q4_K (129 MB) + Q8_0 (240 MB) alongside the
-existing F16 (448 MB) at `cstr/sensevoice-small-GGUF`. Registry
+existing F16 (448 MB) at `Xenna/sensevoice-small-GGUF`. Registry
 default flipped to Q4_K. All three produce byte-identical English
 (JFK) and Japanese (JSUT) transcripts on M1 Metal; Q4_K is ~3× faster
 end-to-end than F16, Q8_0 ~1.7×.
 
-**Bug found while quantising.** First attempt at `crispasr-quantize
+**Bug found while quantising.** First attempt at `stelnettts-quantize
 sensevoice-small-f16.gguf out.gguf q4_k` produced a file the same
 size as the input. Every tensor in the log said `copying...`
 instead of `quantizing to q4_K...`.
 
-`examples/crispasr-quantize/main.cpp:216` gates "is this a weight
+`examples/stelnettts-quantize/main.cpp:216` gates "is this a weight
 tensor" on either the substring `weight` OR the suffix `_w` (Kyutai
 STT convention). SenseVoice's converter uses the FunASR-style `.w`
 suffix (e.g. `sensevoice.enc.blk.0.attn.qkv.w`), which matches
@@ -8567,20 +8567,20 @@ other ~280 weight matrices quantise cleanly.
 
 ### Files
 
-- `examples/crispasr-quantize/main.cpp` — extend the weight-suffix gate.
-- `src/crispasr_model_registry.cpp` — Q4_K becomes the default;
+- `examples/stelnettts-quantize/main.cpp` — extend the weight-suffix gate.
+- `src/stelnettts_model_registry.cpp` — Q4_K becomes the default;
   F16 + Q8_0 lookupable by canonical filename.
 - `hf_readmes/sensevoice-small-GGUF.md` — quant table + default
   switch + "all three byte-identical on tested clips" note.
-- `cstr/sensevoice-small-GGUF` HF repo — Q4_K + Q8_0 uploaded
+- `Xenna/sensevoice-small-GGUF` HF repo — Q4_K + Q8_0 uploaded
   alongside the existing F16.
 
 ### Verification
 
-- `crispasr -m sensevoice-small-{f16,q8_0,q4_k}.gguf -f samples/jfk.wav`
+- `stelnettts -m sensevoice-small-{f16,q8_0,q4_k}.gguf -f samples/jfk.wav`
   → identical "And so my fellow Americans ask not what your
   country can do for you, ask what you can do for your country."
-- `crispasr -m sensevoice-small-{f16,q8_0,q4_k}.gguf -f
+- `stelnettts -m sensevoice-small-{f16,q8_0,q4_k}.gguf -f
   samples/ja/jsut_water_3s.wav -l ja` → identical
   "水をマレーシアから買わなくてはならないのです。"
 - `-l auto` correctly identifies Japanese on all three quants.
@@ -8589,10 +8589,10 @@ other ~280 weight matrices quantise cleanly.
 
 ## 2026-05-21 funasr: fix MLT-Nano hallucination (PLAN #99)
 
-**Bug.** `cstr/funasr-mlt-nano-GGUF` produced hallucinated endings on
+**Bug.** `Xenna/funasr-mlt-nano-GGUF` produced hallucinated endings on
 English transcripts (e.g. "ask what your country can do for you"
 repeated instead of "ask what you can do for your country").  The
-`cstr/funasr-nano-GGUF` variant worked correctly on the same audio.
+`Xenna/funasr-nano-GGUF` variant worked correctly on the same audio.
 
 **Root cause.** The C++ runtime hardcoded `use_low_frame_rate = true`.
 Fun-ASR-Nano-2512's `config.yaml` sets it to `true`, but
@@ -8609,7 +8609,7 @@ then hallucinated.
 | `models/convert-funasr-to-gguf.py` | Read `audio_adaptor_conf.use_low_frame_rate` from `config.yaml`; write as bool KV `funasr.use_low_frame_rate`. Also fixed `ada_n_heads` 16 → 8. |
 | `src/funasr.cpp` | Read KV at load time; fall back `true` for old GGUFs. |
 
-Both `cstr/funasr-nano-GGUF` and `cstr/funasr-mlt-nano-GGUF` GGUFs
+Both `Xenna/funasr-nano-GGUF` and `Xenna/funasr-mlt-nano-GGUF` GGUFs
 reconverted (F16 + Q4_K + Q8_0) and re-uploaded.
 
 ---
@@ -8631,7 +8631,7 @@ CTC dispatch shape; the only gaps were per-checkpoint quirks and the
 | nvidia/parakeet-tdt_ctc-110m    | `parakeet-tdt_ctc-110m` | 230 MB / 91 MB   | 45×   | 17L d=512, pred_layers=1, CTC head; runtime auto-flips to CTC |
 | nvidia/parakeet-tdt_ctc-1.1b    | `parakeet-tdt_ctc-1.1b` | 2.15 GB / 810 MB | 14.8× | 42L hybrid, mixed-case + punct vocab |
 
-All uploaded to `cstr/<name>-GGUF` with READMEs. Each repo has three
+All uploaded to `Xenna/<name>-GGUF` with READMEs. Each repo has three
 precisions (F16, Q8_0, Q4_K).
 
 **Two C++ fixes** rolled in alongside:
@@ -8646,7 +8646,7 @@ precisions (F16, Q8_0, Q4_K).
    `decode_ctc=true` automatically for that case. 110m no longer
    needs `--parakeet-decoder ctc`.
 
-2. **`crispasr_resolve_model{,_cli}` sub-variant lookup priority**
+2. **`stelnettts_resolve_model{,_cli}` sub-variant lookup priority**
    (commit `d8325847`). The CLI's filename-heuristic always sets
    `backend_name="parakeet"` for any `parakeet*` arg, so the old
    lookup ordering — `lookup_by_filename` → `lookup(backend_name)` —
@@ -8656,11 +8656,11 @@ precisions (F16, Q8_0, Q4_K).
 
 **Wiring touches.** No new dispatch code — the parakeet backend
 already handles TDT and CTC, and the filename heuristic at
-`crispasr_backend.cpp:370-372` already routes `parakeet-tdt_ctc-*` to
+`stelnettts_backend.cpp:370-372` already routes `parakeet-tdt_ctc-*` to
 the parakeet backend via the `!contains_ci("tdt")` guard. The work was
 4 registry entries + the two priority fixes above + 4 READMEs.
 
-**C ABI parity.** `crispasr_registry_lookup_abi("parakeet-v2", ...)`
+**C ABI parity.** `stelnettts_registry_lookup_abi("parakeet-v2", ...)`
 returns filename + URL; existing init functions consume the path
 directly. Bindings (Go/Java/Ruby/JS/Python/Dart) get the new variants
 for free.
@@ -8683,11 +8683,11 @@ markers themselves. Now there's a structured surface.
 - **C ABI** (`src/sensevoice.h`): `struct sensevoice_result {
   language, emotion, audio_event, itn, text, raw }` +
   `sensevoice_transcribe_structured()` + `sensevoice_result_free()`.
-- **Segment fields** (`crispasr_segment`): four new optional strings
+- **Segment fields** (`stelnettts_segment`): four new optional strings
   `lang_id` / `emotion` / `audio_event` / `itn_flag`. Empty for
   non-SenseVoice backends (other backends are unaffected).
 - **CLI**: stdout now shows the clean transcript without the `<|…|>`
-  prefix. The active JSON writer (`crispasr_output.cpp:473`) emits
+  prefix. The active JSON writer (`stelnettts_output.cpp:473`) emits
   `language`, `audio_event`, `emotion`, `itn_flag` siblings after
   `text` when present.
 
@@ -8706,7 +8706,7 @@ LEARNINGS entry under "SenseVoice query-embed pattern".
 sensevoice). Multilingual TTS, Apache-2.0, 9 languages + 18+ Chinese
 dialects, zero-shot voice cloning, 24 kHz output. Phase 1 lands the
 foundation only — recon, converter, and three F16 GGUFs at
-`/Volumes/backups/ai/crispasr-models/cosyvoice3-0.5b-2512/`. The C++
+`/Volumes/backups/ai/stelnettts-models/cosyvoice3-0.5b-2512/`. The C++
 runtime is in development (Phase 2 starts with the LLM forward + RAS
 sampling); the backend is **not yet user-facing**.
 
@@ -8790,7 +8790,7 @@ that the new runtime is ~800 LOC of mostly glue: loader, query-embed
 gather + concat, CTC head + greedy decode, ▁→space SentencePiece
 detokenize. No new core helpers needed.
 
-**Verification.** `crispasr-diff sensevoice` is 76/76 PASS on
+**Verification.** `stelnettts-diff sensevoice` is 76/76 PASS on
 `zh.mp3` (byte-identical `generated_text`) and 75/76 on
 `samples/jfk.wav` — the single jfk miss is the emotion-tag argmax
 flipping `<|ANGRY|>` ↔ `<|EMO_UNKNOWN|>` at cos=0.999846 (F16 +
@@ -8816,17 +8816,17 @@ no Qwen3-0.6B AR decode — every position runs in parallel through
 the CTC head).
 
 **Files.** New `src/sensevoice.{h,cpp}` (~800 LOC),
-`examples/cli/crispasr_backend_sensevoice.cpp`,
+`examples/cli/stelnettts_backend_sensevoice.cpp`,
 `models/convert-sensevoice-to-gguf.py`,
 `tools/reference_backends/sensevoice.py`,
 `hf_readmes/sensevoice-small-GGUF.md`. Edited `src/CMakeLists.txt`,
-`examples/cli/CMakeLists.txt`, `examples/cli/crispasr_backend.cpp`
+`examples/cli/CMakeLists.txt`, `examples/cli/stelnettts_backend.cpp`
 (dispatch + filename + GGUF-arch auto-routes),
-`examples/cli/crispasr_diff_main.cpp` (per-backend `sensevoice` branch),
-`src/crispasr_model_registry.cpp` (+1 entry with FunASR Model License
+`examples/cli/stelnettts_diff_main.cpp` (per-backend `sensevoice` branch),
+`src/stelnettts_model_registry.cpp` (+1 entry with FunASR Model License
 v1.1 attribution), `tools/dump_reference.py` (REGISTERED_BACKENDS).
 
-**HF.** `cstr/sensevoice-small-GGUF` uploaded (F16, 0.47 GB — four
+**HF.** `Xenna/sensevoice-small-GGUF` uploaded (F16, 0.47 GB — four
 times smaller than funasr-nano-2512 because no LLM half). Wired
 into `-m auto` with the license note printed on first download.
 README adds the row, the feature-matrix column, the
@@ -8851,9 +8851,9 @@ token ids, with a leftmost-LCS heuristic and diagonal expansion to
 recover one-token gaps from TDT frame drift.
 
 This change ports that algorithm verbatim into
-`src/core/crispasr_lcs.h` and wraps it with a segment-aware driver in
-`examples/cli/crispasr_lcs_dedup.h` that walks the per-slice
-`vector<crispasr_segment>`, drops the duplicate leading tokens from
+`src/core/stelnettts_lcs.h` and wraps it with a segment-aware driver in
+`examples/cli/stelnettts_lcs_dedup.h` that walks the per-slice
+`vector<stelnettts_segment>`, drops the duplicate leading tokens from
 `chunk[i]`, peels matching words, and rebuilds `seg.text`. The driver
 fires only when overlap-save was applied (`use_chunk_context`), so
 VAD-derived multi-slice runs (#114 invariant) are untouched.
@@ -8874,9 +8874,9 @@ A/B testing:
   matching NeMo). Raise to 3-4 on audio with long-silence regions
   where blank tokens dominate the boundary token run.
 
-**Public C ABI.** `crispasr_lcs_dedup_prefix_count(prev_tail_tokens,
+**Public C ABI.** `stelnettts_lcs_dedup_prefix_count(prev_tail_tokens,
 n_prev, curr_tokens, n_curr, min_lcs_length)` is exported from
-`libcrispasr` and declared in `include/crispasr.h`. Bindings (Go,
+`libstelnettts` and declared in `include/stelnettts.h`. Bindings (Go,
 Rust, Dart, Python, Java) that drive the library chunk-by-chunk can
 call it directly between adjacent chunks; it returns the number of
 leading tokens of `chunk[i]` to drop. The binding owns the actual
@@ -8931,7 +8931,7 @@ context from `cad4c28a`'s overlap-save logic, gated correctly per
 issue #114 — so the boundary mitigation only fires where it's needed
 (explicit / fallback chunking) and stays off for VAD-derived slices.
 
-The gate lives in `examples/cli/crispasr_long_audio_fallback.h` so
+The gate lives in `examples/cli/stelnettts_long_audio_fallback.h` so
 `tests/test-issue-89-long-audio-fallback.cpp` can pin it as a unit
 test without a model load.
 
@@ -8971,7 +8971,7 @@ utterance into the current encoder's context window, shifted the
 FastConformer features, and caused the TDT decoder to pick a
 different (worse) token path.
 
-The crispasr-diff harness still passed at cos_min=1.0 (mel),
+The stelnettts-diff harness still passed at cos_min=1.0 (mel),
 0.999994 (encoder) on the single-utterance baseball fixture, so the
 per-stage cosine sweep alone did not catch this. The regression is
 inherently a multi-slice + bidirectional-encoder + per-feature-z
@@ -8984,7 +8984,7 @@ VAD-derived multi-slice runs revert to the v0.6.6 behaviour:
 transcribe each slice's bare samples.
 
 The gate is extracted into
-`examples/cli/crispasr_chunk_context_gate.h` so
+`examples/cli/stelnettts_chunk_context_gate.h` so
 `tests/test-issue-114-chunk-context-gate.cpp` can pin the invariant
 (`effective_chunk_seconds=0 && n_slices>1` must return false) as a
 unit test without standing up the full pipeline.
@@ -9003,8 +9003,8 @@ in. The cos parity at mel/encoder is preserved by this fix.
 
 **Diff harness extension.** The full-audio diff was blind to this
 class of bug because it feeds the model one continuous segment, just
-like `tools/dump_reference.py` does. Added a `CRISPASR_DIFF_SLICES`
-env var to `crispasr-diff` that takes "s0:e0,s1:e1,..." sample
+like `tools/dump_reference.py` does. Added a `STELNETTTS_DIFF_SLICES`
+env var to `stelnettts-diff` that takes "s0:e0,s1:e1,..." sample
 ranges, runs `parakeet_compute_mel + parakeet_run_encoder` per slice,
 and compares each slice's encoder output against the matching slab
 of the reference's full-audio `encoder_output` on a per-frame basis.
@@ -9029,7 +9029,7 @@ branch on V, sum-with-attn, optional flash-attention), `src/core/lfr.h`
 20 tp blocks, after_norm between, tp_norm at end). The adaptor is
 the 2-block Transformer from `funasr.models.llm_asr.adaptor.Transformer`
 (linear 512→2048→1024 prelude + 2× MHA, head_dim=128 not 64 — see
-note below). The LLM half is Qwen3-0.6B (same body as qwen3-asr-0.6b);
+note below). The LLM half is Qwen3-0.6B (same body as cielvox2-asr-0.6b);
 the converter writes the LLM under llama.cpp-standard tensor names so
 the loader reuses `core_attn::kv_self_attn` directly.
 
@@ -9049,7 +9049,7 @@ The runtime ignores the GGUF KV and forces 8; without this fix the
 diff harness drops to cos~0.6 on the adaptor output (vs cos=1.0 on
 the 70-layer encoder which is bit-near-exact).
 
-**Verification.** `crispasr-diff funasr` is 77/77 PASS,
+**Verification.** `stelnettts-diff funasr` is 77/77 PASS,
 byte-identical `generated_text`, on both Chinese (`example/zh.mp3`
 from the snapshot, "开饭时间早上九点至下午五点。") and English
 (`samples/jfk.wav`, "AND SO MY FELLOW AMERICANS ASK NOT WHAT YOUR
@@ -9077,15 +9077,15 @@ kernel-launch overhead dominates. Default ON matches typical ASR
 workloads; tight-VAD realtime users may want the opt-out.
 
 **Files.** New `src/funasr.{h,cpp}`, `src/core/sanm.h`,
-`src/core/lfr.h`, `examples/cli/crispasr_backend_funasr.cpp`. Edited
+`src/core/lfr.h`, `examples/cli/stelnettts_backend_funasr.cpp`. Edited
 `src/core/kaldi_fbank.{h,cpp}` (Hamming window),
 `models/convert-funasr-to-gguf.py` (retargeted to LLM-decoder path;
 commit b6a2f75f), `tools/reference_backends/funasr.py` (stage names +
-str-as-meta route for `generated_text`), `examples/cli/crispasr_backend.cpp`
+str-as-meta route for `generated_text`), `examples/cli/stelnettts_backend.cpp`
 (dispatch + filename auto-route + GGUF-arch auto-route),
-`examples/cli/crispasr_diff_main.cpp` (funasr branch — float-cosine
+`examples/cli/stelnettts_diff_main.cpp` (funasr branch — float-cosine
 for tensor stages + meta byte-compare for `generated_text`),
-`src/crispasr_model_registry.cpp` (two new entries with explicit
+`src/stelnettts_model_registry.cpp` (two new entries with explicit
 FunASR Model License v1.1 attribution; dropped the misleading
 hardcoded "(non-commercial)" suffix from the license-note printer
 since the license string already carries authoritative wording),
@@ -9094,7 +9094,7 @@ since the license string already carries authoritative wording),
 `README.md` (ASR table rows + headline count + capability matrix
 column + native-punctuation table entry + multilingual recipe row).
 
-**HF.** `cstr/funasr-nano-GGUF` and `cstr/funasr-mlt-nano-GGUF`
+**HF.** `Xenna/funasr-nano-GGUF` and `Xenna/funasr-mlt-nano-GGUF`
 uploaded (F16, 1.98 GB each). `hf_readmes/funasr-{nano,mlt-nano}-GGUF.md`
 carry the FunASR Model License v1.1 attribution line and link to the
 upstream model cards. Auto-download via `--backend funasr -m auto`
@@ -9157,7 +9157,7 @@ upstream AR pipeline. Backed by a Python-side hook on
 
 ASR roundtrip: EN ("Hello world") → parakeet-tdt-0.6b-v3, DE
 ("Hallo, wie geht es dir heute?") → parakeet-v3, ZH
-("你好，今天天气真好。") → qwen3-asr — all three languages transcribe
+("你好，今天天气真好。") → cielvox2-asr — all three languages transcribe
 back exactly through both legacy CPU and the new graph path. Audio
 audibly natural on M1.
 
@@ -9542,7 +9542,7 @@ still ASR-roundtrips to "Hello world."
 AR loop 15 306 → 6 815 ms (2.3×), CFM/step 2 398 → 1 035 ms (2.3×),
 total wall 24.2 → 18.5 s. Below the plan's `~400 ms` CPU target —
 remaining overhead is per-call graph build / gallocr alloc, not the
-matmul work. Caching the graph across CFM Euler iterations (qwen3_tts
+matmul work. Caching the graph across CFM Euler iterations (cielvox2_tts
 bucket pattern) is the next CPU win; Metal is gated on the matching
 TSLM-step graph (PLAN #96 still-TODO).
 
@@ -9749,7 +9749,7 @@ Round 6 + 7 of the PLAN #57 / #83 GPU chase. The round-4 patches
 (`kernel_mul_mv_q4_K_q8_K`, `kernel_quantize_q8_K_f32`, `mul_mm_*_hp`,
 PREC_F32 tagging) had cleaned up the T3 mul_mat drift that round 3
 diagnosed, leaving a remaining "FORCE_GPU=1 → garbled audio" that the
-prior narrative still attributed to T3. Re-bisect with `crispasr-diff`
+prior narrative still attributed to T3. Re-bisect with `stelnettts-diff`
 showed `s3gen_encoder_out cos=0.999950` (encoder on GPU is fine) while
 `s3gen_mel cos_min=0.923` collapses — the bug is downstream of T3, in
 the S3Gen UNet1D CFM denoiser.
@@ -9764,8 +9764,8 @@ the S3Gen UNet1D CFM denoiser.
   to 0. Slight CPU correctness gain (s3gen_mel cos_min 0.999971 →
   0.999980) but the GPU divergence is unrelated to mish.
 - Added two diagnostic env knobs in `s3gen_maybe_pin_graph_to_cpu`:
-  `CRISPASR_S3GEN_UNET_PIN_CPU_OP=<op>` (pin only the named op type
-  to CPU under FORCE_GPU) and `CRISPASR_S3GEN_UNET_KEEP_GPU_OP=<op>`
+  `STELNETTTS_S3GEN_UNET_PIN_CPU_OP=<op>` (pin only the named op type
+  to CPU under FORCE_GPU) and `STELNETTTS_S3GEN_UNET_KEEP_GPU_OP=<op>`
   (pin everything except the named op). Names follow `ggml_op_name()`
   lowercase minus the `OP_` prefix, or `unary_<lowercase>` for
   `GGML_OP_UNARY`.
@@ -9774,7 +9774,7 @@ the S3Gen UNet1D CFM denoiser.
     batch-1 AR loop is dominated by Metal kernel-launch overhead on
     M1 — measured 50 s full CPU vs 75 s T3-GPU + S3Gen-CPU on the
     JFK sentence, warm cache, M1. New override
-    `CRISPASR_CHATTERBOX_T3_GPU=1` opts T3 back onto GPU on Metal.
+    `STELNETTTS_CHATTERBOX_T3_GPU=1` opts T3 back onto GPU on Metal.
   - **Non-Metal (CUDA / Vulkan):** default keeps T3 on GPU + S3Gen
     on CPU. The compound-drift bisect was Metal-only; the same
     class of F16-intermediate compound rounding likely applies to
@@ -9798,7 +9798,7 @@ compounding. Tags were reverted as graph clutter.
 ### Auto-pin attempt: works in diff harness, fails end-to-end
 
 Wired an `unet_force_cpu` flag plus an auto-pin under FORCE_GPU.
-`crispasr-diff` shows `s3gen_mel cos=1.000`, but the full TTS path
+`stelnettts-diff` shows `s3gen_mel cos=1.000`, but the full TTS path
 produces NaN/Inf mel going into the vocoder (`rms=nan min=1e30
 max=-1e30`) → saturated audio → empty parakeet transcript. Pinning
 encoder + vocoder + UNet all to CPU under a GPU-init sched still
@@ -9813,8 +9813,8 @@ the bug; it's just amplifying upstream UNet1D garbage.
 - `docs/tts.md` — "Known issues" rewritten to reflect the new Metal
   default, the actual root cause (S3Gen UNet compound drift, not T3
   quant-mat drift), and the new env knobs.
-- `src/crispasr_model_registry.cpp` chatterbox entry comment — dropped
-  the "crispasr CLI adapter is still pending" line (shipped long ago)
+- `src/stelnettts_model_registry.cpp` chatterbox entry comment — dropped
+  the "stelnettts CLI adapter is still pending" line (shipped long ago)
   and documented the `--model-quant` / `--tts-codec-quant`
   substitution surface.
 - `LEARNINGS.md` — appended round 6 (mish) and round 7 (op-bisect +
@@ -9822,7 +9822,7 @@ the bug; it's just amplifying upstream UNet1D garbage.
 
 ### Verification
 
-- `crispasr-diff chatterbox` with the new code: default config gives
+- `stelnettts-diff chatterbox` with the new code: default config gives
   `s3gen_mel cos_min=0.999980` (slight gain from the mish fix);
   FORCE_GPU=1 alone still shows the documented `cos_min=0.923003`
   (broken state preserved as diagnostic); `FORCE_GPU=1 +
@@ -9837,7 +9837,7 @@ the bug; it's just amplifying upstream UNet1D garbage.
 - `src/chatterbox.cpp` — Metal default flip + new `T3_GPU` opt-in.
 - `src/chatterbox_s3gen.cpp` — `ggml_mish` rewrite + bisect env vars
   in `s3gen_maybe_pin_graph_to_cpu`.
-- `src/crispasr_model_registry.cpp` — comment refresh.
+- `src/stelnettts_model_registry.cpp` — comment refresh.
 - `docs/tts.md` — Known-issues paragraph.
 - `LEARNINGS.md` — rounds 6 / 7 / 7b appendix.
 
@@ -9967,7 +9967,7 @@ Two @CKwasd PRs accepted as a pair:
   (42494f23) sits on top.
 
 - **PR #95** — `Rewrite streaming JSON VAD merge policy`. Adds a
-  `crispasr_vad_post_merge_policy` enum (`offline` vs
+  `stelnettts_vad_post_merge_policy` enum (`offline` vs
   `streaming_json`) and a new `--stream-vad-merge-gap-ms` CLI flag.
   Offline / file VAD path keeps the historical short/close merge.
   JSON streaming gets a narrower close-gap-only policy that never
@@ -9992,7 +9992,7 @@ now show as merged with proper credit on @CKwasd's profile.
 
 ## 2026-05-17 Kokoro short-input Metal regression — ggml-metal kernel_norm fix
 
-CrisperWeaver reported kokoro on Apple Silicon Metal producing
+StelnetWeaver reported kokoro on Apple Silicon Metal producing
 garbage audio for short utterances ("hello world" → ~6× lower
 amplitude, transcribed as "Mm-hmm." by parakeet). Long utterances
 worked. CPU worked. Five-step bisect via the ground-truth diff
@@ -10017,7 +10017,7 @@ cross-simdgroup `simd_sum` with a serial reduction by thread 0 of
 sg0 that sums `shmem[0..n_sg-1]` and broadcasts via `shmem[31]`
 (unused by the original — initialized to 0 by sg0 and never written
 by any sg). Applied at four sites. Also adds explicit per-T
-overloads (`crispasr_vec_sum` / `crispasr_vec_sqsum`) to replace
+overloads (`stelnettts_vec_sum` / `stelnettts_vec_sqsum`) to replace
 `dot(scalar, scalar)` calls — `dot()` is only spec-defined for
 vector types and the kernel_norm_f32 (scalar T) instantiation
 should not rely on it.
@@ -10035,7 +10035,7 @@ Earlier in the chain:
   the "buffer is nil" spam from issue #94's default-on flip).
 - `98488dcb` — bisect infrastructure: extends
   `tools/dump_reference.py` + `kokoro_extract_stage` +
-  `crispasr-diff` to capture per-op intermediates inside F0Ntrain.
+  `stelnettts-diff` to capture per-op intermediates inside F0Ntrain.
 - `d2266229` — gated the bisect intermediates behind
   `KOKORO_DEBUG_INTERMEDIATES=1` so production builds pay no cost
   but the bisect path stays available for the next per-op Metal
@@ -10074,19 +10074,19 @@ All graph paths gated on `VOXCPM2_USE_GRAPH` (default on). Respects
 
 ## 2026-05-16 Issue #94 — chatterbox-turbo slow / failing init on macOS
 
-External report from `niksedk` (SubtitleEdit ships `crispasr` for
+External report from `niksedk` (SubtitleEdit ships `stelnettts` for
 Chatterbox TTS): selecting the Turbo model in SubtitleEdit on
 Apple Silicon segfaulted during s3gen init (exit 139); the Base
 model worked. Reproduced as a 60 s+ slow load on the legacy
 alloc+copy path that, depending on memory pressure, can manifest
 either as a perceived hang or a hard crash. mmap path (formerly
-`CRISPASR_GGUF_MMAP=1`) loaded the same model in ~26 s and
+`STELNETTTS_GGUF_MMAP=1`) loaded the same model in ~26 s and
 produced valid 24 kHz audio.
 
 Fix:
 
 - `src/core/gguf_loader.cpp` — flip `mmap_loader_enabled()` to
-  default **on** (opt out with `CRISPASR_GGUF_MMAP=0`). The CPU
+  default **on** (opt out with `STELNETTTS_GGUF_MMAP=0`). The CPU
   mmap path has been the validated default-eligible loader since
   PLAN #51a in late April; this matches llama.cpp's default.
 - `src/chatterbox.cpp` + `src/chatterbox_s3gen.cpp` — add explicit
@@ -10101,7 +10101,7 @@ Verified on M1 / macOS Tahoe 26.2:
 
 - chatterbox-turbo: 29 s init (was 60 s+) + working `/v1/audio/speech`.
 - chatterbox (base): 28 s init + working `/v1/audio/speech`.
-- `CRISPASR_GGUF_MMAP=0` opt-out: 37 s init, still works.
+- `STELNETTTS_GGUF_MMAP=0` opt-out: 37 s init, still works.
 
 ### 2026-05-17 follow-up — T3 sampler reorder
 
@@ -10127,7 +10127,7 @@ base never needed because base sets `top_k=0`.
   `t3.py:471`).
 
 Diagnostic finding from the Python reference (captured 2026-05-17,
-audio under `/Volumes/backups/ai/crispasr/issue94-audio/topk-fix/`):
+audio under `/Volumes/backups/ai/stelnettts/issue94-audio/topk-fix/`):
 
 1. Python's turbo sampler also emits S3GEN_SIL (4299) as the second
    generated speech token on both `"hello world test"` and `"hello
@@ -10153,7 +10153,7 @@ audio under `/Volumes/backups/ai/crispasr/issue94-audio/topk-fix/`):
 
 Per-layer bisect (added 2026-05-17):
 
-`CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS=1` makes the GPT-2 graph dump
+`STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS=1` makes the GPT-2 graph dump
 each block's `post_attn` and `post_ffn` hidden states to
 `/tmp/cb_gpt2_step_<n_past>_LNN_*.bin`. The companion Python tool
 `tools/cb_turbo_perlayer_dump_pyref.py` produces the matching Python
@@ -10199,8 +10199,8 @@ propagates into the residual stream and is then amplified by a sharp
 attention pattern at head 10 of L05.
 
 **Flash_attn ruled out** (added 2026-05-17): added a naive
-softmax(QK^T)V code path behind `CRISPASR_CHATTERBOX_NAIVE_ATTN=1`
-following the qwen3_asr.cpp layout (with the post-mul_mat
+softmax(QK^T)V code path behind `STELNETTTS_CHATTERBOX_NAIVE_ATTN=1`
+following the cielvox2_asr.cpp layout (with the post-mul_mat
 `permute(0, 2, 1, 3)` so the head dim packs correctly for the WO
 projection). Naive attention produces essentially identical bisect
 results: L05_post_attn cos 0.94421 with naive vs 0.94450 with
@@ -10215,8 +10215,8 @@ reproduce the same L05 divergence.
 Suspect remaining: per-op CPU numerics differences between ggml's
 F32 mul_mat / norm and PyTorch's. Hard to fix without bit-exact
 op replacements. The diagnostic infrastructure
-(`CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS=1`,
-`CRISPASR_CHATTERBOX_NAIVE_ATTN=1`,
+(`STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS=1`,
+`STELNETTTS_CHATTERBOX_NAIVE_ATTN=1`,
 `tools/cb_turbo_perlayer_dump_pyref.py`,
 `tools/cb_turbo_perlayer_diff.py`) is in place so future attempts
 (e.g., dumping per-position K/V at the prefill end and diffing
@@ -10242,7 +10242,7 @@ Two more candidate fixes tested against the L05 cos 0.944 baseline:
    vs the prior 0.94450. **`ggml_norm` precision vs PyTorch CPU
    LayerNorm (Welford's algorithm) is not dominant either.**
 
-Inventory of CrispASR ggml patches in `tools/upstream-prs/` that
+Inventory of StelnetTTS ggml patches in `tools/upstream-prs/` that
 *could* have been relevant: PR-01 (F16 mul_mat saturation, already
 active and confirmed not load-bearing here), PR-08 (Metal norm
 cross-simdgroup, Metal-only — chatterbox runs on CPU). None of the
@@ -10267,7 +10267,7 @@ start with a brief onset artifact ("SO,", "UH,", "ANy?", "IN no,",
 etc.) before the intelligible "Chatterbox Turbo" payload. The
 sampler matches Python exactly so this is the residual T3 drift
 compounding through the AR loop. Workaround for users who care
-about the onset artifact: sweep `CRISPASR_CHATTERBOX_T3_SEED` until
+about the onset artifact: sweep `STELNETTTS_CHATTERBOX_T3_SEED` until
 a clean output appears; or fall back to base chatterbox (the
 Llama-style backbone doesn't have L05's amplification).
 
@@ -10312,7 +10312,7 @@ default sampling, 5 iterations each, Whisper-base transcripts):
 The "84% bad" baseline is gone — clean rate on default seeds is now
 indistinguishable from Python's. No remaining "L05 cumulative
 softmax drift" to chase; the diagnostic infrastructure
-(`CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS=1` env knob, the
+(`STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS=1` env knob, the
 naive-softmax(QK^T)V path, per-layer dumpers under `tools/`) stays
 in the tree as a stage-gate fixture against future regressions.
 
@@ -10337,7 +10337,7 @@ diagnostics, not production.
 
 ## 2026-05-16 Cross-Stack Audit Hardening
 
-Cross-repo audit work covered `CrispASR`, `CrispLens`, and `cloud-backup`.
+Cross-repo audit work covered `StelnetTTS`, `CrispLens`, and `cloud-backup`.
 Completed items:
 
 - Added `AUDIT.md` and cross-stack tests for repository wiring, VPS services,
@@ -10347,10 +10347,10 @@ Completed items:
 - CrispLens video transcript search works for imported videos, including the
   real 70 second PURplus MP4 crop test searched by `Detektivarbeit`.
 - iOS Capacitor smoke passed: CocoaPods sync under Ruby 3.1.3 detected the
-  CrispASR plugin, Xcode built the simulator app with derived data on
+  StelnetTTS plugin, Xcode built the simulator app with derived data on
   `/Volumes/backups`, and the app installed/launched on the iPhone 17 simulator.
 - Android Capacitor packaging passed: the v4 app now has a real native
-  CrispASR JNI bridge, the generated Android project builds a debug APK with
+  StelnetTTS JNI bridge, the generated Android project builds a debug APK with
   JDK 21, and the verified APK was saved under `/Volumes/backups` before
   generated build outputs were cleaned from the repo volume.
 - Installed `ripgrep 14.1.0` on the VPS for future SSH service/env audits.
@@ -10452,8 +10452,8 @@ standard full self-attention produces wrong output. This was the
 trickiest part of the port.
 
 Also first runtime to use a persistent KV cache for the LLM decode
-loop: `qwen3_asr_kv_init` allocates it once, `qwen3_asr_kv_reset`
-clears between utterances, each `qwen3_asr_run_llm_kv` call appends
+loop: `cielvox2_asr_kv_init` allocates it once, `cielvox2_asr_kv_reset`
+clears between utterances, each `cielvox2_asr_run_llm_kv` call appends
 new tokens at position `n_past` and reads K/V views for attention.
 
 ### 5. Voxtral-Mini-3B-2507 — Mistral's speech-LLM
@@ -10579,20 +10579,20 @@ Six bugs found during debugging (all preserved in `LEARNINGS.md`):
 6. **RoPE mode NEOX vs NORMAL.** The single most expensive bug. See
    `LEARNINGS.md` → "RoPE mode mapping".
 
-### 8. Unified `crispasr` CLI + `src/core/` shared library (April 2026)
+### 8. Unified `stelnettts` CLI + `src/core/` shared library (April 2026)
 Two-phase refactor that reshaped the repo.
 
 **Phase 1 — Unified CLI.** Extended `examples/cli/cli.cpp` with a
-backend dispatch layer (`crispasr_backend.*`, backend adapters, VAD,
+backend dispatch layer (`stelnettts_backend.*`, backend adapters, VAD,
 output writers, model manager, CTC aligner, run loop). Whisper code
-path preserved byte-identical to upstream `crispasr`. 7 non-whisper
+path preserved byte-identical to upstream `stelnettts`. 7 non-whisper
 backends wired up. `-m auto` auto-download via `curl`/`wget` shell-out
 (no Python, no libcurl link). `--list-backends` prints the capability
 matrix. GGUF-based backend auto-detection with filename heuristic
 fallback.
 
 **Phase 0 — Shared model primitives.** Created `src/core/` (library
-name `crispasr-core`) with:
+name `stelnettts-core`) with:
 
 - `mel.{h,cpp}` — one parameterised log-mel spectrogram function for
   both NeMo and HF/Whisper clusters. 7 of 8 non-whisper models migrated
@@ -10614,8 +10614,8 @@ boilerplate removed from `src/` and replaced with ~730 lines of
 shared code in `src/core/`.
 
 Whisper is **intentionally not migrated** to `src/core/` — it's the
-battle-tested reference and the `crispasr -m ggml-base.en.bin …` path
-stays byte-identical to upstream `crispasr`.
+battle-tested reference and the `stelnettts -m ggml-base.en.bin …` path
+stays byte-identical to upstream `stelnettts`.
 
 ---
 
@@ -10630,9 +10630,9 @@ consolidated into four live documents:
 - `HISTORY.md` — this file
 
 Removed: `canary-todo.md`, `parakeet-todo.md`, `granite-todo.md`,
-`voxtral-todo.md`, `voxtral-4b-todo.md`, `qwen3-asr-todo.md`,
+`voxtral-todo.md`, `voxtral-4b-todo.md`, `cielvox2-asr-todo.md`,
 `TODO_COHERE_OPTIMIZATION.md`, `benchmark_cohere.md`,
-`qwen3-asr-benchmark.md`, `ggml_plans.md`, `voxtral-comparison.md`,
+`cielvox2-asr-benchmark.md`, `ggml_plans.md`, `voxtral-comparison.md`,
 `test_german.md`, `PERFORMANCE.md`. Everything of continuing value was
 folded into the live docs.
 
@@ -10651,14 +10651,14 @@ Moved here once shipped. See git history for code diffs.
 ### Core infrastructure (items 1-4, 6, 8, 10, 13, 17, 21, 24)
 
 - **#1 voxtral4b encoder → encoder_self_attn()** — migrated with `permute_cont=false`. Bit-identical.
-- **#2 Qwen3 forced aligner** — `qwen3_asr_run_aligner()` + `crispasr_aligner.cpp`. HF: `cstr/qwen3-forced-aligner-0.6b-GGUF`.
+- **#2 Qwen3 forced aligner** — `cielvox2_asr_run_aligner()` + `stelnettts_aligner.cpp`. HF: `Xenna/cielvox2-forced-aligner-0.6b-GGUF`.
 - **#3 Granite µP scale** — already handled via `KvSelfAttnParams::attn_scale`. No change needed.
 - **#4 Scheduler reuse audit** — all backends use create-once + `ggml_backend_sched_reset()`.
 - **#6 Best-of-N sampling** — all 4 LLM backends (voxtral/qwen3/granite/voxtral4b). `--best-of N -tp T`.
 - **#8 voxtral audio Q&A** — `--ask "question"` flag for audio understanding.
 - **#10 Granite encoder ggml graph** — `GRANITE_ENCODER_GRAPH=1` env var. CPU-verified identical.
 - **#13 canary_ctc CPU fallback** — already implemented (2-backend GPU+CPU pattern).
-- **#17 VAD stitching** — stitch + remap matching crispasr. C-ABI: `crispasr_session_transcribe_vad`.
+- **#17 VAD stitching** — stitch + remap matching stelnettts. C-ABI: `stelnettts_session_transcribe_vad`.
 - **#21 CLI→library DRY refactor** — VAD, diarize, LID, aligner, cache, registry promoted to `src/` behind shared C-ABI (v0.4.4–v0.4.8).
 - **#24 Wrapper test suites** — Python (13), Rust (5+3), Dart (9) tests.
 
@@ -10674,11 +10674,11 @@ Moved here once shipped. See git history for code diffs.
 - **#33 OmniASR-LLM** — 16th backend variant. wav2vec2 encoder + 12L LLaMA decoder. Apache-2.0. Dynamic language selection (1693 FLORES-200 codes).
 - **#34 VibeVoice** — architecture analysis complete. 1.5B is TTS-only; ASR is 7B (blocked on RAM).
 - **ECAPA-TDNN LID** — 107-language LID, ggml graph (4.1s, 6x speedup), 100% accuracy. Two variants (VoxLingua107 + CommonLanguage).
-- **OmniASR-CTC** — 300M and 1B variants working. HF: `cstr/omniASR-CTC-1B-GGUF`.
+- **OmniASR-CTC** — 300M and 1B variants working. HF: `Xenna/omniASR-CTC-1B-GGUF`.
 
 ### Post-processing (item 35)
 
-- **#35 FireRedPunc** — BERT-based punctuation restoration. GGUF converter + C++ runtime + CLI (`--punc-model`) + C-ABI + Python/Rust/Dart wrappers. HF: `cstr/fireredpunc-GGUF` (F16/Q8_0/Q4_K). Verified exact match against Python reference.
+- **#35 FireRedPunc** — BERT-based punctuation restoration. GGUF converter + C++ runtime + CLI (`--punc-model`) + C-ABI + Python/Rust/Dart wrappers. HF: `Xenna/fireredpunc-GGUF` (F16/Q8_0/Q4_K). Verified exact match against Python reference.
 
 ### Other completed items
 
@@ -10702,7 +10702,7 @@ Moved here once shipped. See git history for code diffs.
 ### v0.5.4 (April 2026)
 
 **Maintenance:**
-- **Sync versioning**: Synchronized version numbers across CMake, Rust (crispasr, crispasr-sys), Python, and Dart wrappers to 0.5.4.
+- **Sync versioning**: Synchronized version numbers across CMake, Rust (stelnettts, stelnettts-sys), Python, and Dart wrappers to 0.5.4.
 - **CI/Lint cleanup**: Resolved all remaining clang-tidy and clang-format violations using LLVM 18.
 - **Improved Static Analysis**: Updated `.clang-tidy` to exclude third-party headers, reducing noise in CI reports.
 - **Code Quality**: Fixed multiple implicit widening conversion warnings and enforced braces for all control flow statements in core core files.
@@ -10712,9 +10712,9 @@ Moved here once shipped. See git history for code diffs.
 **Features:**
 - **#36** ASCII punc mapping — auto-detect Latin script, map `，。？！` → `, . ? !`
 - **#37** Progressive SRT (`--flush-after N`) — streaming subtitles for media players
-- **#38** Fullstop-punc multilingual — XLM-RoBERTa-large, MIT, EN/DE/FR/IT. HF: `cstr/fullstop-punc-multilang-GGUF`
+- **#38** Fullstop-punc multilingual — XLM-RoBERTa-large, MIT, EN/DE/FR/IT. HF: `Xenna/fullstop-punc-multilang-GGUF`
 - **#39** Session API — all 18 backends wired in C-ABI + Python/Rust/Dart
-- **#15** CMake rename — crispasr → crispasr in CMake, CI, Dockerfiles, scripts
+- **#15** CMake rename — stelnettts → stelnettts in CMake, CI, Dockerfiles, scripts
 - **#18** Aligner LIS — Longest Increasing Subsequence monotonicity fix
 - **#40** Moonshine converter — multilingual variants (ja, ko, zh, ar, vi, uk)
 
@@ -10746,7 +10746,7 @@ Moved here once shipped. See git history for code diffs.
 - **CFG**: dual KV cache with per-frame negative updates, cfg_scale=3.0
 - **EOS classifier**: automatic length detection via sigmoid(FC1→SiLU→FC2)
 - **Critical bugs**: AdaLN SiLU (#16), text newline (#17), r-ratio sign (#14)
-- **CLI**: `crispasr --tts "text" --voice voice.gguf -m vibevoice-realtime.gguf`
+- **CLI**: `stelnettts --tts "text" --voice voice.gguf -m vibevoice-realtime.gguf`
 
 **VibeVoice-1.5B Base Model TTS (April 2026):**
 - Single-LM autoregressive TTS (no TTS LM, 28-layer Qwen2)
@@ -10754,7 +10754,7 @@ Moved here once shipped. See git history for code diffs.
 - Speech token IDs: vision tokens reused (151654/151652/151653)
 - ASR round-trip verified: "Hello, how are you today?" → exact match
 - Quantized: F16 (5.1 GB), Q8_0 (2.8 GB), Q4_K (1.6 GB)
-- HF: `cstr/vibevoice-1.5b-GGUF`
+- HF: `Xenna/vibevoice-1.5b-GGUF`
 
 **ggml conv1d extensions + performance optimizations (April 2026):**
 - Three new ggml ops: `GGML_OP_CONV_1D_CF` (channels-first conv1d),
@@ -10780,7 +10780,7 @@ Moved here once shipped. See git history for code diffs.
 - Full ASR+TTS GGUF (1205 tensors: encoder + LM + decoder + tokenizer)
 - 7 quantizations: Q3_K (4.7 GB) through F16 (17.4 GB)
 - TTS requires ≥Q4_K (Q3_K quality too low for decoder)
-- HF: `cstr/VibeVoice-7B-GGUF` with README
+- HF: `Xenna/VibeVoice-7B-GGUF` with README
 
 **OmniASR CTC fix — two bugs found via stage-by-stage diff (April 2026):**
 - pos_conv weight normalization: converter used per-output-channel norm
@@ -10796,21 +10796,21 @@ Moved here once shipped. See git history for code diffs.
   Workaround: use --vad to chunk audio.
 - LLM converter: complete rewrite (previous was corrupted). Tensor
   name mapping fixed (dec_ln, lm_head, tok_emb, gate). Same pos_conv fix.
-- HF: `cstr/omniASR-CTC-1B-v2-GGUF` (F16 + Q4_K + Q8_0),
-  `cstr/omniASR-CTC-300M-v2-GGUF` (F16),
-  `cstr/omniasr-llm-300m-v2-GGUF` (F16 + Q4_K — fixed pos_conv + names)
+- HF: `Xenna/omniASR-CTC-1B-v2-GGUF` (F16 + Q4_K + Q8_0),
+  `Xenna/omniASR-CTC-300M-v2-GGUF` (F16),
+  `Xenna/omniasr-llm-300m-v2-GGUF` (F16 + Q4_K — fixed pos_conv + names)
 
 **Moonshine multilingual — 12 models (April 2026):**
 - Fixed converter: 1D tensors (norms/biases) forced to F32 for binary ops
 - Fixed runtime: conv_1d_f32 mul_mat argument order for F16 kernels
 - All 12 models tested and uploaded to HuggingFace
-- HF: `cstr/moonshine-{tiny,base}-{ja,ar,ko,zh,vi,uk}-GGUF`
+- HF: `Xenna/moonshine-{tiny,base}-{ja,ar,ko,zh,vi,uk}-GGUF`
 
 **OmniASR LLM-1B conversion (April 2026):**
 - Converted facebook/omniASR-LLM-1B (8.5 GB .pt) to GGUF (4.55 GB F16, 918 tensors)
 - 48-layer encoder (d=1280) + 12-layer LLaMA decoder (d=4096)
 - Output: "fellow americas ask not what your country can do for you"
-- HF: `cstr/omniasr-llm-1b-GGUF` (F16 + Q4_K)
+- HF: `Xenna/omniasr-llm-1b-GGUF` (F16 + Q4_K)
 
 **Parakeet TDT-CTC Japanese — xscaling fix (April 2026):**
 - `nvidia/parakeet-tdt_ctc-0.6b-ja` was emitting "1 token then loop"
@@ -10819,7 +10819,7 @@ Moved here once shipped. See git history for code diffs.
   runtime never applied this scale; v3 has `xscaling=false` so the
   multilingual sibling worked by accident.
 - Diagnostic path: stood up `tools/reference_backends/parakeet.py`
-  + `tools/dump_parakeet_reference.py` so `crispasr-diff parakeet
+  + `tools/dump_parakeet_reference.py` so `stelnettts-diff parakeet
   <model.gguf> <ref.gguf> <audio.wav>` produces a stage-by-stage
   comparison against the NeMo reference. mel matched at cos≈0.99,
   encoder at cos=0.149 → grep'd `model_config.yaml`, found
@@ -10828,7 +10828,7 @@ Moved here once shipped. See git history for code diffs.
   0.81, F16 transcript bit-exact.
 - Verified on a JSUT-basic5000 sample at F16:
   NeMo:     `'水をマレーシアから買わなくてはならないのです。'`
-  crispasr: `'水をマレーシアから買わなくてはならないのです。'`
+  stelnettts: `'水をマレーシアから買わなくてはならないのです。'`
 - Converter rewrite: every architecture hparam read from
   `model_config.yaml` (no more hardcoded `d_model=1024` /
   `pred_hidden=640`), cross-checked against actual tensor shapes,
@@ -10840,7 +10840,7 @@ Moved here once shipped. See git history for code diffs.
   `joint.pred` / `decoder.embed` fall back to q4_0. F16 is the
   recommended JA file; Q5_K or pinning those two tensors to F16 is
   the path forward.
-- HF: `cstr/parakeet-tdt-0.6b-ja-GGUF` (F16 1.24 GB,
+- HF: `Xenna/parakeet-tdt-0.6b-ja-GGUF` (F16 1.24 GB,
   Q4_K 470 MB) re-uploaded with the new converter + README.
 
 **Gemma-4-E2B-it ASR — landed end-to-end (April 2026):**
@@ -10903,12 +10903,12 @@ encoder_output           0.966
 
 Process win: the stage-by-stage diff harness
 (`tools/dump_reference.py --backend gemma4` + intermediate dumps from
-the runtime via `CRISPASR_DUMP_DIR=…`) was decisive. Every bug was
+the runtime via `STELNETTTS_DUMP_DIR=…`) was decisive. Every bug was
 localised in 1–2 iterations once the per-layer cos table existed —
 the alternative (eyeball end-to-end output, guess) wasted multiple
 sessions before we wired it up. See LEARNINGS for the methodology.
 
-HF: `cstr/gemma4-e2b-it-GGUF` re-uploaded with the QAT scalars and
+HF: `Xenna/gemma4-e2b-it-GGUF` re-uploaded with the QAT scalars and
 all the fixes above (F16, Q8_0, Q4_K, Q2_K).
 
 **Speed follow-up (same day):** end-to-end JFK transcription went
@@ -10967,12 +10967,12 @@ SnakeBeta+tconv → 24 kHz waveform) hung on M1 with
 `use_gpu=true`.
 
 Root cause was instrumented via two env vars added to
-`src/qwen3_tts.cpp`:
-- `QWEN3_TTS_CODEC_TRACE=1` — prints per-node
+`src/cielvox2_tts.cpp`:
+- `CIELVOX2_TTS_CODEC_TRACE=1` — prints per-node
   `op / tensor name / shape -> backend` before each op, with
   `ggml_backend_synchronize` after each so a hang attributes to the
   last printed line.
-- `QWEN3_TTS_CODEC_FORCE_METAL=1` — re-routes codec weights and
+- `CIELVOX2_TTS_CODEC_FORCE_METAL=1` — re-routes codec weights and
   compute through the Metal-capable `c->sched`, reproducing the
   hang for triage.
 
@@ -10990,7 +10990,7 @@ output element, doing ~160× the necessary work, which kept Metal
 command buffers above the macOS GPU watchdog's ~5 sec ceiling.
 
 **Fix landed in the ggml fork** (`ggml/src/ggml-metal/ggml-metal.metal`,
-marked `// CrispASR patch`): compute the contributing `i` range
+marked `// StelnetTTS patch`): compute the contributing `i` range
 analytically before the input-channel loop and iterate only those
 positions. Bit-identical output, ~160× less work on the codec
 shape, comfortably under the watchdog. Documented in LEARNINGS.md
@@ -11031,14 +11031,14 @@ work. All shipped end-to-end-correct with public GGUFs.
   projections stages 4–7; (5) missing tanh in attention pooling.
   CLI: when `--lid-model *.gguf` is passed, the native path runs;
   falls back to sherpa subprocess for `.onnx`. Verified across
-  English, German, and Latvian. HF: `cstr/silero-lid-lang95-GGUF`.
+  English, German, and Latvian. HF: `Xenna/silero-lid-lang95-GGUF`.
 
 - **Pyannote v3 native (#57):** SincNet + 4× biLSTM + 3× Linear +
   LogSoftmax, ~440 lines of C++. Wired into the CLI as
   `--diarize-method pyannote --sherpa-segment-model *.gguf` (native
   path; subprocess fallback for `.onnx`). Verified on jfk.wav with
   650 frames and correct "(speaker 1)" assignment.
-  HF: `cstr/pyannote-v3-segmentation-GGUF` (5.7 MB F32).
+  HF: `Xenna/pyannote-v3-segmentation-GGUF` (5.7 MB F32).
 
 - **wav2vec2 ggml rewrite (#63):** `src/wav2vec2-ggml.{h,cpp}`,
   layer-by-layer ggml graphs (~80 MB/layer, reused) for the 24-layer
@@ -11070,7 +11070,7 @@ needle without GPU hardware. Tracked in TODO under per-model
 follow-ups for OpenMP encoder annotations as a CPU-only nibble.
 
 ### 53. Qwen3-TTS — codec encoder repair (April 2026)
-Fixed a critical memory layout bug in the `qwen3_tts` codec encoder. The
+Fixed a critical memory layout bug in the `cielvox2_tts` codec encoder. The
 CPU-side RVQ loop was assuming channels-first indexing while the SEANet
 output was transposed to row-major `[T, 512]`. This fix restored clear
 voice cloning in the end-to-end CLI, eliminating the garbled artifacts.
@@ -11259,7 +11259,7 @@ and fills audio rows with `speech_zeroemb_idx[c]` (matches
 Stops on `<|im_end|>`/eos, strips
 `<|empty|>`/`<|eot|>`/`<|eostm|>`/language tags.
 
-The tokenizer follows the qwen3-asr-style splitter: greedy match
+The tokenizer follows the cielvox2-asr-style splitter: greedy match
 `<|...|>` against the vocab, then GPT-2-style whitespace pre-split
 + `bytes_to_unicode` + `bpe_one` for the rest. Works only because
 step 9 reconverted the GGUF with `tokenizer.ggml.merges` populated
@@ -11281,9 +11281,9 @@ not compute-bound. Without the env vars: hangs forever. With them:
 LEARNINGS.md and the `mimo-tokenizer-GGUF` README repeat this so
 the next person doesn't lose 30 minutes diagnosing it.
 
-**HF release.** [`cstr/mimo-asr-GGUF`](https://huggingface.co/cstr/mimo-asr-GGUF) ships F16 (14.9 GB) + Q4_K
+**HF release.** [`Xenna/mimo-asr-GGUF`](https://huggingface.co/Xenna/mimo-asr-GGUF) ships F16 (14.9 GB) + Q4_K
 (4.5 GB) with the corrected vocab and merges. Pair with
-[`cstr/mimo-tokenizer-GGUF`](https://huggingface.co/cstr/mimo-tokenizer-GGUF) — the audio tokenizer is a separate
+[`Xenna/mimo-tokenizer-GGUF`](https://huggingface.co/Xenna/mimo-tokenizer-GGUF) — the audio tokenizer is a separate
 encoder model. Q2_K and the legacy `mimo-asr.gguf` are kept for
 history but were built before the vocab/merges fix and should not
 be used.
@@ -11291,9 +11291,9 @@ be used.
 ### 57. Qwen3-TTS-Base 1.7B — PLAN #57 Phase 1 (May 2026)
 
 The 1.7B variant of Qwen3-TTS-Base shipped end-to-end behind the
-`qwen3-tts-1.7b-base` registry alias. Same ICL voice-clone path as
+`cielvox2-tts-1.7b-base` registry alias. Same ICL voice-clone path as
 0.6B-Base (`--voice <wav> --ref-text "..."`); the runtime now reads
-`qwen3tts.speaker.enc_dim` from the GGUF instead of assuming 1024.
+`cielvox2tts.speaker.enc_dim` from the GGUF instead of assuming 1024.
 
 **The bug.** `build_graph_spk_enc` and `run_spk_enc` (plus the two
 `extern "C"` speaker-embedding helpers) hardcoded the ECAPA output at
@@ -11306,7 +11306,7 @@ prefill saw a half-zero spk row. Symptom: ICL produced degenerate
 audio.
 
 **The fix** (`0813869`). Read `c->hp.spk_enc_dim` (already plumbed
-via `kv_u32(g, "qwen3tts.speaker.enc_dim", ...)` and exported by the
+via `kv_u32(g, "cielvox2tts.speaker.enc_dim", ...)` and exported by the
 converter — just unused in the graph builders). Five sites
 parameterised; banner now logs `ECAPA-TDNN 128→1024` for 0.6B-Base
 and `128→2048` for 1.7B-Base.
@@ -11321,8 +11321,8 @@ Word-level exact match across all three; the punctuation jitter on
 the leading single-word token is parakeet-v3 behaviour, not a
 synthesis defect.
 
-**HF release.** [`cstr/qwen3-tts-1.7b-base-GGUF`](https://huggingface.co/cstr/qwen3-tts-1.7b-base-GGUF) ships F16 (3.86 GB)
-+ Q8_0 (2.07 GB). Pair with [`cstr/qwen3-tts-tokenizer-12hz-GGUF`](https://huggingface.co/cstr/qwen3-tts-tokenizer-12hz-GGUF)
+**HF release.** [`Xenna/cielvox2-tts-1.7b-base-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-1.7b-base-GGUF) ships F16 (3.86 GB)
++ Q8_0 (2.07 GB). Pair with [`Xenna/cielvox2-tts-tokenizer-12hz-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-tokenizer-12hz-GGUF)
 — same 12 Hz tokenizer as 0.6B-Base.
 
 The 1.7B small_to_mtp_projection bridge from the 2048-d talker to the
@@ -11334,14 +11334,14 @@ on the existing graph builders.
 ### 58. Qwen3-TTS-VoiceDesign 1.7B — describe-the-voice TTS (May 2026)
 
 The instruct-tuned variant of Qwen3-TTS-12Hz-1.7B shipped behind the
-`qwen3-tts-1.7b-voicedesign` registry alias. Replaces the reference-WAV
+`cielvox2-tts-1.7b-voicedesign` registry alias. Replaces the reference-WAV
 or fixed-speaker prompt with a natural-language voice description fed
 in via `--instruct`. No ECAPA forward, no codec encoder, no preset
 speaker table — the model picks a voice purely from the text.
 
-**Runtime contract.** When `qwen3tts.tts_model_type == "voice_design"`,
+**Runtime contract.** When `cielvox2tts.tts_model_type == "voice_design"`,
 the talker prefill is built by `build_voicedesign_prefill_embeds`
-(`src/qwen3_tts.cpp`), which mirrors `build_customvoice_prefill_embeds`
+(`src/cielvox2_tts.cpp`), which mirrors `build_customvoice_prefill_embeds`
 with two changes:
 - The codec bridge omits the speaker frame: `L_codec =
   codec_prefill.size() + 2` (just `pad,bos`), one frame shorter than
@@ -11350,16 +11350,16 @@ with two changes:
   `instruct_ids` tokenises `<|im_start|>user\n{instruct}<|im_end|>\n`
   — is prepended to the prefill. Mirrors
   `Qwen3TTSForConditionalGeneration.generate` lines 2076–2233 of
-  `modeling_qwen3_tts.py` for the `speaker_embed=None` + `instruct_ids`
+  `modeling_cielvox2_tts.py` for the `speaker_embed=None` + `instruct_ids`
   path.
 
 **C-ABI.** Two new entry points:
-- `qwen3_tts_is_voice_design(ctx)` — variant detection.
-- `qwen3_tts_set_instruct(ctx, instruct)` — required before synthesis
+- `cielvox2_tts_is_voice_design(ctx)` — variant detection.
+- `cielvox2_tts_set_instruct(ctx, instruct)` — required before synthesis
   on a VoiceDesign model; returns -1 if the model isn't VoiceDesign.
 
 **CLI.** New `--instruct "..."` flag (parsed in `cli.cpp`). The
-`qwen3-tts` backend rejects `--voice` on VoiceDesign models with a
+`cielvox2-tts` backend rejects `--voice` on VoiceDesign models with a
 helpful warning, and errors before generation if `--instruct` is
 empty.
 
@@ -11369,8 +11369,8 @@ release. The 1.7B talker forward (Q/KV/FFN, mrope, small_to_mtp
 bridge) is shared with 1.7B-Base, so the runtime side reuses the
 existing graph builders end-to-end.
 
-**HF release.** [`cstr/qwen3-tts-1.7b-voicedesign-GGUF`](https://huggingface.co/cstr/qwen3-tts-1.7b-voicedesign-GGUF) ships F16 + Q8_0.
-Pair with [`cstr/qwen3-tts-tokenizer-12hz-GGUF`](https://huggingface.co/cstr/qwen3-tts-tokenizer-12hz-GGUF) — same 12 Hz tokenizer.
+**HF release.** [`Xenna/cielvox2-tts-1.7b-voicedesign-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-1.7b-voicedesign-GGUF) ships F16 + Q8_0.
+Pair with [`Xenna/cielvox2-tts-tokenizer-12hz-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-tokenizer-12hz-GGUF) — same 12 Hz tokenizer.
 
 ### 59. Orpheus 3B-FT — PLAN #57 Phase 2 slice (c) (May 2026)
 
@@ -11420,18 +11420,18 @@ what produced the validated 2.73 s clip below.
 **Validation.**
 
 ```
-$ crispasr --backend orpheus \
-    -m /Volumes/backups/ai/crispasr-models/orpheus-3b-ft-f16.gguf \
-    --codec-model /Volumes/backups/ai/crispasr-models/snac-24khz.gguf \
+$ stelnettts --backend orpheus \
+    -m /Volumes/backups/ai/stelnettts-models/orpheus-3b-ft-f16.gguf \
+    --codec-model /Volumes/backups/ai/stelnettts-models/snac-24khz.gguf \
     --voice tara --temperature 0.6 \
     --tts "Hello, my name is Tara." \
-    --tts-output /Volumes/backups/ai/crispasr-models/orpheus_test.wav
+    --tts-output /Volumes/backups/ai/stelnettts-models/orpheus_test.wav
 orpheus: AR emitted 224 codec tokens (32 super-frames)
-crispasr: TTS output written (65536 samples, 2.73 sec)
+stelnettts: TTS output written (65536 samples, 2.73 sec)
 
-$ crispasr --backend parakeet \
-    -m /Volumes/backups/ai/crispasr-models/parakeet-tdt-0.6b-v3-q4_k.gguf \
-    -f /Volumes/backups/ai/crispasr-models/orpheus_test.wav --no-prints
+$ stelnettts --backend parakeet \
+    -m /Volumes/backups/ai/stelnettts-models/parakeet-tdt-0.6b-v3-q4_k.gguf \
+    -f /Volumes/backups/ai/stelnettts-models/orpheus_test.wav --no-prints
 Hello, my name is Tara.
 ```
 
@@ -11443,15 +11443,15 @@ the writer first buffers tensor data to a system tempfile (honors
 slow throughput; direct write side-steps the issue.
 
 **HF release.** Talker shipped to
-[`cstr/orpheus-3b-base-GGUF`](https://huggingface.co/cstr/orpheus-3b-base-GGUF)
+[`Xenna/orpheus-3b-base-GGUF`](https://huggingface.co/Xenna/orpheus-3b-base-GGUF)
 as F16 (6.6 GB) + Q8_0 (3.5 GB). SNAC codec shipped to
-[`cstr/snac-24khz-GGUF`](https://huggingface.co/cstr/snac-24khz-GGUF)
+[`Xenna/snac-24khz-GGUF`](https://huggingface.co/Xenna/snac-24khz-GGUF)
 as a single F32 file (26 MB; the codec is small enough that
 quantising it isn't worth the audio-quality risk). Registry alias
-`orpheus` in `src/crispasr_model_registry.cpp` resolves Q8_0 + SNAC
+`orpheus` in `src/stelnettts_model_registry.cpp` resolves Q8_0 + SNAC
 under `-m auto`. The full unified Session API works end-to-end:
-opening the talker through `crispasr_session_open` returns a non-null
-handle and `crispasr_session_n_speakers` returns the 8 canopylabs
+opening the talker through `stelnettts_session_open` returns a non-null
+handle and `stelnettts_session_n_speakers` returns the 8 canopylabs
 English voices (`tara`/`leah`/`jess`/`leo`/`dan`/`mia`/`zac`/`zoe`).
 
 **Phase 3+ known gaps (out of scope for slice c):** plain NEOX
@@ -11481,7 +11481,7 @@ the heavy 9-row prefill graph for every n_past>0 step. Prefill
 still uses the original `mimo_asr_build_prefill_graph`.
 
 **51b' — O15-style cached step graph.** Mirrors
-`src/qwen3_tts.cpp:976-1050` (the `QWEN3_TTS_O15` path). `Lk`
+`src/cielvox2_tts.cpp:976-1050` (the `CIELVOX2_TTS_O15` path). `Lk`
 pinned to `kv_max_ctx` so the graph topology is invariant across
 n_past, `kv_indices = lm_positions` so the K/V scatter via
 `ggml_set_rows` keys off a runtime tensor instead of a static
@@ -11517,7 +11517,7 @@ faster, hits the lower end of the work order's 51b+51b' target
 band ("~1.5–2× from 51b alone, ~1.3× more from 51b'"). Transcript
 matches the gold byte-for-byte.
 
-**Cosine gate (crispasr-diff bf16-ref vs Q4_K-C++)** — five
+**Cosine gate (stelnettts-diff bf16-ref vs Q4_K-C++)** — five
 prefill stages reproduce the section 56 numbers exactly, confirming
 51b/b' do not perturb prefill numerics:
 
@@ -11637,10 +11637,10 @@ detokenize. JFK end-to-end output matches reference `final_text`
 exactly.
 
 **HF release.** All three variants live on
-[`cstr/granite-speech-4.1-2b-GGUF`](https://huggingface.co/cstr/granite-speech-4.1-2b-GGUF) (base, 4 quants: F16
+[`Xenna/granite-speech-4.1-2b-GGUF`](https://huggingface.co/Xenna/granite-speech-4.1-2b-GGUF) (base, 4 quants: F16
 5.58 GB, Q4K F32-enc 2.94 GB, Q4K F16-enc 2.07 GB, Q4K mini 1.7 GB),
-[`cstr/granite-speech-4.1-2b-plus-GGUF`](https://huggingface.co/cstr/granite-speech-4.1-2b-plus-GGUF) (plus, F16 5.6 GB),
-and [`cstr/granite-speech-4.1-2b-nar-GGUF`](https://huggingface.co/cstr/granite-speech-4.1-2b-nar-GGUF) (nar, 4 quants:
+[`Xenna/granite-speech-4.1-2b-plus-GGUF`](https://huggingface.co/Xenna/granite-speech-4.1-2b-plus-GGUF) (plus, F16 5.6 GB),
+and [`Xenna/granite-speech-4.1-2b-nar-GGUF`](https://huggingface.co/Xenna/granite-speech-4.1-2b-nar-GGUF) (nar, 4 quants:
 F16 5.8 GB, Q4K 3.4 GB, Q4K f16enc 2.5 GB, Q4K mini 1.6 GB). Registry
 aliases `granite`, `granite-4.1`, `granite-4.1-plus`, `granite-4.1-nar`.
 
@@ -11655,7 +11655,7 @@ on production paths.
 
 **Implementation** (commit `9710f80`, `src/core/gguf_loader.cpp` +
 `src/CMakeLists.txt`). Skip `ggml_backend_alloc_ctx_tensors` on the
-CPU path when `CRISPASR_GGUF_MMAP=1`; mmap the file with
+CPU path when `STELNETTTS_GGUF_MMAP=1`; mmap the file with
 `MAP_PRIVATE | PROT_READ|PROT_WRITE` (Win32 `FILE_MAP_COPY`); wrap the
 data section in a custom `ggml_backend_buffer_t` whose `free_buffer`
 callback munmaps; bind each tensor with `ggml_backend_tensor_alloc`
@@ -11674,7 +11674,7 @@ Backends with similar post-load weight surgery (vibevoice, …) inherit
 the fix for free.
 
 **Validated.** parakeet Q4_K — Metal default, CPU default, and CPU +
-`CRISPASR_GGUF_MMAP=1` all produce the gold JFK transcript.
+`STELNETTTS_GGUF_MMAP=1` all produce the gold JFK transcript.
 
 | Case | Working-set RSS | Notes |
 |---|---:|---|
@@ -11697,7 +11697,7 @@ default.
 **Default still legacy.** The env flag remains opt-in. Flip the
 default in a follow-up commit once the F16 RSS savings are measured
 end-to-end and the diff harness on F16 GGUFs has been exercised across
-the qwen3-tts and granite-speech families.
+the cielvox2-tts and granite-speech families.
 
 **Side-quest fix: parakeet `--no-gpu` crash** (commit `b85f56c`,
 `ggml/src/ggml.c`). Pre-existing assertion failure
@@ -11705,7 +11705,7 @@ the qwen3-tts and granite-speech families.
 `ggml_backend_sched_split_graph` whenever parakeet's encoder ran on
 the CPU backend. Root cause: `ggml_conv_2d` and `ggml_conv_2d_dw` set
 their im2col output type to `a->type` (the kernel) unconditionally,
-producing `MUL_MAT(F16 im2col, F16 kernel)`. The CrispASR fork's
+producing `MUL_MAT(F16 im2col, F16 kernel)`. The StelnetTTS fork's
 issue-#38 patch (F16 `vec_dot_type=F32` +
 `ggml_vec_dot_f16_f32`) doesn't support F16×F16. Fix mirrors
 `ggml_conv_1d`: pick F32 im2col when either operand is F32, cast the
@@ -11726,7 +11726,7 @@ Three small landings collected here because none warrants its own
 section:
 
 **PLAN #5 — Canary reference dumper** (commit `63f708e`). The C++
-`crispasr-diff canary` branch was already wired (mel + encoder taps)
+`stelnettts-diff canary` branch was already wired (mel + encoder taps)
 but the matching Python ref dumper was missing. Added
 `tools/reference_backends/canary.py`, modeled on `parakeet.py`: NeMo
 `ASRModel.from_pretrained("nvidia/canary-1b-v2")`, preprocessor +
@@ -11742,27 +11742,27 @@ converter to run without thrashing (98% full external + slow
 `shutil.copyfileobj` per CLAUDE.md note).
 
 **PLAN #53 — Two narrow core helpers** (commit `d393a43`). After the
-qwen3-tts codec and SNAC decoders both shipped, a re-read across all
-four of our TTS decoders (vibevoice σ-VAE, qwen3-tts codec, mimo
+cielvox2-tts codec and SNAC decoders both shipped, a re-read across all
+four of our TTS decoders (vibevoice σ-VAE, cielvox2-tts codec, mimo
 tokenizer encoder-only, SNAC, kokoro istftnet) showed the convergence
 the original PLAN #53 ("`core/audio_decoder.h`") imagined wasn't
 there: VibeVoice is continuous-VAE with ConvNeXt, MiMo has no
-decoder, Kokoro is istftnet, and only qwen3-tts codec + SNAC share
-shape — and even there the codebook-handling diverges (qwen3-tts
+decoder, Kokoro is istftnet, and only cielvox2-tts codec + SNAC share
+shape — and even there the codebook-handling diverges (cielvox2-tts
 splits codebook-0 from rest-15 vs SNAC sums all codebooks equally).
 Rewrote the PLAN entry to scope down, then extracted exactly two
 helpers:
 
 - `core_act::snake_beta` in `core/activation.h` — the BigVGAN
-  `y = x + exp(-β)·sin²(x·exp(α))` activation. qwen3-tts now
+  `y = x + exp(-β)·sin²(x·exp(α))` activation. cielvox2-tts now
   delegates via a 1-line alias. ~10 LOC saved net.
 - `core_convt::convt1d_crop` in `core/conv.h` — generic
   channels-first `ggml_conv_transpose_1d` wrapper with
-  caller-controlled `crop_left`/`crop_right`. qwen3-tts (causal,
+  caller-controlled `crop_left`/`crop_right`. cielvox2-tts (causal,
   `crop_right=K-stride`) and SNAC (symmetric,
   `crop_left=crop_right=pad`) both delegate. ~30 LOC saved net.
 
-SNAC `crispasr-diff` 8/8 PASS (cos_min 0.999941 unchanged) confirmed
+SNAC `stelnettts-diff` 8/8 PASS (cos_min 0.999941 unchanged) confirmed
 the wrapper is bit-equivalent. PLAN #53 priority moved MEDIUM →
 LOW since the `core/audio_decoder.h` super-helper is no longer the
 intent.
@@ -11777,8 +11777,8 @@ many speakers. Added:
   takes the mutex, `lru.clear()` + `idx.clear()`. Cheap and
   thread-safe.
 - Session-scoped re-export
-  `crispasr_session_kokoro_clear_phoneme_cache(session)` in
-  `crispasr_c_api.cpp` — no-op for non-kokoro backends, returns -1
+  `stelnettts_session_kokoro_clear_phoneme_cache(session)` in
+  `stelnettts_c_api.cpp` — no-op for non-kokoro backends, returns -1
   on null handle.
 - All 7 wrappers got the method (Python `Session.clear_phoneme_cache()`,
   Rust `Session::clear_phoneme_cache()`, Dart `clearPhonemeCache()`,
@@ -11815,7 +11815,7 @@ trap and the safer workflow.
 Picked up the two MEDIUM-effort OPEN items from PLAN #60 in one
 session. Both shipped behind clean fallback paths so existing GGUFs
 keep working — only the new fused-QKV Q4_K mimo-asr download gets the
-speedup, and only callers that opt in via `CRISPASR_KV_QUANT` change
+speedup, and only callers that opt in via `STELNETTTS_KV_QUANT` change
 KV-cache footprint.
 
 **60d Fused QKV (mimo-asr LM):**
@@ -11829,7 +11829,7 @@ fused matmul and the three bias adds with one — algebraically
 identical, fewer ggml ops to schedule.
 
 `core_attn::kv_self_attn` already accepted a `qkv_w` parameter
-(qwen3-asr / qwen3-tts use it for runtime fusion of F16/F32 weights).
+(cielvox2-asr / cielvox2-tts use it for runtime fusion of F16/F32 weights).
 The Qwen3 path doesn't have biases, so the helper needed an extra
 `qkv_b` parameter for the Qwen2 case. Added at the end of the
 parameter list (after the existing `o_b`) so all existing callers
@@ -11862,7 +11862,7 @@ tensors per layer collapsed into one `attn.qkv.weight`.
 
 **Validation (Q4_K, JFK, on this 16 GB box, 4 concurrent claude
 sessions, 99%-full external disk):**
-- `crispasr-diff` cosines reproduce the §56 / 51b/b' baselines
+- `stelnettts-diff` cosines reproduce the §56 / 51b/b' baselines
   bit-exactly (audio_features 0.998270, text_embeds 0.996284,
   inputs_embeds 0.997573, last_hidden 0.963177, logits 0.981261 —
   identical to the unfused-Q4_K reference run, character-by-character).
@@ -11880,7 +11880,7 @@ sessions, 99%-full external disk):**
     page-fault round-trip on the contested disk. On uncontended
     hardware expect closer to 1.1-1.2× pure-compute.
 
-The patched Q4_K was uploaded to `cstr/mimo-asr-GGUF` replacing
+The patched Q4_K was uploaded to `Xenna/mimo-asr-GGUF` replacing
 the unfused file. The unfused F16 stays in the repo unchanged —
 the runtime fallback in `bind_qwen2_block` keeps it working as-is.
 F16 re-upload is queued behind PLAN #51c (uncontended-disk
@@ -11888,7 +11888,7 @@ re-conversion).
 
 **60e KV-quant env flag (mimo-asr):**
 
-`CRISPASR_KV_QUANT={f16,q8_0,q4_0}` now picks the KV-cache dtype in
+`STELNETTTS_KV_QUANT={f16,q8_0,q4_0}` now picks the KV-cache dtype in
 `mimo_asr_kv_init`. Default stays F16, so this is bit-identical to
 existing behaviour.
 
@@ -11930,17 +11930,17 @@ mimo_asr-local helper was lifted into a shared
 each `*_kv_init` whose KV path routes through
 `core_attn::kv_self_attn`. 9 backends wired in one commit:
 `mimo_asr_kv_init` (refactored to use the shared helper),
-`qwen3_asr_kv_init`, `voxtral_kv_init`, `voxtral4b_kv_init`,
+`cielvox2_asr_kv_init`, `voxtral_kv_init`, `voxtral4b_kv_init`,
 `granite_speech_kv_init`, `gemma4_e2b` (`g4e_kv_init`, both
 sliding-window and full-attention caches share the dtype),
 `glm_asr_kv_init`, `omniasr` (`omniasr_alloc_kv_cache`), `orpheus`
-(`kv_alloc`), `qwen3_tts` talker (`kv_alloc` — `cp_kv` stays F16
+(`kv_alloc`), `cielvox2_tts` talker (`kv_alloc` — `cp_kv` stays F16
 since the code-predictor decode doesn't go through `core_attn`).
 Default remains `GGML_TYPE_F16` so the wiring is bit-identical to
 legacy behaviour until a user opts in via
-`CRISPASR_KV_QUANT={q8_0,q4_0}`.
+`STELNETTTS_KV_QUANT={q8_0,q4_0}`.
 
-Smoke-tested: `crispasr-diff mimo-asr` with default-F16 KV reproduces
+Smoke-tested: `stelnettts-diff mimo-asr` with default-F16 KV reproduces
 the audio_features 0.998270 / text_embeds 0.996284 / inputs_embeds
 0.997573 / last_hidden 0.963177 / logits 0.981261 cosines bit-exact
 post-refactor.
@@ -11955,8 +11955,8 @@ massive over-alloc). Switched both to compute `ggml_nbytes()` after
 `ggml_new_tensor_4d` instead, which is the right pattern regardless
 of dtype.
 
-Per-backend cosine validation (CRISPASR_KV_QUANT=q8_0
-`crispasr-diff` against each bf16 reference) is the actual rollout
+Per-backend cosine validation (STELNETTTS_KV_QUANT=q8_0
+`stelnettts-diff` against each bf16 reference) is the actual rollout
 gate that remains open — see PLAN #60e for the list.
 
 Backends with custom KV paths (canary, cohere, kyutai_stt,
@@ -11974,13 +11974,13 @@ machine).
 
 ### 65. Session-API word-confidence parity + 61a/b feature-matrix uplift (May 2026)
 
-**Problem.** Every session-API caller (Rust crispasr crate, Python
+**Problem.** Every session-API caller (Rust stelnettts crate, Python
 wrapper, Flutter, Ruby, …) saw `word.confidence = 1.0` for parakeet
 (hardcoded) and no per-word data at all for every other backend
 (canary, qwen3, cohere, granite, voxtral, voxtral4b, mimo-asr,
 wav2vec2, firered-asr, glm-asr, kyutai-stt, moonshine, omniasr,
 fastconformer-ctc). Plus the C-side accessor
-`crispasr_session_result_word_p` existed in the .cpp but wasn't
+`stelnettts_session_result_word_p` existed in the .cpp but wasn't
 declared in any binding's FFI, so callers couldn't even read it.
 
 **Resolution — three batches of work, all runtime-side, no GGUF
@@ -11996,7 +11996,7 @@ adapter):
   frame argmax + numerically-stable softmax of the picked logit;
   emits one `wav2vec2_token_prob{id, prob, frame_start, frame_end}`
   per non-blank emission. Adapter populates
-  `crispasr_segment::tokens` with frame-aligned t0/t1.
+  `stelnettts_segment::tokens` with frame-aligned t0/t1.
 - **firered-asr** — beam-search loop in `firered_asr_transcribe_impl`
   refactored: `beam_hyp` gained `token_logprobs` parallel to
   `tokens`; `candidate` gained `token_logprob` (= `top_score[k]` at
@@ -12038,7 +12038,7 @@ adapter):
   null and falls back to text-only path.
 
 Adapter capability flags updated: every CTC trio + decoder quartet
-now reports `tok-conf Y` in `crispasr --list-backends`. README
+now reports `tok-conf Y` in `stelnettts --list-backends`. README
 "Feature matrix" `Per-token confidence` row went from 8 ✔ to 15 ✔.
 
 **2. Auto-download (PLAN #61a).** Both fc-ctc and wav2vec2 already
@@ -12046,7 +12046,7 @@ had registry entries — only needed `CAP_AUTO_DOWNLOAD` on each
 adapter. 2 README cells gained.
 
 **3. Session-API word emission (PLAN #65).** Every modified
-backend's session path now produces a `crispasr_session_seg::words`
+backend's session path now produces a `stelnettts_session_seg::words`
 array with real per-word probs:
 
 - **parakeet** — `parakeet_word_data` gained a `float p` field;
@@ -12102,16 +12102,16 @@ array with real per-word probs:
 
 **Public-API additions:**
 
-- `crispasr_session_result_word_p(r, i_seg, i_word)` returns the
+- `stelnettts_session_result_word_p(r, i_seg, i_word)` returns the
   per-word probability in `[0, 1]`, or `-1.0f` for "no data".
-- Rust `crispasr-sys::crispasr_session_result_word_p` FFI
+- Rust `stelnettts-sys::stelnettts_session_result_word_p` FFI
   declaration added.
-- Rust `crispasr` crate's `SessionWord` gained `confidence: f32`,
+- Rust `stelnettts` crate's `SessionWord` gained `confidence: f32`,
   populated through the new accessor (folds C-side `-1.0` to `1.0`
   so consumers can render uniformly).
 - Python `SessionWord` gained `confidence: float = 1.0`; ctypes
   binding probed via `hasattr(lib,
-  "crispasr_session_result_word_p")` so old dylibs stay loadable.
+  "stelnettts_session_result_word_p")` so old dylibs stay loadable.
 - Flutter was already wired (`wordPFn` lookup with
   `providesSymbol` probe; `Word.p` field).
 
@@ -12152,7 +12152,7 @@ floor. 3× consecutive JFK runs at 0.69 s ± 0 ms.
 
 Audit of the rest of the tree: 24 `ggml_pad_ext` call sites total.
 Every other left-pad (kyutai_stt:238, firered_asr:1404+1513,
-qwen3_tts:3299+3321+3998, marblenet_vad:302, gemma4_e2b:320, 761,
+cielvox2_tts:3299+3321+3998, marblenet_vad:302, gemma4_e2b:320, 761,
 762, vibevoice:322+343, core/conv.h:72) runs through
 `ggml_backend_sched_graph_compute` which queries `supports_op` and
 falls unsupported ops back to a CPU sub-backend transparently —
@@ -12203,14 +12203,14 @@ the transcript sensible.
 
 **61f punctuation toggle.** glm-asr / kyutai-stt / moonshine /
 omniasr-llm gained `--no-punctuation` via two new shared helpers
-in `examples/cli/crispasr_backend_utils.h`:
+in `examples/cli/stelnettts_backend_utils.h`:
 
-- `crispasr_strip_ascii_punctuation(s)` — keeps ASCII letters /
+- `stelnettts_strip_ascii_punctuation(s)` — keeps ASCII letters /
   digits / whitespace / any byte ≥ 0x80 (so multi-byte UTF-8
   sequences pass through untouched). Collapses runs of multiple
   spaces left behind by stripped punctuation. Trims leading /
   trailing whitespace.
-- `crispasr_lowercase_ascii(s)` — ASCII-only `tolower`. Multi-byte
+- `stelnettts_lowercase_ascii(s)` — ASCII-only `tolower`. Multi-byte
   UTF-8 bytes pass through unchanged so non-Latin scripts aren't
   corrupted.
 
@@ -12247,7 +12247,7 @@ text-only session-API backends. Pattern mirrors the previous batch:
   proper's batch).
 
 Cleanup: the historical `run_char_transcribe` lambda in
-`crispasr_session_transcribe_lang` was removed. After this batch
+`stelnettts_session_transcribe_lang` was removed. After this batch
 every backend either has a token-prob path or routes through the
 explicit text-only fallback block — the lambda was unreachable
 dead code.
@@ -12316,7 +12316,7 @@ audio-derived seed → bit-identical to single-shot. Only runs
 
 Smoke (moonshine on JFK with `-tp 0.7 --best-of 3`):
 ```
-crispasr[moonshine]: best-of-3 picked score=0.9190
+stelnettts[moonshine]: best-of-3 picked score=0.9190
 And so my fellow American, ask not what your country can do for
 you, ask what you can do for your country.
 ```
@@ -12419,7 +12419,7 @@ See LEARNINGS.md "Replay-from-prefix beam search is `O(B × T²)`".
 
 Six commits (`d963e3a`, `947262f`, `041471f`, `89687f0`, `5534588`
 plus the parallel-agent sweep `f130a40` that adopted my
-`crispasr_session_stream_open`) closed the long-standing gap
+`stelnettts_session_stream_open`) closed the long-standing gap
 between CLI flags and what wrappers can reach. The audit going in:
 9 capabilities lived only as CLI flags. The audit coming out: 6 of
 9 wired across all 7 wrappers (or "all where it makes sense"); 3
@@ -12439,15 +12439,15 @@ in 3 canonical (Python/Rust/Dart) and the 3 trailing
 (Go/Java/Ruby) — JS/emscripten skipped (TTS-only surface today).
 +545 LOC (canonical) + +373 LOC (trailing).
 
-**Registry enumeration** (`947262f`). `crispasr_registry_count()`
-+ `_get_at(i)` internal API, `crispasr_registry_list_backends_abi`
+**Registry enumeration** (`947262f`). `stelnettts_registry_count()`
++ `_get_at(i)` internal API, `stelnettts_registry_list_backends_abi`
 C-ABI export, `list_known_models()` in Python+Rust+Dart returning
 all 37 known backends in declaration order. Wrappers building
 model-picker UIs no longer need to know the list out-of-band.
 
 **Streaming session API** (`947262f` + `041471f`).
-`crispasr_session_stream_open(s, ...)` decouples streaming from
-the whisper-only `crispasr_stream_open(whisper_ctx, ...)`. Today
+`stelnettts_session_stream_open(s, ...)` decouples streaming from
+the whisper-only `stelnettts_stream_open(whisper_ctx, ...)`. Today
 it routes through whisper internally; the dispatch site is
 labelled with where moonshine-streaming + kyutai-stt + voxtral4b
 will plug in when those refactors land. Python `Session._Stream`
@@ -12455,14 +12455,14 @@ context-manager handle, Rust `Stream` with `Drop`-managed close,
 Dart already had it, Go got it in `5534588` (`Stream` type +
 `StreamOpen/Feed/GetText/Flush/Close` + `StreamingUpdate`).
 
-**Library mic API** (`89687f0`). `src/crispasr_mic.{h,cpp}` wraps
+**Library mic API** (`89687f0`). `src/stelnettts_mic.{h,cpp}` wraps
 miniaudio's `ma_device` capture mode. Cross-platform via
 miniaudio's built-in backends (Core Audio / ALSA / PulseAudio /
-WASAPI). The `MA_NO_DEVICE_IO` define on `crispasr_audio.cpp` was
+WASAPI). The `MA_NO_DEVICE_IO` define on `stelnettts_audio.cpp` was
 dropped to expose `ma_device_*` symbols; the iOS/tvOS/watchOS
 variant got it back in `1c0e996` because miniaudio's CoreAudio
 backend pulls Objective-C headers on those platforms (the C ABI
-is stubbed to return failure on iOS/tvOS/watchOS so libcrispasr
+is stubbed to return failure on iOS/tvOS/watchOS so libstelnettts
 links). Live-mic smoke-tested from Python: 17 callbacks fired in
 1s wall-clock = 16320 samples = 1.02s real audio captured. The
 audio-thread callback uses a `NativeCallable.listener` (Dart) /
@@ -12492,7 +12492,7 @@ items:
 ~900 LOC of parallel-agent WIP at one point; my edits rebased
 cleanly via the backup-checkout-restage-restore pattern. The
 parallel agent's `f130a40` clang-format pass swept up my
-`crispasr_session_stream_open` mid-flight under their author tag —
+`stelnettts_session_stream_open` mid-flight under their author tag —
 fine outcome (work shipped), surprising commit-message
 attribution.
 
@@ -12514,26 +12514,26 @@ with `--variant fixed_speaker`.
 
 | Backend alias | HF mirror | Speakers | Provenance |
 |---|---|---|---|
-| `kartoffel-orpheus-de-natural` | [`cstr/kartoffel-orpheus-3b-german-natural-GGUF`](https://huggingface.co/cstr/kartoffel-orpheus-3b-german-natural-GGUF) | 19 (Jakob/Anton/Julian/Jan/…/Sophie/Marie/Mia/…) | Convert of `SebastianBodza/Kartoffel_Orpheus-3B_german_natural-v0.1` (llama3.2, gated) → F16 6.61 GB + Q8_0 3.5 GB + Q4_K 1.87 GB |
-| `kartoffel-orpheus-de-synthetic` | [`cstr/kartoffel-orpheus-3b-german-synthetic-GGUF`](https://huggingface.co/cstr/kartoffel-orpheus-3b-german-synthetic-GGUF) | 4 (Martin/Luca/Anne/Emma) + 12 emotions + 5 outbursts | Convert of `SebastianBodza/Kartoffel_Orpheus-3B_german_synthetic-v0.1` (llama3.2, gated) — same shape; emotion control via `{Speaker} - {Emotion}: {text}` prompt |
+| `kartoffel-orpheus-de-natural` | [`Xenna/kartoffel-orpheus-3b-german-natural-GGUF`](https://huggingface.co/Xenna/kartoffel-orpheus-3b-german-natural-GGUF) | 19 (Jakob/Anton/Julian/Jan/…/Sophie/Marie/Mia/…) | Convert of `SebastianBodza/Kartoffel_Orpheus-3B_german_natural-v0.1` (llama3.2, gated) → F16 6.61 GB + Q8_0 3.5 GB + Q4_K 1.87 GB |
+| `kartoffel-orpheus-de-synthetic` | [`Xenna/kartoffel-orpheus-3b-german-synthetic-GGUF`](https://huggingface.co/Xenna/kartoffel-orpheus-3b-german-synthetic-GGUF) | 4 (Martin/Luca/Anne/Emma) + 12 emotions + 5 outbursts | Convert of `SebastianBodza/Kartoffel_Orpheus-3B_german_synthetic-v0.1` (llama3.2, gated) — same shape; emotion control via `{Speaker} - {Emotion}: {text}` prompt |
 | `lex-au-orpheus-de` | `lex-au/Orpheus-3b-German-FT-Q8_0.gguf` (3.52 GB, no convert) | unknown — depends on lex-au's training set | Pre-built Q8_0 from lex-au; registry alias only, points at the upstream HF file directly |
 
-All three share the same SNAC codec ([`cstr/snac-24khz-GGUF`](https://huggingface.co/cstr/snac-24khz-GGUF)) the orpheus base row already publishes.
+All three share the same SNAC codec ([`Xenna/snac-24khz-GGUF`](https://huggingface.co/Xenna/snac-24khz-GGUF)) the orpheus base row already publishes.
 
 **Validation: ASR-roundtrip via parakeet-v3 -l de.** Natural variant on Q8_0 / voice Julian:
 
 ```
-$ crispasr --backend kartoffel-orpheus-de-natural \
+$ stelnettts --backend kartoffel-orpheus-de-natural \
     -m kartoffel-orpheus-de-natural-q8_0.gguf \
     --codec-model snac-24khz.gguf --voice Julian --temperature 0.6 \
     --tts "Hallo, ich heiße Julian und das ist ein Kartoffel-Orpheus Test." \
     --tts-output kartoffel_test.wav
-$ crispasr --backend parakeet -m parakeet-tdt-0.6b-v3-q4_k.gguf -l de \
+$ stelnettts --backend parakeet -m parakeet-tdt-0.6b-v3-q4_k.gguf -l de \
     -f kartoffel_test.wav --no-prints
 Hallo, ich heiße Julian und das ist ein Kartoffel-Orpheus-Test.
 ```
 
-Word-exact (only minor `Kartoffel-Orpheus-Test` hyphenation drift). Synthetic variant smoke deferred — local 16 GB box was memory-contested by the parallel agent's concurrent crispasr-diff + converter runs, and the orpheus 3B AR loop hung in both Metal init (84 min stuck on `libraries.data` cache I/O while pages were compressor-evicted) and CPU mode (40+ min for Q8_0, 26+ min for Q4_K, 0 bytes output). Architecture is the same as the natural variant which validated end-to-end, and the synthetic checkpoint is purely an LM-weight delta — no runtime risk.
+Word-exact (only minor `Kartoffel-Orpheus-Test` hyphenation drift). Synthetic variant smoke deferred — local 16 GB box was memory-contested by the parallel agent's concurrent stelnettts-diff + converter runs, and the orpheus 3B AR loop hung in both Metal init (84 min stuck on `libraries.data` cache I/O while pages were compressor-evicted) and CPU mode (40+ min for Q8_0, 26+ min for Q4_K, 0 bytes output). Architecture is the same as the natural variant which validated end-to-end, and the synthetic checkpoint is purely an LM-weight delta — no runtime risk.
 
 **HF upload economics.** Per-file `api.upload_file` (sequential, README first) was the working recipe; `api.create_commit` with a 4-op transaction hung on token-refresh `RemoteDisconnected` mid-upload (43 min in TCP CLOSE_WAIT before kill). Xet dedup is dramatic when uploads share a base model: orpheus 10.1 GB upload was 576 MB net new bytes (Llama-3.2-3B base shared with the unsloth mirror); the synthetic Kartoffel 12 GB upload was ~5.1 GB net new because most chunks deduped against the natural variant which had landed an hour earlier.
 
@@ -12552,14 +12552,14 @@ since v0.5.3** (April 27); highlights in the tag annotation:
 - granite-speech-4.1 plus + nar variants.
 - Per-token confidence + per-word probability across 14 backends.
 - Streaming + mic library API (PLAN #62 a/b/d).
-- Zero-copy mmap GGUF loader (`CRISPASR_GGUF_MMAP=1`), preload, mlock,
+- Zero-copy mmap GGUF loader (`STELNETTTS_GGUF_MMAP=1`), preload, mlock,
   WILLNEED + MADV_RANDOM helpers (PLAN #60a/b/c/f/g).
 - Vibevoice cache-bypass extended to Vulkan + CUDA (issue #47, geneing).
 
 **Wrapper-publish workflow silenced.** `release-wrappers.yml`'s
 `tags: ['v*']` auto-trigger has been failing on every release since
 v0.5.0 because the three target packages
-(`crispasr-sys`/`crispasr` on crates.io, `crispasr` on PyPI, `crispasr`
+(`stelnettts-sys`/`stelnettts` on crates.io, `stelnettts` on PyPI, `stelnettts`
 on pub.dev) **have never been registered** — the registries reject
 the very first publish from a CI-only flow because there's no prior
 owner record to verify against. v0.5.4 confirmed it again
@@ -12581,11 +12581,11 @@ wiring, disk5 cleanup, legacy `build.yml` audit.
 
 ### 69. PLAN #62c kyutai-stt streaming — chunked-batch over rolling window (May 2026)
 
-**Done.** `crispasr_session_stream_open` now routes to a
+**Done.** `stelnettts_session_stream_open` now routes to a
 kyutai-backed rolling-window stream when `s->kyutai_ctx` is set;
-the four whisper-typed `crispasr_stream_*` functions
+the four whisper-typed `stelnettts_stream_*` functions
 (feed/get_text/flush/close) branch on a new optional
-`kyutai_stream_state` field on `crispasr_stream`. ~200 LOC across
+`kyutai_stream_state` field on `stelnettts_stream`. ~200 LOC across
 three files, well under the 300-LOC PLAN estimate.
 
 **Why chunked-batch, not true incremental.** The PLAN's original
@@ -12609,7 +12609,7 @@ construction.
   decode #4 (8 s) once the LM has more context.
 - Whisper streaming path unchanged — `ggml-tiny.bin` still produces
   a coherent JFK transcript through the same
-  `crispasr_session_stream_open` → `crispasr_stream_feed`/`get_text`
+  `stelnettts_session_stream_open` → `stelnettts_stream_feed`/`get_text`
   chain.
 
 **Out of scope but trivially next.** `moonshine-streaming` is also
@@ -12707,9 +12707,9 @@ continuously, `flush` returns the transcript.
   `_feed` / `_get_text` / `_flush` / `_close`) + the `voxtral4b_stream`
   struct + an incremental encoder graph (`voxtral4b_build_graph_encoder_stream`)
   and projector graph that's wired but currently opt-in (see phase 1.5).
-- `src/crispasr_c_api.cpp`: `void* voxtral4b_stream_state` field on
-  `crispasr_stream` + 4 dispatch branches (close/feed/get_text/flush)
-  + open path in `crispasr_session_stream_open`. Mirrors the
+- `src/stelnettts_c_api.cpp`: `void* voxtral4b_stream_state` field on
+  `stelnettts_stream` + 4 dispatch branches (close/feed/get_text/flush)
+  + open path in `stelnettts_session_stream_open`. Mirrors the
   kyutai/moonshine pattern from §69.
 - `tools/bench_streaming_latency.py`: greenfield bench harness driving
   the stream API; `--check-batch-equality` runs the CLI batch baseline
@@ -12722,15 +12722,15 @@ sized to `audio_swa = 750` frames) and per-conv left-context state
 (2 mel frames for conv0, 1 d_model frame for conv1). `flush()` does
 just the streaming-prompt prefill + per-step audio-injection greedy
 decode, exactly mirroring the CLI adapter in
-`examples/cli/crispasr_backend_voxtral4b.cpp`. Audio is auto-padded
+`examples/cli/stelnettts_backend_voxtral4b.cpp`. Audio is auto-padded
 with 32 left-pad tokens of zero audio at stream open + right-aligned
 + 10 right-pad tokens at flush time. Set
-`CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER=1` to fall back to running the
+`STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER=1` to fall back to running the
 whole encoder at flush time (regression-debug switch).
 
 **Validation.** Bit-exact-batch on JFK 11 s (M1, Q4_K):
 - Batch CLI: `"And so, my fellow Americans, ask not what your country can do for you. Ask what you can do for your country."`
-- Streaming via `crispasr_session_stream_open` → `feed` × N → `flush` → `get_text`: byte-for-byte identical, `[bench] BIT-EXACT-BATCH: PASS`.
+- Streaming via `stelnettts_session_stream_open` → `feed` × N → `flush` → `get_text`: byte-for-byte identical, `[bench] BIT-EXACT-BATCH: PASS`.
 - Per-embed cosine vs batch encoder: cos≥0.9999 across all non-tail-pad
   chunks; the final chunk diverges by construction (batch's last mel
   frame uses right-side `center_pad` data that streaming doesn't have,
@@ -12742,7 +12742,7 @@ whole encoder at flush time (regression-debug switch).
 
 **The streaming-prompt convention is qualitatively different from
 voxtral-3B's `[INST]…[TRANSCRIBE]` template** (which is what
-`run_voxtral_family` in `crispasr_c_api.cpp:1483` uses for voxtral 3B
+`run_voxtral_family` in `stelnettts_c_api.cpp:1483` uses for voxtral 3B
 + qwen3 + granite). The 4B-realtime model's prompt is BOS + 38
 STREAMING_PAD = 39 tokens; audio embeds are *element-wise added* to the
 first 39 prompt embeds; subsequent audio embeds are *added per-step* to
@@ -12783,28 +12783,28 @@ realtime-feed property is the remaining work.
 
 **Phase 2 SHIPPED — chunk-size + fused QKV + default-unification + timing instrumentation (May 2026).**
 - Default internal encoder chunk bumped 80 ms → 240 ms
-  (`CRISPASR_VOXTRAL4B_STREAM_CHUNK_MS` env-var override). 2.6× feed
+  (`STELNETTTS_VOXTRAL4B_STREAM_CHUNK_MS` env-var override). 2.6× feed
   speedup on JFK 11 s (24 s → 9.3 s); bit-exact-batch unaffected.
   Constraint: must be a multiple of 80 ms (8 mel frames) so the
   projector's stack-4 alignment lands on chunk boundaries.
-- Per-stage timing instrumentation (`CRISPASR_VOXTRAL4B_STREAM_TIMING=1`)
+- Per-stage timing instrumentation (`STELNETTTS_VOXTRAL4B_STREAM_TIMING=1`)
   prints encoder-drain / prefill / first-text-token / per-step p50/p95
   / total flush wall-clock to stderr.
 - Default-unification fix: feed() was incremental-by-default but flush()
   was batch-encoder-by-default — opposite-default bug from the stash
   restoration. Each flush threw away the streaming encoder's audio_embeds
   and re-ran the whole encoder over the full PCM. Unified to incremental
-  on both paths (`CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER=1` to opt out).
+  on both paths (`STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER=1` to opt out).
   Wins: encoder drain at flush 2064 ms → 1016 ms; first-text-token
   2674 ms → 1646 ms.
 - Runtime fused QKV for the LLM. Concat each layer's q/k/v weights
   along the output axis at load time into a single (d_model,
   q_dim+2*kv_dim) tensor; route through `core_attn::kv_self_attn`'s
-  `qkv_w` path. Extends the qwen3_asr precedent to handle Q4_K (and
+  `qkv_w` path. Extends the cielvox2_asr precedent to handle Q4_K (and
   any row-wise quantized format) by byte-concat — each output row is
   a self-contained block group, so concatenation along the output axis
   is a pure memcpy. ~7-8 % decode speedup (56 → 50.4 ms per step).
-  `CRISPASR_VOXTRAL4B_FUSED_QKV=0` to opt out.
+  `STELNETTTS_VOXTRAL4B_FUSED_QKV=0` to opt out.
 - FFN gate+up fuse was tried and reverted — Metal's Q4_K matmul kernel
   for (3072 × 9216) is already memory-bandwidth-bound, so combining
   two of those into (3072 × 18432) didn't help the per-step decode
@@ -12872,8 +12872,8 @@ bidirectional context shifts as more audio arrives, making mid-decode
 tokens unstable.
 
 API: `voxtral4b_stream_set_live_decode(stream*, int)` toggles per-
-stream. Generic dispatch via `crispasr_stream_set_live_decode` for
-use through the unified `crispasr_stream*` handle. Python:
+stream. Generic dispatch via `stelnettts_stream_set_live_decode` for
+use through the unified `stelnettts_stream*` handle. Python:
 `Session.stream_open(live=True)`. Default OFF (PTT semantics
 preserved).
 
@@ -12904,7 +12904,7 @@ parallel to encoder) would fix this.
 **Phase 4 — decoder thread (May 2026).** Optional worker thread that
 drains decode steps in the background while feed() handles encoder +
 projector on the main thread. Enable via
-`CRISPASR_VOXTRAL4B_STREAM_DECODER_THREAD=1` (implies live mode).
+`STELNETTTS_VOXTRAL4B_STREAM_DECODER_THREAD=1` (implies live mode).
 
 Architecture: `worker_thread` sleeps on `cond_var` until shutdown OR
 audio_embeds grow past `decode_adapter_pos`. feed() acquires
@@ -12960,7 +12960,7 @@ working tree gets reset under you.
 
 ### 72. PLAN #63 Feature matrix parity — 9-phase capability expansion (May 2026)
 
-**Scope.** Deep audit of the feature matrix (`crispasr --list-backends`
+**Scope.** Deep audit of the feature matrix (`stelnettts --list-backends`
 vs README vs actual code) revealed many backends had implemented
 features without declaring the corresponding CAP_ flags, and several
 cross-cutting improvements were low-hanging fruit. Nine phases executed
@@ -12971,14 +12971,14 @@ in a single session.
 backend adapters. When `-bs N` (N>1) is passed, the beam search replaces
 the greedy decode loop. Greedy and best-of-N paths unchanged.
 
-Files: `crispasr_backend_granite.cpp`, `crispasr_backend_qwen3.cpp`.
+Files: `stelnettts_backend_granite.cpp`, `stelnettts_backend_qwen3.cpp`.
 
 Skipped voxtral4b (per-step audio-injection incompatible with replay),
 canary/cohere (opaque library decode calls, no beam_size parameter).
 
 **Phase 2 — Auto-download gaps.** Added `CAP_AUTO_DOWNLOAD` to omniasr
 (registry entry existed but flag missing). Added mimo-asr to model
-registry (`cstr/mimo-asr-GGUF`) with `CAP_AUTO_DOWNLOAD + CAP_TOKEN_CONFIDENCE`.
+registry (`Xenna/mimo-asr-GGUF`) with `CAP_AUTO_DOWNLOAD + CAP_TOKEN_CONFIDENCE`.
 
 **Phase 3 — Flash attention declarations.** All 6 backends (glm-asr,
 kyutai-stt, firered-asr, moonshine, omniasr, omniasr-llm) already call
@@ -12987,7 +12987,7 @@ declared in CLI adapters. No attention implementation changes.
 
 **Phase 4 — CTC timestamps for aligner.** Added `CAP_TIMESTAMPS_CTC` to
 moonshine, moonshine-streaming, omniasr, omniasr-llm, mimo-asr. The
-`-am` CTC aligner flag is gated by this cap in `crispasr_run.cpp:292`.
+`-am` CTC aligner flag is gated by this cap in `stelnettts_run.cpp:292`.
 
 **Phase 5 — Auto-punctuation for CTC backends.** Backends without
 `CAP_PUNCTUATION_TOGGLE` now auto-enable `--punc-model auto` (FireRedPunc,
@@ -12995,7 +12995,7 @@ moonshine, moonshine-streaming, omniasr, omniasr-llm, mimo-asr. The
 Users suppress with `--no-punctuation` or `--punc-model none/off`.
 Tested: fastconformer-ctc on JFK now emits capitalized, punctuated text.
 
-File: `crispasr_run.cpp` (10 lines added before punc_ctx setup).
+File: `stelnettts_run.cpp` (10 lines added before punc_ctx setup).
 
 **Phase 6 — Best-of-N.** No code changes needed — works on GPU, CPU too
 slow for large models. Documentation only.
@@ -13006,7 +13006,7 @@ had correct capability declarations. Only omniasr (missing auto-dl) and
 mimo-asr (capabilities=0) needed fixes.
 
 **Phase 8 — Vibevoice CLI adapter.** Re-audit found
-`crispasr_backend_vibevoice.cpp` already exists (160 lines, 16k→24k
+`stelnettts_backend_vibevoice.cpp` already exists (160 lines, 16k→24k
 resample, ASR + TTS). Initial report was incorrect.
 
 **Phase 9 — Translation.** Investigated cohere (no translate token in
@@ -13015,7 +13015,7 @@ injection infrastructure wired, but GLM-ASR-Nano doesn't respond to
 translation instructions). `CAP_TRANSLATE` not declared for either.
 
 Files: `glm_asr.h` (translate + target_lang fields), `glm_asr.cpp`
-(prompt injection), `crispasr_backend_glm_asr.cpp` (param forwarding).
+(prompt injection), `stelnettts_backend_glm_asr.cpp` (param forwarding).
 
 **Net capability gains across all phases:**
 
@@ -13078,10 +13078,10 @@ Added gemma4-e2b to test-all-backends.py registry: **PASS, WER=0.0%**.
 
 **Docker diagnostics env var (#31).** Users hitting CUDA driver
 mismatches couldn't run `--diagnostics` because `run-server.sh`
-required a model. Added `CRISPASR_DIAGNOSTICS=1` env var that runs
+required a model. Added `STELNETTTS_DIAGNOSTICS=1` env var that runs
 diagnostics and exits without touching `/models`:
 ```
-docker run --rm --gpus all -e CRISPASR_DIAGNOSTICS=1 crispasr:main-cuda
+docker run --rm --gpus all -e STELNETTTS_DIAGNOSTICS=1 stelnettts:main-cuda
 ```
 
 ### 75. Unit test expansion — core decode + registry (May 2026)
@@ -13102,7 +13102,7 @@ backend returns false. Pure in-memory queries, no network.
 **#60e KV cache Q8_0 validation.** Transcript comparison F16 vs Q8_0
 across 7 backends: granite, granite-4.1, glm-asr, omniasr-llm, voxtral
 all bit-exact; qwen3 minor punctuation diff (WER=0%); mimo-asr
-validated previously (cosine ≥0.98). `CRISPASR_KV_QUANT=q8_0` safe
+validated previously (cosine ≥0.98). `STELNETTTS_KV_QUANT=q8_0` safe
 for all tested backends.
 
 **PLAN cleanup.** #41 (Moonshine IPA) superseded by kokoro espeak-ng
@@ -13125,7 +13125,7 @@ client sends text `"flush"` to finalize → server responds with
 
 Implementation: self-contained SHA-1 + base64 for WS handshake,
 raw frame read/write per RFC 6455. One thread per connection, each
-with its own crispasr session + streaming decoder. No external
+with its own stelnettts session + streaming decoder. No external
 dependencies. No TLS (reverse proxy for wss://).
 
 Files: `ws_stream.h` (C API), `ws_stream.cpp` (implementation),
@@ -13148,7 +13148,7 @@ Files: `ws_stream.h` (C API), `ws_stream.cpp` (implementation),
 - **#48** granite-4.1-nar auto-detection (filename heuristic)
 - **#49** gemma4-e2b scheduler assertion + detokenization → §74
 - **#51** Windows build scripts (target + vswhere + exe check)
-- **#31** Docker CRISPASR_DIAGNOSTICS=1 env var → §74
+- **#31** Docker STELNETTTS_DIAGNOSTICS=1 env var → §74
 
 **CI / release:**
 - 6 cross-platform build fixes (MSVC M_PI, preferred_separator, Win32
@@ -13179,7 +13179,7 @@ libs), #57 (Chatterbox CFM, multi-session), #58 (MOSS, large),
 ### §78 — Chatterbox vocoder fix (2026-05-03)
 
 **Vocoder now produces correct "Hello world." from Python reference mel**
-(previously "Oh."). Two bugs found via crispasr-diff per-stage protocol:
+(previously "Oh."). Two bugs found via stelnettts-diff per-stage protocol:
 
 1. **iSTFT transposed data access** — CPU iSTFT loop read ggml tensor
    buffer as `data[frame*C+f]` but ggml stores `ne[0]=T` fast, so correct
@@ -13188,17 +13188,17 @@ libs), #57 (Chatterbox CFM, multi-session), #58 (MOSS, large),
 
 Additional fixes: proper SineGen + windowed STFT for source fusion,
 Nyquist term fix in Hermitian iDFT. Debug infrastructure: per-stage
-output markers, `vocode_dump()` API, `CRISPASR_HIFT_FULL_IDFT=1` gate.
+output markers, `vocode_dump()` API, `STELNETTTS_HIFT_FULL_IDFT=1` gate.
 All ggml graph stages match Python to cos=1.000; deterministic waveform
 cos=0.93 vs `torch.istft`.
 
 **Quantization + HF upload (2026-05-04):**
 - F16/Q8_0/Q4_K for both T3 and S3Gen — all quant levels ASR-verified
   "Hello world" via moonshine-base.
-- Published: [`cstr/chatterbox-GGUF`](https://huggingface.co/cstr/chatterbox-GGUF)
+- Published: [`Xenna/chatterbox-GGUF`](https://huggingface.co/Xenna/chatterbox-GGUF)
   (T3: 1.1G/542M/287M + S3Gen: 548M/342M/237M).
 - lahgtna-chatterbox-v1 (Arabic T3): converted, shares S3Gen with base.
-  Published: [`cstr/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/cstr/lahgtna-chatterbox-v1-GGUF)
+  Published: [`Xenna/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/Xenna/lahgtna-chatterbox-v1-GGUF)
   (T3 F16 1.1 GB).
 - **Kartoffelbox_Turbo re-scoped**: inspection revealed GPT-2 architecture
   (fused QKV, LayerNorm+bias, learned pos embeddings) — NOT a Chatterbox
@@ -13219,10 +13219,10 @@ backends. Triage identified two distinct root causes:
 
 - **Test-runner under-invocation (10/12)** — `test_lid` ran with empty
   args (no `-dl`); `test_word_timestamps` ran without `-am <aligner>`.
-  Whisper's auto-detect path uses CRISPASR_LOG_INFO and ignores
+  Whisper's auto-detect path uses STELNETTTS_LOG_INFO and ignores
   `--no-prints`, which is why the original whisper-only suite passed.
   Fix: `test_lid` invokes with `quiet=False` (no `--no-prints`); regex
-  widened to accept the framework's `crispasr: LID -> language = '<x>'`
+  widened to accept the framework's `stelnettts: LID -> language = '<x>'`
   format too.
 - **Real cap drift (2/12)** — omniasr / omniasr-llm declared
   CAP_PUNCTUATION_TOGGLE but their CTC vocab is lowercase + unpunctuated
@@ -13238,25 +13238,25 @@ pre-step LID gate is `!has_native_lid`, so declaring the cap actually
 
 `bindings/ruby/ext/extconf.rb` linker hit two issues on Linux:
 
-1. **Duplicate stb_vorbis / miniaudio symbols** — both `crispasr_audio.cpp`
-   and `examples/common-crispasr.cpp` translation-unit-include the
+1. **Duplicate stb_vorbis / miniaudio symbols** — both `stelnettts_audio.cpp`
+   and `examples/common-stelnettts.cpp` translation-unit-include the
    `_IMPLEMENTATION` macros. macOS ld silently picks the first; GNU ld
    errors. Fix: `-Wl,--allow-multiple-definition` on Linux.
-2. **Catch2 not found** — CMake's STANDALONE-default `CRISPASR_BUILD_TESTS=ON`
+2. **Catch2 not found** — CMake's STANDALONE-default `STELNETTTS_BUILD_TESTS=ON`
    pulled tests targets into the dep graph, the dependency walker put
-   `libCatch2*.a` in `$LOCAL_LIBS`, but `--target common crispasr` never
-   built them. Fix: `-D CRISPASR_BUILD_TESTS=OFF -D CRISPASR_BUILD_EXAMPLES=OFF
-   -D CRISPASR_BUILD_SERVER=OFF` to the cmake config.
+   `libCatch2*.a` in `$LOCAL_LIBS`, but `--target common stelnettts` never
+   built them. Fix: `-D STELNETTTS_BUILD_TESTS=OFF -D STELNETTTS_BUILD_EXAMPLES=OFF
+   -D STELNETTTS_BUILD_SERVER=OFF` to the cmake config.
 
 #### Phase 3 — full K/V split (#69b + #69e, commits 1bd9ff8, d70f275, af0d789, 8952b02, 5bb1a0e, 709eafe, c2e1829)
 
 Two independent env knobs:
 
-- `CRISPASR_KV_QUANT_K` / `_V` — per-half KV cache dtype. Common
+- `STELNETTTS_KV_QUANT_K` / `_V` — per-half KV cache dtype. Common
   llama.cpp recipe `K=q8_0 V=q4_0` saves ~40 % more KV memory than
-  symmetric Q8_0. Both fall through to `CRISPASR_KV_QUANT` (legacy)
+  symmetric Q8_0. Both fall through to `STELNETTTS_KV_QUANT` (legacy)
   when unset.
-- `CRISPASR_KV_ON_CPU=1` — spill the KV cache to system RAM even with
+- `STELNETTTS_KV_ON_CPU=1` — spill the KV cache to system RAM even with
   GPU weights. For long-context users where Q4_0 K/V doesn't fit.
 
 Helper in `src/core/attention.h`:
@@ -13286,13 +13286,13 @@ Trades read-bandwidth saving for quant correctness; memory + write-
 bandwidth savings retained.
 
 **Coverage now: 14 backends with full K/V split.** voxtral, voxtral4b,
-omniasr (LLM), qwen3_asr, granite_speech, orpheus, glm_asr, gemma4_e2b,
-mimo_asr, qwen3_tts, chatterbox, kyutai_stt, canary, cohere — every
+omniasr (LLM), cielvox2_asr, granite_speech, orpheus, glm_asr, gemma4_e2b,
+mimo_asr, cielvox2_tts, chatterbox, kyutai_stt, canary, cohere — every
 KV-bearing backend in the tree.
 
 #### Phase 4 — layer-residency offload (#69a, commits 324a39c, aa3f54c, 1a0a5fd, 4f656ec)
 
-`CRISPASR_N_GPU_LAYERS=N` puts transformer blocks `[0..N)` on GPU and
+`STELNETTTS_N_GPU_LAYERS=N` puts transformer blocks `[0..N)` on GPU and
 `[N..total)` on CPU. ggml_backend_sched routes compute to follow weight
 residency. Useful for users with VRAM smaller than the model.
 
@@ -13305,7 +13305,7 @@ bool is_gpu_tensor_with_prefix(name, &LayerSplitConfig{ prefix, threshold })
 
 Per-backend prefix:
 ```
-"blk."           voxtral, voxtral4b, qwen3_asr, granite_speech
+"blk."           voxtral, voxtral4b, cielvox2_asr, granite_speech
 "llm.blk."       glm_asr
 "talker.blk."    orpheus
 "dec."           omniasr-llm   (gated on model_type==1, CTC variant skipped)
@@ -13315,7 +13315,7 @@ Per-backend prefix:
 
 Validated on JFK at default + half-offload N per backend; bit-identical
 correct transcripts across 9 backends. **Coverage: 9 backends.** Voxtral,
-voxtral4b, qwen3_asr, granite_speech, glm_asr, orpheus, omniasr-llm,
+voxtral4b, cielvox2_asr, granite_speech, glm_asr, orpheus, omniasr-llm,
 gemma4_e2b, mimo_asr.
 
 #### Phase 5 — gemma4_e2b / mimo_asr GPU residency flip (#72, commit 8911126)
@@ -13341,11 +13341,11 @@ throughput even more than Apple Silicon.
 
 The four knobs compose for tight-VRAM hosts:
 ```bash
-CRISPASR_N_GPU_LAYERS=10 \
-  CRISPASR_KV_ON_CPU=1 \
-  CRISPASR_KV_QUANT_K=q8_0 \
-  CRISPASR_KV_QUANT_V=q4_0 \
-  ./crispasr --backend voxtral4b -m auto -f long-audio.wav
+STELNETTTS_N_GPU_LAYERS=10 \
+  STELNETTTS_KV_ON_CPU=1 \
+  STELNETTTS_KV_QUANT_K=q8_0 \
+  STELNETTTS_KV_QUANT_V=q4_0 \
+  ./stelnettts --backend voxtral4b -m auto -f long-audio.wav
 ```
 
 Each addresses an independent bottleneck:
@@ -13375,7 +13375,7 @@ b2b8a10  fix: cap-honesty + test-runner + Ruby CI from feature-suite triage
 1bd9ff8  feat(kv-cache): asymmetric K vs V quantization (PLAN #69e)
 d70f275  feat(kv-cache): KV-on-CPU offload (PLAN #69b)
 324a39c  feat(core+voxtral4b): layer-residency offload (PLAN #69a)
-aa3f54c  feat(qwen3_asr+granite_speech): port #69a layer offload
+aa3f54c  feat(cielvox2_asr+granite_speech): port #69a layer offload
 af0d789  feat(kv-cache): extend #69e+#69b to 4 more backends
 8952b02  feat(kv-cache): Tier-2 K/V split — KV-on-CPU on 4 more backends
 5bb1a0e  feat(voxtral): port #69a layer offload (4th backend)
@@ -13411,10 +13411,10 @@ Validation (Apple M1, Q4_K-fixed for ASR + 0.5b-tts-f16-tokenizer
 for TTS):
 
 - ASR `vibevoice-asr-7b` (28 layers, ASR-only mode) at
-  `CRISPASR_N_GPU_LAYERS=14` — JFK transcript bit-identical to
+  `STELNETTTS_N_GPU_LAYERS=14` — JFK transcript bit-identical to
   legacy. Logs `layer offload (lm.layers.): gpu=[0,14), cpu=[14,28)`.
 - TTS `vibevoice-realtime-0.5b-tts` (20 tts_lm layers) at
-  `CRISPASR_N_GPU_LAYERS=10` — `Hello there.` → 21511 samples,
+  `STELNETTTS_N_GPU_LAYERS=10` — `Hello there.` → 21511 samples,
   peak 21449/32767, RMS 4377; bit-identical to legacy WAV
   (43066 bytes, same checksum). Logs
   `layer offload (tts_lm.layers.): gpu=[0,10), cpu=[10,20)`.
@@ -13461,7 +13461,7 @@ PERFORMANCE.md and PLAN now reflect the data instead of the prior
 **Chatterbox-Turbo (350M GPT-2 T3 + meanflow S3Gen) now produces
 intelligible speech.** ASR roundtrip: "Hello world" (p=0.939).
 
-5 bugs found and fixed in the S3Gen conformer encoder via crispasr-diff
+5 bugs found and fixed in the S3Gen conformer encoder via stelnettts-diff
 per-stage protocol:
 
 1. **PE ordering reversed**: `fill_pos_enc` generated positions -(T-1) to
@@ -13512,7 +13512,7 @@ bit-identical. Commit: `c242331`.
 #### Silero LID ISO code fix (#82)
 `silero_lid_detect` returns labels like "de, German" but downstream
 backends (canary, cohere, etc.) expect bare ISO codes. Extracted the
-code before the comma in `crispasr_lid.cpp`. Commit: `43f9015`.
+code before the comma in `stelnettts_lid.cpp`. Commit: `43f9015`.
 
 #### Issue verification sweep
 - #69 (Silero VAD load): confirmed fixed since v0.6.0 (144d5578)
@@ -13530,8 +13530,8 @@ unmodified. Wiring: filename auto-detect (`parakeet` + `ctc` + NOT
 `tdt` → `fastconformer-ctc`, with the "tdt" guard preserving the JA
 hybrid `parakeet-tdt_ctc-0.6b-ja` on the parakeet TDT path) and two
 new auto-download registry keys. Quantised variants (F16, Q8_0, Q5_0,
-Q4_K) at [`cstr/parakeet-ctc-0.6b-GGUF`](https://huggingface.co/cstr/parakeet-ctc-0.6b-GGUF)
-and [`cstr/parakeet-ctc-1.1b-GGUF`](https://huggingface.co/cstr/parakeet-ctc-1.1b-GGUF).
+Q4_K) at [`Xenna/parakeet-ctc-0.6b-GGUF`](https://huggingface.co/Xenna/parakeet-ctc-0.6b-GGUF)
+and [`Xenna/parakeet-ctc-1.1b-GGUF`](https://huggingface.co/Xenna/parakeet-ctc-1.1b-GGUF).
 Apple M1 Metal: 0.6b q4_k → 44.7× RT, 1.1b q4_k → 37.3× RT. All 8
 quants verified bit-identical English transcript on samples/jfk.wav.
 Commit: `369f3ff`.
@@ -13544,18 +13544,18 @@ mangled it before ffmpeg saw the `-i audio="..."` arg, so ffmpeg
 exited before delivering any PCM, `2>NUL` hid the failure, and
 `--mic` / `--live` ended silently right after the "capturing from
 default microphone..." banner. New header
-`examples/cli/crispasr_popen.h` widens the UTF-8 command via
+`examples/cli/stelnettts_popen.h` widens the UTF-8 command via
 `MultiByteToWideChar` (CP_UTF8 with CP_ACP fallback) and calls
 `_wpopen`. Mic path also now prints the resolved device name + the
 ffmpeg command before spawning, and emits a recovery hint if the
 pipe reaches EOF before any PCM was read. Same helper applied to
-the file-decode ffmpeg subprocess in `examples/common-crispasr.cpp`
+the file-decode ffmpeg subprocess in `examples/common-stelnettts.cpp`
 (non-ASCII paths). Commit: `b9b677d`.
 
 #### onnx-asr cross-comparison (re #81)
 Apples-to-apples bench against `istupakov/onnx-asr` 0.11.0 on M1.
 ONNX execution-provider availability table, TDT-vs-TDT and CTC-vs-CTC
-results in `PERFORMANCE.md`. Headline: crispasr Metal beats
+results in `PERFORMANCE.md`. Headline: stelnettts Metal beats
 onnx-asr CPU EP by 1.32× on TDT and 1.58× on CTC at the same param
 count; CoreML EP isn't reachable for the upstream parakeet-tdt ONNX
 export (external-data + protobuf 2 GB ceiling, `onnxruntime#26355`,
@@ -13575,7 +13575,7 @@ atomic-5-cond install into `chatterbox_set_voice_from_wav`'s `.wav`
 branch. End result: `--voice ref_24k.wav` produces real cloned speech
 without any python.
 
-Per-stage parity vs PyTorch (verified via `crispasr-diff chatterbox`
+Per-stage parity vs PyTorch (verified via `stelnettts-diff chatterbox`
 on JFK 11 s):
 
 | Module | Stage | cos_mean | Commit |
@@ -13676,7 +13676,7 @@ ISO 639-1 codes, **CC-BY-SA-3.0** — viral; redistributors of the
 GGUF inherit ShareAlike). Forward path is manual F32/F16 + on-the-fly
 dequant via `ggml_get_type_traits(type)->to_float`, no graph — the
 compute is ~1 MFLOP per call over a large embedding table. Released
-as `cstr/glotlid-GGUF` and `cstr/fasttext-lid176-GGUF`.
+as `Xenna/glotlid-GGUF` and `Xenna/fasttext-lid176-GGUF`.
 
 Two traps documented in LEARNINGS.md "Text LID via fastText":
 
@@ -13700,10 +13700,10 @@ path runs six feature extractors (4× ContinuousBagOfNgrams at
 sizes 1/2/3/4, RelevantScript, Script) → 80-d concat → FC + ReLU →
 208-d hidden → FC → softmax over 109 ISO 639-1 labels.
 
-Released as `cstr/cld3-GGUF` (Apache-2.0, 440 KB F16 — F16 is the
+Released as `Xenna/cld3-GGUF` (Apache-2.0, 440 KB F16 — F16 is the
 *only* viable shipping format because every weight tensor's column
 width is in `{8, 16, 80, 208}`, none of which divide the 32-element
-K-quant block size; `crispasr-quantize` skips them all).
+K-quant block size; `stelnettts-quantize` skips them all).
 
 Diff harness: 8/8 PASS at cos≥0.999 across an en/de/fr/ru/zh/ja/hi/pt
 multilingual smoke set on F16 (88/88 stage compares).
@@ -13739,18 +13739,18 @@ Peeks `general.architecture` once at load time, then dispatches each
 public call to the matching backend's C ABI via a flat tag-switch
 (no virtual base, no function-pointer table — both backends already
 mirror each other's shape, so the dispatcher is one integer compare
-per call). Powers both the `crispasr-lid` standalone binary and
-`crispasr --lid-on-transcript`. Same flag, same binary, any text-LID
+per call). Powers both the `stelnettts-lid` standalone binary and
+`stelnettts --lid-on-transcript`. Same flag, same binary, any text-LID
 GGUF.
 
 End-to-end on this box (one binary, three GGUFs, three label spaces):
 
 ```
-$ crispasr-lid -m cld3-f16.gguf            --text "Bonjour le monde, comment allez-vous?"
+$ stelnettts-lid -m cld3-f16.gguf            --text "Bonjour le monde, comment allez-vous?"
 fr	0.999983       (lid-cld3, dim=80, 109 labels)
-$ crispasr-lid -m lid-glotlid-f16.gguf     --text "..."
+$ stelnettts-lid -m lid-glotlid-f16.gguf     --text "..."
 fra_Latn	0.983436   (lid-fasttext glotlid-v3, dim=256, 2102 labels)
-$ crispasr-lid -m lid-fasttext176-f16.gguf --text "..."
+$ stelnettts-lid -m lid-fasttext176-f16.gguf --text "..."
 fr	0.958174       (lid-fasttext fasttext-lid176, dim=16, 176 labels)
 ```
 
@@ -13759,7 +13759,7 @@ fr	0.958174       (lid-fasttext fasttext-lid176, dim=16, 176 labels)
 Mechanical struct-field plumbing across every backend whose
 `*_context_params` already carried `use_gpu`. Each gained a
 `flash_attn` field (default true), threaded through
-`*_default_params()` and into `crispasr_session_open_explicit`'s
+`*_default_params()` and into `stelnettts_session_open_explicit`'s
 arm via `g_open_flash_attn_tls`. The **compute graphs do not yet
 branch on the flag** — that's PLAN #86, lands per backend
 incrementally. After this slice every backend ACCEPTS the toggle
@@ -13778,7 +13778,7 @@ Backends touched (12 of 12):
 | voxtral4b | — | `flash_attn` | new + arm cleanup (was hard-coding verbosity=0) |
 | granite_speech | — | `flash_attn` | new |
 | vibevoice | — | `flash_attn` | new |
-| qwen3_tts | — | `flash_attn` | new |
+| cielvox2_tts | — | `flash_attn` | new |
 | orpheus | — | `flash_attn` | new |
 | kokoro | — | `flash_attn` | new |
 | chatterbox | — | `flash_attn` | new |
@@ -13789,7 +13789,7 @@ companion patch. Closes the prerequisite for PLAN #86.
 ### §85 — PLAN #88 Kokoro length_scale + VibeVoice runtime tts_steps (2026-05-10)
 
 Two TTS backend-internal refactors that close the cross-repo
-deferred items from CrisperWeaver's May 2026 parity sweep.
+deferred items from StelnetWeaver's May 2026 parity sweep.
 
 **Kokoro length-scale** (per-phoneme speaking-rate scalar):
 * New `length_scale` field on `kokoro_context_params` (default
@@ -13810,16 +13810,16 @@ deferred items from CrisperWeaver's May 2026 parity sweep.
   reads `ctx->params.tts_steps` on every call so the setter just
   changes the next call's schedule density.
 
-**Unified API** (`crispasr_c_api.cpp`):
-* New `crispasr_session_set_length_scale(s, scale)` export routes
+**Unified API** (`stelnettts_c_api.cpp`):
+* New `stelnettts_session_set_length_scale(s, scale)` export routes
   to `kokoro_set_length_scale` on kokoro sessions; rc=-2 on
   backends without a duration model.
-* `crispasr_session_set_tts_steps` extended to also route to
+* `stelnettts_session_set_tts_steps` extended to also route to
   vibevoice (was chatterbox-only).
 * Dart binding: new `CrispasrSession.setLengthScale()` method,
   `providesSymbol`-gated for pre-0.6.2 compatibility.
 
-Commit `cda44359`. CrisperWeaver picks this up automatically —
+Commit `cda44359`. StelnetWeaver picks this up automatically —
 the existing TTS *speed* slider on the Synthesize screen now
 drives `setLengthScale(1/speed)` IN ADDITION to the client-side
 resampler. On kokoro the duration model produces a clean
@@ -13861,10 +13861,10 @@ CPU → Metal sync per AMP block; recommend `--no-gpu` for IndexTTS until
 the AA sandwich is ported to native ggml ops (`ggml_conv_transpose_1d` +
 depthwise `ggml_conv_1d`, both Metal-capable via IM2COL).
 
-Stale GGUFs at `~/.cache/crispasr/` and `/Volumes/backups/ai/crispasr/`
+Stale GGUFs at `~/.cache/stelnettts/` and `/Volumes/backups/ai/stelnettts/`
 predated commit `99fca4c3` (`_shorten_gpt`) — tensor names up to 66 chars
 hit `GGML_MAX_NAME = 64` and `gguf.cpp:587` rejects the file. Re-pulled
-from `cstr/indextts-1.5-GGUF` (already ships the corrected names) for
+from `Xenna/indextts-1.5-GGUF` (already ships the corrected names) for
 the bench; that's where the registry's `-m auto` path lands.
 
 Full A/B numbers + click-detector results: `LEARNINGS.md` §"BigVGAN v2
@@ -13967,11 +13967,11 @@ Pooling (ASP) → BN → Linear(6144→192) → L2-normalize.
 - Speaker ID runs as a post-step after diarize, relabeling anonymous
   `(speaker N)` with matched names like `(alice)`
 
-**C-ABI:** `crispasr_titanet_init/embed/free` + `crispasr_speaker_db_load/
+**C-ABI:** `stelnettts_titanet_init/embed/free` + `stelnettts_speaker_db_load/
 match/enroll/count/free`. Wrapper bindings added for Python, Dart/Flutter,
 and Rust.
 
-**Model registry:** `titanet-large.gguf` at `cstr/titanet-large-GGUF`.
+**Model registry:** `titanet-large.gguf` at `Xenna/titanet-large-GGUF`.
 Auto-download via `--titanet-model auto`.
 
 **Parity validation — 6 bugs found and fixed during diff-testing:**
@@ -13991,26 +13991,26 @@ injection.
 
 Commits: `dc5f01b`, `3d12359`, `b54b92e`.
 
-### §90 — Chat C ABI: text-LLM surface on libcrispasr (2026-05-11)
+### §90 — Chat C ABI: text-LLM surface on libstelnettts (2026-05-11)
 
 Spec: `docs/prompts/chat-abi.md`. Phases 0–6 landed in one pass.
 
-**Phase 0 — `crispasr-llama-core` static lib.** Lifted the 50+
+**Phase 0 — `stelnettts-llama-core` static lib.** Lifted the 50+
 llama.cpp source files under `examples/talk-llama/` (`llama.cpp`,
 `llama-{adapter,arch,batch,chat,context,…}.cpp`, `unicode*.cpp`,
-`models/*.cpp`) out of the SDL2-gated `crispasr-talk-llama` example
+`models/*.cpp`) out of the SDL2-gated `stelnettts-talk-llama` example
 and into a STATIC lib defined in `src/CMakeLists.txt`. Built
 unconditionally with hidden visibility (`CXX_VISIBILITY_PRESET hidden
 + VISIBILITY_INLINES_HIDDEN ON`) so `llama_*` / unicode helpers don't
-leak from `libcrispasr.dylib`'s export table. `examples/talk-llama/
-CMakeLists.txt` simplified to a single `add_executable(crispasr-talk-
+leak from `libstelnettts.dylib`'s export table. `examples/talk-llama/
+CMakeLists.txt` simplified to a single `add_executable(stelnettts-talk-
 llama talk-llama.cpp)` that links against the new lib — one source
 set, two consumers.
 
-**Phase 1+2+3 — `crispasr_chat_*` ABI.** Public header at
-`include/crispasr_chat.h` (POD structs + opaque handle only, no
+**Phase 1+2+3 — `stelnettts_chat_*` ABI.** Public header at
+`include/stelnettts_chat.h` (POD structs + opaque handle only, no
 `llama.h` types). Implementation `src/chat.cpp` linked PRIVATE into
-`libcrispasr` so external consumers see only the `crispasr_chat_*`
+`libstelnettts` so external consumers see only the `stelnettts_chat_*`
 surface. Covers open / close / reset / generate (one-shot) /
 generate_stream (on_token callback) / memory_estimate / template_name
 / n_ctx / string_free. Sampler chain composed via
@@ -14021,14 +14021,14 @@ and Phase 2. Multi-turn KV cache reuse via a per-session token
 history; divergent prompts trigger `llama_memory_clear` + re-prefill,
 matching prefixes skip re-decode.
 
-**Phase 4 — `crispasr-chat` CLI.** `examples/cli/crispasr_chat_main.cpp`
+**Phase 4 — `stelnettts-chat` CLI.** `examples/cli/stelnettts_chat_main.cpp`
 — minimal stdin → stdout binary. Auto-detects TTY vs piped stdin: TTY
 gives an interactive REPL with streaming deltas, pipe gives a one-shot
 "read all of stdin → print reply" mode. No SDL2 dep. Links against
-`crispasr` only.
+`stelnettts` only.
 
 **Phase 5 — `POST /v1/chat/completions` in the server.** Added to
-`examples/cli/crispasr_server.cpp` (the active server with the
+`examples/cli/stelnettts_server.cpp` (the active server with the
 existing `/v1/audio/*` OpenAI surface). New `--chat-model PATH` /
 `--chat-ctx N` / `--chat-gpu-layers N` flags; the session lazy-opens
 on first request and re-uses across calls (one process-wide handle,
@@ -14038,7 +14038,7 @@ both `stream: false` (plain `chat.completion` JSON) and `stream: true`
 accepted; multimodal content arrays are collapsed to their text-only
 joined form for now.
 
-**Phase 6 — Dart binding.** `flutter/crispasr/lib/src/chat.dart`. New
+**Phase 6 — Dart binding.** `flutter/stelnettts/lib/src/chat.dart`. New
 `CrispasrChatSession` class mirrors `CrispasrSession`'s shape:
 `Finalizer` for free-on-GC, explicit `close()` for deterministic
 cleanup, `generate()` returns `Future<String>`, `reset()` flushes KV.
@@ -14053,18 +14053,18 @@ constraint bumped to `>=3.1.0` for `Array<Int8>` inline struct fields.
 **Tests.** `tests/test-chat-ggml.cpp` Catch2 smoke verifies open →
 n_ctx → template_name → generate (one-shot) → reset → generate_stream
 → close. Streamed output equals one-shot under greedy + fixed seed.
-Gated on `CRISPASR_CHAT_TEST_MODEL` env var pointing at a tiny GGUF
+Gated on `STELNETTTS_CHAT_TEST_MODEL` env var pointing at a tiny GGUF
 chat model — skipped when unset so plain builds stay green. Verified
 locally against `HuggingFaceTB/SmolLM2-360M-Instruct-Q8_0.gguf`
 (386 MB) on M1 Metal; 13 assertions pass, Metal pipeline cache picks
 up the chat code path automatically.
 
-**Won't-fix this session.** Phase 7 (CrisperWeaver integration) is in
+**Won't-fix this session.** Phase 7 (StelnetWeaver integration) is in
 a different repo and stays out of scope. The Dart `generateStream`
 absence is documented in the binding's source comment; closing it
 properly needs an ABI tweak so `on_token` pointers stay valid past
 the C callback's return (e.g. malloc-per-chunk + Dart-side
-`crispasr_chat_string_free`).
+`stelnettts_chat_string_free`).
 
 
 ### §91 — VibeVoice 1.5B voice clone fidelity fix (issue #74) (2026-05-17)
@@ -14101,9 +14101,9 @@ parse `sample_rate` from fmt chunk offset +4, add
 automatically when the WAV rate ≠ 24 kHz. Log line confirms:
 `resampled voice ref 16000 Hz → 24000 Hz (176000 → 264000 samples)`.
 
-**C ABI `.wav` voice path** (`src/crispasr_c_api.cpp`):
+**C ABI `.wav` voice path** (`src/stelnettts_c_api.cpp`):
 
-`crispasr_session_set_voice()` unconditionally called
+`stelnettts_session_set_voice()` unconditionally called
 `vibevoice_load_voice()` for all paths including `.wav` references,
 which only works for pre-baked GGUF voice packs. Fix: detect `.wav`
 suffix and set `VIBEVOICE_VOICE_AUDIO` env var instead, matching the
@@ -14123,7 +14123,7 @@ C ABI) now support `.wav` voice cloning for vibevoice-1.5b sessions.
 Python reference script: `tools/vibevoice_tts_ref_voice_clone.py` —
 loads encoder + connector weights from safetensors, dumps per-stage
 intermediates (`voice_at_enc_mean`, `voice_at_conn`, `voice_st_conn`,
-`voice_combined`) for comparison via `crispasr-diff` or manual cosine.
+`voice_combined`) for comparison via `stelnettts-diff` or manual cosine.
 C++ dump via `VIBEVOICE_TTS_DUMP=<dir>` writes `tts_voice_embeds.bin`.
 
 **Wiring audit** (status after this session):
@@ -14150,7 +14150,7 @@ fused siglu/norm_affine A1000 verdict").
 
 | file | LOC | what |
 |---|---:|---|
-| `ggml/CMakeLists.txt` | 3 | `GGML_CUDA_CRISPASR_FA_PERHEAD_MASK` option (default OFF) |
+| `ggml/CMakeLists.txt` | 3 | `GGML_CUDA_STELNETTTS_FA_PERHEAD_MASK` option (default OFF) |
 | `ggml/src/ggml-cuda/CMakeLists.txt` | 4 | wire option to `add_compile_definitions` |
 | `ggml/src/ggml-cuda/fattn-mma-f16.cuh` | 14 | consume `nb32` in `mask_h` offset at both kbc loop sites |
 | `ggml/src/ggml-cuda/fattn.cu` | 66 | gate relaxation: VEC/TILE/WMMA returns fall through to MMA-F16 for per-head masks; safety net + `gqa_ratio > 1` hard gate |
@@ -14162,7 +14162,7 @@ The patch adds the missing per-head term `nb32 * (zt_Q % ne32)`.
 When `ne32 == 1` (broadcast mask — upstream's only supported case)
 `zt_Q % 1 == 0` and the result is byte-identical, so default-OFF
 builds stay bit-equal to upstream. Build with
-`cmake -DGGML_CUDA_CRISPASR_FA_PERHEAD_MASK=ON` to enable.
+`cmake -DGGML_CUDA_STELNETTTS_FA_PERHEAD_MASK=ON` to enable.
 
 **Validation (parakeet-tdt-0.6b-v3 q8_0 on A1000, sm_86, driver 596.36):**
 
@@ -14189,12 +14189,12 @@ wallclock target: ~2.4 s long-clip mean / ~150 ms p50 / RTx ~24×.
 - `ncols2 > 1` GQA-folded mask case — current patch is correct
   for `ncols2 == 1` only; safety gate at `gqa_ratio > 1` falls
   back to CPU (== upstream pre-patch behaviour, no regression).
-  No current CrispASR model has GQA-conformer attention with
+  No current StelnetTTS model has GQA-conformer attention with
   per-head masks.
 - VEC / TILE / WMMA-F16 kernel patches — these still don't
   consume `nb32`; per-head masks force the MMA-F16 path or NONE.
 - `test-backend-ops` validation on sm_75 / sm_86 / sm_89 — only
-  `ggml/src/` is vendored in CrispASR (not `ggml/tests/`), so the
+  `ggml/src/` is vendored in StelnetTTS (not `ggml/tests/`), so the
   canonical FA backend test will run as part of the upstream
   `ggml-org/llama.cpp` PR step rather than locally.
 - Upstream PR to `ggml-org/llama.cpp` — gated on the items above.
@@ -14248,7 +14248,7 @@ not F16 KV. Likely a graph-topology-specific scheduling issue.
 **Summary:** Full LiquidAI LFM2.5-Audio-1.5B backend: ASR, TTS, and
 speech-to-speech in a single model. 27 commits from `470d56f2` to
 `cd77c75e`. English and Japanese variants. HF repos:
-`cstr/lfm2-audio-1.5b-GGUF`, `cstr/lfm2-audio-1.5b-jp-GGUF`.
+`Xenna/lfm2-audio-1.5b-GGUF`, `Xenna/lfm2-audio-1.5b-jp-GGUF`.
 
 **Architecture:** FastConformer encoder (17L, 512-dim) → audio adapter
 MLP → LFM2 hybrid backbone (16L, 2048-dim: 10 ShortConv + 6 GQA attn,
@@ -14257,7 +14257,7 @@ Mimi) → ISTFT detokenizer → 24 kHz PCM.
 
 **Key technical innovations:**
 - **Hybrid conv+attn caching:** KV cache for attention (core_attn) +
-  CPU-side Bx column cache for ShortConv layers (first such hybrid in CrispASR)
+  CPU-side Bx column cache for ShortConv layers (first such hybrid in StelnetTTS)
 - **Depthformer manual KV cache:** O(n) per audio frame via CPU-side K/V arrays
   + ggml_concat (core_attn::kv_self_attn didn't work for fused QKV)
 - **Slaney mel filterbank:** stored in GGUF from librosa (cos=0.9999 match)
@@ -14272,12 +14272,12 @@ Mimi) → ISTFT detokenizer → 24 kHz PCM.
 **Files touched (28 total):**
 `src/lfm2_audio.{h,cpp}`, `models/convert-lfm2-audio-to-gguf.py`,
 `tools/reference_backends/lfm2_audio.py`, `tools/dump_reference.py`,
-`examples/cli/crispasr_backend_lfm2_audio.cpp`,
-`examples/cli/crispasr_backend.cpp`, `examples/cli/crispasr_diff_main.cpp`,
-`examples/cli/CMakeLists.txt`, `examples/crispasr-quantize/main.cpp`,
-`src/CMakeLists.txt`, `src/crispasr_c_api.cpp`, `src/crispasr_model_registry.cpp`,
-`python/crispasr/_binding.py`, `bindings/go/crispasr_session.go`,
-`flutter/crispasr/lib/src/crispasr.dart`,
+`examples/cli/stelnettts_backend_lfm2_audio.cpp`,
+`examples/cli/stelnettts_backend.cpp`, `examples/cli/stelnettts_diff_main.cpp`,
+`examples/cli/CMakeLists.txt`, `examples/stelnettts-quantize/main.cpp`,
+`src/CMakeLists.txt`, `src/stelnettts_c_api.cpp`, `src/stelnettts_model_registry.cpp`,
+`python/stelnettts/_binding.py`, `bindings/go/stelnettts_session.go`,
+`flutter/stelnettts/lib/src/stelnettts.dart`,
 `README.md`, `docs/tts.md`, `docs/architecture.md`, `docs/performance.md`,
 `PLAN.md`, `LEARNINGS.md`,
 `tests/test_lfm2_audio_live.cpp`, `tests/CMakeLists.txt`, `tests/env-live-tests.sh`,
@@ -14566,14 +14566,14 @@ fewer dispatches + better GEMM batching).
 vs serial; ASR roundtrip garbage). Reproduced deterministically.
 
 **Diagnosis (ruled out, in order).** Built an in-process per-step verifier
-(`CRISPASR_F5_CFG_VERIFY`) comparing batched-batch-1 against an independent B=1
+(`STELNETTTS_F5_CFG_VERIFY`) comparing batched-batch-1 against an independent B=1
 run. Eliminated: graph logic (input read-back Δ=0; every op verified batch-correct
 on paper; flash output indexing correct for ne[3]=batch); **flash** (explicit
 softmax attention fails identically); **threading** (`--threads 1` identical);
 **in-place reuse** (`ggml_op_can_inplace`→false identical); **Metal/sched**
 (FORCE_CPU identical). Added an in-allocator **overlap detector**
-(`CRISPASR_ALLOC_CHECK`, keyed by alloc-ptr+chunk+offset, cleared on dyn_tallocr
-reset) and **NaN-poisoning** of all node buffers (`CRISPASR_F5_POISON`): result —
+(`STELNETTTS_ALLOC_CHECK`, keyed by alloc-ptr+chunk+offset, cleared on dyn_tallocr
+reset) and **NaN-poisoning** of all node buffers (`STELNETTTS_F5_POISON`): result —
 **no overlapping live tensors, zero uninitialised reads.** Batch-1 is fully
 written, just wrong. The only lever was fragile: `ggml_set_output` on block-0's
 modulated `norm_x` → perfect Δ=0, but protecting all `norm_x` (or `hidden_in`)
@@ -14581,7 +14581,7 @@ re-breaks it (layout shuffles the victim).
 
 **The decisive test — a standalone reproducer.** `repro_batch.cpp` mirrors one
 DiT block's exact ops through gallocr + CPU backend. Dumped F5's real graph
-(`CRISPASR_F5_DUMP_GRAPH`) and the repro's: **byte-identical** — 979 nodes, same
+(`STELNETTTS_F5_DUMP_GRAPH`) and the repro's: **byte-identical** — 979 nodes, same
 op / ne / contiguity / view flags per node, same ggml dylibs, same gallocr
 decisions including the `hidden_in` in-place reuse. The repro computes batch-1
 **perfectly (Δ=0)** across every variation: F5 scale (D=1024, T=188, 22 blocks),
@@ -14624,7 +14624,7 @@ both **fastpitch and speecht5** feed `mel_in=(T_mel, n_mel)`, so the one-line
 header fix repairs both. (SpeechT5 was the sweep's other "0-byte ~2.2 s" TTS
 crash.)
 
-**Validation.** cstr/fastpitch-en-GGUF q8_0 on M1 Metal: GPU and CPU outputs are
+**Validation.** Xenna/fastpitch-en-GGUF q8_0 on M1 Metal: GPU and CPU outputs are
 byte-identical and ASR-roundtrip verbatim ("The quick brown fox jumps over the
 lazy dog."). SpeechT5 shares the fixed code path and was **also validated on M1
 Metal** (after re-downloading the f16 GGUF — the local copy was truncated): GPU
@@ -14639,9 +14639,9 @@ output and transcript. CUDA re-test of speecht5 still pending. Worktree:
 `--gpu-backend vulkan` was silently ignored when CUDA was also compiled in.
 All 60+ backend init sites called `ggml_backend_init_best()` which picks CUDA
 unconditionally. Added `src/core/gpu_backend_pref.h` with
-`crispasr_init_gpu_backend()` — process-global preference set at CLI startup,
+`stelnettts_init_gpu_backend()` — process-global preference set at CLI startup,
 filters devices by name prefix. Replaced all call sites. Also exposed as
-`crispasr_set_gpu_backend()` C API for library consumers.
+`stelnettts_set_gpu_backend()` C API for library consumers.
 
 Kaggle P100 validation: 7/7 ASR backends pass (moonshine, firered-asr,
 parakeet, sensevoice, qwen3, glm-asr, fastconformer-ctc). `--gpu-backend cpu`
@@ -14657,24 +14657,24 @@ encoder is a TextEncoder (10 layers, 512-dim) whose output is cross-attended in
 every DiT block and modulates the duration predictor via dual AdaRN-Zero.
 Independent text/speaker/caption CFG in the Euler ODE sampler. Diff harness:
 F16 cos=1.000000 (text_state + v_pred_step0); Q4_K cos=0.996491 (526 MB from
-1.2 GB F16). Wired via `--instruct` flag and `CRISPASR_IRODORI_CAPTION` env var.
+1.2 GB F16). Wired via `--instruct` flag and `STELNETTTS_IRODORI_CAPTION` env var.
 
 ## 2026-07-11/12 — issue #81 FastConformer perf: CPU root cause, HF fleet requant, CUDA manual-attn (M1 session)
 
-Per-node profiling (new `CRISPASR_FC_PROFILE=1`, sched eval callback)
+Per-node profiling (new `STELNETTTS_FC_PROFILE=1`, sched eval callback)
 overturned the handover's "intermediate materialization" theory: **35% of
 CPU encoder time was two F16 matmuls per block** — conv.pw1/pw2 are stored
-as 3D conv tensors, so crispasr-quantize's 2D-only rule skipped them in
+as 3D conv tensors, so stelnettts-quantize's 2D-only rule skipped them in
 every quantized FastConformer GGUF ever shipped, landing them on ggml's
 ~6×-slower CPU F16 mul_mat path.
 
 Shipped (env-gated per convention, `core_conformer` shared):
-- `repack_conv_pw_q8` load-time F16→Q8_0 repack (`CRISPASR_FC_PW_Q8`,
+- `repack_conv_pw_q8` load-time F16→Q8_0 repack (`STELNETTTS_FC_PW_Q8`,
   auto-on for quantized models) — wired into parakeet, canary, canary_ctc,
   canary_qwen, lfm2_audio, nemotron.
 - `fuse_qkv` load-time Wq/Wk/Wv concat → one matmul + view-split
-  (`CRISPASR_FC_FUSED_QKV`, bit-identical, default on).
-- Strided flash-attn inputs (dropped 3 conts/block; `CRISPASR_FC_ATTN_CONT=1`
+  (`STELNETTTS_FC_FUSED_QKV`, bit-identical, default on).
+- Strided flash-attn inputs (dropped 3 conts/block; `STELNETTTS_FC_ATTN_CONT=1`
   restores). Bit-identical on the full CTC logit grid.
 - Quantizer: 3D conv-pw carve-out (quantized as 2D view), Q8_0 floor for
   sub-8-bit targets, idempotency rule for already-fixed files.
@@ -14687,8 +14687,8 @@ Shipped (env-gated per convention, `core_conformer` shared):
   after `upload_file` stranded post-commit (CLOSE_WAIT) on Kaggle too.
 - **CUDA**: flash_attn_ext's per-head-mask guard silently bounced all 24
   attention layers to CPU. Manual QK^T+soft_max attention (all-GPU) now
-  default on CUDA (`CRISPASR_FC_GPU_MANUAL_ATTN`) after P100 A/B.
-- `CRISPASR_FC_BUCKET` bucketed persistent encoder graph (starling-style,
+  default on CUDA (`STELNETTTS_FC_GPU_MANUAL_ATTN`) after P100 A/B.
+- `STELNETTTS_FC_BUCKET` bucketed persistent encoder graph (starling-style,
   -inf pad masks, output-equivalent) — opt-in, inverse-default on P100.
 
 Numbers (details in PERFORMANCE.md §"issue #81 CURRENT metrics"): M1 CPU
@@ -14718,12 +14718,12 @@ The memory-safety fixes shipped (see HISTORY 2026-07-11). Test/tooling state:
   `linux-asan-audio` CI job builds the decoders under ASan and decodes the
   samples on every change.
 - **DONE**: MP4 crafted-input *reachability* test (malicious `stsz` count)
-  through the full `crispasr_audio_load` dispatch → `crispasr_m4a_decode`.
-- **DONE**: libFuzzer harness over `crispasr_audio_load` (`tests/fuzz/`, gated
-  `-DCRISPASR_FUZZ=ON`, clang) — seed from `samples/`; mutation covers the
+  through the full `stelnettts_audio_load` dispatch → `stelnettts_m4a_decode`.
+- **DONE**: libFuzzer harness over `stelnettts_audio_load` (`tests/fuzz/`, gated
+  `-DSTELNETTTS_FUZZ=ON`, clang) — seed from `samples/`; mutation covers the
   AU/AMR/WebM/MP4/WAV dispatch under ASan, so WebM/AU/AMR get reachability
   coverage there rather than as separate hand-crafted tests.
-- **DONE**: `crispasr_server` security audit (multi-agent) — 7 fixes: unbounded
+- **DONE**: `stelnettts_server` security audit (multi-agent) — 7 fixes: unbounded
   upload DoS (`set_payload_max_length` + chunked reject), `/v1/audio/speech`
   voice path-traversal, CAP_TTS gates on POST/DELETE `/v1/voices`, log-injection
   sanitisation. See HISTORY.
@@ -14732,13 +14732,13 @@ The memory-safety fixes shipped (see HISTORY 2026-07-11). Test/tooling state:
   GGUF declaring a `SIZE_MAX` tensor wrapped `data_off+off+nbytes` → SIGBUS on
   Metal), and sentencepiece input-length clamp (`tokenize`/`tokenize_bpe`).
 - **DONE**: `linux-fuzz-smoke` CI job (audio fuzzer, seeded, ASan) + a second
-  harness `tests/fuzz/fuzz_gguf_meta.cpp` (`crispasr-fuzz-gguf`) over the GGUF
+  harness `tests/fuzz/fuzz_gguf_meta.cpp` (`stelnettts-fuzz-gguf`) over the GGUF
   metadata path.
 - **DONE (ggml fork `1dc4cb93`)**: the GGUF fuzzer found a real DoS — a malformed
   GGUF with an **empty KV key** hit `GGML_ASSERT(!key.empty())` in
   `ggml/src/gguf.cpp` → `ggml_abort` → `abort()`, so ANY untrusted model load
   (incl. server `POST /load`) could crash the process. Fixed in the
-  `CrispStrobe/ggml` fork: `gguf_init_from_file`'s KV loop now rejects an empty
+  `Cyna/ggml` fork: `gguf_init_from_file`'s KV loop now rejects an empty
   key (log + `ok=false` → returns nullptr) the same way a duplicate key is
   rejected. Validated on the saved reproducer (`gguf-empty-key-abort.crash`):
   now returns nullptr, valid models still load. Submodule pointer bumped here.
@@ -14750,8 +14750,8 @@ The memory-safety fixes shipped (see HISTORY 2026-07-11). Test/tooling state:
   call):** upstream the empty-key fix to ggml-org — it's a general robustness
   bug worth contributing back (an outbound public PR, so left for a human).
 - **DONE 2026-07-12**: the `bpe.h`/`wordpiece.h` fuzz harness —
-  `tests/fuzz/fuzz_tokenizer.cpp` (`crispasr-fuzz-tokenizer`, gated
-  `-DCRISPASR_FUZZ=ON`). Fuzzes `core_bpe::tokenize_simple` +
+  `tests/fuzz/fuzz_tokenizer.cpp` (`stelnettts-fuzz-tokenizer`, gated
+  `-DSTELNETTTS_FUZZ=ON`). Fuzzes `core_bpe::tokenize_simple` +
   `core_wordpiece::Tokenizer::tokenize` over arbitrary text (the untrusted
   prompt/`--ref-text`/caption surface; vocab pinned benign since GGUF vocab is
   covered by `fuzz_gguf_meta`). Validated locally: **138,705 runs / 16 s clean**
@@ -14776,7 +14776,7 @@ time-dimension divergence" localization was a red herring. Now: native Vulkan
 "I went to school and back in four hours" (seed 1) → intelligible, **identical to
 Metal**; +2 sentences +seed2 all ASR-round-trip cleanly; deterministic; CPU
 output byte-identical to before (fix is Vulkan-gated). Still gated
-(`CRISPASR_TADA_VULKAN_NATIVE=1`), default remains CPU-fallback — ask reporter
+(`STELNETTTS_TADA_VULKAN_NATIVE=1`), default remains CPU-fallback — ask reporter
 (BergmannAtmet, RADV) to confirm before flipping the default.
 
 **Actual root cause (the FM premise was wrong; the codec is the culprit).** A/B'd
@@ -14815,7 +14815,7 @@ backend (`src/tada_codec.cpp`, `tada_codec_init_from_file_impl`). The codec is a
 one-shot decode (not the AR loop) and its input features are bit-identical
 Metal-vs-Vulkan (Metal renders them correctly), so CPU rendering is faithful. The
 talker/FM keep their native-Vulkan path. Opt back into the broken native codec
-with `CRISPASR_TADA_CODEC_VULKAN_NATIVE=1` (debug only). **Open follow-up (to keep
+with `STELNETTTS_TADA_CODEC_VULKAN_NATIVE=1` (debug only). **Open follow-up (to keep
 the codec on GPU):** the op-level repros rule out the conv kernels, so the
 remaining lever is the graph-scale corruption — best chased on RADV (real
 hardware, where the talker/FM native path is also pending validation) with a
@@ -14834,7 +14834,7 @@ samples, non-exact) for a marginal, driver-specific payoff. Pick this up only if
 a RADV user actually needs the codec on GPU. Design preserved below for whoever
 does.
 
-Add `tada_codec_decode` a chunked wrapper, gated (e.g. `CRISPASR_TADA_CODEC_CHUNK=<N>`,
+Add `tada_codec_decode` a chunked wrapper, gated (e.g. `STELNETTTS_TADA_CODEC_CHUNK=<N>`,
 default off; auto-on for the Vulkan-native codec). The codec upsamples 480×
 (strides 4·4·5·6) and is feed-forward; the only cross-frame coupling is (a) the
 block attention (each frame attends to its block + the previous block) and (b) the
@@ -14883,7 +14883,7 @@ all now closed:
 **Completeness gaps:**
 - [x] **kugelaudio test** — added `tests/test-kugelaudio-params.cpp` (5/5 green).
 - [x] **env-live-tests entries** for `tada`, `kugelaudio`, `melotts` — added the
-  `CRISPASR_MODEL_*` exports.
+  `STELNETTTS_MODEL_*` exports.
 - [~] **melotts diff-harness "registration"** — NOT a real gap. `melotts.py` uses
   the **standalone** reference-dumper pattern (run directly), which is the *majority*
   convention: 20 of the reference dumpers are standalone (bark, csm, dia, fastpitch,
@@ -14942,11 +14942,11 @@ All `cached_*_gf` sites verified across the codebase. 796/796 unit tests pass.
 
 ---
 
-## #218 qwen3-asr long-audio root cause — quantized audio tower + prompt contract (DONE)
+## #218 cielvox2-asr long-audio root cause — quantized audio tower + prompt contract (DONE)
 
-Follow-up to the fix_loops mitigation: WHY did qwen3-asr loop / emit empty output on
+Follow-up to the fix_loops mitigation: WHY did cielvox2-asr loop / emit empty output on
 the reporter's 145 s clip at all, when the bf16 reference is clean on the same audio?
-Diff-harness verdict (`crispasr-diff qwen3` extended with conv/per-block/ids/logits
+Diff-harness verdict (`stelnettts-diff qwen3` extended with conv/per-block/ids/logits
 stages; bf16 reference re-dumped via `tools/reference_backends/qwen3.py`):
 
 - **Port math is faithful.** On the full un-chunked 145 s clip: mel cos_mean
@@ -14960,9 +14960,9 @@ stages; bf16 reference re-dumped via `tools/reference_backends/qwen3.py`):
   compounds to encoder cos_mean 0.9716 / cos_min 0.75 at 1885 frames, enough to
   flip greedy decode into "language none" (empty output) or mid-transcript
   repeated-phrase attractors ("Hey, hey, …" — the #218 loop). Fixed by a Q8_0
-  floor for `audio.*` in crispasr-quantize (like the canary/mini-omni2 encoder
+  floor for `audio.*` in stelnettts-quantize (like the canary/mini-omni2 encoder
   carve-outs, ~half the size cost: q4_k 540→631 MB); opt-out
-  `CRISPASR_QWEN3ASR_QUANT_AUDIO=1`. Re-quantized q4_k: encoder cos_mean 0.9997 /
+  `STELNETTTS_CIELVOX2ASR_QUANT_AUDIO=1`. Re-quantized q4_k: encoder cos_mean 0.9997 /
   cos_min 0.992, e2e un-chunked 145 s clean + complete with `fix_loops` DISABLED,
   in both auto and forced-language modes. jfk verbatim.
 - **Prompt contract (blueprint parity).** qwen_asr's `_build_text_prompt` expresses
@@ -14971,7 +14971,7 @@ stages; bf16 reference re-dumped via `tools/reference_backends/qwen3.py`):
   text ONLY and structurally cannot answer "language none". Our adapter used a
   "Transcribe the speech in X." system instruction instead; switched to the
   blueprint prefill (CLI + streaming + session ABI;
-  `CRISPASR_QWEN3_SYSPROMPT_LANG=1` restores the legacy form). The tokenizer now
+  `STELNETTTS_QWEN3_SYSPROMPT_LANG=1` restores the legacy form). The tokenizer now
   also recognises bare `<asr_text>`-style added tokens.
 - **More blueprint parity:** tail-chunk padding frames are now removed before the
   encoder blocks (`padded_embed[padded_mask_after_cnn]` contract; in-graph
@@ -15002,7 +15002,7 @@ stages; bf16 reference re-dumped via `tools/reference_backends/qwen3.py`):
   flipping the default + declaring CAP_UNBOUNDED_INPUT needs a broader eval
   (more clips, speed profile) — the mechanism is ready.
 - **Follow-ups:** (1) DONE — fixed q4_k / q4_k-imatrix / q3_k-imatrix uploaded to
-  `cstr/qwen3-asr-0.6b-GGUF` + README (q8_0/f16 unaffected). A/B during the
+  `Xenna/cielvox2-asr-0.6b-GGUF` + README (q8_0/f16 unaffected). A/B during the
   re-bake: quantising the tied LM head (the old imatrix recipe) re-introduces
   long-form loops even with the Q8_0 tower → imatrix variants now keep the head
   at F16; and even so the EN+DE short-clip imatrix still drifts into repetition
@@ -15016,11 +15016,11 @@ stages; bf16 reference re-dumped via `tools/reference_backends/qwen3.py`):
   the long-form recommendation; the published v2 imatrix files stay for
   short-clip use. Long-form producer recipe kept in tools/imatrix-calib/
   provenance + the generated matrix at
-  /Volumes/backups/ai/crispasr-gguf/qwen3-asr-0.6b-longform.imatrix.gguf.
+  /Volumes/backups/ai/stelnettts-gguf/cielvox2-asr-0.6b-longform.imatrix.gguf.
   (2) DONE — session-ABI spot-check (python Session → qwen3 forced-language
   prefill) passes. (3) DONE — cohere-transcribe + glm-asr audit via Kaggle
   kernel `tools/kaggle/issue218-quant-audit/` (T4, HEAD c555a40b, raw decode
-  via the new `CRISPASR_NGRAM_LOOPFIX_OFF=1` gate, canonical 145 s clip):
+  via the new `STELNETTTS_NGRAM_LOOPFIX_OFF=1` gate, canonical 145 s clip):
   **no carve-outs warranted.**
   - cohere: q4_k and F16 behave IDENTICALLY (max unigram run 7 at both — the
     clip genuinely contains repeated "hey" shouts; both reach the final
@@ -15031,7 +15031,7 @@ stages; bf16 reference re-dumped via `tools/reference_backends/qwen3.py`):
     parity' below): both A/B arms ran INSTRUCTION-LESS prompts (specials-only
     tokenizer silently dropped every instruction), which is what degenerates.
     With the blueprint prompt the model matches the bf16 reference at q4_k —
-    no quant carve-out needed. qwen3-asr remains the only quant-caused #218
+    no quant carve-out needed. cielvox2-asr remains the only quant-caused #218
     case; granite + canary-qwen were already protected.
 
 ---
@@ -15081,9 +15081,9 @@ same scope. Default 30 s-chunked path now recovers the whole dialogue incl.
 slices the old prompt lost; raw noise-window "hey" runs are genuine audio
 shouts, collapsed by fix_loops as before. Session ABI inherits everything via
 `glm_asr_transcribe_impl`; the CLI streaming path mirrors the prompt. Gates:
-`CRISPASR_GLM_ASR_SINGLE_WINDOW=1` (old truncate-to-30 s),
-`CRISPASR_GLM_ASR_LEGACY_PROMPT=1` (old instruction-less scaffold),
-`CRISPASR_GLM_ASR_DEBUG=1` (raw decode dump).
+`STELNETTTS_GLM_ASR_SINGLE_WINDOW=1` (old truncate-to-30 s),
+`STELNETTTS_GLM_ASR_LEGACY_PROMPT=1` (old instruction-less scaffold),
+`STELNETTTS_GLM_ASR_DEBUG=1` (raw decode dump).
 
 Follow-ups: (1) DONE — `tokenizer.ggml.merges` baked into converter + a
 backfill tool (`tools/gguf-add-merges.py`) patched the published GGUFs;
@@ -15092,7 +15092,7 @@ tokenizers-lib for the default/ask/translate/language instructions), the CLI
 skips the language instruction for en/auto (English IS the blueprint default
 prompt's behaviour), and instruction framing matches the verified scaffold
 ("\n" + text, no trailing newline); (2) CAP_UNBOUNDED_INPUT decision —
-same posture as qwen3-asr for now (default 30 s chunks, `--chunk-seconds 0`
+same posture as cielvox2-asr for now (default 30 s chunks, `--chunk-seconds 0`
 opt-in single-pass ≤655 s); (3) the blueprint itself SKIPS quiet leading
 audio in single-pass mode (starts at ~75 s on t32) — chunked mode covers more
 content on such clips; document in README.
@@ -15101,16 +15101,16 @@ content on such clips; document in README.
 
 Kaggle kernel `tools/kaggle/qwen3-family-rebake/` (T4, HEAD 199609d0):
 
-- **CUDA validation of the week's fixes:** qwen3-asr 0.6b un-chunked 145 s
+- **CUDA validation of the week's fixes:** cielvox2-asr 0.6b un-chunked 145 s
   single-pass CLEAN on CUDA (full attention, 686 chars, reaches the final
   sentence, zero loops raw); glm-asr multi-window single-pass CLEAN on CUDA
   (reaches final sentence); glm jfk verbatim. The WINDOWED qwen3 path loops
   in the noisy lead on CUDA (238-run) where Metal recovered — consistent
   with the windowed blueprint's own noise behaviour + greedy sensitivity to
   backend numerics; reinforces keeping `CRISP_AUDIO_WINDOWED_ATTN` opt-in.
-- **qwen3-asr-1.7b:** header audit shows its q4_k ALREADY has a Q8_0 audio
+- **cielvox2-asr-1.7b:** header audit shows its q4_k ALREADY has a Q8_0 audio
   tower — no rebake needed.
-- **qwen3-asr-1.7b-ja-anime:** q4_k tower was Q4_K → rebaked with the floor
+- **cielvox2-asr-1.7b-ja-anime:** q4_k tower was Q4_K → rebaked with the floor
   (1334→1421 MB), validated (jfk 109 chars; t32 single-pass 1024 chars,
   max run 1, no loops) and UPLOADED.
 - **mega-asr:** q4_k tower was Q4_K → rebaked all three variants with the
@@ -15125,24 +15125,24 @@ Kaggle kernel `tools/kaggle/qwen3-family-rebake/` (T4, HEAD 199609d0):
 - Metric lesson: loop gates need a PHRASE-cycle check, not just unigram
   runs (the issue218-quant-audit kernel has one; this kernel didn't).
 
-## §219 — more permissive audio input formats for crispasr_audio_load (MOSTLY DONE)
+## §219 — more permissive audio input formats for stelnettts_audio_load (MOSTLY DONE)
 
 Done (ffmpeg-free): WAV/MP3/FLAC (miniaudio), Ogg Vorbis (stb_vorbis),
 Opus (libopus/opusfile), AIFF/W64/RF64 (miniaudio dr_wav, free), and AAC/M4A/
 ALAC/CAF on **Apple** via AudioToolbox `ExtAudioFile`.
 
 Items 1–3 and 5 below all **shipped** (a parallel session implemented them in
-`crispasr_audio.cpp`; this PLAN entry was stale). Coverage now, all wired into
-`crispasr_audio_load` + covered by `tests/test-audio-formats.cpp`:
+`stelnettts_audio.cpp`; this PLAN entry was stale). Coverage now, all wired into
+`stelnettts_audio_load` + covered by `tests/test-audio-formats.cpp`:
 
 1. **AAC/M4A on Windows + Android (DONE).** Media Foundation `IMFSourceReader`
-   (`crispasr_mf_decode`) + NDK `MediaExtractor`/`MediaCodec` (`crispasr_ndk_decode`),
-   plus a portable MP4 box parser (`crispasr_m4a_decode`). Linux still relies on
+   (`stelnettts_mf_decode`) + NDK `MediaExtractor`/`MediaCodec` (`stelnettts_ndk_decode`),
+   plus a portable MP4 box parser (`stelnettts_m4a_decode`). Linux still relies on
    the optional ffmpeg/fdk-aac dynamic fallback only.
-2. **AMR-NB/WB (DONE + fetch-path fixed here).** `crispasr_amr_decode` via
-   opencore-amr (Apache-2.0), CMake-gated `CRISPASR_AMR` (system pkg-config) /
-   `CRISPASR_AMR_FETCH` (static FetchContent of CrispStrobe/opencore-amr v0.1.7).
-   ⚠ **The `-DCRISPASR_AMR_FETCH=ON` static build was broken and untested** (the
+2. **AMR-NB/WB (DONE + fetch-path fixed here).** `stelnettts_amr_decode` via
+   opencore-amr (Apache-2.0), CMake-gated `STELNETTTS_AMR` (system pkg-config) /
+   `STELNETTTS_AMR_FETCH` (static FetchContent of Cyna/opencore-amr v0.1.7).
+   ⚠ **The `-DSTELNETTTS_AMR_FETCH=ON` static build was broken and untested** (the
    parallel session only had the system pkg-config path). Two `src/CMakeLists.txt`
    glob/regex bugs, both fixed + M1-validated (`jfk.amr` decodes, ratio + xcorr
    pass): (a) the `common/src/*.cpp` glob pulled in the 7 files upstream's
@@ -15152,11 +15152,11 @@ Items 1–3 and 5 below all **shipped** (a parallel session implemented them in
    `decoder_amr_wb\.cpp$` was unanchored and also matched `dtx_decoder_amr_wb.cpp`
    (suffix), dropping the DTX decoder → undefined `_dtx_dec_amr_wb` at link.
    Both `list(FILTER)` patterns are now `/`-anchored to basenames.
-3. **WebM/Matroska Opus|Vorbis (DONE).** `crispasr_webm_decode` — inline EBML
+3. **WebM/Matroska Opus|Vorbis (DONE).** `stelnettts_webm_decode` — inline EBML
    demux → the already-linked libopus / stb_vorbis. Web/browser audio.
 4. **Speex / WavPack (LOW, still open).** BSD libs; Speex is obsolete (Opus
    superseded it), WavPack niche. Only if a corpus needs them.
-5. **AU / Sun .snd (DONE).** `crispasr_au_decode` — inline PCM/µ-law/A-law parser,
+5. **AU / Sun .snd (DONE).** `stelnettts_au_decode` — inline PCM/µ-law/A-law parser,
    zero deps.
 
 Pattern (unchanged): permissive decoder (or OS-native) behind the miniaudio custom
@@ -15194,10 +15194,10 @@ build-verify; the compile+export gate is the part that was actually missing.
 ## §175 Surgical DRY — share pure helpers across the CLI/library boundary (MOSTLY DONE)
 
 **Context.** The `CrispasrBackend` adapter layer (`examples/cli/`) and the
-session C ABI (`src/crispasr_c_api.cpp`, the dylib every binding + the HTTP
+session C ABI (`src/stelnettts_c_api.cpp`, the dylib every binding + the HTTP
 server loads) are two **separate** implementations of each backend's
 transcribe/synthesize. This is structural: `CrispasrBackend` and
-`whisper_params` live in `examples/cli/` and `libcrispasr` (`src/`) links
+`whisper_params` live in `examples/cli/` and `libstelnettts` (`src/`) links
 nothing from there, so the session ABI *cannot* call the adapters — it
 reimplements inline. contributing.md §6 already institutionalises this as a
 "9 edit points" checklist. See memory `project-session-abi-reimplements-cli`.
@@ -15213,22 +15213,22 @@ header-only `inline` functions in `src/core/` that both sides include (no link
 dependency across the boundary).
 
 **Gate every item on before/after regression** — bit-identical output required:
-unit test the pure helper + run the Kaggle `lang-spec-sweep`, `crispasr-diff`
+unit test the pure helper + run the Kaggle `lang-spec-sweep`, `stelnettts-diff`
 stage harness, and `tests/regression/manifest.json` before and after.
 
 Candidates (audited 2026-06-19):
 
 1. **ISO-639-1 → English language-name map — DONE.** `src/core/lang_names.h`
    header-only `inline core_lang::iso_to_english()`. All 4 former copies now
-   delegate: `crispasr_backend_utils.h` (`crispasr_iso_to_english_lang`),
-   `crispasr_c_api.cpp` (`ca_iso_to_english_lang`), `gemma4_e2b.cpp`
+   delegate: `stelnettts_backend_utils.h` (`stelnettts_iso_to_english_lang`),
+   `stelnettts_c_api.cpp` (`ca_iso_to_english_lang`), `gemma4_e2b.cpp`
    (`g4e_lang_name`). Unit test: `tests/test-core-lang-names.cpp`.
 
 2. **GPT-2 byte-level BPE decoder — DONE (variant a).** 6 copies of the
    full 256-byte `byte_decoder()` + `decode_token()` / `gpt2_byte_decode()`
    now delegate to `core_bpe::token_bytes_to_utf8()` (already in
-   `src/core/bpe.h`): `crispasr_c_api.cpp`, `lfm2_audio.cpp`,
-   `vibevoice.cpp`, `crispasr_backend_{qwen3,moss_audio,mimo_asr}.cpp`.
+   `src/core/bpe.h`): `stelnettts_c_api.cpp`, `lfm2_audio.cpp`,
+   `vibevoice.cpp`, `stelnettts_backend_{qwen3,moss_audio,mimo_asr}.cpp`.
    Unit test: `tests/test-core-bpe.cpp`. Variant (b) — the simpler
    `Ġ→space, Ċ→newline` inline replacements in glm_asr / c_api — is
    2 call sites, not worth a helper.
@@ -15238,9 +15238,9 @@ Candidates (audited 2026-06-19):
    to each model's chat template, so lower priority / higher coupling — leave
    unless it grows; revisit if a 3rd consumer appears.
 
-Not candidates: `crispasr_strip_ascii_punctuation` / `crispasr_lowercase_ascii`
-/ `crispasr_backend_should_use_gpu` are CLI-only (already DRY via
-`crispasr_backend_utils.h`; the C ABI does not duplicate them).
+Not candidates: `stelnettts_strip_ascii_punctuation` / `stelnettts_lowercase_ascii`
+/ `stelnettts_backend_should_use_gpu` are CLI-only (already DRY via
+`stelnettts_backend_utils.h`; the C ABI does not duplicate them).
 
 ---
 
@@ -15248,7 +15248,7 @@ Not candidates: `crispasr_strip_ascii_punctuation` / `crispasr_lowercase_ascii`
 
 ### Goal
 
-Compile CrispASR to WebAssembly so all ASR/TTS/LID/VAD/alignment
+Compile StelnetTTS to WebAssembly so all ASR/TTS/LID/VAD/alignment
 backends run in the browser. Multithreaded via `-pthread` +
 `PTHREAD_POOL_SIZE=8` (requires COOP/COEP headers on the hosting page).
 
@@ -15260,22 +15260,22 @@ surface (`asrOpen`/`asrTranscribe`/`asrSet*`, added 2026-06-13 — see the §166
 follow-up above), TTS synthesis (`ttsSynthesize` + the `tts*` setters), kokoro
 language routing, and registry helpers.
 
-All ~70 backend static libs link into `crispasr-lib` via the `whisper`
+All ~70 backend static libs link into `stelnettts-lib` via the `whisper`
 alias target. The JS binding links against `whisper`, pulling everything in.
 
 ### What was done
 
 1. **`build-wasm.sh`** — Self-contained build script. Drives `emcmake cmake`
    with CPU-only flags (no CUDA/Metal/Vulkan/BLAS/OpenMP), SIMD128 optional,
-   `CRISPASR_WASM=ON`. Builds the `libwhisper` target.
+   `STELNETTTS_WASM=ON`. Builds the `libwhisper` target.
 
-2. **`CMakeLists.txt`** — Added `CRISPASR_WASM` option (default ON under
+2. **`CMakeLists.txt`** — Added `STELNETTTS_WASM` option (default ON under
    Emscripten). When enabled, `add_subdirectory(bindings/javascript)` is
    wired into the top-level build. Threading: `-pthread` in C/CXX flags
    (already present), `USE_PTHREADS=1` + `PTHREAD_POOL_SIZE=8` in the
    JS binding's link flags (already present).
 
-3. **`crispasr_cache.cpp`** — Added `#ifdef __EMSCRIPTEN__` guards:
+3. **`stelnettts_cache.cpp`** — Added `#ifdef __EMSCRIPTEN__` guards:
    - `dir()` returns `/models` (Emscripten MEMFS path)
    - `fetch()` returns false with a diagnostic (models are pre-loaded
      by JS via `FS.writeFile`)
@@ -15316,14 +15316,14 @@ HuggingFace Spaces (Docker SDK) sets these automatically.
 
 Small — infrastructure was 90% present from upstream whisper.cpp heritage.
 Only needed: `build-wasm.sh`, wiring `add_subdirectory(bindings/javascript)`
-into top-level CMakeLists, and `__EMSCRIPTEN__` guards in `crispasr_cache.cpp`.
+into top-level CMakeLists, and `__EMSCRIPTEN__` guards in `stelnettts_cache.cpp`.
 
-### Relation to CrispEmbed WASM
+### Relation to StelnetEmbed WASM
 
-CrispEmbed's WASM build (June 2026) took the opposite threading approach:
+StelnetEmbed's WASM build (June 2026) took the opposite threading approach:
 single-threaded, no `-pthread`, no SharedArrayBuffer requirement.
 This was appropriate for the math OCR decoder which runs single-threaded.
-CrispASR needs multithreading for real-time ASR inference, so it uses
+StelnetTTS needs multithreading for real-time ASR inference, so it uses
 the full pthread path with COOP/COEP headers.
 
 ---
@@ -15331,7 +15331,7 @@ the full pthread path with COOP/COEP headers.
 ## 40. More Moonshine model variants
 
 Convert + upload to HuggingFace:
-- ~~`moonshine-base` (61.5M, better WER)~~ **DONE** (cstr/moonshine-base-GGUF)
+- ~~`moonshine-base` (61.5M, better WER)~~ **DONE** (Xenna/moonshine-base-GGUF)
 - `moonshine-streaming-tiny/small/medium` — different architecture, needs new runtime
 - ~~`moonshine-tiny-{ja,ar,ko,zh,vi,uk}` (multilingual)~~ **DONE** (12 repos on HF)
 - ~~`moonshine-base-{ja,uk,vi,zh,ar,ko}` (multilingual)~~ **DONE** (12 repos on HF)
@@ -15364,7 +15364,7 @@ speedup from GPU is already the dominant improvement.
 
 ## 42. VibeVoice-ASR 7B
 
-**DONE.** Full ASR+TTS GGUF (1205 tensors) at `cstr/VibeVoice-7B-GGUF`,
+**DONE.** Full ASR+TTS GGUF (1205 tensors) at `Xenna/VibeVoice-7B-GGUF`,
 7 quantizations Q3_K (4.7 GB) through F16 (17.4 GB). Layer offload
 validated on M1 Metal (ASR 28L, TTS 20L). See HISTORY for details.
 
@@ -15379,11 +15379,11 @@ token embedding weight, skipping graph-build + sched overhead.
 
 | Backend | Env var | Status |
 |---------|---------|--------|
-| funasr | `CRISPASR_FUNASR_EMBED_FAST` | **DONE** §180 |
-| glm_asr | `CRISPASR_GLM_ASR_EMBED_FAST` | **DONE** §187 |
-| moss_audio | `CRISPASR_MOSS_AUDIO_EMBED_FAST` | **DONE** §187 |
-| qwen3_asr | `CRISPASR_QWEN3_ASR_EMBED_FAST` | **DONE** §187 |
-| gemma4_e2b | `CRISPASR_GEMMA4_E2B_EMBED_FAST` | **DONE** §187 (+ sqrt(d) scale) |
+| funasr | `STELNETTTS_FUNASR_EMBED_FAST` | **DONE** §180 |
+| glm_asr | `STELNETTTS_GLM_ASR_EMBED_FAST` | **DONE** §187 |
+| moss_audio | `STELNETTTS_MOSS_AUDIO_EMBED_FAST` | **DONE** §187 |
+| cielvox2_asr | `STELNETTTS_CIELVOX2_ASR_EMBED_FAST` | **DONE** §187 |
+| gemma4_e2b | `STELNETTTS_GEMMA4_E2B_EMBED_FAST` | **DONE** §187 (+ sqrt(d) scale) |
 | outetts | — | Already had n==1 fast path at port time |
 | orpheus | — | Already had n==1 fast path at port time |
 | lfm2_audio | — | Already does direct row reads (no graph) |
@@ -15395,7 +15395,7 @@ token embedding weight, skipping graph-build + sched overhead.
 1. **Deepen shallow bench stages.** vibevoice, wav2vec2-ggml, m2m100,
    t5_translate only have `_total` stages — add finer-grained stages.
 2. **§175 DRY: `src/core/lang_names.h`** — 4 copies → 1 header.
-3. **Encoder graph cache by bucket** — funasr, sensevoice, qwen3_asr.
+3. **Encoder graph cache by bucket** — funasr, sensevoice, cielvox2_asr.
 
 ---
 
@@ -15407,7 +15407,7 @@ _Done — see HISTORY.md + git log._
 
 User-requested follow-on to the VibeVoice TTS work. Apache-2.0
 collection: [Qwen/Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS),
-[HF collection](https://huggingface.co/collections/Qwen/qwen3-tts).
+[HF collection](https://huggingface.co/collections/Qwen/cielvox2-tts).
 
 - **Six repos in the collection** (all BF16 safetensors, Apache 2.0):
   - `Qwen/Qwen3-TTS-Tokenizer-12Hz` — RVQ codec, 16 codebooks × 2048,
@@ -15430,10 +15430,10 @@ collection: [Qwen/Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS),
   3. ✓ Code predictor with sampling — fixed silent-output trap (`9608202`, `69c135c`).
   4. ✓ TTS→ASR roundtrip on parakeet-v3.
   5. ✓ Codec decoder (Tokenizer-12Hz) — diff harness 8/8 PASS at cos≥0.999983 (`d1f47b1`, `48c6c1a`). Required a Metal `kernel_conv_transpose_1d` patch in our ggml fork (input-range tightening — see LEARNINGS, MUST RE-APPLY on every ggml bump).
-  6. ✓ ECAPA speaker_encoder runtime forward — cos=0.999999 (`c0a9cb3`, `8a4c49e`, `38040b4`). C ABI: `qwen3_tts_compute_speaker_embedding(audio, n, sr)` + `qwen3_tts_set_voice_prompt[_with_text]`.
+  6. ✓ ECAPA speaker_encoder runtime forward — cos=0.999999 (`c0a9cb3`, `8a4c49e`, `38040b4`). C ABI: `cielvox2_tts_compute_speaker_embedding(audio, n, sr)` + `cielvox2_tts_set_voice_prompt[_with_text]`.
   7. ✓ Codec encoder runtime forward — diff 3 stages cos≥0.999 (`ef11c01`, `10302b4`). Closes the bake-script loop.
-- **Performance pass (in progress, partial wins shipped).** Quiet-bench Q8_0 0.6B with all defaults: ~79 ms/frame (talker ~30 + cp ~49) on a quiet M1 — already under the 80 ms/frame real-time budget at 12.5 fps. Under normal system load ~129 ms/frame; talker and cp scale proportionally with Metal contention. Shipped: **`QWEN3_TTS_O15=1` is default-on** (commit `5e21e4a`) — cp graph reuse saves ~14 ms/frame on cp_pred under contention, ~2-3 ms/frame quiet, bit-identical WAV. Gated, byte-identical, kept default-OFF: `QWEN3_TTS_FUSED_QKV=1` (**Q8_0 bench done 2026-05-23: neutral — interleaved A/B on this M1 shows 129 vs 129 ms/frame; keep default-OFF for Q8_0**; **F16 case benched 2026-05-24: inconclusive — interleaved A/B (6 runs) on loaded machine (model DL + build concurrent) shows σ≈47 ms/frame exceeding any signal; mean baseline 212 vs mean fused 191 ms/frame, warm-up baseline 133 ms/frame consistent with Q8_0 quiet result; keep default-OFF for F16 same as Q8_0; clean quiet-machine bench still open**); `QWEN3_TTS_LK_BUCKET=1` (talker Lk bucketing, **net loss on M1 Metal Q8_0** — see LEARNINGS); `QWEN3_TTS_CP_STEP0_CACHE=1` (cp T=2 step-0 graph cache, claimed 1-3 ms/frame quiet savings — **loaded-machine bench neutral within noise; quiet-machine confirmation still pending**, bit-identical). Investigated: Q8_0 KV cache — blocked on Metal `cont(Q8_0)` source (only F32/F16/BF16 sources supported); needs Metal kernel patch or KV layout restructure to land. Still open: F16 FUSED_QKV clean quiet-machine bench (F16 GGUF now at `/Volumes/backups/ai/crispasr/qwen3-tts-12hz-0.6b-base.gguf`; rerun on a quiet machine with no background I/O); Q4_K talker fused QKV bench (needs Q4_K talker GGUF); the larger lift of fusing 15 cp steps into one graph (needs on-device top-k sampling, ~3 ms/frame upper bound after O15 since most overhead is already gone).
-- Debug knobs: `QWEN3_TTS_{BENCH,DEBUG,DUMP_DIR}` env vars; diff harness via `tools/reference_backends/qwen3_tts.py` + `crispasr-diff qwen3-tts`.
+- **Performance pass (in progress, partial wins shipped).** Quiet-bench Q8_0 0.6B with all defaults: ~79 ms/frame (talker ~30 + cp ~49) on a quiet M1 — already under the 80 ms/frame real-time budget at 12.5 fps. Under normal system load ~129 ms/frame; talker and cp scale proportionally with Metal contention. Shipped: **`CIELVOX2_TTS_O15=1` is default-on** (commit `5e21e4a`) — cp graph reuse saves ~14 ms/frame on cp_pred under contention, ~2-3 ms/frame quiet, bit-identical WAV. Gated, byte-identical, kept default-OFF: `CIELVOX2_TTS_FUSED_QKV=1` (**Q8_0 bench done 2026-05-23: neutral — interleaved A/B on this M1 shows 129 vs 129 ms/frame; keep default-OFF for Q8_0**; **F16 case benched 2026-05-24: inconclusive — interleaved A/B (6 runs) on loaded machine (model DL + build concurrent) shows σ≈47 ms/frame exceeding any signal; mean baseline 212 vs mean fused 191 ms/frame, warm-up baseline 133 ms/frame consistent with Q8_0 quiet result; keep default-OFF for F16 same as Q8_0; clean quiet-machine bench still open**); `CIELVOX2_TTS_LK_BUCKET=1` (talker Lk bucketing, **net loss on M1 Metal Q8_0** — see LEARNINGS); `CIELVOX2_TTS_CP_STEP0_CACHE=1` (cp T=2 step-0 graph cache, claimed 1-3 ms/frame quiet savings — **loaded-machine bench neutral within noise; quiet-machine confirmation still pending**, bit-identical). Investigated: Q8_0 KV cache — blocked on Metal `cont(Q8_0)` source (only F32/F16/BF16 sources supported); needs Metal kernel patch or KV layout restructure to land. Still open: F16 FUSED_QKV clean quiet-machine bench (F16 GGUF now at `/Volumes/backups/ai/stelnettts/cielvox2-tts-12hz-0.6b-base.gguf`; rerun on a quiet machine with no background I/O); Q4_K talker fused QKV bench (needs Q4_K talker GGUF); the larger lift of fusing 15 cp steps into one graph (needs on-device top-k sampling, ~3 ms/frame upper bound after O15 since most overhead is already gone).
+- Debug knobs: `CIELVOX2_TTS_{BENCH,DEBUG,DUMP_DIR}` env vars; diff harness via `tools/reference_backends/cielvox2_tts.py` + `stelnettts-diff cielvox2-tts`.
 - **Reuse:** the talker is essentially Qwen3-0.6B/1.7B with a
   multi-codebook output head — `core_attn::kv_self_attn` +
   `core_ffn::swiglu` again. The codec needs new code for RVQ
@@ -15512,7 +15512,7 @@ _Done — see HISTORY.md + git log._
 After studying [Deep-unlearning/nano-cohere-transcribe](https://github.com/Deep-unlearning/nano-cohere-transcribe)
 (pure-PyTorch port of `CohereLabs/cohere-transcribe-03-2026`, 1.5–3.6×
 faster than the native `transformers` path on CUDA), this entry surveys
-which of its tricks port to CrispASR. The headline trick — CUDA-graph
+which of its tricks port to StelnetTTS. The headline trick — CUDA-graph
 capture of the per-token decoder step — turns out to be largely
 redundant on Metal+ggml because PR #73's `sched_reserve` already paid
 that bill. The smaller wins are still useful and are the focus here.
@@ -15525,7 +15525,7 @@ buffers `[B, H, max_kv, Dh]`, writes new K/V at a runtime `pos_idx` via
 per token. Eliminates per-step kernel-launch overhead (3.62× win at
 bs=1 on A100).
 
-**Mapped to ggml.** The structural blocker in CrispASR is
+**Mapped to ggml.** The structural blocker in StelnetTTS is
 `core/attention.h:148` — the F16 fast path bakes `n_past` into the
 view byte-offset (`n_past * kv_k->nb[1]`), so each step rebuilds the
 graph at a different topology. The quant path already uses
@@ -15620,7 +15620,7 @@ Source-available, **not** OSI-open-source.
   Guardrail") = automatic termination
 - NVIDIA claims no rights in outputs
 
-For our purposes (publishing `cstr/nemotron-speech-streaming-en-0.6b-GGUF`):
+For our purposes (publishing `Xenna/nemotron-speech-streaming-en-0.6b-GGUF`):
 legally fine — same shape as Llama / Cosmos redistributions. Just
 need the NVOML attribution `Notice` in the HF README. Less
 permissive than `parakeet-tdt-0.6b` (CC-BY-4.0) so downstream users
@@ -15658,7 +15658,7 @@ Earnings22 mix).
 | RNN-T predictor LSTM + joint head + greedy decode | ✅ ready (as TDT, where pure RNN-T = `n_tdt_durations=0`) | `src/parakeet.cpp` |
 | Log-mel preprocessor (NeMo-style, 80 bins, per-feature normalization) | ✅ ready | `src/core/mel.cpp` |
 | KV-cache infrastructure (`kv_cache_write` + offset-indexed reads) | ✅ ready | `src/core/attention.h` |
-| Streaming CLI pipeline (`--stream`, `--stream-json` after #84) | ✅ ready | `examples/cli/crispasr_run.cpp` |
+| Streaming CLI pipeline (`--stream`, `--stream-json` after #84) | ✅ ready | `examples/cli/stelnettts_run.cpp` |
 | BPE tokenizer (NeMo SentencePiece) | ✅ ready (parakeet pattern) | `src/core/bpe.h` |
 | Streaming-aware backend example (per-layer state, chunk-by-chunk graph rebuild) | ✅ partial | `src/moonshine_streaming.cpp` |
 | GGUF converter for NeMo `.nemo` checkpoints | ✅ partial | `models/convert-parakeet-to-gguf.py` template |
@@ -15682,11 +15682,11 @@ Earnings22 mix).
    converter; cache-aware blocks have the same tensor names plus
    new metadata (`encoder.streaming.att_context_left_frames`,
    `encoder.streaming.dw_conv_state_size`, etc.).
-5. **`examples/cli/crispasr_backend_nemotron.cpp`.** Thin adapter
+5. **`examples/cli/stelnettts_backend_nemotron.cpp`.** Thin adapter
    driving the streaming encoder per chunk and running the existing
    RNN-T greedy decode on each chunk's output. Shape is between
-   `crispasr_backend_parakeet.cpp` and
-   `crispasr_backend_moonshine_streaming.cpp`.
+   `stelnettts_backend_parakeet.cpp` and
+   `stelnettts_backend_moonshine_streaming.cpp`.
 6. **`--live` integration.** Once the backend exists, `--stream` and
    `--stream-json` (#84) Just Work. The new backend would be a much
    better fit for `--live` than the current chunked-batch backends
@@ -15730,7 +15730,7 @@ Stage taps:
 Six stages — a touch lighter than parakeet's diff harness because we
 share the mel front-end. Multi-chunk validation needs the diff
 harness to run twice with carried state (or a third entry point that
-takes a list of chunks); the current `crispasr-diff` is single-shot
+takes a list of chunks); the current `stelnettts-diff` is single-shot
 so this is a small extension to the harness itself.
 
 ### Risks / open questions
@@ -15788,7 +15788,7 @@ full bidirectional attention produces out-of-distribution activations
 where blank wins at every frame. The next step is implementing the
 cache-aware chunked encoder: per-layer K/V cache (56 frames left context)
 + conv state (8 frames) + attention masking to limit context window.
-Kaggle diff harness (v8) uploaded ref GGUF to `cstr/nemotron-3.5-asr-streaming-GGUF`.
+Kaggle diff harness (v8) uploaded ref GGUF to `Xenna/nemotron-3.5-asr-streaming-GGUF`.
 
 **2026-06-14 progress:** Fixed tensor name mismatches, prompt_id mapping,
 mel frame count, pre-encode causal padding. Confirmed via Kaggle NeMo
@@ -15826,7 +15826,7 @@ Additional fixes along the way:
 - Streaming encoder architecture complete: `nemotron_build_block_streaming`
   with cache_last_channel, asymmetric rel-pos bias (stride-trick rel_shift),
   Q-from-new / KV-from-context, causal conv padding
-- `CRISPASR_NEMOTRON_STREAMING=1` + `CRISPASR_NEMOTRON_CONTEXT_PRESET=N`
+- `STELNETTTS_NEMOTRON_STREAMING=1` + `STELNETTTS_NEMOTRON_CONTEXT_PRESET=N`
   env vars for A/B testing (0=R3/chunk4, 3=R13/chunk14)
 - Quality problem: streaming output diverges from full-sequence by frame 10;
   preset 3 gives recognizable text, preset 0 gives blank. See §168 for
@@ -15886,7 +15886,7 @@ The streaming (chunked) encoder path is architecturally complete:
   causal conv, FFN2+LN new-only, cache_last_channel
 - Asymmetric rel-pos bias via stride-trick rel_shift (same formula as
   symmetric, offset = T_new-1 instead of T-1)
-- Gated by `CRISPASR_NEMOTRON_STREAMING=1`
+- Gated by `STELNETTTS_NEMOTRON_STREAMING=1`
 
 **FIXED (2026-06-15, `7f4feff9`).** Root cause was hypothesis #3: the conv
 module zero-padded the left by K-1=8 on every chunk instead of prepending
@@ -15902,22 +15902,22 @@ on the next chunk. All 4 context presets now produce correct text.
 
 | Var | Effect |
 |-----|--------|
-| `CRISPASR_NEMOTRON_STREAMING=1` | Enable streaming chunked encoder |
-| `CRISPASR_NEMOTRON_CONTEXT_PRESET=N` | Attention context preset (0-3) |
-| `CRISPASR_NEMOTRON_NO_WINDOW_MASK=1` | Disable banded attention mask |
-| `CRISPASR_NEMOTRON_DEBUG=1` | Encoder/decoder debug prints |
+| `STELNETTTS_NEMOTRON_STREAMING=1` | Enable streaming chunked encoder |
+| `STELNETTTS_NEMOTRON_CONTEXT_PRESET=N` | Attention context preset (0-3) |
+| `STELNETTTS_NEMOTRON_NO_WINDOW_MASK=1` | Disable banded attention mask |
+| `STELNETTTS_NEMOTRON_DEBUG=1` | Encoder/decoder debug prints |
 
 ---
 
-## 86. Per-backend flash-attention wiring (CrisperWeaver-driven)
+## 86. Per-backend flash-attention wiring (StelnetWeaver-driven)
 
 **Status:** open. Plumbing complete in 0.6.2 (commit `ff5536a6`),
 kernel-level wiring per backend is the remaining work.
 
 ### Context
 
-CrisperWeaver's *Settings → Performance → ASR flash-attention*
-toggle ships via `crispasr_session_open_with_params` (open params
+StelnetWeaver's *Settings → Performance → ASR flash-attention*
+toggle ships via `stelnettts_session_open_with_params` (open params
 struct v2 added in 0.6.2). The toggle threads through to a thread-
 local `g_open_flash_attn_tls` that every backend's init arm can
 read to set `cparams.flash_attn` on its context_params struct.
@@ -15930,7 +15930,7 @@ that whisper.cpp branches on internally (it switches to
 Other backends accept the toggle but their compute graphs still
 build the historical `ggml_soft_max_ext(KQ)` path. For users on
 Metal, that's a measurable perf gap on every long-running LLM
-backend (orpheus, voxtral, qwen3 ASR, qwen3-tts, granite-speech,
+backend (orpheus, voxtral, qwen3 ASR, cielvox2-tts, granite-speech,
 chatterbox-T3, gemma4-e2b).
 
 ### Per-backend status (updated 2026-05-23)
@@ -15954,7 +15954,7 @@ had flash attention via its core module.
 | voxtral | `core_attn::kv_self_attn` | ✅ | DONE |
 | voxtral4b | `core_attn::kv_self_attn` + `encoder_self_attn` | ✅ | DONE |
 | vibevoice | `core_attn::kv_self_attn` | ✅ | DONE |
-| qwen3_tts | `core_attn::kv_self_attn` | ✅ | DONE |
+| cielvox2_tts | `core_attn::kv_self_attn` | ✅ | DONE |
 | orpheus | `core_attn::kv_self_attn` | ✅ | DONE |
 | kokoro | `core_attn::encoder_self_attn` | ✅ | DONE |
 | chatterbox | `core_attn::kv_self_attn` | ✅ | DONE |
@@ -15980,15 +15980,15 @@ each backend is independent.
 
 ggml's `ggml_backend_load_all()` + device registry made `#ifdef` chains
 unnecessary. Created `src/core/gpu_backend_pref.h` with
-`crispasr_init_gpu_backend()` as drop-in for `ggml_backend_init_best()`.
+`stelnettts_init_gpu_backend()` as drop-in for `ggml_backend_init_best()`.
 Process-global preference set at CLI startup via
-`crispasr_set_gpu_backend_pref()`, filters registered devices by
+`stelnettts_set_gpu_backend_pref()`, filters registered devices by
 case-insensitive name prefix ("vulkan" → "Vulkan0"). Falls back to
 `ggml_backend_init_best()` when no preference or no match.
 
 Replaced all 60+ `ggml_backend_init_best()` call sites mechanically.
-Also patched `whisper_backend_init_gpu()` in `crispasr.cpp`.
-C API: `crispasr_set_gpu_backend()` in `crispasr_session.h`.
+Also patched `whisper_backend_init_gpu()` in `stelnettts.cpp`.
+C API: `stelnettts_set_gpu_backend()` in `stelnettts_session.h`.
 
 Kaggle P100 validation: 7/7 ASR backends pass, `--gpu-backend cpu`
 3.6× slower than CUDA with zero CUDA library references.
@@ -15998,7 +15998,7 @@ Kaggle P100 validation: 7/7 ASR backends pass, `--gpu-backend cpu`
 ## 90. Session-API beam_size — per-backend wiring
 
 May 2026:
-  * Shipped `crispasr_session_set_beam_size` (commit 958e6bd7).
+  * Shipped `stelnettts_session_set_beam_size` (commit 958e6bd7).
   * Whisper consumes it natively (switches sampling strategy to
     BEAM_SEARCH with the supplied width).
   * **Five backends wired** via runtime `<backend>_set_beam_size`
@@ -16012,18 +16012,18 @@ May 2026:
       symbol) + dispatch wire.
     - **firered** — added `firered_asr_set_beam_size` (new
       public symbol) + dispatch wire.
-  * CrisperWeaver's batch worker pool drives all six (whisper +
+  * StelnetWeaver's batch worker pool drives all six (whisper +
     five) end-to-end via its sticky-setter protocol; beamSearch
     is pool-eligible across that whole set.
-  * `nm libcrispasr` confirms all five `<backend>_set_beam_size`
-    plus the unified `crispasr_session_set_beam_size` are
+  * `nm libstelnettts` confirms all five `<backend>_set_beam_size`
+    plus the unified `stelnettts_session_set_beam_size` are
     exported.
 
 **DONE (2026-05-23, commit `0c24178e`).** All three remaining backend families wired:
 
 | Backend | Approach |
 |---|---|
-| qwen3-asr | Beam branch in `crispasr_c_api.cpp` session path: replay via `qwen3_asr_embed_tokens` + `qwen3_asr_run_llm_kv`; `kv_reset` after beam search. |
+| cielvox2-asr | Beam branch in `stelnettts_c_api.cpp` session path: replay via `cielvox2_asr_embed_tokens` + `cielvox2_asr_run_llm_kv`; `kv_reset` after beam search. |
 | granite / granite-4.1 / granite-4.1-plus / granite-4.1-nar | Same pattern: `granite_speech_embed_tokens` + `granite_speech_run_llm_kv`; `kv_reset` after beam. |
 | voxtral | `run_voxtral_family` gained a `beam_size` param; decode-piece logic factored into a shared `decode_piece` lambda (U+2581→space detokenisation) used by both beam and greedy paths. |
 
@@ -16041,56 +16041,56 @@ at beam=4 (encoder-dominated pipeline). See §139 for remaining gaps.
 `tests/test-session-beam.cpp` — Catch2 test with two tiers:
   - `[unit][beam]` — setter API (null guard, width clamping). No model.
   - `[beam][.live]` — end-to-end via session API. Gated on
-    `CRISPASR_MODEL_WHISPER` / `CRISPASR_MODEL_GLM_ASR` env vars.
+    `STELNETTTS_MODEL_WHISPER` / `STELNETTTS_MODEL_GLM_ASR` env vars.
     Verifies: beam_size=1 byte-identical to default (no-regression),
     beam 2–4 produce non-empty well-formed output on jfk.wav.
 
 ---
 
-## 93. CMake target rename: `crispasr` → `crispasr-lib`
+## 93. CMake target rename: `stelnettts` → `stelnettts-lib`
 
 **Status:** DONE (commit `11148b23`).
 
-**Why:** the CMake target `crispasr` produces the **library**
-(`libcrispasr.so`), while the CLI **binary** is produced by target
-`crispasr-cli` (which outputs `bin/crispasr`). The target name vs.
+**Why:** the CMake target `stelnettts` produces the **library**
+(`libstelnettts.so`), while the CLI **binary** is produced by target
+`stelnettts-cli` (which outputs `bin/stelnettts`). The target name vs.
 output binary name divergence is a long-standing trap that has now
 caused two CI regressions this session:
 
   - GH regression workflow run 25735206584 — built only the library,
-    found `bin/crispasr` absent (fixed in commit `08d1872f`).
-  - Kaggle `crispasr-regression-suite` run on 2026-05-12 14:34 —
+    found `bin/stelnettts` absent (fixed in commit `08d1872f`).
+  - Kaggle `stelnettts-regression-suite` run on 2026-05-12 14:34 —
     same root cause (fixed in this commit, applied to
-    `tools/kaggle/crispasr-regression.py`).
+    `tools/kaggle/stelnettts-regression.py`).
 
 Both fixes are one-line and obvious **after** you know — but the
 trap reliably re-bites anyone writing a new CI workflow because
-the natural mental model is "target `crispasr` builds the
-`crispasr` binary." Renaming the library target makes the
+the natural mental model is "target `stelnettts` builds the
+`stelnettts` binary." Renaming the library target makes the
 distinction explicit.
 
 **Plan:**
 
-1. `src/CMakeLists.txt`: rename `add_library(crispasr ...)` →
-   `add_library(crispasr-lib ...)`. Update every
-   `target_link_libraries(... crispasr ...)` and any
-   `target_*(crispasr ...)` call elsewhere in the tree.
-2. Preserve the **output binary name** `libcrispasr.{so,dylib,a}`
-   via `set_target_properties(crispasr-lib PROPERTIES OUTPUT_NAME
-   crispasr)` — no .so/.dylib filename change, no ABI break.
+1. `src/CMakeLists.txt`: rename `add_library(stelnettts ...)` →
+   `add_library(stelnettts-lib ...)`. Update every
+   `target_link_libraries(... stelnettts ...)` and any
+   `target_*(stelnettts ...)` call elsewhere in the tree.
+2. Preserve the **output binary name** `libstelnettts.{so,dylib,a}`
+   via `set_target_properties(stelnettts-lib PROPERTIES OUTPUT_NAME
+   stelnettts)` — no .so/.dylib filename change, no ABI break.
 3. Update consumers that use the CMake target name:
-   - `bindings/go/whisper.go` cgo LDFLAGS (currently `-lcrispasr`,
-     unchanged since OUTPUT_NAME stays `crispasr`).
+   - `bindings/go/whisper.go` cgo LDFLAGS (currently `-lstelnettts`,
+     unchanged since OUTPUT_NAME stays `stelnettts`).
    - `bindings/ruby/ext/dependencies.rb` graphviz walk (queries by
-     target name `crispasr` — needs a 1-line update).
+     target name `stelnettts` — needs a 1-line update).
    - `.github/workflows/{ci,release,regression}.yml` `--target`
-     args (mostly already use `crispasr-cli` for the CLI binary,
-     but any `--target crispasr-lib` referring to the library needs
+     args (mostly already use `stelnettts-cli` for the CLI binary,
+     but any `--target stelnettts-lib` referring to the library needs
      the rename).
-   - `tools/kaggle/crispasr-regression.py` similarly.
+   - `tools/kaggle/stelnettts-regression.py` similarly.
 4. Add a CMake alias for one release cycle:
-   `add_library(crispasr ALIAS crispasr-lib)` so external repos
-   that depend on `target_link_libraries(... crispasr)` keep
+   `add_library(stelnettts ALIAS stelnettts-lib)` so external repos
+   that depend on `target_link_libraries(... stelnettts)` keep
    working while they migrate.
 
 **Effort:** ~2 hours including consumer audit + CI re-runs.
@@ -16132,10 +16132,10 @@ level. The shipped defaults include:
   `jonatasgrosman/wav2vec2-large-xlsr-53-arabic`,
   `comodoro/wav2vec2-xls-r-300m-cs-250`
 
-CrispASR now has three CTC aligner families wired into `-am`:
+StelnetTTS now has three CTC aligner families wired into `-am`:
 
 - `canary-ctc-aligner.gguf`
-- `qwen3-forced-aligner.gguf`
+- `cielvox2-forced-aligner.gguf`
 - `wav2vec2-aligner` / `wav2vec2-aligner-en` / `wav2vec2-aligner-de`
   aliases, plus any raw wav2vec2 / HuBERT / data2vec CTC GGUF path
 
@@ -16156,7 +16156,7 @@ into two cases:
 2. DONE: Add initial aliases for `en` and `de` using the already-hosted
    wav2vec2 GGUFs.
 3. DONE: All 10 WhisperX common languages converted, quantized, and
-   uploaded to `cstr/*-GGUF` HF repos: `fr`, `es`, `it`, `ja`, `zh`,
+   uploaded to `Xenna/*-GGUF` HF repos: `fr`, `es`, `it`, `ja`, `zh`,
    `nl`, `uk`, `pt`, `ar`, `cs`. Registry entries and auto-download
    wired. Verified 2026-05-23.
 4. DONE: All models are native HF wav2vec2 checkpoints converted via
@@ -16166,11 +16166,11 @@ into two cases:
 
 ### Trigger
 
-- A user wants WhisperX-style word alignment parity in CrispASR.
+- A user wants WhisperX-style word alignment parity in StelnetTTS.
 - A backend needs better language coverage than the current canary/qwen3
   aligners provide.
 - We want to close the gap between `whisperX.load_align_model(...)` and
-  CrispASR's current `-am` model surface.
+  StelnetTTS's current `-am` model surface.
 
 ---
 
@@ -16193,7 +16193,7 @@ GPU default since a429bb45; Option B (prefill-graph reuse, embed tables
 CPU-resident via `load_weights_split`) is the production path — 2.4× RT
 on RTX 3090 + P100. k-quant CUDA GET_ROWS fix (3bf9a599) as safety net.
 Option C (step-graph) measured 3× slower than B — not worth pursuing.
-`CRISPASR_MIMO_FORCE_CPU=1` for debugging. Detail → HISTORY.
+`STELNETTTS_MIMO_FORCE_CPU=1` for debugging. Detail → HISTORY.
 
 ## 129. F5-TTS — DiT flow-matching TTS (MIT)
 
@@ -16205,7 +16205,7 @@ reference audio.
 
 F5-TTS's architecture (Diffusion Transformer + flow matching) is
 distinct from everything currently in the tree. It produces noticeably
-higher quality than the current AR-based engines (orpheus, qwen3-tts)
+higher quality than the current AR-based engines (orpheus, cielvox2-tts)
 for voice cloning tasks, and the MIT license is cleaner than the
 llama3.2-derived Orpheus weights. ~330M params, ~660 MB F16.
 
@@ -16261,7 +16261,7 @@ llama3.2-derived Orpheus weights. ~330M params, ~660 MB F16.
    - Vocos: mel → magnitude + phase → iSTFT → 24 kHz PCM
 5. **Registry + C API + Session wiring.**
 6. **Voice cloning API**: `session.set_voice("ref.wav", ref_text="...")` —
-   same API as qwen3-tts base. Mel from ref audio is the conditioning.
+   same API as cielvox2-tts base. Mel from ref audio is the conditioning.
 
 ### Status — **DONE** (2026-05-30)
 
@@ -16286,8 +16286,8 @@ gives 5x speedup (DiT forward ~2 min → ~24 sec per ODE step).
 Quantization: F16 (953 MB) is the only viable precision. Q8_0/Q4_K
 tested with arch-specific conditioning-pathway skip rules — still
 produce unintelligible output because QKV/FFN error compounds through
-1408 iterative forward passes. `crispasr-quantize` skips F5-TTS.
-HF repo `cstr/f5-tts-GGUF` has the F16 GGUF only.
+1408 iterative forward passes. `stelnettts-quantize` skips F5-TTS.
+HF repo `Xenna/f5-tts-GGUF` has the F16 GGUF only.
 
 ---
 
@@ -16309,7 +16309,7 @@ from a brief reference clip.
 
 ### Why
 
-OuteTTS is architecturally closest to what CrispASR already runs well:
+OuteTTS is architecturally closest to what StelnetTTS already runs well:
 a GPT-style LLM generating discrete audio tokens decoded by a learned
 codec. The pattern is nearly identical to orpheus (Llama → SNAC) and
 indextts (GPT-2 → BigVGAN). This makes it the **lowest-effort new TTS
@@ -16326,13 +16326,13 @@ new runtime code.
   pattern
 - **Voice cloning**: reference audio → WavTokenizer encode → prepend
   tokens to LLM context. Same in-context-learning pattern as
-  qwen3-tts-base
+  cielvox2-tts-base
 
 ### Reuse from existing code
 
 | Component | Reuse source | New code needed |
 |---|---|---|
-| Llama-style AR forward | `orpheus.cpp` / `qwen3_tts.cpp` | Minimal — same core_attn + core_ffn |
+| Llama-style AR forward | `orpheus.cpp` / `cielvox2_tts.cpp` | Minimal — same core_attn + core_ffn |
 | KV cache + greedy/beam | `core/greedy_decode.h` / `core/beam_decode.h` | None |
 | Conv-stack codec decoder | `orpheus_snac.cpp` / `indextts_voc.cpp` | Adapt for WavTokenizer strides — ~200 LOC |
 | Reference audio encoding | `core/mel.h` → WavTokenizer encoder | ~300 LOC for the encoder conv stack |
@@ -16410,7 +16410,7 @@ or native runtime support. This section tracks the remaining gaps.
 | whisper | ✔ | native upstream |
 | parakeet | ✔ | TDT/RNNT label-looping beam (`b3cdcebd`) |
 | granite / granite-4.1 / granite-4.1-plus | ✔ | `core_beam_decode` replay-from-prefix |
-| qwen3-asr | ✔ | `core_beam_decode` replay-from-prefix |
+| cielvox2-asr | ✔ | `core_beam_decode` replay-from-prefix |
 | voxtral | ✔ | `core_beam_decode` replay-from-prefix |
 | glm-asr | ✔ | `core_beam_decode` branched KV snapshots |
 | kyutai-stt | ✔ | `core_beam_decode` branched KV snapshots |
@@ -16543,7 +16543,7 @@ passed via `g_open_use_gpu_tls` from the C API.
    an illegal access on CUDA. fastpitch shipped with this mistake on its
    decoder+vocoder graphs (the encoder/pitch graphs were correct).
 7. Free: `sched_free` → `buffer_free` → `backend_free` (GPU before CPU)
-8. Wire `p.use_gpu = g_open_use_gpu_tls` in crispasr_c_api.cpp open dispatch
+8. Wire `p.use_gpu = g_open_use_gpu_tls` in stelnettts_c_api.cpp open dispatch
 
 ---
 
@@ -16557,10 +16557,10 @@ disclosure and consent. This plan covers all five layers.
 
 ### Phase 1: Watermark + file metadata ✅ MERGED (c4da639c)
 
-- Spread-spectrum frequency-domain watermark (`crispasr_watermark.h`)
-- WAV LIST/INFO chunk (ISFT="CrispASR (AI-generated audio)", ICMT)
-- MP3 ID3v2 TXXX frames (AI_GENERATED=true, GENERATOR=CrispASR)
-- C API: `crispasr_watermark_embed()`, `crispasr_watermark_detect()`
+- Spread-spectrum frequency-domain watermark (`stelnettts_watermark.h`)
+- WAV LIST/INFO chunk (ISFT="StelnetTTS (AI-generated audio)", ICMT)
+- MP3 ID3v2 TXXX frames (AI_GENERATED=true, GENERATOR=StelnetTTS)
+- C API: `stelnettts_watermark_embed()`, `stelnettts_watermark_detect()`
 - Wired into server (`/v1/audio/speech` streaming + non-streaming) and CLI
 - Tests: `test_watermark.cpp` (7 cases), `test_server_wav_writer.cpp` (19 cases)
 
@@ -16571,11 +16571,11 @@ disclosure and consent. This plan covers all five layers.
 - Server: `consent_attestation` field required in `/v1/audio/speech` JSON
   when voice ends in `.wav`; returns 400 with guidance if missing
 - Both paths log `[CONSENT]` with ISO 8601 timestamp, voice path, attestation text
-- Files: `whisper_params.h` (new fields), `cli.cpp`, `crispasr_run.cpp`, `crispasr_server.cpp`
+- Files: `whisper_params.h` (new fields), `cli.cpp`, `stelnettts_run.cpp`, `stelnettts_server.cpp`
 
 ### Phase 3: Spoken disclaimer for voice-cloned output ✅ MERGED (b47c6214)
 
-- `crispasr_tts_disclaimer.h`: synthesizes "This audio was generated by
+- `stelnettts_tts_disclaimer.h`: synthesizes "This audio was generated by
   artificial intelligence" using the loaded TTS backend with neutral/default
   voice (not the clone). Cached after first call (thread-safe, `std::call_once`).
 - Prepended with 300ms silence gap to every voice-cloned output
@@ -16584,11 +16584,11 @@ disclosure and consent. This plan covers all five layers.
 ### Phase 4: C2PA signed provenance metadata ✅ MERGED (b47c6214)
 
 - `cmake/Findc2pa.cmake`: find module for c2pa-c library
-- `crispasr_c2pa.h`: wrapper header with C2PA manifest JSON
+- `stelnettts_c2pa.h`: wrapper header with C2PA manifest JSON
   (digitalSourceType=trainedAlgorithmicMedia), signing via c2pa-c
 - `scripts/generate-c2pa-cert.sh`: self-signed P-256 cert (10-year validity)
 - CLI flags: `--c2pa-cert`, `--c2pa-key`
-- Compile-time gated on `CRISPASR_HAVE_C2PA`; no-op + startup warning when absent
+- Compile-time gated on `STELNETTTS_HAVE_C2PA`; no-op + startup warning when absent
 
 ### Phase 5: AudioSeal ggml port ✅ COMPLETE — 100% cosine parity
 
@@ -16650,7 +16650,7 @@ Sample rate: 16 kHz
 
 ## 216. Kokoro G2P technical token regression
 
-**Issue:** [#216](https://github.com/CrispStrobe/CrispASR/issues/216) —
+**Issue:** [#216](https://github.com/Cyna/StelnetTTS/issues/216) —
 `C++` phonemized as `k` instead of `see plus plus` with built-in G2P.
 
 **Root cause:** The `tokenize()` function in `core/g2p_en.h` splits on
@@ -16665,7 +16665,7 @@ not in CMUdict/espeak dict → LTS rules map `c` to `k` and skip unknown
    (case-insensitive, word-boundary-aware): `C++`→`C plus plus`,
    `C#`→`C sharp`, `.NET`→`dot net`, `Node.js`→`Node J S`,
    `CI/CD`→`C I C D`, `TypeScript`→`Type Script`, etc.
-2. Added `CRISPASR_KOKORO_G2P` env var in `kokoro.cpp` for strategy
+2. Added `STELNETTTS_KOKORO_G2P` env var in `kokoro.cpp` for strategy
    selection: `builtin-first` (default), `espeak-first`, `espeak-only`,
    `builtin-only`. Replaces hardcoded builtin-then-espeak cascade with
    configurable lambdas.
@@ -16704,7 +16704,7 @@ compute. The solution is `ggml_backend_sched`:
 4. Legacy paths (TSLM/RALM prefill, FSQ, stop_score) stay on CPU with
    CPU-accessible weights.
 
-This mirrors the qwen3_tts architecture (`ggml_backend_sched` +
+This mirrors the cielvox2_tts architecture (`ggml_backend_sched` +
 `ggml_backend_sched_graph_compute`).
 
 ### Prerequisites / risks
@@ -16899,10 +16899,10 @@ C library. Each needs:
 ### C library callback signature (uniform across all)
 
 ```c
-typedef void (*crispasr_token_cb)(int token_id, const char* text, void* userdata);
+typedef void (*stelnettts_token_cb)(int token_id, const char* text, void* userdata);
 int glm_asr_transcribe_cb(struct glm_asr_context* ctx,
                            const float* pcm, int n_samples,
-                           crispasr_token_cb cb, void* userdata);
+                           stelnettts_token_cb cb, void* userdata);
 // ... same pattern for others
 ```
 
@@ -16911,7 +16911,7 @@ int glm_asr_transcribe_cb(struct glm_asr_context* ctx,
 ```cpp
 void transcribe_streaming(const float* samples, int n_samples, int64_t,
                            const whisper_params& params,
-                           crispasr_stream_callback on_text) override {
+                           stelnettts_stream_callback on_text) override {
     if (params.beam_size > 1) {
         CrispasrBackend::transcribe_streaming(...);  // batch fallback
         return;
@@ -16919,7 +16919,7 @@ void transcribe_streaming(const float* samples, int n_samples, int64_t,
     std::string acc;
     glm_asr_transcribe_cb(ctx_, samples, n_samples,
         [](int /*id*/, const char* text, void* ud) {
-            auto& [a, fn] = *static_cast<std::pair<std::string, crispasr_stream_callback>*>(ud);
+            auto& [a, fn] = *static_cast<std::pair<std::string, stelnettts_stream_callback>*>(ud);
             a += text;
             fn(a, false);
         }, &std::make_pair(acc, on_text));  // actual impl uses local lambda
@@ -16950,7 +16950,7 @@ its definition — added a static forward decl.
 ## 172. Wyoming protocol server — Home Assistant Assist
 
 **DONE 2026-06-19** (`55bc0039`). `--wyoming-port N` starts a Wyoming
-peer-to-peer JSONL/TCP server alongside the HTTP API. One `crispasr-server`
+peer-to-peer JSONL/TCP server alongside the HTTP API. One `stelnettts-server`
 instance replaces both `wyoming-faster-whisper` and `wyoming-piper` for HA.
 
 See HISTORY 2026-06-19 and `docs/server.md#wyoming-protocol-home-assistant-assist`.
@@ -16977,42 +16977,42 @@ windows incl. a stray "p". Two root causes, both reproduced + fixed in
    decoder then emits `<im_end>` as the FIRST token → empty. Repro: 118 s → empty;
    same clip in 30 s windows → full transcript. **Fix:** cap single-pass at 30 s
    (was 300) and decode longer audio in 30 s windows with the existing cross-chunk
-   language conditioning. `CRISPASR_ARKASR_MAX_SINGLE_PASS_S` still overrides.
+   language conditioning. `STELNETTTS_ARKASR_MAX_SINGLE_PASS_S` still overrides.
 2. **Windows degenerate to an immediate `<im_end>` (empty/"p").** Some windows
    (esp. short) emit `<im_end>` first → empty for clearly-audible speech; the
    leading-"." cleanup turned a stray `. p` into "p". **Fix:** suppress `<im_end>`
    on the FIRST decode step (Whisper's suppress-EOT-at-start); later steps allow
    it, and a truly-silent window's forced first token is the model's "." which
-   cleanup strips back to empty (opt out `CRISPASR_ARKASR_NO_EOS_SUPPRESS=1`).
+   cleanup strips back to empty (opt out `STELNETTTS_ARKASR_NO_EOS_SUPPRESS=1`).
 **Verified on M1 (q8_0):** reporter's exact default command on the 118 s clip now
 yields the full correct transcript ("mr quilter is the apostle of the middle
 classes…"), 1.7× RT; jfk 11 s unchanged (no spurious words from suppression).
 Residual: explicit `--chunk-seconds 10` still isn't ideal (10 s ≪ the 30 s
 training window — one slice recovered only "paragraph"), but the default no longer
-needs it. `CRISPASR_ARKASR_DEBUG_GEN=1` prints per-window raw gen for future
+needs it. `STELNETTTS_ARKASR_DEBUG_GEN=1` prints per-window raw gen for future
 triage.
 
 **STATUS 2026-06-29**: ⚠️ **experimental / WIP** — wired through CLI, session C
 ABI, model registry, and docs; shipped to main + GGUF published
-(cstr/ark-asr-3b-GGUF). Core ASR VALIDATED on **both GPU and CPU**: jfk.wav →
-verbatim English; De-Abwasch 79 s → verbatim German. CLI: `crispasr -m
+(Xenna/ark-asr-3b-GGUF). Core ASR VALIDATED on **both GPU and CPU**: jfk.wav →
+verbatim English; De-Abwasch 79 s → verbatim German. CLI: `stelnettts -m
 ark-asr-3b-q8_0.gguf --backend ark-asr -f audio.wav`. **GPU is now the default**
-(Metal-validated; force CPU with `CRISPASR_ARKASR_CPU=1`).
+(Metal-validated; force CPU with `STELNETTTS_ARKASR_CPU=1`).
 
 Done: full wiring per docs/contributing.md (C API, adapter, factory, CMake lib+cli,
-registry, session ABI + symbols in libcrispasr.dylib + available_backends, live
+registry, session ABI + symbols in libstelnettts.dylib + available_backends, live
 test, docs). Bindings audited: ASR dispatch is automatic (verified ark-asr in
 python Session.available_backends()); added ark-asr to the python set_ask
 docstring enumeration; dart/go/rust/java/ruby/wasm need no change (illustrative
 lists + generic set_ask docstrings; no new setter). `-l` injection (§9b). GGUFs
-published cstr/ark-asr-3b-GGUF
+published Xenna/ark-asr-3b-GGUF
 (f16 7 GB / q8_0 4 GB / q4_k 3.3 GB, all verbatim) + HF model card.
 
 **Diff harness RUN** (vs PyTorch bf16 reference, jfk): log-mel cos 0.999993,
 first_logits (q8_0) cos 0.999646, audio_embeds mean cos 0.999445 (one low-mag
 frame at 0.953 = q8 noise, harmless — logits pass). Pipeline matches the blueprint.
 
-Both perf follow-ups settled by measurement (gated `CRISPASR_ARKASR_TIMING=1`):
+Both perf follow-ups settled by measurement (gated `STELNETTTS_ARKASR_TIMING=1`):
 - **(a) step-graph cache = DUD** — per-step build+alloc is 0.3–0.5% of each step
   (~0.45 ms vs ~120 ms compute); decode is fully compute-bound on the 3B forward.
 - **(b) GPU "no tokens" no longer reproduces** — GPU is verbatim on M1 Metal,
@@ -17022,7 +17022,7 @@ Both perf follow-ups settled by measurement (gated `CRISPASR_ARKASR_TIMING=1`):
 (commit: CAP_UNBOUNDED_INPUT + single-pass ark_asr_transcribe). The drift was a
 chunking artifact (independent 30 s windows re-detected language); the RoPE encoder
 has no positional cap, so the reference encodes the whole clip in one pass. De-Abwasch
-79 s now verbatim German throughout. Long audio > `CRISPASR_ARKASR_MAX_SINGLE_PASS_S`
+79 s now verbatim German throughout. Long audio > `STELNETTTS_ARKASR_MAX_SINGLE_PASS_S`
 (default 300 s) falls back to internal chunking (drift can return there → use --vad).
 Also strip the model's leading `.` transcript-opening token in output cleanup.
 
@@ -17030,8 +17030,8 @@ Cross-chunk language conditioning DONE: the >cap chunked fallback now seeds each
 window's assistant turn with the previous chunk's transcript tail (32 tokens) so
 the model continues in the same language instead of re-detecting/translating per
 window. Validated: De-Abwasch with forced 30 s chunking
-(CRISPASR_ARKASR_MAX_SINGLE_PASS_S=30) → German throughout (chunk 2 previously
-translated to English). Opt out with CRISPASR_ARKASR_NO_CHUNK_CONTEXT=1.
+(STELNETTTS_ARKASR_MAX_SINGLE_PASS_S=30) → German throughout (chunk 2 previously
+translated to English). Opt out with STELNETTTS_ARKASR_NO_CHUNK_CONTEXT=1.
 
 Open (minor): CUDA validation (only Metal validated). Nice-to-have, not a blocker.
 
@@ -17066,7 +17066,7 @@ On-policy distilled (THUNLP/OPD). BF16 safetensors, 8.14 GB, trust_remote_code.
 **Decoder**: stock Qwen2.5-3B — hidden 2048, 36 layers, GQA 16 heads / 2 KV
 (head_dim 128), intermediate 11008 SwiGLU(silu), RMSNorm eps 1e-6, rope_theta
 1e6, vocab 151936, **tied embeddings** (lm_head = embed_tokens). Reuse the
-existing Qwen2 graph (cosyvoice3-LM / qwen3_asr / mimo_asr).
+existing Qwen2 graph (cosyvoice3-LM / cielvox2_asr / mimo_asr).
 
 **Audio injection**: `audio_token_id` 151663 placeholders in the embedded
 prompt are overwritten by the first N adapter frames, where
@@ -17091,20 +17091,20 @@ dither 0.0. >30 s audio → chunk into 30 s windows.
        `arkasr.whisper.*`, `general.architecture="arkasr"`. (agent-scaffolded)
 2. [ ] `src/ark_asr.{h,cpp}` — C runtime: GGUF load, mel, whisper+RoPE encoder
        graph, adapter, Qwen2 decoder w/ KV-cache greedy decode, BPE detok. (ME)
-3. [ ] `examples/cli/crispasr_backend_ark_asr.cpp` — CLI adapter.
-4. [ ] Register: `crispasr_backend.cpp` factory + `detect_backend_from_gguf`
-       (filename "ark"/"arkasr" + arch "arkasr"); `crispasr_model_registry.cpp`.
+3. [ ] `examples/cli/stelnettts_backend_ark_asr.cpp` — CLI adapter.
+4. [ ] Register: `stelnettts_backend.cpp` factory + `detect_backend_from_gguf`
+       (filename "ark"/"arkasr" + arch "arkasr"); `stelnettts_model_registry.cpp`.
 5. [ ] `src/CMakeLists.txt` + `examples/cli/CMakeLists.txt` library + link.
-6. [ ] `src/crispasr_c_api.cpp` — 9 edit points (session ABI mirrors CLI,
+6. [ ] `src/stelnettts_c_api.cpp` — 9 edit points (session ABI mirrors CLI,
        see [[project-session-abi-reimplements-cli]]).
-7. [ ] `examples/crispasr-quantize/main.cpp` — keep norms/bias F32; F16+Q8_0+Q4_K.
+7. [ ] `examples/stelnettts-quantize/main.cpp` — keep norms/bias F32; F16+Q8_0+Q4_K.
 8. [ ] Diff harness: `tools/reference_backends/arkasr.py` + register in
-       `tools/dump_reference.py` + `crispasr_diff_main.cpp` branch. (agent-scaffold)
+       `tools/dump_reference.py` + `stelnettts_diff_main.cpp` branch. (agent-scaffold)
 9. [ ] `tests/` live test + `tests/env-live-tests.sh`.
 10.[ ] README / docs / bindings docstrings.
 
 ### Validation methodology
-crispasr-diff stage cosines vs PyTorch reference at: mel, encoder (per-layer +
+stelnettts-diff stage cosines vs PyTorch reference at: mel, encoder (per-layer +
 final), adapter, decoder embed-with-audio-injected, per-layer hidden, logits.
 Then ASR-roundtrip an English + a German FLEURS clip (verbatim text gate).
 
@@ -17131,7 +17131,7 @@ are CC-BY-NC-4.0 → excluded; verified 2026-07-04 via the HF API).
   now also accepts `EncDecHybridRNNTCTCBPEModel` checkpoints
   (`ctc_decoder.*` head, RNNT `decoder.*`/`joint.*` skipped, `xscaling`
   honoured from YAML). First fleet member converted + validated + uploaded:
-  `cstr/stt-de-fastconformer-hybrid-ctc-large-GGUF` (de, punct+caps,
+  `Xenna/stt-de-fastconformer-hybrid-ctc-large-GGUF` (de, punct+caps,
   ASR transcript exact on FLEURS-de sample; word alignment cross-checked
   against canary-ctc-aligner, agreement ≤0.2 s once speech starts).
   Registry: `fastconformer-aligner-de` / `fastconformer-ctc-de`.
@@ -17139,7 +17139,7 @@ are CC-BY-NC-4.0 → excluded; verified 2026-07-04 via the HF API).
 **Fleet SHIPPED (2026-07-04):** all 16 remaining members converted,
 FLEURS-validated (per-language test clip vs reference transcript, plus an
 --align-only smoke test) and uploaded: en-pc, es, fr, it, nl, pl, ru, ua,
-hr, be, ar, fa, ka, hy, uz, kk-ru → `cstr/stt-<lang>-fastconformer-hybrid-
+hr, be, ar, fa, ka, hy, uz, kk-ru → `Xenna/stt-<lang>-fastconformer-hybrid-
 ctc-large-GGUF`, registry aliases `fastconformer-{ctc,aligner}-<lang>`.
 Notes from the batch:
 - **pt is excluded**: `stt_pt_fastconformer_hybrid_large_pc` is
@@ -17171,7 +17171,7 @@ Notes from the batch:
 
 ## §223 Issue #220 — chatterbox T3 CUDA illegal memory access (FIXED, sm_80+ verify pending)
 
-Reporter (RTX 3090 Ti, `crispasr:main-cuda` v0.8.8): every chatterbox request
+Reporter (RTX 3090 Ti, `stelnettts:main-cuda` v0.8.8): every chatterbox request
 aborts `CUDA error: an illegal memory access was encountered` at AR step ~2,
 right after `CUDA Graph id N reused`. CPU works.
 
@@ -17179,14 +17179,14 @@ right after `CUDA Graph id N reused`. CPU works.
   bucket then reuses it (skips per-step reset+alloc). ggml-cuda replays a
   captured CUDA-graph exec on a split-graph `uid` match with capture-time
   pointers baked in; the reuse never re-mints the uid → step 2 replays a stale
-  capture → illegal access. CUDA twin of Vulkan #170; same class as qwen3-tts
+  capture → illegal access. CUDA twin of Vulkan #170; same class as cielvox2-tts
   #52/#56. Capture is arch-gated to sm_80+, so only Ampere+ cards are affected.
 - **Fix (SHIPPED, commit c78b187b, branch fix/chatterbox-t3-cuda-illegal-access):**
   reset+alloc the bucket step sched every step on non-Metal GPU (granite/outetts
   pattern, docs/contributing.md §210). Cached cgraph keeps `nodes[0]` stable so
   capture still engages (new uid → `cudaGraphExecUpdate`); T3 stays on GPU.
   Metal keeps alloc-once reuse. Old path A/B via
-  `CRISPASR_CHATTERBOX_T3_BUCKET_REUSE=1`.
+  `STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE=1`.
 - **Verification (DONE, on real CUDA):** Kaggle A/B kernel
   `tools/kaggle/issue220-chatterbox-cuda/` (old_reuse vs fix_default vs cpu_ref,
   ASR-roundtripped) on a **P100 (sm_60)**:
@@ -17207,7 +17207,7 @@ GPU-loaded but the forward dereferenced `tensor->data`). Follow-up shipped in
 `a5b780f8`: the silero LID forward is now a ggml graph — CPU frontend
 (log-magnitude precision) + sched encoder (GPU on Metal/CUDA), 30 s slice cap
 (O(T²) attention; uncapped 10-min file = ~19 GB score alloc). Legacy scalar
-path gated `CRISPASR_SILERO_LID_LEGACY=1`. M1: 103 ms Metal / 183 ms CPU-ggml
+path gated `STELNETTTS_SILERO_LID_LEGACY=1`. M1: 103 ms Metal / 183 ms CPU-ggml
 vs 241 ms Accelerate / 1014 ms scalar. A/B logit-matched on en/zh/multispeaker.
 
 **Vulkan (OPEN):** ggml-vulkan miscomputes one FFN MUL_MAT (f32 128×128×1101)
@@ -17215,32 +17215,32 @@ in this graph on MoltenVK — allocation-layout dependent, identical-shape
 matmuls pass and fail in the same graph (TADA #192 class). Found with
 `-DGGML_VULKAN_CHECK_RESULTS=ON` (vendored CMakeLists now links ggml-cpu for
 that option). LID graph auto-routes to CPU on Vulkan;
-`CRISPASR_SILERO_LID_VULKAN=1` opts back in. TODO: verify on conformant RADV
+`STELNETTTS_SILERO_LID_VULKAN=1` opts back in. TODO: verify on conformant RADV
 (reporter has RX 9070 XT) — may be MoltenVK-only; if it reproduces, minimal
 upstream repro.
 
 **Diarization CPU perf (DONE, 3340054f):** both models ported to ggml graphs,
 legacy paths gated as A/B ground truth. pyannote_seg 4.38 s → 0.55 s (31.5 s
-audio, M1), frame-identical (CRISPASR_PYANNOTE_LEGACY=1). TitaNet embeddings
+audio, M1), frame-identical (STELNETTTS_PYANNOTE_LEGACY=1). TitaNet embeddings
 cos=1.000000; inverse-default: without Accelerate the scalar path measured
 **106–131 s per embedding** (the actual #222 "extremely slow" cause on Linux)
 → 3.4 s ggml (~35×); with Accelerate the legacy AMX path (0.7 s) stays default
-(CRISPASR_TITANET_GGML=1 / CRISPASR_TITANET_LEGACY=1). OPEN: batch segments;
+(STELNETTTS_TITANET_GGML=1 / STELNETTTS_TITANET_LEGACY=1). OPEN: batch segments;
 F16 weights to close the ggml-vs-AMX gap on Apple.
 
 **FireRed ASR perf (PARTLY DONE, d6e2ad85):** measured split on 11 s jfk (M1):
 fbank 0.08 s + subsample 0.16 s + **encoder 11.3 s** + decoder ~0.5 s/step
 (beam=3, ~16 s) = 0.3× RT. Root cause of the CPU-only encoder: it relied on
 the sched auto-copying CPU weights to GPU, which ggml removed → silent
-regression. Fix: CRISPASR_FIRERED_ENC_GPU=1 split-loads enc.* to GPU —
+regression. Fix: STELNETTTS_FIRERED_ENC_GPU=1 split-loads enc.* to GPU —
 transcript-identical, encoder 2.3× on Metal, 2.1× on Vulkan/MoltenVK. CUDA A/B
 PASSED on Kaggle P100 (transcript-identical, enc 12.93→5.88 s, 2.2×) —
-default FLIPPED (ffa4afa0); CRISPASR_FIRERED_ENC_CPU=1 opts out. Decoder beam path DONE (bc8a599a):
+default FLIPPED (ffa4afa0); STELNETTTS_FIRERED_ENC_CPU=1 opts out. Decoder beam path DONE (bc8a599a):
 the beam loop was dequantizing all decoder weights to F32 and running
 scalar dots (8× the bytes of greedy's Q4_K kernels); now batched through
 ggml_matmat on the quantized weights — beam=3 16.8 s → 3.1 s (~70 ms/step,
 ≈1.5× greedy as expected), transcript-identical en+zh; F32 fallback gated
-CRISPASR_FIRERED_BEAM_F32=1. Full 11 s-jfk pipeline: 36 s → ~8.5 s (M1).
+STELNETTTS_FIRERED_BEAM_F32=1. Full 11 s-jfk pipeline: 36 s → ~8.5 s (M1).
 
 **§224e disease sweep (2026-07-06)** — audited all runtimes for the three
 disease classes cured this week (scalar forward / F32-dequant matmul / silent
@@ -17254,14 +17254,14 @@ CPU-pinning after ggml removed sched auto-copy of CPU weights):
   backend (all reads are tensor_get / host-cached RVQ codebooks → full GPU
   residency safe). Smoke 22.4 s/71.7 s-user → 15.9 s/1.5 s-user; full
   mimo-asr pipeline 10.3 → 7.6 s, transcripts char-identical en+zh.
-  CRISPASR_MIMO_TOK_CPU=1 restores CPU weights.
+  STELNETTTS_MIMO_TOK_CPU=1 restores CPU weights.
 - **pocket_tts — CURED differently (63ae5a43):** the actual hotspot was NOT
   the backbone graphs but the eager mimi ENCODER re-run per invocation for
   voice conditioning: SEANet scalar convs 27.5 s + per-timestep transformer
   12.1 s. conv1d_ggml drop-in (identical layout contract) + batched
   transformer linears via mul_mat on the F16 weights (attention math
   untouched) → synthesis 43 → 5.6 s. Conditioning latents cos=0.99999994 vs
-  scalar; TTS→ASR roundtrip verbatim. CRISPASR_POCKET_MIMI_SCALAR=1 =
+  scalar; TTS→ASR roundtrip verbatim. STELNETTTS_POCKET_MIMI_SCALAR=1 =
   ground truth; POCKET_MIMI_DUMP=<path> dumps latents. The GPU-residency
   split for the backbone remains possible but is no longer the bottleneck.
   OPEN idea: cache conditioning latents keyed by voice-file hash (17 KB) to
@@ -17281,21 +17281,21 @@ CPU-pinning after ggml removed sched auto-copy of CPU weights):
 
 Integrated our clean-room MP3 + AAC-LC encoder (sibling `glint` repo) as an
 in-tree copy at `glint/` (encoder core only, ~25 files; same
-develop-there/sync-here relationship as `ggml/`). Static lib, linked into `crispasr-cli`; SIMD
+develop-there/sync-here relationship as `ggml/`). Static lib, linked into `stelnettts-cli`; SIMD
 kernels compile-time guarded + runtime dispatched, so no special flags.
 
-- `examples/cli/crispasr_mp3_writer.h` — header-only `crispasr_make_mp3()`:
+- `examples/cli/stelnettts_mp3_writer.h` — header-only `stelnettts_make_mp3()`:
   mono CBR 128 kbps, `GLINT_QUALITY_NORMAL`, ID3v2 AI-provenance tag
-  prepended (`crispasr_make_id3v2_ai_tag`), non-MP3 rates linearly
+  prepended (`stelnettts_make_id3v2_ai_tag`), non-MP3 rates linearly
   resampled to nearest native rate (all TTS backends emit native rates).
 - Server `response_format=mp3` no longer needs libmp3lame — the 400
   `codec_not_available` path is gone; both /v1/audio/speech and S2S routes
   use the shared helper.
 - CLI: `--tts-output out.mp3` / `--s2s-output out.mp3` dispatch on
-  extension (`crispasr_write_synth_audio`); C2PA signing stays WAV-only
+  extension (`stelnettts_write_synth_audio`); C2PA signing stays WAV-only
   (warns on .mp3 instead of silently dropping the manifest).
 - libmp3lame kept as optional fallback: auto-used if glint fails, forced
-  via `CRISPASR_MP3_ENCODER=lame` (A/B); forced-lame failure falls back to
+  via `STELNETTTS_MP3_ENCODER=lame` (A/B); forced-lame failure falls back to
   glint.
 - Verified: unit tests (`test_tts_provenance` `[mp3]` — ID3 prefix, frame
   sync, CBR size, resample, invalid input), ffmpeg decode roundtrip of a
@@ -17305,24 +17305,24 @@ kernels compile-time guarded + runtime dispatched, so no special flags.
 - **AAC-LC (experimental)** also in: upstream's phase-1 AAC encoder
   (long blocks, CBR-average, ADTS) shipped while this landed, so the
   in-tree copy carries it — `response_format=aac` (audio/aac) and
-  `--tts-output out.aac` via `crispasr_aac_writer.h` (mono, 96 kbps
+  `--tts-output out.aac` via `stelnettts_aac_writer.h` (mono, 96 kbps
   default, ID3v2 provenance tag prefixed — decoders skip it). Verified:
   ADTS syncword unit tests, ffmpeg decode (LC profile, 440 Hz exact),
   live pocket-tts → .aac → ffmpeg-decode → moonshine ASR verbatim.
-  Note: crispasr's *reader* can't ingest .aac without the libav
+  Note: stelnettts's *reader* can't ingest .aac without the libav
   transcode build (pre-existing; plain ffmpeg .aac fails identically).
 - Streaming TTS still rejects mp3/aac (full-file encoding); glint has a
   callback streaming API — chunked `audio/mpeg` streaming is a natural
   follow-up if wanted.
 - **Auto-sync (§225b):** `tools/sync-glint.sh` + `sync-glint` workflow
-  (repository_dispatch `glint-push` from glint's notify-crispasr
+  (repository_dispatch `glint-push` from glint's notify-stelnettts
   workflow, daily cron fallback, manual dispatch) keep `glint/` at
   upstream main's committed state — regenerates GLINT_SOURCES, bumps
   the README sync marker, gates on `test_tts_provenance "[mp3],[aac]"`
   before pushing. `validate-glint-fresh` in release.yml fails a release
   whose marker is behind glint main, so releases always ship current
-  glint. Instant dispatch needs a `CRISPASR_SYNC_PAT` secret in the
-  glint repo (Contents r/w on CrispASR); without it the daily cron
+  glint. Instant dispatch needs a `STELNETTTS_SYNC_PAT` secret in the
+  glint repo (Contents r/w on StelnetTTS); without it the daily cron
   covers it. First sync pulled the AAC psy-shaping upstream commit
   (30fb4fcd, aac_psy.cpp auto-added to the source list).
 
@@ -17332,14 +17332,14 @@ User-requested GPU enablement for the Irodori-TTS RF-DiT backend (all stages
 were already single-backend gallocr ggml graphs, but the backend hardcoded
 CPU). Now honors use_gpu (CLI adapter wired; session ABI already passed it);
 codec follows the compute backend except on Vulkan (CPU per TADA #192);
-CRISPASR_IRODORI_CPU / _CODEC_GPU / _CODEC_CPU override.
+STELNETTTS_IRODORI_CPU / _CODEC_GPU / _CODEC_CPU override.
 
 Blocking baseline bug found+fixed on the way: the published
 dacvae-ja-32dim-f16.gguf predated the converter's wm_model final-conv export
 — missing pre.1.{weight,bias} (Conv 96→1) made the C++ decoder skip the
 final conv and die at GGML_ASSERT(nelements==ne0) on the 1-D reshape.
 Re-converted (converter on main was already correct) and re-uploaded to
-cstr/irodori-tts-GGUF, so `-m auto` users get the fix without a rebuild.
+Xenna/irodori-tts-GGUF, so `-m auto` users get the fix without a rebuild.
 
 M1 verify (seed 42, JA): CPU↔Metal waveform cos=0.999389, same RMS/ASR
 reading; 73.4 s → 31.4 s per 2 s synthesis (2.3×; CPU idle on GPU run).
@@ -17362,17 +17362,17 @@ predictor replacing the frames/token heuristic, reference-conditioning
 cache, diffusion knobs (#241). Detail → HISTORY (v0.8.9 notes) +
 LEARNINGS (#221 entries).
 
-## §232 qwen3-tts code predictor perf — fuse 15 graph dispatches into 1 (#245, OPEN)
+## §232 cielvox2-tts code predictor perf — fuse 15 graph dispatches into 1 (#245, OPEN)
 
-**Problem:** CrispASR's qwen3-tts code predictor runs 15 separate ggml graph
+**Problem:** StelnetTTS's cielvox2-tts code predictor runs 15 separate ggml graph
 dispatches per audio frame (one per codebook 1-15). This makes it ~40x slower
-per frame than predict-woo/qwen3-tts.cpp (10s/frame vs 225ms/frame on CPU).
+per frame than predict-woo/cielvox2-tts.cpp (10s/frame vs 225ms/frame on CPU).
 
 **Competitive benchmarks (CPU, 0.6B Q8_0):**
 
 | Engine | Talker ms/frame | CodePred ms/frame | RTF |
 |--------|----------------|-------------------|-----|
-| CrispASR | ~13,000 | ~10,000 (15×680) | 0.006x |
+| StelnetTTS | ~13,000 | ~10,000 (15×680) | 0.006x |
 | predict-woo | ~84 | ~225 | ~0.5x |
 | qwentts.cpp | no data | no data (claims ~90x with cache) | no data |
 
@@ -17384,7 +17384,7 @@ with 15 sequential AR steps — should be one graph, not 15 dispatches.
 - [ ] Enable O15 (persistent code_pred graph) by default
 - [ ] Enable LK_BUCKET (bucketed Lk talker) by default
 - [ ] Profile on Metal/CUDA — CPU numbers on the 4-core VPS are misleading
-- [ ] Benchmark CrispASR vs predict-woo vs qwentts.cpp on a Kaggle GPU kernel
+- [ ] Benchmark StelnetTTS vs predict-woo vs qwentts.cpp on a Kaggle GPU kernel
 
 **Effort:** M (the graph fusion is the hard part; the flag defaults are trivial).
 **Priority:** HIGH — TTS perf gap is user-visible and competitively damaging.
@@ -17401,7 +17401,7 @@ build ~2-12 ms + sched alloc ~10-50 ms + compute ~200-600 ms per frame, where
 "compute" is dominated by `ggml_backend_sched` overhead + command-buffer
 round-trips, not kernels (the code_pred is ~64 M MACs/step).
 
-**Fix shipped — `QWEN3_TTS_CP_DIRECT` (opt-in pending clean bench + CUDA):**
+**Fix shipped — `CIELVOX2_TTS_CP_DIRECT` (opt-in pending clean bench + CUDA):**
 two persistent sched-free graphs (T=2 step-0, T=1 step with O15 topology:
 fixed Lk, runtime positions → RoPE + set_rows KV write, lm_head via the
 writable slot), each gallocr-allocated ONCE on the code_pred backend; a step
@@ -17422,7 +17422,7 @@ outputs fixed-Lk=256 attention costs more than the saved rebuilds (dirlk
 slower than dir in 3/3 interleaved reps) → stays opt-in.
 
 **Remaining:**
-- [x] CUDA validation (Kaggle P100, kernel `chr1s4/crispasr-qwen3-cp-direct-cuda`,
+- [x] CUDA validation (Kaggle P100, kernel `chr1s4/stelnettts-qwen3-cp-direct-cuda`,
       2026-07-11): all four configs rc=0 + **WAV md5-identical** + ASR
       roundtrip verbatim. base 25.4 → direct 22.5 ms/frame (−11%);
       direct+LK_BUCKET 21.4 (fastest on CUDA). **O15=1 no longer crashes on
@@ -17445,7 +17445,7 @@ slower than dir in 3/3 interleaved reps) → stays opt-in.
       pre-existing, ~1800-frame ICL ref prep + codec at ~5 GB free) —
       separate issue, not CP_DIRECT.
 - [x] Talker step PROFILED (2026-07-11, M1 Metal, 0.6B Q8_0) — direct
-      treatment is NOT the fix. `CRISPASR_METAL_PROFILE` on the 1068-node
+      treatment is NOT the fix. `STELNETTTS_METAL_PROFILE` on the 1068-node
       talker step graph: **encode 2-3 ms, GPU-execute 38-42 ms** — the step
       is GPU-execution-bound, so sched-free dispatch / ICB replay can't
       help (same conclusion as §210 granite). Confirmed empirically: the
@@ -17460,7 +17460,7 @@ slower than dir in 3/3 interleaved reps) → stays opt-in.
       for a bounded win → DEPRIORITIZED; revisit only with a dedicated
       diff-harness campaign.
 - [x] Codec decode FIXED — FASTCONV (2026-07-11, default ON, opt-out
-      `QWEN3_TTS_CODEC_FASTCONV=0`). `QWEN3_TTS_CODEC_TRACE` per-node profile
+      `CIELVOX2_TTS_CODEC_FASTCONV=0`). `CIELVOX2_TTS_CODEC_TRACE` per-node profile
       showed the 3-4 s codec wall was NOT inherent conv compute: (a) K=1
       convs went through im2col — a pure copy with ~300 MB intermediates at
       75 ms each, ×12 sites (every res-unit conv2); (b) the causal left-pad
@@ -17476,7 +17476,7 @@ slower than dir in 3/3 interleaved reps) → stays opt-in.
       codec jetsam is FIXED in practice: post-FASTCONV, 1.7B-CustomVoice
       Q8_0 with a 156-frame (~12.5 s) output decodes rc=0 with DEFAULT
       chunking at ~6 GB free (this exact profile died pre-FASTCONV);
-      QWEN3_TTS_CODEC_CHUNK=48 stays available for tighter boxes (note:
+      CIELVOX2_TTS_CODEC_CHUNK=48 stays available for tighter boxes (note:
       non-default ctx changes conv warm-up at chunk boundaries → WAV not
       byte-equal to the default config; pre-existing chunked-decode
       property, not FASTCONV).
@@ -17489,9 +17489,9 @@ slower than dir in 3/3 interleaved reps) → stays opt-in.
       per-cb graphs or in-graph lm_head selection via get_rows, then revisit
       the CPU default.
 
-## §235 next perf targets — triage after the §232 qwen3-tts sweep (2026-07-11)
+## §235 next perf targets — triage after the §232 cielvox2-tts sweep (2026-07-11)
 
-Grounded in the §232 GPU profiling, the qwen3-tts per-op traces, and the
+Grounded in the §232 GPU profiling, the cielvox2-tts per-op traces, and the
 PERFORMANCE.md gap list. Recalibrated after checking what's already tried
 and what parallel sessions own:
 
@@ -17500,7 +17500,7 @@ and what parallel sessions own:
     runs on host `cblas_sgemv/sgemm`, paper 12-19×). The naive attempt —
     CPU-side batched decode — is **5-9× SLOWER** (`d0bb4601`, `3fcd5ff3`):
     a decode loop of tiny per-step matmuls + host↔device sync is where CPU
-    cblas wins (same class as qwen3-tts CP_DIRECT-on-CPU). But a parallel
+    cblas wins (same class as cielvox2-tts CP_DIRECT-on-CPU). But a parallel
     session is now scoping a *proper* in-graph GPU decode on datacenter cards
     (`eb5c5cc5` plan, `a1103c04` learning 29 — gate it on Kaggle/CUDA BEFORE
     building, since the M1/CPU result doesn't settle a P100/T4 port). So: not
@@ -17509,7 +17509,7 @@ and what parallel sessions own:
 - **OWNED by a parallel session — Moonshine encoder** (im2col of k≈127 conv1
   over ~176K raw samples; 728 ms vs ~58 ms competitor). Worktree
   `moonshine-decode-stash` @ `46127dab` is active on it. Hands off.
-- **qwen3-tts talker** — GPU-execution-bound (§232 profiled: encode 2-3 ms vs
+- **cielvox2-tts talker** — GPU-execution-bound (§232 profiled: encode 2-3 ms vs
   GPU 38-42 ms). No dispatch trick helps; only `kv_self_attn` node-slimming
   (shared 30-backend helper, high risk). Deprioritized, not a target.
 - [x] **Pocket-TTS backbone KV cache — MEASURED, NOT WORTH IT (2026-07-11).**
@@ -17548,12 +17548,12 @@ and what parallel sessions own:
       codec itself was correct (force-decoding the reference's exact latents
       through OUR codec was already clean); the bug was purely the encoder
       frame count. **Must clear the §224 voice-latent disk cache
-      (`pocket-voice-*.latents`, or `CRISPASR_POCKET_VOICE_CACHE=0`) after this
+      (`pocket-voice-*.latents`, or `STELNETTTS_POCKET_VOICE_CACHE=0`) after this
       fix** — stale 137-frame latents would otherwise mask it.
       **Per-conv ceil-framing refinement — TRIED, REJECTED by the measurement
       gate (2026-07-11).** Hypothesis: replace the raw-PCM pre-pad with moshi's
       `MimiConv1d._get_extra_padding_for_conv1d` applied at each strided conv (the
-      scheme `qwen3_tts`'s codec uses), for byte-exact tail values. Built + diffed
+      scheme `cielvox2_tts`'s codec uses), for byte-exact tail values. Built + diffed
       vs the reference: the pre-pad already **value-matches** the reference (gen
       onset t0 **0.0045**, profile `[0.0045 0.0034 0.0034 0.0047 …]` identical),
       whereas per-conv gave onset **0.0579** and **backbone_out0 corr vs reference
@@ -17574,7 +17574,7 @@ and what parallel sessions own:
       `--voice` cloning needs `--i-have-rights` (consent gate); the auto-default
       voice path does not.
 - [x] **CosyVoice3 HiFT / FASTCONV — MEASURED, NOT WORTH IT (2026-07-11).**
-      Downloaded the full CV3 GGUF set to `/Volumes/backups/ai/crispasr-gguf`,
+      Downloaded the full CV3 GGUF set to `/Volumes/backups/ai/stelnettts-gguf`,
       `COSYVOICE3_BENCH=1` on a 174-mel synthesis (M1 Metal, quiet box). Wall
       split (~7.4 s total): **flow_euler 3526 ms (48 %)**, **lm_ar_decode
       2681 ms (36 %)**, **hift_vocoder 1152 ms (16 %)**, tokenize+pre_la
@@ -17662,12 +17662,12 @@ Key changes:
 - Runtime prepends silence prefix (1.0 s @ 24 kHz) before Mimi encode.
 - `kyutai_stt_total_lookahead_seconds()` returns `audio_delay + silence_prefix`
   (3.5 s for 2.6B vs 0.5 s for 1B). CLI adapter sizes silence tail from this.
-- Registry entry `kyutai-stt-2.6b` → `cstr/kyutai-stt-2.6b-en-GGUF` Q4_K.
+- Registry entry `kyutai-stt-2.6b` → `Xenna/kyutai-stt-2.6b-en-GGUF` Q4_K.
 - Reference backend `tools/reference_backends/kyutai_stt.py` with full audio
   conditioning (silence tail + prefix + resample). Frozen ref GGUF on HF.
-- Diff harness dispatch in `crispasr_diff_main.cpp` (transcript-level; stage
+- Diff harness dispatch in `stelnettts_diff_main.cpp` (transcript-level; stage
   APIs pending).
-- Kaggle kernel v4 (`chr1s4/crispasr-kyutai-stt-2-6b-convert`): F16/Q8_0/Q4_K
+- Kaggle kernel v4 (`chr1s4/stelnettts-kyutai-stt-2-6b-convert`): F16/Q8_0/Q4_K
   + ref GGUF all uploaded.
 
 **Lesson learned:** Python reference dumpers must apply identical audio
@@ -17716,25 +17716,25 @@ Commits: 42782648, 7cb079a0, 7f60cf72, f508dac1, bba1f0e5, 0595ab6b.
 
 **Further closed (same session, second pass):**
 
-| #240 | qwen3-asr-1.7b Q4_K empty | Re-baked with audio Q8_0 floor |
+| #240 | cielvox2-asr-1.7b Q4_K empty | Re-baked with audio Q8_0 floor |
 | #204 | New models | ARK-ASR + Higgs-STT both shipped |
 | #137 | Termux build | Workaround documented (BUILD_SHARED_LIBS=OFF) |
 | #131 | Older-glibc build | ubuntu-22.04 + Vulkan release in CI |
 
 **New issue created:**
 
-| #245 | qwen3-tts code predictor perf | 15 graph dispatches → fuse into 1 (§232) |
+| #245 | cielvox2-tts code predictor perf | 15 graph dispatches → fuse into 1 (§232) |
 
 **Remaining open issues (7):**
 
-- **#245** qwen3-tts code predictor perf — HIGH, 40x slower than competitors (§232)
+- **#245** cielvox2-tts code predictor perf — HIGH, 40x slower than competitors (§232)
 - **#227** VAD reuse — feature request
 - **#198** Higgs-Audio TTS — feature request (porting suggestion)
 - **#196** Gemma4 larger — feature request (12B/26B/31B)
 - **#174** LA Studio — community showcase (not a bug)
 - **#130** CPU perf docs — documentation request
 - **#125** Long audio broken (v0.6.10) — most fixes shipped, awaiting retest
-- **#81** ONNX-ASR comparison — benchmarked 2026-07-10, CrispASR faster on all models
+- **#81** ONNX-ASR comparison — benchmarked 2026-07-10, StelnetTTS faster on all models
 - **#130** CPU perf docs — documentation request
 - **#125** Long audio broken (v0.6.10) — most fixes shipped, awaiting retest
 - **#93**  Voxtral 4B TTS — feature request (no TTS backend for this model yet)
@@ -17766,24 +17766,24 @@ still-open sections are preserved below, keyed by the original PLAN header.
 
 ## Scoped next items (for a new agent picking up)
 
-### qwen3-tts code predictor fused graph (#245, GPU-ONLY) — DONE (CP_DIRECT), verified 2026-07-12
+### cielvox2-tts code predictor fused graph (#245, GPU-ONLY) — DONE (CP_DIRECT), verified 2026-07-12
 
-Superseded by **CP_DIRECT** (§232/#245, `src/qwen3_tts.cpp` ~L1912) — sched-free persistent code_pred dispatch that Option C wanted without the O15_SKIP_REALLOC breakage. Builds the two per-frame code_pred graph shapes (T=2 prefill + T=1 step) once, gallocr-allocates on the dedicated code_pred backend; each of the 15 dispatches is blit-lm_head-slot + tensor_set + one `ggml_backend_graph_compute` (no `sched_reset`/`alloc`). Default ON when code_pred runs on a GPU backend (`QWEN3_TTS_CP_DIRECT`); md5-identical WAV validated 2026-07-10.
+Superseded by **CP_DIRECT** (§232/#245, `src/cielvox2_tts.cpp` ~L1912) — sched-free persistent code_pred dispatch that Option C wanted without the O15_SKIP_REALLOC breakage. Builds the two per-frame code_pred graph shapes (T=2 prefill + T=1 step) once, gallocr-allocates on the dedicated code_pred backend; each of the 15 dispatches is blit-lm_head-slot + tensor_set + one `ggml_backend_graph_compute` (no `sched_reset`/`alloc`). Default ON when code_pred runs on a GPU backend (`CIELVOX2_TTS_CP_DIRECT`); md5-identical WAV validated 2026-07-10.
 
-Verified on M1 Metal 2026-07-12 (`qwen3-tts-12hz-0.6b-base-q8_0.gguf`, quiet box, `QWEN3_TTS_BENCH=1`): `cp_direct active`; per-frame code_pred set≈2-4 ms, compute≈45-60 ms, read≈0.1 ms — dispatch now ~5% (pre-CP_DIRECT sched path was ~25 ms × 15 ≈ 375 ms/frame pure dispatch). ar_loop 76 ms/frame, RTF 1.2×, ASR round-trip correct. code_pred is compute-bound (15 sequential T=1 steps of a 5L/d=1024 transformer) so Option A (unrolled 75-block graph) buys ~nothing. O15_SKIP_REALLOC (Option C) is the broken predecessor.
+Verified on M1 Metal 2026-07-12 (`cielvox2-tts-12hz-0.6b-base-q8_0.gguf`, quiet box, `CIELVOX2_TTS_BENCH=1`): `cp_direct active`; per-frame code_pred set≈2-4 ms, compute≈45-60 ms, read≈0.1 ms — dispatch now ~5% (pre-CP_DIRECT sched path was ~25 ms × 15 ≈ 375 ms/frame pure dispatch). ar_loop 76 ms/frame, RTF 1.2×, ASR round-trip correct. code_pred is compute-bound (15 sequential T=1 steps of a 5L/d=1024 transformer) so Option A (unrolled 75-block graph) buys ~nothing. O15_SKIP_REALLOC (Option C) is the broken predecessor.
 
-Load-dependence (§176k): CP_DIRECT comment records "M1 Metal ~equal idle, ~3× under load" — confirmed compute-bound at idle. CUDA RE-VALIDATED PASS 2026-07-12 (Kaggle P100/T4, `chr1s4/crispasr-qwen3-cp-direct-cuda` reached COMPLETE = base/o15/direct/direct_lk all rc=0, md5/PCM-equivalent, ASR round-trip intact), on top of prior "11% faster on P100". Re-run after any code_pred change: `kaggle kernels push -p tools/kaggle/qwen3-tts-cp-direct-cuda`.
+Load-dependence (§176k): CP_DIRECT comment records "M1 Metal ~equal idle, ~3× under load" — confirmed compute-bound at idle. CUDA RE-VALIDATED PASS 2026-07-12 (Kaggle P100/T4, `chr1s4/stelnettts-qwen3-cp-direct-cuda` reached COMPLETE = base/o15/direct/direct_lk all rc=0, md5/PCM-equivalent, ASR round-trip intact), on top of prior "11% faster on P100". Re-run after any code_pred change: `kaggle kernels push -p tools/kaggle/cielvox2-tts-cp-direct-cuda`.
 
 ### Defaults-audit generalisation — LARGELY DONE (2026-07-12)
 
 Extended the tada-params defaults-audit pattern (`tests/test-tada-params.cpp`) across backends. The `test-<backend>-params.cpp` files were registered for ~52 backends but hollow — only 5 (tada, chatterbox, orpheus, voxtral-tts, dots-tts) asserted value knobs; the other ~47 only smoke-checked `n_threads>=1`/`verbosity>=0` (structurally can't catch #192-class silent default drift). Added grounded value-knob assertions (now 37/52 assert value knobs) in three commits:
 - TTS priority: vibevoice, kokoro, f5-tts, dots-tts (exact upstream).
-- TTS/audio-gen: bark, cosyvoice3 (RAS), csm, dia, indextts, outetts, zonos, fastpitch, melotts, piper, speecht5, qwen3-tts, parler, pocket-tts.
-- ASR: firered-asr (beam), glm-asr, kyutai-stt, funasr, gemma4-e2b, mimo-asr (greedy temp 0); flash/gpu guards (#89 class) for qwen3-asr, voxtral, voxtral4b, granite-speech, canary-qwen, nemotron, parakeet, canary.
+- TTS/audio-gen: bark, cosyvoice3 (RAS), csm, dia, indextts, outetts, zonos, fastpitch, melotts, piper, speecht5, cielvox2-tts, parler, pocket-tts.
+- ASR: firered-asr (beam), glm-asr, kyutai-stt, funasr, gemma4-e2b, mimo-asr (greedy temp 0); flash/gpu guards (#89 class) for cielvox2-asr, voxtral, voxtral4b, granite-speech, canary-qwen, nemotron, parakeet, canary.
 
 Deliberately smoke-only: granitenle, m2m100, sensevoice, t5translate, canaryctc (pure infra, no perceptual/decode knob); firered + two moonshine-stream tests (duplicate covered structs); openvoice2 (single `tau`). Skipped as owned/blocked: cohere, voxcpm2, voxcpm2-tts (concurrent), kugelaudio (CFG is a TODO). Files: one test per backend in `tests/test-<backend>-params.cpp`, registered in `tests/CMakeLists.txt` label `[unit]`.
 
-## crispasr-diff harness extensions — catch decode-policy / quality bugs (OPEN)
+## stelnettts-diff harness extensions — catch decode-policy / quality bugs (OPEN)
 
 Motivated by #197: the stage-cosine diff validates the forward pass against a Python
 reference pinned to a non-default mode (`text_do_sample=False`) for determinism, so it
@@ -17802,7 +17802,7 @@ only deliberate adapter override left is `text_do_sample=true`. (`extra_steps` b
 **Full adapter-parity audit DONE (2026-07-12).** Swept all ~40 c_api adapter blocks + CLI adapters
 for hardcoded perceptual/decode-knob overrides diverging from — or wrongly ignoring session config
 vs — the library default. CLI adapters clean; two real c_api bugs found + fixed: cosyvoice3
-hardcoded `temperature=0.8` (ignoring `crispasr_session_set_temperature`) and f5-tts hardcoded
+hardcoded `temperature=0.8` (ignoring `stelnettts_session_set_temperature`) and f5-tts hardcoded
 `seed=42` (ignoring the session seed). Both now honour session config, falling back to the working
 default. outetts/dots/parler re-state their library temp default as the fallback literal —
 redundant but correct + session-gated, left as-is.
@@ -17844,7 +17844,7 @@ lint. Use `./tools/format.sh` or `/opt/homebrew/opt/llvm@18/bin/clang-format`.
   fallback; fixed in `convert-tada-aligner-to-gguf.py`. `--make-ref` reachable
   (input-file guard fixed), auto-downloads encoder/aligner (`--auto-download`);
   all 10 language aligners (q8_0, 906 MB) + encoder published on
-  `cstr/tada-tts-{1b,3b-ml}-GGUF`. `--align` word-timestamp mode added on the
+  `Xenna/tada-tts-{1b,3b-ml}-GGUF`. `--align` word-timestamp mode added on the
   same aligner path. `--voice <wav>` at synth time now fails loudly and points
   at `--make-ref` (was silently using default voice).
 - CLI query-time inline cloning done (#192, `3b52d268`): `--tts "…" --voice
@@ -17886,8 +17886,8 @@ Backend coverage gaps resolved during the audit (`ccc04a02`):
   with a standalone `*_context_default_params`/`init_from_file`/`free` API).
   `fastconformer-ctc` and `wav2vec2` are shared encoder components (no standalone
   context, used by parakeet/canary) so a params test is N/A.
-- `qwen3-tts` streaming.md — NOT a gap. streaming.md documents ASR live transcription;
-  the `streaming` cap on qwen3-tts means incremental PCM synthesis (a TTS feature,
+- `cielvox2-tts` streaming.md — NOT a gap. streaming.md documents ASR live transcription;
+  the `streaming` cap on cielvox2-tts means incremental PCM synthesis (a TTS feature,
   in tts.md). Audit refined to expect a streaming.md row only for ASR backends
   (`streaming` cap && !`tts`).
 
@@ -17902,7 +17902,7 @@ text — the same algorithm higgs-stt already ships (its `ngram_loop_fix.py` por
 extracted to the shared header `src/core/ngram_loop_fix.h` (`core_ngram::fix_loops`) and
 used by both. Pure text post-process → token/logit parity vs the Python reference unchanged,
 no-op on non-degenerate slices (clean slices byte-identical, jfk diff-harness unaffected).
-Opt out with `CRISPASR_MOSS_TRANSCRIBE_NO_LOOPFIX=1` for raw upstream-parity output. Unit
+Opt out with `STELNETTTS_MOSS_TRANSCRIBE_NO_LOOPFIX=1` for raw upstream-parity output. Unit
 coverage: `tests/test-ngram-loop-fix.cpp` (`[ngram-loop]`, label `unit`).
 
 **DONE #218 — 30 s-seam duplication.** Same clip: adjacent 30 s slices duplicated their
@@ -17912,7 +17912,7 @@ filtering, but moss-transcribe emits no word/token timestamps, so the trim falls
 segment-level filtering that keeps the whole extended segment → the ±3 s context transcribed
 twice. The over-long buffer also worsened the greedy loops (a slice that looped to the
 512-token cap *with* context only looped ~50 tokens on the bare 30 s slice). Fixed by adding
-`"moss-transcribe"` to `kBlocked` in `examples/cli/crispasr_chunk_context_gate.h` — the
+`"moss-transcribe"` to `kBlocked` in `examples/cli/stelnettts_chunk_context_gate.h` — the
 opt-out its LLM-decoder peers (qwen3, granite, voxtral, …) already use — so long audio is
 sliced at a bare 30 s with no overlap extension. Gate unit test updated
 (`tests/test-issue-114-chunk-context-gate.cpp`). Tradeoff (accepted, matches peers): a word
@@ -17930,7 +17930,7 @@ trained with `enable_time_marker=True`.
 
 ## #218 arc — remaining open threads
 
-Everything user-facing from the #218 investigation fixed and shipped (qwen3-asr
+Everything user-facing from the #218 investigation fixed and shipped (cielvox2-asr
 0.6b + ja-anime GGUFs rebaked on HF, glm-asr merges + multi-window landed,
 CUDA-validated).
 
@@ -17950,9 +17950,9 @@ CUDA-validated).
    on published mega q8_0 + current main (30 s chunks, fix_loops on): jfk
    verbatim; t32-145s full dialogue, genuine shouts bounded.
 
-2. **Windowed encoder default flip + CAP_UNBOUNDED_INPUT (qwen3-asr) — RESOLVED:
+2. **Windowed encoder default flip + CAP_UNBOUNDED_INPUT (cielvox2-asr) — RESOLVED:
    FLIP REJECTED 2026-07-10.** Broader eval (M1 Metal, q4_k-v2 Q8-tower GGUF,
-   raw decode via CRISPASR_NGRAM_LOOPFIX_OFF=1, single-pass, phrase-cycle
+   raw decode via STELNETTTS_NGRAM_LOOPFIX_OFF=1, single-pass, phrase-cycle
    metric): on t32-145s the windowed path degenerates in the noisy lead ON METAL
    TOO (unigram run 238 / cycle 119, never reaches final sentence) while full
    attention is clean+complete (run 1 / cycle 0) — the earlier "Metal recovers"
@@ -17980,7 +17980,7 @@ Rows dropped from the PLAN priority table (completed or parked), preserved for r
   (`test-cpu-ops-to-f32`) + live on Metal + CUDA. wav2vec2 conv_w left as-is (zero-copy hot path,
   never quantized). **Mimi codec:** `kyutai_stt` now defaults to causal+sliding-window — a >250-frame
   WER A/B (3× jfk ≈412 frames) showed old full non-causal attention truncates long audio ~25%; opt
-  out `CRISPASR_MIMI_NONCAUSAL=1`. `csm_tts` also defaults causal (same opt-out) after a TTS→ASR A/B
+  out `STELNETTTS_MIMI_NONCAUSAL=1`. `csm_tts` also defaults causal (same opt-out) after a TTS→ASR A/B
   (~256 dec frames): causal 9.3% vs non-causal 12.0% WER.
 - **§176 detail (18/20 DONE):** §176a flash-attn via core_attn, §176b bucket cache (8 backends),
   §176d BLAS (9 backends), §176e context cache (all support runtimes), §176f mel BLAS+OMP, §176g
@@ -17988,7 +17988,7 @@ Rows dropped from the PLAN priority table (completed or parked), preserved for r
   FFT, §176m nemotron memmove, §176o embed fast path, §176p MOSS flash, §176q greedy alloc, §176r
   beam top-K, §176s encoder cache (16/17), §176t weight pre-cache. §176k FireRed MOSTLY DONE
   2026-07-12 (profiling debunked "KV/flash" framing — decode is dispatch-bound; shipped env-gated
-  persistent matvec graph cache `CRISPASR_FIRERED_MATVEC_CACHE`, default ON, bit-identical). §176n
+  persistent matvec graph cache `STELNETTTS_FIRERED_MATVEC_CACHE`, default ON, bit-identical). §176n
   VoxCPM2 Metal DONE (stale — works via `VOXCPM2_USE_GRAPH`, 3.75× on M1; CUDA validated Kaggle
   P100/T4). §176c/§245 reclassified.
 - **#56 Kokoro multilingual phonemizer** — DONE. espeak-ng + DE backbone shipped; Mandarin tone strip;
@@ -17997,32 +17997,32 @@ Rows dropped from the PLAN priority table (completed or parked), preserved for r
   `4835a241`).
 - **#104 Stateful TDT frame-streaming** — DONE 2026-05-23. Global z-norm + chunked encode + single
   decode → 99.5% (was 59.7%). §216: streamed path collapses on v3/multilingual; non-JA default to
-  NeMo-exact single-pass + silence-split longform; `streamed` kept as JA path + `CRISPASR_PARAKEET_*`
+  NeMo-exact single-pass + silence-split longform; `streamed` kept as JA path + `STELNETTTS_PARAKEET_*`
   gates. 2026-07-04 issue #89 closed: JA default = VAD/energy slices capped at 12 s + per-slice
   single-pass + gap-fill second pass; 97.2/96.9/95.9% phonetic recall on reporter's 60/120/300 s clips
   (= inter-model ceiling; SenseVoice same) vs 51% for NeMo's best long-form. Session ABI mirrored.
 - **#9 Parakeet TDT GPU** — PARKED. Encoder 85%+ of time; LSTM+joint <0.7 s; sequential steps limit GPU benefit.
-- **#42 VibeVoice-ASR 7B** — DONE. GGUFs at `cstr/VibeVoice-7B-GGUF` (Q3_K 4.7 GB – F16 17.4 GB).
-- **#43 Fun-ASR-Nano** — DONE 2026-05-20. Full LLM-decoder runtime; GGUFs at `cstr/funasr-{nano,mlt-nano}-GGUF`; byte-identical diffs; ~9× RT on M1 Metal.
+- **#42 VibeVoice-ASR 7B** — DONE. GGUFs at `Xenna/VibeVoice-7B-GGUF` (Q3_K 4.7 GB – F16 17.4 GB).
+- **#43 Fun-ASR-Nano** — DONE 2026-05-20. Full LLM-decoder runtime; GGUFs at `Xenna/funasr-{nano,mlt-nano}-GGUF`; byte-identical diffs; ~9× RT on M1 Metal.
 - **#80 nano-cohere-transcribe tweaks** — DONE. 80a parked; 80b/80c/80d DONE 2026-05-23; 80e warmup deferred.
 - **#81 Nemotron-Speech-Streaming-EN-0.6B** — DONE 2026-06-15. All 4 streaming presets working.
 - **#157 streaming for other runtimes** — Granite + Voxtral4b DONE 2026-06-19; greedy_decode.h got dual-hook run_with_probs_cb.
 - **#172 Wyoming protocol server** — DONE 2026-06-19. `--wyoming-port N` starts Wyoming JSONL/TCP alongside HTTP.
-- **#173 `--tts-play` / `--tts-play-device`** — DONE 2026-06-19. `crispasr_speaker.{h,cpp}` wraps miniaudio; pre-resamples to hardware-native rate.
+- **#173 `--tts-play` / `--tts-play-device`** — DONE 2026-06-19. `stelnettts_speaker.{h,cpp}` wraps miniaudio; pre-resamples to hardware-native rate.
 - **#158 transcribe_streaming for opaque-C-library backends** — DONE 2026-06-19. All 7: `_transcribe_cb` C entry points on moss_audio, gemma4_e2b, moonshine_streaming, kyutai_stt, mimo_asr, nemotron; GLM-ASR uses exported step APIs.
 - **#86 Per-backend flash-attention wiring** — DONE. All backends route through core helpers (`core_attn`, `core_sanm`, `core_conformer`) using `ggml_flash_attn_ext`.
-- **#87 `gpu_backend` runtime selector** — DONE 2026-07-02. `src/core/gpu_backend_pref.h` + `crispasr_init_gpu_backend()` replaces `ggml_backend_init_best()` in 60+ backends; C API `crispasr_set_gpu_backend()`. Issue #214.
-- **#98 Hotwords / contextual biasing** — Phase A+B DONE. CTC-WS Aho-Corasick trie into parakeet CTC + TDT; LLM prompt injection for qwen3-asr + voxtral.
+- **#87 `gpu_backend` runtime selector** — DONE 2026-07-02. `src/core/gpu_backend_pref.h` + `stelnettts_init_gpu_backend()` replaces `ggml_backend_init_best()` in 60+ backends; C API `stelnettts_set_gpu_backend()`. Issue #214.
+- **#98 Hotwords / contextual biasing** — Phase A+B DONE. CTC-WS Aho-Corasick trie into parakeet CTC + TDT; LLM prompt injection for cielvox2-asr + voxtral.
 - **#110 Global diarization timeline** — DONE. Sherpa/ecapa runs once on full audio (not per-slice).
-- **#105 WhisperX word alignment models** — DONE 2026-05-23. All 10 common languages converted, uploaded to `cstr/*-GGUF`, registry aliases wired.
+- **#105 WhisperX word alignment models** — DONE 2026-05-23. All 10 common languages converted, uploaded to `Xenna/*-GGUF`, registry aliases wired.
 - **#115 mimo-asr baseline broken** — GPU is the default (Option B: split-load + prefill-graph decode).
-- **§208 Chatterbox S3Gen CFM single-GPU raw-gallocr cached path** — DONE 2026-06-21, correct but perf DUD, default OFF (`CRISPASR_S3GEN_UNET_GALLOCR=1`). Caches graph+alloc across Euler steps; parity step-wise x_rms Δ≤1e-4, spectral corr 0.999105, identical ASR; Bug B no recur. No speedup: instrumented sched_alloc ~4–7 ms/step of ~1887 ms/step (0.3%) — CFM is compute-bound Metal GEMM. Kept as clean single-backend reference + bisection gate.
-- **§205 Chatterbox full-sweep CUDA crash + q8/Metal CFM NaN** — DONE 2026-06-21. Kaggle P100 crash was non-power-of-two FFT heap overflow in VE/S3Tok/CAMPPlus/CosyVoice3 mel (`fft_radix2_wrapper` on N=400/1920); fixed with mixed-radix DFT (pow2 callers bit-identical). q8 s3gen CFM NaN on M1 Metal: Metal q8 mat-vec requantises CFM activations to q8, NaN at Euler step 1 on batch=2 CFG graph; fix = dequant quantized CFM (`s3.fd.*`) weights to F16 at load, GPU-resident (`CRISPASR_S3GEN_UNET_CPU=1` for CPU route). ASan-clean + ASR roundtrip OK. **Open sub-item:** Kaggle CUDA re-run to confirm q8 chatterbox passes the sweep (Metal CFM handling is M1-only; FFT fix alone should suffice on CUDA).
+- **§208 Chatterbox S3Gen CFM single-GPU raw-gallocr cached path** — DONE 2026-06-21, correct but perf DUD, default OFF (`STELNETTTS_S3GEN_UNET_GALLOCR=1`). Caches graph+alloc across Euler steps; parity step-wise x_rms Δ≤1e-4, spectral corr 0.999105, identical ASR; Bug B no recur. No speedup: instrumented sched_alloc ~4–7 ms/step of ~1887 ms/step (0.3%) — CFM is compute-bound Metal GEMM. Kept as clean single-backend reference + bisection gate.
+- **§205 Chatterbox full-sweep CUDA crash + q8/Metal CFM NaN** — DONE 2026-06-21. Kaggle P100 crash was non-power-of-two FFT heap overflow in VE/S3Tok/CAMPPlus/CosyVoice3 mel (`fft_radix2_wrapper` on N=400/1920); fixed with mixed-radix DFT (pow2 callers bit-identical). q8 s3gen CFM NaN on M1 Metal: Metal q8 mat-vec requantises CFM activations to q8, NaN at Euler step 1 on batch=2 CFG graph; fix = dequant quantized CFM (`s3.fd.*`) weights to F16 at load, GPU-resident (`STELNETTTS_S3GEN_UNET_CPU=1` for CPU route). ASan-clean + ASR roundtrip OK. **Open sub-item:** Kaggle CUDA re-run to confirm q8 chatterbox passes the sweep (Metal CFM handling is M1-only; FFT fix alone should suffice on CUDA).
 - **§130 Zonos TTS** — DONE 2026-06-09. End-to-end synthesis + ASR roundtrip verified.
 - **§131 OuteTTS** — DONE. Speech output confirmed via ASR roundtrip; WavTokenizer decoder cos≥0.999 all stages.
 - **§139 Beam search — remaining ASR backends** — 18/24 done (was 10). All feasible backends 2026-06-01/02.
-- **#156 Permissive G2P phonemizer** — DONE 2026-06-08. Pre-generated IPA dicts (EN 126K, DE 667K, FR 257K, ES 600K) at cstr/g2p-dicts — 99.5% piper-compatible.
-- **#216 Kokoro G2P technical token regression** — DONE 2026-07-03. `C++`→`k` fixed via text normalization expanding ~40 tokens before tokenization; `CRISPASR_KOKORO_G2P` env var.
+- **#156 Permissive G2P phonemizer** — DONE 2026-06-08. Pre-generated IPA dicts (EN 126K, DE 667K, FR 257K, ES 600K) at Xenna/g2p-dicts — 99.5% piper-compatible.
+- **#216 Kokoro G2P technical token regression** — DONE 2026-07-03. `C++`→`k` fixed via text normalization expanding ~40 tokens before tokenization; `STELNETTTS_KOKORO_G2P` env var.
 - **#155 CONV_TRANSPOSE_1D GPU optimization** — DONE 2026-06-10. Crash fixed (`f8fc8b8e`); CUDA/HIP 9× (1200→130 ms, `5f600f25`); Vulkan `col2im_1d` ported (`cad7fbac`).
 - **§WASM Browser build** — DONE 2026-06-10. All backends, multithreaded (`-pthread` + `PTHREAD_POOL_SIZE=8`).
 - **#127 (a) omniasr-llm** — DONE. Kaggle P100 sweep v4: short=106 long=490 (4.6x), correct JFK, no timeout. **(c) cohere-asr-ja** — DONE, correct repo `CKHO/cohere-asr-ja-GGUF`; Kaggle P100 rc=0, perfect JFK.
@@ -18064,20 +18064,20 @@ path, NOT speed. Production T3 default stays CPU.
 
 ### State audit 2026-07-11 (code-verified)
 - §215a dia — encoder DONE. `src/dia_tts.cpp` decoder already runs B=2 (output batch dim 2, idx 0=cond/1=uncond; single KV cache sized `*2`, ~L563) since `d63b0774`. (Decoder AR loop still 2-pass — remains open in PLAN.)
-- §215b tada — FM done (B=2, gated `CRISPASR_TADA_FM_B2`); TALKER B=2 is a MEASURED NON-GOAL.
+- §215b tada — FM done (B=2, gated `STELNETTTS_TADA_FM_B2`); TALKER B=2 is a MEASURED NON-GOAL.
 - §215c zonos / §215d voxcpm2 — confirmed still 2-pass.
 - §215e f5 — DiT runs on `backend_cpu` (no per-dispatch-latency win) + §176h B=2 corruption; non-goal unless f5 moves to GPU.
 
 ### §215b tada talker — MEASURED NON-GOAL (2026-07-11, do NOT port)
-`src/tada_tts.cpp` runs the talker twice/step (`run_talker_kv` pos + `kv_neg_*` neg). STEP-0 instrumented both passes (env `CRISPASR_TADA_TALKER_TIMING=1`, default off) on Metal / tada-1b q4_k. Numbers load-contaminated (loadavg 31→137); decision rests on load-robust per-pass ratio + exact-Lk A/B:
+`src/tada_tts.cpp` runs the talker twice/step (`run_talker_kv` pos + `kv_neg_*` neg). STEP-0 instrumented both passes (env `STELNETTTS_TADA_TALKER_TIMING=1`, default off) on Metal / tada-1b q4_k. Numbers load-contaminated (loadavg 31→137); decision rests on load-robust per-pass ratio + exact-Lk A/B:
 - The two CFG passes take different graph paths: pos hits the §176b bucket (attention padded to Lk≥512 via `kBucketLks={512,1024,2048,4096}`); neg (`kv_neg_*`) falls to exact-Lk (`build_graph_talker_kv`). At short utterance (n_past 6–59 ≪512) pos ran 266 ms/call vs neg 81 ms — 3.3× asymmetric, first≈steady-state (not warmup).
-- A/B confirmed mechanism (`CRISPASR_TADA_NO_BUCKET=1` forces pos onto exact-Lk): pos dropped 266→49 ms/call (5.4×), pos≈neg (49 vs 61). Talker share fell 40%→24% of the per-step loop.
+- A/B confirmed mechanism (`STELNETTTS_TADA_NO_BUCKET=1` forces pos onto exact-Lk): pos dropped 266→49 ms/call (5.4×), pos≈neg (49 vs 61). Talker share fell 40%→24% of the per-step loop.
 - Why B=2 doesn't pay: with both on exact-Lk the talker is ~24% of the loop and passes are ~55 ms symmetric → B=2 saves ≤~5% of loop for the cost of F16-dequant + a dual-KV-split B=2 graph. FM+codec dominate (~60–76%).
 
 ### §215b follow-up — tada talker §176b bucket floor (RESOLVED: SHIPPED backend-conditional default, do NOT flip globally)
-Real lever found: the §176b decode bucket floors Lk at 512, wasting ~500 padded/masked attention columns/step on short generations. Implemented opt-in: `kBucketLks` now `{64,128,256,512,1024,2048,4096}`; `tada_pick_bucket` gates eligible floor by `CRISPASR_TADA_BUCKET_MIN` (default 512 = original; small buckets inert). Output-neutral by construction (padding masked to −inf).
+Real lever found: the §176b decode bucket floors Lk at 512, wasting ~500 padded/masked attention columns/step on short generations. Implemented opt-in: `kBucketLks` now `{64,128,256,512,1024,2048,4096}`; `tada_pick_bucket` gates eligible floor by `STELNETTTS_TADA_BUCKET_MIN` (default 512 = original; small buckets inert). Output-neutral by construction (padding masked to −inf).
 
-Kaggle A/B `chr1str/crispasr-tada-bucket-ab` (P100, 2026-07-11), 3-way (default/floor64/nobucket) × short(17)/long(174 steps), REPS=3, tada-1b q4_k:
+Kaggle A/B `chr1str/stelnettts-tada-bucket-ab` (P100, 2026-07-11), 3-way (default/floor64/nobucket) × short(17)/long(174 steps), REPS=3, tada-1b q4_k:
 1. The big Metal win does NOT transfer to CUDA — 266→49 ms (5.4×) is Metal-specific (masked attn over Lk=512 padding cheap on GPU). P100 pos_ss 9.37 vs 6.56 = 1.43×; LOOP-level floor64 just 1.058× (short)/1.016× (long).
 2. Tighter bucket NOT byte-identical on CUDA (IS on Metal, md5 `265b9798…`). P100 md5s diverge with a coherent deterministic signature (short floor64==nobucket≠default; long all-three-differ). Cause: `soft_max_ext` GPU reduction order over Lk=512 vs tight Lk flips a borderline FP bit → different acoustic frame, AR-amplified. Benign FP-reduction diff (default roundtrip ASR 6/6 intelligible), not a logic bug — but "byte-identical AND faster" bar not met on CUDA.
 
@@ -18087,7 +18087,7 @@ Clean M1/Metal A/B (loadavg ~5), floor64 vs default:
 - byte-identical on Metal (short `a5ce6e08…`, long `d396e8bf…`).
 - "Best of both" CONFIRMED: on long, nobucket SLOWER than default (255.7 > 249.1) — per-step rebuild costs more than padding saved — while floor64 (233.2) beats BOTH (tight padding + graph caching).
 
-Decision — SHIPPED backend-conditional default. `tada_default_bucket_min()`: Metal+CPU→64 (byte-identical win), CUDA/ROCm/Vulkan/WebGPU→512 (output unchanged; reduction order makes bucket-width change non-bit-identical, win marginal). `CRISPASR_TADA_BUCKET_MIN` overrides. Validation: Metal default(64)==BUCKET_MIN=512==golden `a5ce6e08` (3/3); CPU default(64)==512==`68ad4ce4` byte-identical AND 1.53× faster (1203 vs 1843 ms/step); CUDA unchanged by construction. Metal runs flaky under GPU contention (transient no-output at rc=0) — correctness signal only on a quiet box. Kaggle kernel now gates on ASR keyword-recall of all arms, md5 informational only.
+Decision — SHIPPED backend-conditional default. `tada_default_bucket_min()`: Metal+CPU→64 (byte-identical win), CUDA/ROCm/Vulkan/WebGPU→512 (output unchanged; reduction order makes bucket-width change non-bit-identical, win marginal). `STELNETTTS_TADA_BUCKET_MIN` overrides. Validation: Metal default(64)==BUCKET_MIN=512==golden `a5ce6e08` (3/3); CPU default(64)==512==`68ad4ce4` byte-identical AND 1.53× faster (1203 vs 1843 ms/step); CUDA unchanged by construction. Metal runs flaky under GPU contention (transient no-output at rc=0) — correctness signal only on a quiet box. Kaggle kernel now gates on ASR keyword-recall of all arms, md5 informational only.
 
 ### General
 For fixed-seq no-KV DiTs use seq-concat + block-diagonal-mask (voxtral FM); AR-with-KV backends use the chatterbox-T3 B=2 pattern. gianni measured −42% on T3.
@@ -18103,7 +18103,7 @@ tensor addresses changed each step → "properties changed" → warmup resets/re
 (ggml-cuda.cu:4361; the reporter's "CUDA graph warmup complete" spam). A persistent cached graph
 (build once, reuse, re-set ALL inputs each call per the §234 gotcha) makes warmup complete once and replay.
 
-- Implemented, gated `CRISPASR_IRODORI_PERSIST_GRAPH` (default OFF), + `CRISPASR_IRODORI_DIT_TIMING`
+- Implemented, gated `STELNETTTS_IRODORI_PERSIST_GRAPH` (default OFF), + `STELNETTTS_IRODORI_DIT_TIMING`
   construct/setinput/compute split.
 - Parity PROVEN byte-identical persist vs rebuild: CPU `6c3e16d0`, Metal `1c7f9f27`. No hang.
 - Metal/CPU: no throughput win — STEP-0 shows the DiT is 98.2% compute-bound (graph construct+alloc
@@ -18142,7 +18142,7 @@ Evidence (2026-07-06):
   quantized-matmul paths: int-dot MMQ / MMVQ (activations quantized to q8_1) and the
   KHR_coopmat/scalar dequant matmul variants.
 - Disproof of "q8_1 activation-quant noise" as inherent cause: shipped
-  `GGML_VK_FORCE_INTEGER_DOT_PRODUCT=1` (e2da0d6e, CrispASR patch in vendored
+  `GGML_VK_FORCE_INTEGER_DOT_PRODUCT=1` (e2da0d6e, StelnetTTS patch in vendored
   ggml-vulkan) enabling int-dot on MoltenVK (extension present, only "accelerated"
   bit missing). Forced int-dot + `GGML_VK_FORCE_MMVQ=1` on M1: clean, roundtrips
   verbatim. So the shader logic is fine; suspicion is a RADV GFX1201 shader
@@ -18155,23 +18155,23 @@ Evidence (2026-07-06):
 ### Shipped — TDT / TDT+CTC (2026-05-20)
 
 All four converted, smoke-tested on JFK at M1 Metal, uploaded to HF with READMEs.
-Registry entries + `-m <name>` lookup + C ABI wired in `crispasr_model_registry.cpp`
-+ `crispasr_model_mgr_cli.cpp` (commit `d8325847`). C++ fix: `parakeet_init_from_file`
+Registry entries + `-m <name>` lookup + C ABI wired in `stelnettts_model_registry.cpp`
++ `stelnettts_model_mgr_cli.cpp` (commit `d8325847`). C++ fix: `parakeet_init_from_file`
 auto-flips to CTC decode when `pred_layers < 2 && has_ctc` (commit `0a902517`) —
 without it the 110m's single-LSTM predictor failed silently.
 
-- `nvidia/parakeet-tdt-0.6b-v2` → `cstr/parakeet-tdt-0.6b-v2-GGUF` (468 MB Q4_K,
+- `nvidia/parakeet-tdt-0.6b-v2` → `Xenna/parakeet-tdt-0.6b-v2-GGUF` (468 MB Q4_K,
   11.4× rt) — `-m parakeet-v2`
-- `nvidia/parakeet-tdt-1.1b` → `cstr/parakeet-tdt-1.1b-GGUF` (808 MB Q4_K, 16× rt,
+- `nvidia/parakeet-tdt-1.1b` → `Xenna/parakeet-tdt-1.1b-GGUF` (808 MB Q4_K, 16× rt,
   lowercase) — `-m parakeet-tdt-1.1b`
-- `nvidia/parakeet-tdt_ctc-110m` → `cstr/parakeet-tdt_ctc-110m-GGUF` (91 MB Q4_K,
+- `nvidia/parakeet-tdt_ctc-110m` → `Xenna/parakeet-tdt_ctc-110m-GGUF` (91 MB Q4_K,
   45× rt, auto-CTC) — `-m parakeet-tdt_ctc-110m`
-- `nvidia/parakeet-tdt_ctc-1.1b` → `cstr/parakeet-tdt_ctc-1.1b-GGUF` (810 MB Q4_K,
+- `nvidia/parakeet-tdt_ctc-1.1b` → `Xenna/parakeet-tdt_ctc-1.1b-GGUF` (810 MB Q4_K,
   mixed-case + punct) — `-m parakeet-tdt_ctc-1.1b`
 
-Each GGUF in F16/Q8_0/Q4_K. Works via unified CLI `crispasr -m <name>
---auto-download -f audio.wav` and C ABI `crispasr_registry_lookup_abi(...)`.
-Filename-heuristic dispatch in `crispasr_backend.cpp:370-372` unchanged —
+Each GGUF in F16/Q8_0/Q4_K. Works via unified CLI `stelnettts -m <name>
+--auto-download -f audio.wav` and C ABI `stelnettts_registry_lookup_abi(...)`.
+Filename-heuristic dispatch in `stelnettts_backend.cpp:370-372` unchanged —
 `parakeet-tdt_ctc-*.gguf` matches "parakeet" with `!contains_ci("tdt")` guard.
 
 ### Done — parakeet-rnnt 0.6b + 1.1b (2026-05-24)
@@ -18182,8 +18182,8 @@ token→stay on frame, `max_per_step=10` anti-loop; hotword biasing wired. Conve
 RNNT detection: `joint.joint_net.2.weight` key → `n_tdt_durations=0`; runtime
 dispatches via `use_rnnt = !use_ctc && n_tdt_durations==0`. In-memory nemo loading
 (BytesIO + torch.load, no disk extraction). 0.6b: 24-layer enc, Q4_K 447 MB,
-`cstr/parakeet-rnnt-0.6b-GGUF`. 1.1b: 42-layer enc, Q4_K 770 MB,
-`cstr/parakeet-rnnt-1.1b-GGUF`. Both smoke-tested on JFK, registry-wired, pushed.
+`Xenna/parakeet-rnnt-0.6b-GGUF`. 1.1b: 42-layer enc, Q4_K 770 MB,
+`Xenna/parakeet-rnnt-1.1b-GGUF`. Both smoke-tested on JFK, registry-wired, pushed.
 
 ### parakeet-unified survey (2026-06-15/16)
 
@@ -18205,7 +18205,7 @@ SIGABRT traced to 8× subsampling (see PLAN for the open fix).
 | parakeet-tdt, -ctc, -rnnt, -tdt_ctc, -unified | YES | NeMo CTC-WS (Aho-Corasick phrase-boost trie + shallow fusion); MBS Transducer hotwords (Feb 2026) |
 | fastconformer-ctc | YES | Same NeMo CTC-WS pipeline |
 | funasr / fun-asr-nano / mlt-nano (paraformer) | YES | Native `hotword=` kwarg in upstream `AutoModel.generate`; SeACo-Paraformer-style hotword encoder pre-decoder |
-| qwen3-asr | YES | DashScope `vocabulary_id` + free-text `-c <context>` |
+| cielvox2-asr | YES | DashScope `vocabulary_id` + free-text `-c <context>` |
 | voxtral / voxtral4b | YES | `context_bias` API field, up to 100 entries |
 | granite-speech-4.1-2b-plus | YES | Keyword list baked into LLM prompt (the `-plus` variant is the keyword-prompted one) |
 | mimo-asr | YES (research) | PromptASR cross-attends a text-prompt encoder into the speech encoder; HF card doesn't expose a flag yet |
@@ -18237,12 +18237,12 @@ The 2026-05-20 funasr port shipped with `ggml_flash_attn_ext` on encoder+adaptor
 (FA on by default, `FUNASR_NO_FA=1` to opt out) and `core_attn::kv_self_attn` on the
 LLM body.
 
-**Fused LLM QKV — DONE (shipped at initial port time).** Pattern from `qwen3_asr.cpp`:
+**Fused LLM QKV — DONE (shipped at initial port time).** Pattern from `cielvox2_asr.cpp`:
 concat Q/K/V weights at load, one matmul per layer. In `funasr_init_from_file`
 (unconditional, fused at load if Q/K/V shapes+types match).
 
 **Single-token embed fast path — DONE (2026-06-20, HISTORY §180).**
-`CRISPASR_FUNASR_EMBED_FAST` (default ON). AR decode hot path called
+`STELNETTTS_FUNASR_EMBED_FAST` (default ON). AR decode hot path called
 `funasr_embed_tokens({next_id})` once/step, paying full graph-build + sched-alloc for
 a single GET_ROWS. New path dequants one row directly from `token_embd.weight`.
 Transcript byte-identical. VPS A/B: embed step ~1.6× faster (15–26 vs 27–41 ms/tok).
@@ -18269,7 +18269,7 @@ Two-pass pattern comparison:
 | Source for Pass 1 | Encoder forwards | Vocab mapping | Trust |
 |---|---|---|---|
 | csukuangfj CTC head + upstream encoder/adaptor/LLM | one (shared) | none (same tokens.txt) | single-author training, no published WER, framework-blessed recipe |
-| SenseVoice-Small (already in CrispASR) | two (different encoder) | needed (SenseVoice CTC vocab vs Qwen3 tokenizer) | gold — official Alibaba release |
+| SenseVoice-Small (already in StelnetTTS) | two (different encoder) | needed (SenseVoice CTC vocab vs Qwen3 tokenizer) | gold — official Alibaba release |
 
 Phase A caveat: framework CTC training was auxiliary (`detach_ctc_decoder: true`,
 `ctc_weight: 1.0` among several losses) so CTC quality won't match the LLM head — need
@@ -18294,7 +18294,7 @@ channel-major `convt1d_decomp` on a time-major input). Validated on M1 Metal; CU
 garbage was ROOT CAUSE via diff harness + GGML_SCHED_DEBUG (`63d4c013`): backbone's weight-less
 leading RMSNorm made `ggml_backend_sched` put input + first op on CPU and feed GPU a miscomputed
 cross-backend copy. Fix: compute backbone directly on ctx->backend via gallocr (single-backend,
-no copy) in `backbone_step` + `run_lfm`. GPU is default again; `CRISPASR_LFM2_AUDIO_CPU=1` forces CPU.
+no copy) in `backbone_step` + `run_lfm`. GPU is default again; `STELNETTTS_LFM2_AUDIO_CPU=1` forces CPU.
 
 **RESOLVED — kugelaudio (HISTORY §209):** fixed by `bdb3f42f`, same §206 root cause — Qwen2.5-7B LM's
 weight-less leading RMSNorm → sched miscomputed copy → garbage LM → no speech-diffusion token → empty.
@@ -18321,7 +18321,7 @@ Status (May 2026): code path works, validation deferred to a larger-RAM box.
 PLAN #51a's CPU mmap loader landed (commit `9710f80`, Metal mmap loader same
 commit); #60a added the `posix_madvise(WILLNEED)` readahead hint (commit
 `f1f4bce`). Together these mean no code change needed for 51c — just point
-`crispasr` at the F16 GGUF with `CRISPASR_GGUF_MMAP=1`. Verified the load path
+`stelnettts` at the F16 GGUF with `STELNETTTS_GGUF_MMAP=1`. Verified the load path
 works (no OOM, mmap'd weights at 1.9 GB RSS on a 16 GB box, prefill compute
 starts).
 
@@ -18352,19 +18352,19 @@ $PATH, and emitted U+200D ZWJ ties + newline chunks. This item replaced popen wi
 in-process libespeak-ng behind a CMake AUTO probe, popen kept as fallback.
 
 ### Done (in-process phonemizer)
-- `src/CMakeLists.txt`: `CRISPASR_WITH_ESPEAK_NG` cache string (AUTO/ON/OFF,
+- `src/CMakeLists.txt`: `STELNETTTS_WITH_ESPEAK_NG` cache string (AUTO/ON/OFF,
   default AUTO). AUTO probes `pkg-config espeak-ng` then Homebrew/Linux fallback
-  (`/opt/homebrew`, `/usr/local`, `/usr`); defines `CRISPASR_HAVE_ESPEAK_NG=1`,
+  (`/opt/homebrew`, `/usr/local`, `/usr`); defines `STELNETTTS_HAVE_ESPEAK_NG=1`,
   links libespeak-ng PUBLIC. ON = hard error if missing; OFF skips probe.
 - `src/kokoro.cpp`: `kokoro_phoneme_cache` (bounded LRU 1024, mutex, keyed
   `lang \0 text`); `phonemize_espeak_lib()` (lazy `espeak_Initialize` with
   `espeakINITIALIZE_PHONEME_IPA | DONT_EXIT` behind process-global mutex, sticky
-  init-failure flag, `CRISPASR_ESPEAK_DATA_PATH` override, sticky voice, loops
+  init-failure flag, `STELNETTTS_ESPEAK_DATA_PATH` override, sticky voice, loops
   `espeak_TextToPhonemes` joining with spaces); `phonemize_popen()` kept as
   fallback. `kokoro_synthesize` → `phonemize_cached()` tries cache → lib → popen.
-- `examples/cli/crispasr_backend_kokoro.cpp`: maps `-l/--language` → `espeak_lang`;
+- `examples/cli/stelnettts_backend_kokoro.cpp`: maps `-l/--language` → `espeak_lang`;
   `auto` keeps default en-us (espeak has no auto-detect).
-- Build verified: `otool -L libcrispasr.dylib` shows libespeak-ng.1.dylib;
+- Build verified: `otool -L libstelnettts.dylib` shows libespeak-ng.1.dylib;
   `nm libkokoro.a` has the three espeak symbols. Smoke-tested en/de/fr/cmn/ru/ja.
 - End-to-end synth (kokoro-82m-f16.gguf + af_heart): en/fr/ru healthy; de
   near-silence on long phrases (no German voice); cmn FIXED 2026-05-23 via
@@ -18379,7 +18379,7 @@ Kokoro-82M ships voices only for a/b/e/f/h/i/j/p/z — no d_*/r_*/ko/ar.
   long German (peak 541/RMS 44); ff_siwis(fr) healthy (20577/2318), ef_dora(es)
   healthy (15036/1613). Wired auto-fallback: `de*` → df_victoria → df_eva →
   ff_siwis; everything-else-without-native-pack → ff_siwis. Explicit `--voice`
-  always wins. Voice GGUFs at `/Volumes/backups/ai/crispasr-models/kokoro-voice-*`.
+  always wins. Voice GGUFs at `/Volumes/backups/ai/stelnettts-models/kokoro-voice-*`.
 - **Option 2a — recovered Tundragoon German voice packs.** Original
   `Tundragoon/Kokoro-German` HF repo 404 (account deleted). Recovered df_eva +
   dm_bernd from `r1di/kokoro-fastapi-german` Git LFS ([512,1,256] F32). With
@@ -18401,12 +18401,12 @@ Kokoro-82M ships voices only for a/b/e/f/h/i/j/p/z — no d_*/r_*/ko/ar.
   - Produced `kokoro-de-hui-base-f16.gguf` (163.7 MB, 459 tensors, same byte size
     as kokoro-82m-f16.gguf = identical arch). Voicepacks →
     kokoro-voice-{df_victoria,dm_martin}.gguf ([510,1,256] F32 passthrough).
-  - C ABI: `crispasr_kokoro_resolve_model_for_lang()` +
-    `crispasr_kokoro_resolve_fallback_voice()` in kokoro.{h,cpp}, re-exported `_abi`
-    from crispasr_c_api.cpp. CLI: swaps to sibling kokoro-de-hui-base-f16.gguf when
+  - C ABI: `stelnettts_kokoro_resolve_model_for_lang()` +
+    `stelnettts_kokoro_resolve_fallback_voice()` in kokoro.{h,cpp}, re-exported `_abi`
+    from stelnettts_c_api.cpp. CLI: swaps to sibling kokoro-de-hui-base-f16.gguf when
     `-l de*` and model basename starts kokoro-82m, loads German fallback voice
     cascade df_victoria → df_eva → ff_siwis. Python
-    `crispasr.kokoro_resolve_for_lang()` → KokoroResolved(model_path, voice_path,
+    `stelnettts.kokoro_resolve_for_lang()` → KokoroResolved(model_path, voice_path,
     voice_name, backbone_swapped).
   - Long German ASR-roundtrip (parakeet-v3 -l de): dm_martin byte-perfect
     ("...Phonemizers."); df_victoria/df_eva/dm_bernd each 1 word-boundary error.
@@ -18415,12 +18415,12 @@ Kokoro-82M ships voices only for a/b/e/f/h/i/j/p/z — no d_*/r_*/ko/ar.
   worse than 2b (predictor/decoder not German-aware).
 
 ### Follow-ups DONE (2026-05-01)
-- HF GGUF mirrors: cstr/kokoro-82m-GGUF, cstr/kokoro-de-hui-base-GGUF,
-  cstr/kokoro-voices-GGUF — F16 + Q8_0 backbones (Q4_K dropped, see LEARNINGS),
+- HF GGUF mirrors: Xenna/kokoro-82m-GGUF, Xenna/kokoro-de-hui-base-GGUF,
+  Xenna/kokoro-voices-GGUF — F16 + Q8_0 backbones (Q4_K dropped, see LEARNINGS),
   7 voicepacks.
-- Auto-download via `src/crispasr_model_registry.cpp` new `ExtraCompanion`
+- Auto-download via `src/stelnettts_model_registry.cpp` new `ExtraCompanion`
   mechanism (backends with >1 aux file list extras alongside inline
-  companion_file). `crispasr --backend kokoro -m auto -l de` pulls all 4 + routes.
+  companion_file). `stelnettts --backend kokoro -m auto -l de` pulls all 4 + routes.
 - Wrapper TTS surface across Rust/Go/Java/JS/Ruby (commit 4f476c3):
   Session.{open,setVoice,setCodecPath,synthesize,close} + kokoroResolveForLang.
 
@@ -18435,7 +18435,7 @@ divergence (`ni2χˈɑu2` vs `niɜχˈɑ‍u2`) = item #2's symptom. No-model un
 
 ### Item 5 DONE — cache-clear ABI + cross-binding
 `kokoro_phoneme_cache_clear()` + session-scoped
-`crispasr_session_kokoro_clear_phoneme_cache()` for long-running daemons. Wrappers
+`stelnettts_session_kokoro_clear_phoneme_cache()` for long-running daemons. Wrappers
 landed across all 7 bindings (Python clear_phoneme_cache, Rust
 Session::clear_phoneme_cache, Dart clearPhonemeCache, Go ClearPhonemeCache, Java
 clearPhonemeCache, JS ttsClearPhonemeCache, Ruby clear_phoneme_cache). No-model
@@ -18461,7 +18461,7 @@ Detailed scoping notes captured before kickoff; retained as reference.
   added as residuals into LM block inputs at indices 0,1,2,3 (multi-resolution
   features inject continuously through the LM's early layers, preserving low-level
   prosody/transients alongside semantics — single-tap projectors like
-  qwen3-asr/voxtral/granite-speech can't).
+  cielvox2-asr/voxtral/granite-speech can't).
 - **Time-aware tokens** — explicit time-marker tokens inserted between audio frame
   embeddings at fixed intervals; LM learns "what happened when" natively; word +
   sentence timestamp ASR + time-based QA without a separate aligner.
@@ -18471,20 +18471,20 @@ Detailed scoping notes captured before kickoff; retained as reference.
 
 ### Effort breakdown (LOC / reuse)
 - Mel front-end 128-bin ~50 (`core_mel`); 32-layer encoder ~150 (~70% from
-  qwen3_asr.cpp); encoder sliding-window attn ~50 (voxtral4b pattern); DeepStack
+  cielvox2_asr.cpp); encoder sliding-window attn ~50 (voxtral4b pattern); DeepStack
   4-tap capture ~80 (new); 4-projection adapter ~60 (new); injection into LM
   0–3 ~120 (new); time-marker tokenization ~100 (new); Qwen3 LM body ~50 (full
   reuse core_attn::kv_self_attn + core_ffn::swiglu); greedy/sampler ~80
   (core_bpe::tokenize_with_specials + mimo_asr.cpp step builder); converter ~250
   (convert-mimo-asr-to-gguf.py template); diff harness ~200
   (reference_backends/mimo_asr.py template); CLI backend wrapper ~120
-  (crispasr_backend_mimo_asr.cpp template). Total ~1200–1500.
+  (stelnettts_backend_mimo_asr.cpp template). Total ~1200–1500.
 
 ### Why it matters
 The 24 existing ASR backends all map audio→text. None handle "describe the
 music", emotion, meeting summarisation, or word-level timestamp ASR. MOSS-Audio
 is the first open (Apache-2.0), reasonably-sized (4 B) candidate covering that —
-analogous to how qwen3-tts expanded scope to TTS.
+analogous to how cielvox2-tts expanded scope to TTS.
 
 Probable kickoff: mid-to-late May 2026 if the queue clears.
 
@@ -18514,7 +18514,7 @@ Probable kickoff: mid-to-late May 2026 if the queue clears.
 From COMPARISON.md (llama.cpp): `ggml_soft_max_ext` with baked scale (O1, saves one
 `ggml_scale`/attn layer); chunked window attention (O10, Gemma4A Conformer); conv2d
 subsampling via ggml ops (Qwen3-ASR encoder).
-From CrispEmbed: fused QKV pre-merge at init (O2); SentencePiece Viterbi DP optimal
+From StelnetEmbed: fused QKV pre-merge at init (O2); SentencePiece Viterbi DP optimal
 tokenizer; lazy graph allocation (`no_alloc=true` + scheduler) reduces memory churn.
 From LEARNINGS (FireRed decoder triage): small per-step ggml graphs are SLOWER than
 CPU loops (scheduling overhead), BUT native Q4_K matmuls via ggml are 9.3× faster than
@@ -18531,22 +18531,22 @@ F32 OpenMP (never dequant).
 Pre-flight status (2026-04-25):
 | Wrapper | Pre-flight | Blocker |
 |---|---|---|
-| Python `crispasr` 0.5.4 | sdist + wheel build clean | PyPI trusted-publisher must be configured |
-| Dart `crispasr` 0.5.4 | `dart pub publish --dry-run` passes (warnings only) | pub.dev automated publishing must be configured |
-| Rust `crispasr-sys` 0.5.4 | `cargo publish --dry-run` clean (5.9 KiB) | needs `CARGO_REGISTRY_TOKEN` repo secret |
-| Rust `crispasr` 0.5.4 | publish-order dependent on `crispasr-sys` | same |
+| Python `stelnettts` 0.5.4 | sdist + wheel build clean | PyPI trusted-publisher must be configured |
+| Dart `stelnettts` 0.5.4 | `dart pub publish --dry-run` passes (warnings only) | pub.dev automated publishing must be configured |
+| Rust `stelnettts-sys` 0.5.4 | `cargo publish --dry-run` clean (5.9 KiB) | needs `CARGO_REGISTRY_TOKEN` repo secret |
+| Rust `stelnettts` 0.5.4 | publish-order dependent on `stelnettts-sys` | same |
 
 Rationale for not bundling native lib: keeps wheels/crates/pub packages tiny and avoids a per-platform build matrix on every release. Same pattern Tesseract / faster-whisper use for the RuntimeError-with-install-docs fallback.
 
 ## 59. Cross-binding C-ABI parity
 
-Coverage matrix (May 2026, post-#107). C-ABI exposes 136+ unique `crispasr_*` exports in `src/crispasr_c_api.cpp` (9 new in #107 P6 — pluggable speaker embedder, agglomerative clustering, pyannote cache).
+Coverage matrix (May 2026, post-#107). C-ABI exposes 136+ unique `stelnettts_*` exports in `src/stelnettts_c_api.cpp` (9 new in #107 P6 — pluggable speaker embedder, agglomerative clustering, pyannote cache).
 
 | Binding | Symbols | ~% | Transcribe | TTS Session | Variant | Align | Diarize | Diarize embedder | LID | VAD | Stream | Punc | Registry | Cache |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Rust (`crispasr-sys`) | 65 | ~48% | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Rust (`stelnettts-sys`) | 65 | ~48% | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Python (`_binding.py`) | 67 | ~49% | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Dart (`flutter/crispasr`) | ~39 | ~29% | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Dart (`flutter/stelnettts`) | ~39 | ~29% | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Go (`bindings/go`) | ~54 | ~40% | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Java (JNA) | ~42 | ~31% | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅¹ | ✅¹ | ✅¹ |
 | Ruby (C ext) | ~30 | ~22% | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅¹ | ❌ | ❌ |
@@ -18554,7 +18554,7 @@ Coverage matrix (May 2026, post-#107). C-ABI exposes 136+ unique `crispasr_*` ex
 
 ¹ JNA decls added, idiomatic Java wrapper methods pending.
 
-Diarize-embedder column covers the #107 P6 surface (`crispasr_speaker_embedder_*_abi`, `crispasr_speaker_cluster_abi`, `crispasr_pyannote_cache_*_abi`); adapters dispatch by spec string (`auto`/`titanet`/`indextts`/`ecapa`/.gguf). Without it callers still run pyannote-only diarization via `crispasr_diarize_segments_abi`; the embedder adds globally stable speaker IDs across long files.
+Diarize-embedder column covers the #107 P6 surface (`stelnettts_speaker_embedder_*_abi`, `stelnettts_speaker_cluster_abi`, `stelnettts_pyannote_cache_*_abi`); adapters dispatch by spec string (`auto`/`titanet`/`indextts`/`ecapa`/.gguf). Without it callers still run pyannote-only diarization via `stelnettts_diarize_segments_abi`; the embedder adds globally stable speaker IDs across long files.
 
 The five non-Rust/Python bindings track the high-traffic surface (transcribe + TTS), swept together in `4f476c3` (set_speaker_name) and `65e0a61` (set_instruct + variant detect). PR #112 `--stream-punc` is a CLI-orchestration flag, not a library surface. Total remaining ≈ 5 bindings × 9 surfaces × ~30 LOC ≈ 1.5 kLOC; each capability independent/stageable.
 
@@ -18603,27 +18603,27 @@ against — that's already fixed by the CPU fallback in `31795a7` /
 `VIBEVOICE_VAE_BACKEND=cpu`. Chunking is the right shape for a latency feature,
 not a throughput one; the graph-reuse fix is the prerequisite (retained in PLAN).
 
-## 91. CrispASR CLI features missing from CrisperWeaver
+## 91. StelnetTTS CLI features missing from StelnetWeaver
 
 **`--alt N` / `--alt-n N` (alternative-candidate tokens) — shipped May 2026
-(0.5.13 + CrisperWeaver §5.8).** Whisper internals carry a parallel `alts`
+(0.5.13 + StelnetWeaver §5.8).** Whisper internals carry a parallel `alts`
 vector on `whisper_segment` (mirrored at every `tokens.{clear,push_back,resize}`
 site through the fallback-temperature loop, `result_len` truncation, and
 `max_len` wrap-segment splitter). New `wparams.alt_n` (default 0 = off). Capture
 inside `whisper_sample_token`; beam search excluded (siblings are
 beam-conditional, not greedy alternatives). Six new public getters
 (`whisper_full_get_token_n_alts` / `_alt_id` / `_alt_p` + `_from_state`
-variants); new C-ABI both low-level (`crispasr_token_n_alts` / `_alt_id` /
+variants); new C-ABI both low-level (`stelnettts_token_n_alts` / `_alt_id` /
 `_alt_p` / `_alt_text`) and unified session result
-(`crispasr_session_result_word_n_alts` / `_alt_text` / `_alt_p`); sticky setter
-`crispasr_session_set_alt_n`. The whisper session-transcribe path now populates
+(`stelnettts_session_result_word_n_alts` / `_alt_text` / `_alt_p`); sticky setter
+`stelnettts_session_set_alt_n`. The whisper session-transcribe path now populates
 `seg.words` via `emit_words_from_tokens` (previously emitted only segment text —
 closed a long-standing gap with parakeet/canary backends). Dart 0.5.13 + smoke
-test pinned. CrisperWeaver surfaces it as `AdvancedOptions.altN` (0..5 slider in
+test pinned. StelnetWeaver surfaces it as `AdvancedOptions.altN` (0..5 slider in
 the Whisper-only section) + a tap-to-pick chip row in the segment edit dialog.
 
 Live end-to-end test shipped as
-`flutter/crispasr/test/alt_tokens_live_test.dart`: opens a session against
+`flutter/stelnettts/test/alt_tokens_live_test.dart`: opens a session against
 `ggml-tiny.en.bin`, sets `altN=3`, transcribes `samples/jfk.wav`, asserts ≥1 word
 has alts, p ∈ [0,1] and descending, chosen token excluded, `setAltN(0)` clears on
 next decode. Tagged `live` so model-less CI passes. On dev box whisper-tiny gives
@@ -18701,9 +18701,9 @@ Chunk-size × overlap sweep on the #89 reporter's 60 s Japanese audio
 Counterintuitively, more overlap hurts (extends z-norm window → distribution
 shift). Ceiling is the decoder cold-start, not boundary stitching.
 
-NeMo `FrameBatchASR` / `BatchedFrameASRTDT` vs CrispASR chunking:
+NeMo `FrameBatchASR` / `BatchedFrameASRTDT` vs StelnetTTS chunking:
 
-| | NeMo streaming | CrispASR chunking |
+| | NeMo streaming | StelnetTTS chunking |
 |---|---|---|
 | Frame step | 1.6-4 s | 15-30 s |
 | Buffer | 4 s rolling | chunk + overlap |
@@ -18712,13 +18712,13 @@ NeMo `FrameBatchASR` / `BatchedFrameASRTDT` vs CrispASR chunking:
 | Overlap ratio | 60-150 % of frame | 10-20 % of chunk |
 
 Key: NeMo keeps the TDT LSTM predictor state between frames; each 1.6 s step feeds
-the decoder the previous hidden state so it never cold-starts. CrispASR
+the decoder the previous hidden state so it never cold-starts. StelnetTTS
 reinitializes the LSTM (`lstm_init_state`) for every chunk.
 
 ## 125. Issue #125 — multi-backend bug sweep from montvid (12 findings)
 
 External user `montvid` ran every backend on the #89 reporter's 50:47 EN FLAC
-plus `samples/jfk.wav`, on CrispASR v0.6.10 `eaee2319` (2026-05-25), NVIDIA RTX
+plus `samples/jfk.wav`, on StelnetTTS v0.6.10 `eaee2319` (2026-05-25), NVIDIA RTX
 PRO 6000 Blackwell sm_120 + CUDA 12.6. Regression-bisect reference build:
 `f23d9485` (v0.6.9). 12 report files at `/Volumes/backups/code/issue125-attachments/`.
 JFK-as-control isolates "model dead" from "long-audio dispatcher broken" in <2 min.
@@ -18727,7 +18727,7 @@ JFK-as-control isolates "model dead" from "long-audio dispatcher broken" in <2 m
 v0.6.9 `f23d9485` works; v0.6.10 `eaee2319` segfaults during decode (rc=139).
 Reporter bisected to `6b492b2b` (FA per-head mask) but that grep missed
 `ggml-backend.cpp`. FA-mask ruled out: every line wrapped in
-`#ifdef GGML_CUDA_CRISPASR_FA_PERHEAD_MASK`, CMake option defaults OFF
+`#ifdef GGML_CUDA_STELNETTTS_FA_PERHEAD_MASK`, CMake option defaults OFF
 (`ggml/CMakeLists.txt:211`), no CI/release sets it ON, self-built binary
 byte-identical to upstream. Real suspect `0f0f0793` ("ggml sched src-mutation log
 + UNet input pin", for chatterbox CFG cond+uncond gf reuse): restore loop ran
@@ -18748,7 +18748,7 @@ Both variants emit 60 KB of `!` regardless of content or `-l`; reproduces on 11 
 JFK (report 07 control) so model is dead at any length. `-l zh` byte-identical to
 `-l en` (report 08). Greedy argmax `src/funasr.cpp:1375-1400` had no guard; logits
 collapse locks on token id ~5 (`!`). Shipped: degenerate-loop guard (bail after
-same id >20× in a row), `frames_spliced`/`fake_token_len` at `CRISPASR_VERBOSE=1`,
+same id >20× in a row), `frames_spliced`/`fake_token_len` at `STELNETTTS_VERBOSE=1`,
 registry entries for funasr/fun-asr-mlt-nano/sensevoice/paraformer in
 `tools/test-all-backends.py`. Local M1 Metal produces canonical JFK — `!`-loop is
 CUDA-specific. `-l` honoured DONE `1b491c3d` 2026-06-12 (`funasr_set_language()` +
@@ -18772,7 +18772,7 @@ LLM head.
 JFK 11 s verbatim; 50-min file emits unrelated LLM commentary after `<Eos>!` —
 chunking/long-context bug, not the audio-soft-token-id mismatch hypothesised in
 report 02. Shipped: 30 s training-window guard (>30 s aborts with message);
-`CRISPASR_GEMMA4_AUTO_CHUNK=1` opt-in internal chunker (`9b5a0a2a`); 2026-06-13
+`STELNETTTS_GEMMA4_AUTO_CHUNK=1` opt-in internal chunker (`9b5a0a2a`); 2026-06-13
 `prefers_vad()` override auto-enables VAD >30 s (like parakeet-ja `f950bd1e`) —
 silence-bounded segments match ~30 s training window, preferred over hard 30 s
 chunks. Kaggle P100 v5: 60 s audio → 471 chars correct via auto-VAD (was 10 chars
@@ -18781,7 +18781,7 @@ chunks. Kaggle P100 v5: 60 s audio → 471 chars correct via auto-VAD (was 10 ch
 ### P5 — mimo-asr tokenizer GGUF not in auto-download manifest (06) — DONE `b936b488`
 `--auto-download` fetched the LM but not the ~395 MB `mimo-tokenizer-q4_k.gguf`;
 exit 1 "no audio tokenizer GGUF found". Shipped: registry declares
-`mimo-tokenizer-q4_k.gguf` from `cstr/mimo-tokenizer-GGUF` as companion; improved
+`mimo-tokenizer-q4_k.gguf` from `Xenna/mimo-tokenizer-GGUF` as companion; improved
 error lists three fixes; `docs/architecture.md` + `docs/cli.md` document the
 separate-tokenizer requirement + `--codec-model` override.
 
@@ -18854,7 +18854,7 @@ phonemize(lang, text) → IPA string
   └─► phonemize_espeak_popen(...)   subprocess fallback
 ```
 
-Dict sources (HF `cstr/g2p-dicts`): pre-gen IPA dicts (espeak-ng run over
+Dict sources (HF `Xenna/g2p-dicts`): pre-gen IPA dicts (espeak-ng run over
 CMUdict/OLaPh/open-dict-data vocab — IPA output is factual data, not GPL-encumbered,
 same principle as compiler output); OLaPh dicts (MIT, iisys-hof/olaph, 13 langs);
 CMUdict (BSD). Each language module header-only with `struct context`,
@@ -18878,9 +18878,9 @@ CMUdict (BSD). Each language module header-only with `struct context`,
 - Vowel-quality fixes: AH0→ə (was ʌ), IY0→i (was iː), ER→ɜː (was ɜːɹ), dropped
   secondary stress ˌ — matches espeak-ng exactly.
 - Dict auto-download: CMUdict (BSD) + OLaPh (MIT, 13 langs) from HF; selectable via
-  `--g2p-dict` or `CRISPASR_G2P_DICT_SOURCE`; open-dict-data (CC-BY-SA) as alt.
+  `--g2p-dict` or `STELNETTTS_G2P_DICT_SOURCE`; open-dict-data (CC-BY-SA) as alt.
 - Full wiring: CLI `--g2p-dict` → `whisper_params` → C API
-  `crispasr_session_set_g2p_dict()` → Go `SetG2PDict()` → server startup.
+  `stelnettts_session_set_g2p_dict()` → Go `SetG2PDict()` → server startup.
 - Tests: 202 unit assertions (85 EN + 44 DE + 22 FR + 21 ES + 30 piper) across 38
   cases + 4 live TTS→ASR roundtrips.
 
@@ -18905,13 +18905,13 @@ CMUdict (BSD). Each language module header-only with `struct context`,
 
 OLaPh (iisys-hof/olaph, MIT): 13-lang framework, German 1.12M entries, `word\t/IPA/`
 format our loaders support. Paper arXiv 2509.20086v3, auto-downloadable via
-`crispasr_cache`.
+`stelnettts_cache`.
 
 ## §169 — Qwen3-ASR ChatML language prompt (non-English script output)
 
 Impact note: all 30 Qwen3-ASR languages work in auto-detect for clean audio (AA001.wav → `مرحبًا` works), but explicit language selection has no effect and ambiguous cases get romanized (AA0010.wav → `istagel`), so auto-detect is only partial.
 
-2026-06-16: GGUFs uploaded to `cstr/parakeet-unified-en-0.6b-GGUF` (F16 1181 MB + Q4_K). v8: n_mels=128 fix → test_rc=0 (no crash) but transcript garbage. Tokenizer verified correct (same as parakeet-rnnt). Root cause: synthetic config mismatch vs actual training config — need to diff C++ mel output against NeMo Python reference to find divergence.
+2026-06-16: GGUFs uploaded to `Xenna/parakeet-unified-en-0.6b-GGUF` (F16 1181 MB + Q4_K). v8: n_mels=128 fix → test_rc=0 (no crash) but transcript garbage. Tokenizer verified correct (same as parakeet-rnnt). Root cause: synthetic config mismatch vs actual training config — need to diff C++ mel output against NeMo Python reference to find divergence.
 
 ## §176 Runtime optimization pass — 2026-06-20 audit (archive)
 
@@ -18945,7 +18945,7 @@ baseline on jfk). Shipped `ggml_matmat_cached`: persistent per-`(weight,M)` grap
 no_alloc graph once, gallocr-allocates once, each call = `tensor_set →
 ggml_backend_graph_compute (sched-free, native Q4_K SIMD) → tensor_get`. Bit-identical
 (jfk + multispeaker byte-identical, all 3 gate states, md5 match). Gated
-`CRISPASR_FIRERED_MATVEC_CACHE` (default ON, `=0` = old path). Pure Pareto. A/B (min-of-N):
+`STELNETTTS_FIRERED_MATVEC_CACHE` (default ON, `=0` = old path). Pure Pareto. A/B (min-of-N):
 quiet box (load ~3.7) OFF ~0.188 vs ON ~0.178 ms/call (~5%); loaded box (load 20–50) OFF up
 to 22 vs ON up to 20, min OFF 1.15 vs ON 0.71 → up to ~1.6× (gap grows with load — removed
 ops are malloc/sched_reset/sched_alloc that contention penalizes).
@@ -18973,7 +18973,7 @@ neither done nor wanted (launch-bound). Verification (M1, `voxcpm2-q4_k.gguf`, l
 basic synth GPU 5772 ms (AR 4392 + VAE 1005) vs CPU 21647 ms (AR 8987 + VAE 3537) = 3.75×,
 both round-trip via firered-asr; voice-clone (`--voice jfk.wav`) fully on Metal (VAE-encode
 2166 + AR 13069 + VAE-decode 4174), no SIGSEGV/NaN/unsupported op. CUDA validation DONE+PASS
-(Kaggle P100/T4, `tools/kaggle/voxcpm2-176n-cuda/`, `chr1s4/crispasr-voxcpm2-176n-cuda`):
+(Kaggle P100/T4, `tools/kaggle/voxcpm2-176n-cuda/`, `chr1s4/stelnettts-voxcpm2-176n-cuda`):
 builds on CUDA, CPU vs GPU both round-trip through parakeet (recall ≥0.6), GPU weight-mirror
 confirms not silent CPU fallback, no crash/NaN → discrete-GPU mirror path correct; LEARNING-35
 contiguity risk did not materialize. Re-run after voxcpm2 changes:
@@ -18983,7 +18983,7 @@ chatterbox same); overridden by CLI + session. Don't flip without the CUDA round
 
 ## llama.cpp comparison — model overlap, support approach, perf-tricks (archived detail)
 
-Comparative study 2026-07-03. Both CrispASR and llama.cpp sit on ggml — kernel-level perf machinery
+Comparative study 2026-07-03. Both StelnetTTS and llama.cpp sit on ggml — kernel-level perf machinery
 lives in ggml, which we vendor in-tree, so we inherit those wins automatically as long as ggml sync
 stays current. llama.cpp's genuine extras are at the orchestration layer above ggml.
 
@@ -19004,9 +19004,9 @@ llama.cpp: one unified `clip.cpp` graph shared vision+audio, encoder/projector t
 metadata; embeddings spliced into text KV cache like image tokens; two files (model.gguf + mmproj.gguf);
 naive fixed 30 s window + silence-pad for long audio; new model = add projector enum +
 `convert_hf_to_gguf.py --mmproj`, reuse stock LLM decode.
-CrispASR: bespoke hand-written ggml graph per backend validated vs Python diff-harness; per-model
+StelnetTTS: bespoke hand-written ggml graph per backend validated vs Python diff-harness; per-model
 token injection (ark audio_token 151663, mimo 8-ch RVQ); single GGUF, backend auto-detected from
-`arch` (`crispasr_detect_backend_from_gguf`, `src/crispasr_c_api.cpp:1221`); per-model chunking
+`arch` (`stelnettts_detect_backend_from_gguf`, `src/stelnettts_c_api.cpp:1221`); per-model chunking
 (parakeet overlap-merge §208, higgs 4 s, ark single-pass, cohere per-30 s — we're ahead); full C++
 graph port + converter + harness per new model (heavier, but why we cover ~60 archs). Core diff:
 llama.cpp forces every audio model through stock LLM decoder + one clip encoder (limited to
@@ -19022,13 +19022,13 @@ compute-graph reuse (✅ §176s + raw gallocr). We're ahead on: per-model long-a
 CFG diffusion TTS (cosyvoice3/chatterbox B=2), neural diarization/voice cloning.
 
 ### imatrix landing detail (the DONE Tier-1 #1)
-Ported CrispEmbed's tool. Producer `src/crispasr_imatrix.{h,cpp}`: `CRISPASR_IMATRIX_OUT` accumulates
+Ported StelnetEmbed's tool. Producer `src/stelnettts_imatrix.{h,cpp}`: `STELNETTTS_IMATRIX_OUT` accumulates
 per-column activation sum-of-squares over a calibration run (merges across runs), emits imatrix GGUF.
-Installed on decode scheduler of whisper, parakeet, canary, cohere, qwen3-asr/mega-asr, higgs-stt,
+Installed on decode scheduler of whisper, parakeet, canary, cohere, cielvox2-asr/mega-asr, higgs-stt,
 ark-asr, moss-transcribe, granite(+nle), glm-asr, mimo-asr, voxtral(+4b). Validated on mega-asr:
 2 calib runs → 141 tensors → 113 decoder tensors imatrix-weighted → JFK verbatim.
-A/B harness `tools/imatrix_ab.py` (prefill-logit cosine vs f16 gold via `CRISPASR_ACTDUMP_OUT`):
-- qwen3-asr-0.6b q4_k, CC0 Common Voice EN+DE (12+12 calib / 3+3 held out): mean prefill-logit cos
+A/B harness `tools/imatrix_ab.py` (prefill-logit cosine vs f16 gold via `STELNETTTS_ACTDUMP_OUT`):
+- cielvox2-asr-0.6b q4_k, CC0 Common Voice EN+DE (12+12 calib / 3+3 held out): mean prefill-logit cos
   0.890 → 0.941 (+0.051), every clip up, German +0.087. Zero size change (540 MB).
 - Same model, LibriSpeech-EN-only (20 calib): −0.013 REGRESSION; EN+ZH 2-clip: −0.009. Corpus
   diversity + in-distribution + language coverage decisive.
@@ -19038,9 +19038,9 @@ audio-conditioned decoder activations. CC0 Common Voice is the clean-license sou
 Metric finding (q3_k): the two signals DIVERGE at aggressive bit-widths — imatrix improved q3_k CER
 0.37→0.13 (6/12 clips) while prefill-logit cosine dipped −0.04; CER is the real gate. imatrix payoff
 grows as bits shrink.
-Fleet run (Kaggle `chr1str/crispasr-imatrix-quant`, CUDA ~105 min): q4_k & q3_k imatrix for 5 ASR-LLM
+Fleet run (Kaggle `chr1str/stelnettts-imatrix-quant`, CUDA ~105 min): q4_k & q3_k imatrix for 5 ASR-LLM
 decoders on CC0, A/B CER vs f16, uploaded to each HF repo. Improved CER on 8/10, tied 2/10 (ark-3b),
-0 regressions: qwen3-asr-0.6b q4_k 0.008→0.000 / q3_k 0.664→0.623; mega-asr-1.7b q4_k 0.132→0.010 /
+0 regressions: cielvox2-asr-0.6b q4_k 0.008→0.000 / q3_k 0.664→0.623; mega-asr-1.7b q4_k 0.132→0.010 /
 q3_k 0.389→0.132 (headline); moss-transcribe-2b q4_k 0.150→0.102 / q3_k 0.259→0.170; higgs-stt q4_k
 0.050→0.014 / q3_k 0.010→0.003; ark-asr-3b tied (heavy F16 guards). Validates the producer on CUDA.
 Safety gates: empty imatrix→skip, CER>0.8→no upload.
@@ -19063,8 +19063,8 @@ Anti-option evidence detail (their negative results confirm / transfer to ours):
 - **torch.compile-style encoder fusion:** not byte-exact for them (fp32 upcast + BatchNorm
   amplification) — reinforces our decoded-output A/B mandate.
 
-Their CrispASR adapter is silently skipped without the author-local ~/asr-bench install, so no
-crispasr numbers are published in their repo yet.
+Their StelnetTTS adapter is silently skipped without the author-local ~/asr-bench install, so no
+stelnettts numbers are published in their repo yet.
 
 ## §229 transcribe.cpp perf audit — vs handy-computer/transcribe.cpp
 
@@ -19093,7 +19093,7 @@ at cost of perf-hygiene drift. Caveat: static code read, not wall-clock benchmar
 | Conformer encoder | transcribe.cpp overall (nuanced) | our block leaner single-stream BUT no batching + NORM_AFFINE breaks on Metal/Vulkan |
 | Feature extraction | transcribe.cpp (modest) | centralized non-pow2 FFT + vDSP fp64; ours = per-backend pow2 radix-2 |
 | Long-form / streaming | split | them: streaming latency (ring KV, sliding window); us: VAD-gated long-form (4 VAD engines; they have none) |
-| Quantization | CrispASR (clear) | imatrix pipeline + low-bit/IQ types; they refuse imatrix |
+| Quantization | StelnetTTS (clear) | imatrix pipeline + low-bit/IQ types; they refuse imatrix |
 
 **Bottom line:** they have the more performant core ASR *engine* via uniform
 shared-infra optimization. We win quantization QUALITY (imatrix, unmatched),
@@ -19137,9 +19137,9 @@ VAD-gated long-form robustness, and vastly broader model/format/TTS coverage.
   matmul, ~3e-7 vs ONNX. Ours: `core/mel.cpp` shares only mel POST-processing (BLAS
   matmul + OMP over frames), FFT per-backend and pow2-only (`core/mel.h:33`);
   backends ship near-identical hand-rolled copies (`voxtral.cpp:446` comments
-  "cargo-cult from qwen3_asr.cpp"; `core/fft.h:6-8` admits kokoro/mimo duplicate it).
+  "cargo-cult from cielvox2_asr.cpp"; `core/fft.h:6-8` admits kokoro/mimo duplicate it).
   Our edge: we resample many containers (miniaudio) but with basic
-  `ma_resample_algorithm_linear` (`crispasr_audio.cpp:406`).
+  `ma_resample_algorithm_linear` (`stelnettts_audio.cpp:406`).
 - **Long-form / streaming.** Theirs: first-class streaming (persistent
   `MoonshineStreamingKvCache` ring buffer, causal sliding-window = no overlap
   re-encode, LocalAgreement committed-prefix in session core; bounded memory). Ours:
@@ -19148,24 +19148,24 @@ VAD-gated long-form robustness, and vastly broader model/format/TTS coverage.
   buffer. We uniquely have 4 real VAD engines (silero/whisper, MarbleNet, FireRed,
   encdec); they have NONE (reject silero `.bin` at load, punt segmentation to caller).
   Confirms memory [[project_parakeet_208_session_longaudio]]: §176 encoder-graph
-  cache is a DUD — opt-in-OFF (`CRISPASR_PARAKEET_ENC_CACHE`), saves ~0.13% of window
+  cache is a DUD — opt-in-OFF (`STELNETTTS_PARAKEET_ENC_CACHE`), saves ~0.13% of window
   time, corrupts the 2nd same-`T_mel` encode under the shared sched (enc std
   0.020→0.008 → empty transcript). The one WORKING graph cache is the dimension-keyed,
   state-carrying `nemotron.cpp:1260-1317` (streaming FastConformer).
-- **Quantization (WE win).** imatrix producer (`crispasr_imatrix.cpp`, eval-callback
-  per MUL_MAT) + consumer (`examples/crispasr-quantize`, feeds `ggml_quantize_chunk`
+- **Quantization (WE win).** imatrix producer (`stelnettts_imatrix.cpp`, eval-callback
+  per MUL_MAT) + consumer (`examples/stelnettts-quantize`, feeds `ggml_quantize_chunk`
   imatrix) + CER-gated A/B (`tools/imatrix_ab.py`) + CC0 corpus, plus low-bit/IQ
   types (Q2_K/Q3_K/IQ4_NL/IQ4_XS) + `--tensor-type regex=type`. They refuse imatrix
   (`tools/transcribe-quantize/main.cpp:432`), cap at Q6_K. Their one edge worth
   stealing: a clean generalized bucket-table tensor classifier
   (`tools/transcribe-quantize/policy.cpp:50-278`) vs our per-arch if-ladder
-  (`examples/crispasr-quantize/main.cpp:559-684`) — a refactor, not a perf change.
+  (`examples/stelnettts-quantize/main.cpp:559-684`) — a refactor, not a perf change.
 
 ## §232 transcribe.cpp parity — close the RTF gap (OPEN)
 
-**Context:** Kaggle P100 GPU-vs-GPU benchmark (v11, 2026-07-10) showed CrispASR losing
+**Context:** Kaggle P100 GPU-vs-GPU benchmark (v11, 2026-07-10) showed StelnetTTS losing
 on 4/9 shared models by 3-21x. Root causes were backend-specific, not architectural
-(CrispASR wins 3/9, ties 2/9). Full results in `docs/performance.md`. The campaign below
+(StelnetTTS wins 3/9, ties 2/9). Full results in `docs/performance.md`. The campaign below
 (v11→v16, 2026-07-10..11) diagnosed and closed the major gaps.
 
 ### Original diagnosis (VPS CPU profiling + Kaggle GPU timing, v11)
@@ -19236,18 +19236,18 @@ variance (8-58s) is shared-box CPU contention, not inherent.
 
 ### titanet/diarization GPU port — INVESTIGATED, NOT worth it
 Port is tractable (ops decompose to Metal-supported im2col+matmul) but the DEFAULT path is legacy Accelerate-BLAS
-(`titanet_use_legacy()==true` on macOS, ~1s/forward, already optimized). ggml-CPU path (`CRISPASR_TITANET_GGML=1`)
+(`titanet_use_legacy()==true` on macOS, ~1s/forward, already optimized). ggml-CPU path (`STELNETTTS_TITANET_GGML=1`)
 is 1.7× SLOWER (14.96s vs 8.65s, 6 forwards). GPU-ggml would have to beat Accelerate with a graph already slower on CPU.
 Poor EV. Real diarization lever is FEWER forwards (batch/enlarge segments) or clustering. Closes §224 "diarize CPU perf".
 
 ### v13 Results (2026-07-11) — LID skip (-l en) + in-graph argmax, +8-14% vs v12
 Whisper base 0.025→0.022 (parity), SenseVoice 0.018→0.016 (CA wins), Canary 0.048→0.043 (CA wins),
 Qwen3-ASR 0.094→0.086 (CA wins), Parakeet TDT 0.109→0.095 (TC 3.3x), Moonshine Tiny 0.080→0.069 (TC 5.8x),
-Moonshine Streaming 0.278→0.250 (TC 18x). CA wins/ties 5/7 tested. Batched TDT decode (CRISPASR_TDT_BATCH=1):
+Moonshine Streaming 0.278→0.250 (TC 18x). CA wins/ties 5/7 tested. Batched TDT decode (STELNETTTS_TDT_BATCH=1):
 828ms vs 955ms = 13% — helps but LSTM predictor step stays sequential CPU cblas.
 
 ### CPU-pinned-decode / GPU-weight-copy sched class (LEARNINGS 25) — audited across tree
-- Audited, does NOT apply: `crispasr.cpp` (whisper KV on compute backend, no copy); `dia_tts.cpp` (was CPU-only —
+- Audited, does NOT apply: `stelnettts.cpp` (whisper KV on compute backend, no copy); `dia_tts.cpp` (was CPU-only —
   later fixed, below); `f5_tts.cpp` (different harder class — fixed above).
 
 ### Moonshine decode — hybrid weight placement (DONE, 2026-07-11, M1 Metal)
@@ -19317,11 +19317,11 @@ CUDA miscompute. UNRESOLVED → dia stays Metal-only (see PLAN for the ASR-round
 ### paraformer + m2m100 + t5/madlad GPU paths — flipped GPU on CUDA/Vulkan (2026-07-11)
 Audit follow-up to dia: all were CPU-pinned but already loaded weights (+ KV) via core_gguf::load_weights. Added
 use_gpu + backend_cpu + init-before-load GPU selection + 2-backend sched + CLI/c_api wiring. paraformer gated
-`CRISPASR_PARAFORMER_GPU`; m2m100/t5 gated `CRISPASR_M2M100_GPU`/`CRISPASR_T5_GPU`. M1 Metal: transcripts/translations
+`STELNETTTS_PARAFORMER_GPU`; m2m100/t5 gated `STELNETTTS_M2M100_GPU`/`STELNETTTS_T5_GPU`. M1 Metal: transcripts/translations
 identical CPU vs GPU. Kaggle P100 A/B (`tools/kaggle/gpu-pin-ab`, `65a5d30c`): output IDENTICAL cpu vs gpu on CUDA;
 wall speedups paraformer 2.15×, m2m100 1.24×, madlad 2.13× (slow OpenBLAS reveals encoder win Accelerate hides —
 LEARNING 30). No strided-get_rows abort (MT embeddings contiguous). Default flipped GPU on CUDA/Vulkan, CPU on Metal
-(neutral, `ggml_backend_is_metal` gate). Env: `CRISPASR_{PARAFORMER,M2M100,T5}_GPU=1`→GPU any backend, `=0`→CPU.
+(neutral, `ggml_backend_is_metal` gate). Env: `STELNETTTS_{PARAFORMER,M2M100,T5}_GPU=1`→GPU any backend, `=0`→CPU.
 
 ### v15 Final Benchmark (2026-07-11, batched decode DISABLED)
 SenseVoice 0.018 (CA wins), Canary 0.044 (CA), FunASR 0.045 vs 0.139 (CA 3x), Cohere 0.046 (TC FAIL), Qwen3 0.085 (CA),
@@ -19357,9 +19357,9 @@ Two rows from the "genuinely-new gaps" table were investigated and struck (kept 
 - **P2 align_wav2vec2_ctc — DONE.** The claimed "reloads 300MB–1GB model every call" is fixed:
   wav2vec2 now joins the §176e resident cache (qwen3-FA / canary-ctc were already cached; wav2vec2 was
   the lone gap, a stubbed `AlignerType::Wav2Vec2` no-op). Heap `wav2vec2_model*` keyed by path, freed
-  via `delete` in `crispasr_aligner_free_cache()` (Metal-safe order). M1 A/B
+  via `delete` in `stelnettts_aligner_free_cache()` (Metal-safe order). M1 A/B
   (`wav2vec2-xlsr-en-q4_k`, jfk, `test-align-only`): call1 load+align 13.8 s → call2 cached 0.92 s
-  (~15×), word timings byte-identical. (`crispasr_aligner.cpp`)
+  (~15×), word timings byte-identical. (`stelnettts_aligner.cpp`)
 
 ## §246 issue #81 endgame — close the remaining ~1.4× CUDA gap to onnx-asr
 

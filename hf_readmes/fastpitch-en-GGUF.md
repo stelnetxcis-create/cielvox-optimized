@@ -13,13 +13,13 @@ tags:
 - hifigan
 - non-autoregressive
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # FastPitch (English) + HiFi-GAN — GGUF (ggml)
 
-GGUF / ggml conversion of [`nvidia/tts_en_fastpitch`](https://huggingface.co/nvidia/tts_en_fastpitch) + [`nvidia/tts_hifigan`](https://huggingface.co/nvidia/tts_hifigan) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`nvidia/tts_en_fastpitch`](https://huggingface.co/nvidia/tts_en_fastpitch) + [`nvidia/tts_hifigan`](https://huggingface.co/nvidia/tts_hifigan) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 FastPitch is a **non-autoregressive** parallel TTS model that generates the entire mel spectrogram in a single forward pass (no sampling, no KV cache), making it very fast. The HiFi-GAN vocoder converts the mel to 22050 Hz PCM audio.
 
@@ -59,22 +59,22 @@ Released under **CC-BY-4.0** (NeMo model license).
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Download model (auto-download also works: -m auto --backend fastpitch)
-hf download cstr/fastpitch-en-GGUF fastpitch-en-q8_0.gguf --local-dir .
+hf download Xenna/fastpitch-en-GGUF fastpitch-en-q8_0.gguf --local-dir .
 
 # 3. Synthesize
-./build/bin/crispasr --backend fastpitch -m fastpitch-en-q8_0.gguf \
+./build/bin/stelnettts --backend fastpitch -m fastpitch-en-q8_0.gguf \
     --tts "Hello there, how are you doing today?" \
     --tts-output hello.wav
 
 # 4. Verify (ASR roundtrip)
-./build/bin/crispasr -m models/ggml-base.en.bin -f hello.wav
+./build/bin/stelnettts -m models/ggml-base.en.bin -f hello.wav
 ```
 
 ## Conversion
@@ -97,8 +97,8 @@ python models/convert-fastpitch-to-gguf.py \
 
 The upstream `nvidia/tts_en_fastpitch` card states it is *"trained on LJSpeech"*. LJSpeech is 13,100 clips of a **single narrator** — Linda Johnson, recorded 2016–17 for LibriVox — and this is the single-speaker English checkpoint (`n_speakers=1`). The voice you hear is one identifiable person.
 
-CrispASR records this as `speaker_identity=real_person`. Output synthesized with it carries a **spoken AI disclosure**, because audio resembling an identifiable person is a deep fake under Art. 3(60) whether or not any cloning took place. It does **not** require `--i-have-rights`: the donor's agreement to the training is a licensing matter settled upstream, which a downstream operator cannot attest to.
+StelnetTTS records this as `speaker_identity=real_person`. Output synthesized with it carries a **spoken AI disclosure**, because audio resembling an identifiable person is a deep fake under Art. 3(60) whether or not any cloning took place. It does **not** require `--i-have-rights`: the donor's agreement to the training is a licensing matter settled upstream, which a downstream operator cannot attest to.
 
 Override per run with `--speaker-identity`, or stamp a file permanently with
 `models/stamp-speaker-identity.py`. See
-[`docs/eu-ai-act.md` §6.2a](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md).
+[`docs/eu-ai-act.md` §6.2a](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md).

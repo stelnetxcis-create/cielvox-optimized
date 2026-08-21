@@ -2,7 +2,7 @@
 //
 // The server transcribes every VAD/chunk slice first and diarizes the MERGED
 // segment list afterwards, so it has to re-walk the slices and hand each one
-// its own sub-range. `crispasr_apply_diarize` splits a segment at speaker-turn
+// its own sub-range. `stelnettts_apply_diarize` splits a segment at speaker-turn
 // boundaries, which makes that sub-range GROW — and the original re-walk wrote
 // back only the element count it started with, silently dropping every
 // sub-segment past it. Reported symptom: with `diarize=true` (pyannote or
@@ -11,8 +11,8 @@
 //
 // These tests pin the property the buggy version violated: the re-walk must
 // preserve every segment the diarizer produces. The first three drive
-// `crispasr_diarize_merged_by_slice` with synthetic callbacks; the last one
-// wires in the REAL `crispasr_apply_diarize` (via a hand-built global sherpa
+// `stelnettts_diarize_merged_by_slice` with synthetic callbacks; the last one
+// wires in the REAL `stelnettts_apply_diarize` (via a hand-built global sherpa
 // cache) so the guard is anchored to production splitting behaviour rather
 // than to a mock that merely imitates it.
 //
@@ -22,9 +22,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_backend.h"
-#include "crispasr_diarize_cli.h"
-#include "crispasr_vad.h"
+#include "stelnettts_backend.h"
+#include "stelnettts_diarize_cli.h"
+#include "stelnettts_vad.h"
 #include "whisper_params.h"
 
 #include <string>
@@ -33,8 +33,8 @@
 
 namespace {
 
-crispasr_audio_slice make_slice(int64_t t0_cs, int64_t t1_cs) {
-    crispasr_audio_slice s{};
+stelnettts_audio_slice make_slice(int64_t t0_cs, int64_t t1_cs) {
+    stelnettts_audio_slice s{};
     s.start = (int)(t0_cs * 160); // centiseconds → samples at 16 kHz
     s.end = (int)(t1_cs * 160);
     s.t0_cs = t0_cs;
@@ -42,8 +42,8 @@ crispasr_audio_slice make_slice(int64_t t0_cs, int64_t t1_cs) {
     return s;
 }
 
-crispasr_segment make_seg(int64_t t0, int64_t t1, const std::string& text) {
-    crispasr_segment s;
+stelnettts_segment make_seg(int64_t t0, int64_t t1, const std::string& text) {
+    stelnettts_segment s;
     s.t0 = t0;
     s.t1 = t1;
     s.text = text;
@@ -51,8 +51,8 @@ crispasr_segment make_seg(int64_t t0, int64_t t1, const std::string& text) {
 }
 
 // Split `text` on spaces into words spanning [t0,t1] evenly.
-crispasr_segment make_worded_seg(int64_t t0, int64_t t1, const std::string& text) {
-    crispasr_segment s = make_seg(t0, t1, text);
+stelnettts_segment make_worded_seg(int64_t t0, int64_t t1, const std::string& text) {
+    stelnettts_segment s = make_seg(t0, t1, text);
     std::vector<std::string> parts;
     std::string cur;
     for (char c : text) {
@@ -69,7 +69,7 @@ crispasr_segment make_worded_seg(int64_t t0, int64_t t1, const std::string& text
 
     const int64_t span = (t1 > t0 && !parts.empty()) ? (t1 - t0) / (int64_t)parts.size() : 0;
     for (size_t i = 0; i < parts.size(); i++) {
-        crispasr_word w;
+        stelnettts_word w;
         w.text = parts[i];
         w.t0 = t0 + span * (int64_t)i;
         w.t1 = (i + 1 == parts.size()) ? t1 : t0 + span * (int64_t)(i + 1);
@@ -80,7 +80,7 @@ crispasr_segment make_worded_seg(int64_t t0, int64_t t1, const std::string& text
 
 // Concatenate every segment's text, space-separated — the "did any transcript
 // go missing" probe.
-std::string joined_text(const std::vector<crispasr_segment>& segs) {
+std::string joined_text(const std::vector<stelnettts_segment>& segs) {
     std::string out;
     for (const auto& s : segs) {
         if (!out.empty() && !s.text.empty())
@@ -95,9 +95,9 @@ std::string joined_text(const std::vector<crispasr_segment>& segs) {
 // ── #324: the regression itself — a splitting diarizer must not lose text ──
 
 TEST_CASE("issue324: splitting diarizer keeps every sub-segment", "[diarize][unit][issue324]") {
-    std::vector<crispasr_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000)};
+    std::vector<stelnettts_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000)};
 
-    std::vector<crispasr_segment> segs = {
+    std::vector<stelnettts_segment> segs = {
         make_seg(0, 500, "alpha"),
         make_seg(500, 1000, "bravo"),
         make_seg(1000, 1500, "charlie"),
@@ -106,9 +106,9 @@ TEST_CASE("issue324: splitting diarizer keeps every sub-segment", "[diarize][uni
 
     // Stand-in for the pyannote/foxnose/sherpa turn splitter: every segment
     // comes back as two half-length sub-segments.
-    crispasr_diarize_merged_by_slice(segs, slices,
-                                     [](const crispasr_audio_slice&, std::vector<crispasr_segment>& slice_segs) {
-                                         std::vector<crispasr_segment> out;
+    stelnettts_diarize_merged_by_slice(segs, slices,
+                                     [](const stelnettts_audio_slice&, std::vector<stelnettts_segment>& slice_segs) {
+                                         std::vector<stelnettts_segment> out;
                                          for (auto& s : slice_segs) {
                                              const int64_t mid = (s.t0 + s.t1) / 2;
                                              out.push_back(make_seg(s.t0, mid, s.text + "-a"));
@@ -122,16 +122,16 @@ TEST_CASE("issue324: splitting diarizer keeps every sub-segment", "[diarize][uni
 }
 
 TEST_CASE("issue324: each slice sees only the segments it owns", "[diarize][unit][issue324]") {
-    std::vector<crispasr_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000), make_slice(2000, 3000)};
+    std::vector<stelnettts_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000), make_slice(2000, 3000)};
 
-    std::vector<crispasr_segment> segs = {
+    std::vector<stelnettts_segment> segs = {
         make_seg(0, 400, "one"),      make_seg(400, 900, "two"),    make_seg(1000, 1600, "three"),
         make_seg(2000, 2400, "four"), make_seg(2400, 3000, "five"),
     };
 
     std::vector<std::pair<int64_t, std::string>> seen;
-    crispasr_diarize_merged_by_slice(segs, slices,
-                                     [&](const crispasr_audio_slice& sl, std::vector<crispasr_segment>& slice_segs) {
+    stelnettts_diarize_merged_by_slice(segs, slices,
+                                     [&](const stelnettts_audio_slice& sl, std::vector<stelnettts_segment>& slice_segs) {
                                          seen.push_back({sl.t0_cs, joined_text(slice_segs)});
                                      });
 
@@ -145,9 +145,9 @@ TEST_CASE("issue324: each slice sees only the segments it owns", "[diarize][unit
 }
 
 TEST_CASE("issue324: a shrinking diarizer stays in bounds", "[diarize][unit][issue324]") {
-    std::vector<crispasr_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000)};
+    std::vector<stelnettts_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000)};
 
-    std::vector<crispasr_segment> segs = {
+    std::vector<stelnettts_segment> segs = {
         make_seg(0, 400, "keep"),
         make_seg(400, 900, "drop"),
         make_seg(1000, 1500, "also-keep"),
@@ -155,9 +155,9 @@ TEST_CASE("issue324: a shrinking diarizer stays in bounds", "[diarize][unit][iss
 
     // Dropping a segment used to leave the copy-back loop reading past the end
     // of the (now shorter) slice vector.
-    crispasr_diarize_merged_by_slice(segs, slices,
-                                     [](const crispasr_audio_slice&, std::vector<crispasr_segment>& slice_segs) {
-                                         std::vector<crispasr_segment> out;
+    stelnettts_diarize_merged_by_slice(segs, slices,
+                                     [](const stelnettts_audio_slice&, std::vector<stelnettts_segment>& slice_segs) {
+                                         std::vector<stelnettts_segment> out;
                                          for (auto& s : slice_segs)
                                              if (s.text != "drop")
                                                  out.push_back(std::move(s));
@@ -169,11 +169,11 @@ TEST_CASE("issue324: a shrinking diarizer stays in bounds", "[diarize][unit][iss
 }
 
 TEST_CASE("issue324: relabel-only diarizer preserves order and text", "[diarize][unit][issue324]") {
-    std::vector<crispasr_audio_slice> slices = {make_slice(0, 1000)};
-    std::vector<crispasr_segment> segs = {make_seg(0, 500, "first"), make_seg(500, 1000, "second")};
+    std::vector<stelnettts_audio_slice> slices = {make_slice(0, 1000)};
+    std::vector<stelnettts_segment> segs = {make_seg(0, 500, "first"), make_seg(500, 1000, "second")};
 
-    crispasr_diarize_merged_by_slice(segs, slices,
-                                     [](const crispasr_audio_slice&, std::vector<crispasr_segment>& slice_segs) {
+    stelnettts_diarize_merged_by_slice(segs, slices,
+                                     [](const stelnettts_audio_slice&, std::vector<stelnettts_segment>& slice_segs) {
                                          for (auto& s : slice_segs)
                                              s.speaker = "(speaker 0) ";
                                      });
@@ -203,19 +203,19 @@ TEST_CASE("issue324: real turn-splitting diarizer loses no words", "[diarize][un
     p.no_prints = true;
 
     std::vector<float> audio(16000 * 20, 0.0f);
-    std::vector<crispasr_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000)};
+    std::vector<stelnettts_audio_slice> slices = {make_slice(0, 1000), make_slice(1000, 2000)};
 
     // One segment per slice, each straddling a speaker turn.
-    std::vector<crispasr_segment> segs = {
+    std::vector<stelnettts_segment> segs = {
         make_worded_seg(0, 1000, "aa bb cc dd ee ff gg hh ii jj"),
         make_worded_seg(1000, 2000, "kk ll mm nn oo pp qq rr ss tt"),
     };
     const std::string before = joined_text(segs);
 
-    crispasr_diarize_merged_by_slice(
-        segs, slices, [&](const crispasr_audio_slice& sl, std::vector<crispasr_segment>& slice_segs) {
+    stelnettts_diarize_merged_by_slice(
+        segs, slices, [&](const stelnettts_audio_slice& sl, std::vector<stelnettts_segment>& slice_segs) {
             std::vector<float> mono(audio.begin() + sl.start, audio.begin() + sl.end);
-            crispasr_apply_diarize(mono, mono, /*is_stereo=*/false, sl.t0_cs, slice_segs, p, nullptr, &cache);
+            stelnettts_apply_diarize(mono, mono, /*is_stereo=*/false, sl.t0_cs, slice_segs, p, nullptr, &cache);
         });
 
     // The splitter really did split — otherwise this guard proves nothing.

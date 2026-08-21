@@ -4,27 +4,27 @@ name: Release Python wheels
 #   • CPU wheels          → PyPI (linux x86_64/arm64, macOS arm64/Metal, win x64)
 #   • GPU wheels          → a PEP 503 "simple" index on GitHub Pages
 #                           (CUDA linux+win, Vulkan win), llama-cpp-python style:
-#         pip install crispasr --extra-index-url \
-#             https://crispstrobe.github.io/CrispASR/whl/cuda/
-#         pip install crispasr --extra-index-url \
-#             https://crispstrobe.github.io/CrispASR/whl/vulkan/
+#         pip install stelnettts --extra-index-url \
+#             https://crispstrobe.github.io/StelnetTTS/whl/cuda/
+#         pip install stelnettts --extra-index-url \
+#             https://crispstrobe.github.io/StelnetTTS/whl/vulkan/
 #   • a pure-Python sdist → PyPI (fallback for unlisted platforms; finds a
-#                           system-installed libcrispasr at runtime)
+#                           system-installed libstelnettts at runtime)
 #
-# These wheels REUSE the relocatable `libcrispasr-<platform>[-cuda|-vulkan]`
+# These wheels REUSE the relocatable `libstelnettts-<platform>[-cuda|-vulkan]`
 # bundles that `release.yml` already builds and attaches to the GitHub Release
 # (their rpaths are rewritten to $ORIGIN / @loader_path by
 # tools/package-lib-bundle.sh). So this workflow does NOT recompile the native
-# library — it downloads the bundle, stages the libs into the `crispasr`
+# library — it downloads the bundle, stages the libs into the `stelnettts`
 # package (tools/stage_libs.py), builds a py3-none-any wheel, and retags it to
 # the platform. That means it must run AFTER `release.yml` finishes; hence the
 # `workflow_run` trigger.
 #
 # ONE-TIME SETUP:
-#   • PyPI:   `PYPI_API_TOKEN` repo secret (token scoped to the crispasr project).
+#   • PyPI:   `PYPI_API_TOKEN` repo secret (token scoped to the stelnettts project).
 #   • Pages:  none needed — Pages already serves `main`/root (legacy Jekyll).
 #             The GPU index is committed to `main` under `whl/`, so Jekyll serves
-#             it at https://crispstrobe.github.io/CrispASR/whl/{cuda,vulkan}/ and
+#             it at https://crispstrobe.github.io/StelnetTTS/whl/{cuda,vulkan}/ and
 #             the existing README landing page is left untouched.
 #
 # NOTE ON THE manylinux TAG: the linux bundles come from release.yml's runners.
@@ -61,13 +61,13 @@ jobs:
     # The old gate was `workflow_run.conclusion == 'success'`, and it cost
     # v0.8.26 every GPU wheel: six Linux TARBALL legs failed, the Release run
     # went red, and this whole pipeline skipped — even though the
-    # `libcrispasr-*` assets these wheels actually repackage had all built
+    # `libstelnettts-*` assets these wheels actually repackage had all built
     # fine. Release legs attach independently, so a red run does not mean the
     # inputs are missing; it means SOME leg failed. Coupling wheels to the
     # aggregate conclusion turns any unrelated failure into a silent wheel
     # outage, and "silent" is the problem — nothing reported it for four days.
     #
-    # The real precondition is "the libcrispasr asset I repackage exists",
+    # The real precondition is "the libstelnettts asset I repackage exists",
     # which each matrix leg already checks when it downloads. So proceed on any
     # completed run and let the legs fail loudly on a genuinely missing asset.
     #
@@ -101,27 +101,27 @@ jobs:
         include:
           - name: linux-x86_64
             runner: ubuntu-22.04
-            asset: libcrispasr-linux-x86_64
+            asset: libstelnettts-linux-x86_64
             plat: manylinux_2_28_x86_64
             smoke: true
           - name: linux-arm64
             runner: ubuntu-22.04-arm
-            asset: libcrispasr-linux-arm64
+            asset: libstelnettts-linux-arm64
             plat: manylinux_2_28_aarch64
             smoke: true
           - name: macos-arm64
             runner: macos-14
-            asset: libcrispasr-macos-arm64
+            asset: libstelnettts-macos-arm64
             plat: macosx_11_0_arm64
             smoke: true
           # smoke was false here, which is why nothing noticed that the Windows
           # wheel had never contained a library at all (stage_libs could not find
           # bin/) — the job went green on a build that packaged nothing loadable.
-          # Windows also needs os.add_dll_directory for crispasr.dll to find the
+          # Windows also needs os.add_dll_directory for stelnettts.dll to find the
           # ggml DLLs beside it, and only an install-and-load test can catch that.
           - name: windows-x86_64
             runner: windows-latest
-            asset: libcrispasr-windows-x86_64
+            asset: libstelnettts-windows-x86_64
             plat: win_amd64
             smoke: true
     steps:
@@ -152,7 +152,7 @@ jobs:
           tar xzf "bundle_dl/${{ matrix.asset }}.tar.gz" -C bundle
           echo "BUNDLE_DIR=bundle/${{ matrix.asset }}" >> "$GITHUB_ENV"
 
-      # The bundle is relocatable but NOT self-contained: libcrispasr.so has a
+      # The bundle is relocatable but NOT self-contained: libstelnettts.so has a
       # DT_NEEDED on libopenblas.so.0 / libespeak-ng / libfdk-aac / libasound,
       # none of which it ships. stage_libs vendors them into the wheel, but it
       # can only copy what exists on this runner — so install them first, and
@@ -191,7 +191,7 @@ jobs:
           if [ -f .wt/bin/activate ]; then . .wt/bin/activate; else . .wt/Scripts/activate; fi
           pip install python/dist/*.whl
           python - <<'PY'
-          import crispasr._binding as b
+          import stelnettts._binding as b
           from pathlib import Path
           lib = b._find_lib()
           print("resolved lib:", lib)
@@ -241,7 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/crispasr
+      url: https://pypi.org/p/stelnettts
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -273,17 +273,17 @@ jobs:
         include:
           - name: linux-x86_64-cuda
             runner: ubuntu-22.04
-            asset: libcrispasr-linux-x86_64-cuda
+            asset: libstelnettts-linux-x86_64-cuda
             plat: manylinux_2_28_x86_64
             local: cuda
           - name: windows-x86_64-cuda
             runner: windows-latest
-            asset: libcrispasr-windows-x86_64-cuda
+            asset: libstelnettts-windows-x86_64-cuda
             plat: win_amd64
             local: cuda
           - name: windows-x86_64-vulkan
             runner: windows-latest
-            asset: libcrispasr-windows-x86_64-vulkan
+            asset: libstelnettts-windows-x86_64-vulkan
             plat: win_amd64
             local: vulkan
     steps:
@@ -314,7 +314,7 @@ jobs:
           tar xzf "bundle_dl/${{ matrix.asset }}.tar.gz" -C bundle
           echo "BUNDLE_DIR=bundle/${{ matrix.asset }}" >> "$GITHUB_ENV"
 
-      # The bundle is relocatable but NOT self-contained: libcrispasr.so has a
+      # The bundle is relocatable but NOT self-contained: libstelnettts.so has a
       # DT_NEEDED on libopenblas.so.0 / libespeak-ng / libfdk-aac / libasound,
       # none of which it ships. stage_libs vendors them into the wheel, but it
       # can only copy what exists on this runner — so install them first, and
@@ -412,7 +412,7 @@ jobs:
               root = pathlib.Path("whl") / tag
               if root.exists():
                   shutil.rmtree(root)
-              proj = root / "crispasr"
+              proj = root / "stelnettts"
               proj.mkdir(parents=True, exist_ok=True)
               links = "\n".join(
                   f'    <a href="{html.escape(url)}">{html.escape(name)}</a><br>'
@@ -421,7 +421,7 @@ jobs:
                   f"<!DOCTYPE html><html><body>\n{links}\n</body></html>\n")
               (root / "index.html").write_text(
                   '<!DOCTYPE html><html><body>\n'
-                  '    <a href="crispasr/">crispasr</a><br>\n'
+                  '    <a href="stelnettts/">stelnettts</a><br>\n'
                   '</body></html>\n')
               print(f"{tag}: {len(set(items))} wheels")
           PY

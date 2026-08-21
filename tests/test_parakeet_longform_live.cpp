@@ -3,7 +3,7 @@
 // Two defects, one symptom (whole spans of speech silently missing from a
 // 30-300 s transcript), both pinned here through the session ABI:
 //
-//   1. ROUTING. crispasr_session_transcribe_chunked[_lang] documents
+//   1. ROUTING. stelnettts_session_transcribe_chunked[_lang] documents
 //      `chunk_seconds = 0` as "use per-model defaults", but the unified dispatch
 //      read that as "not an explicit chunk request" and fell through to the
 //      300 s single-pass cap — so an explicitly chunked long-form call took ONE
@@ -18,13 +18,13 @@
 // (M1 Metal): one unbounded pass 364 words / 34 "country"; fixed 463 / 42.
 //
 // Requires:
-//   CRISPASR_MODEL_PARAKEET — a NON-Japanese parakeet GGUF (e.g.
+//   STELNETTTS_MODEL_PARAKEET — a NON-Japanese parakeet GGUF (e.g.
 //       parakeet-tdt-0.6b-v3-q4_k.gguf)
 // SKIPs cleanly when it is missing. Run from the repo root (samples/jfk.wav).
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_session.h"
+#include "stelnettts_session.h"
 
 #include <algorithm>
 #include <cctype>
@@ -89,11 +89,11 @@ std::vector<float> long_fixture() {
     return pcm;
 }
 
-std::string transcript_of(crispasr_session_result* r) {
+std::string transcript_of(stelnettts_session_result* r) {
     std::string text;
-    const int n = crispasr_session_result_n_segments(r);
+    const int n = stelnettts_session_result_n_segments(r);
     for (int i = 0; i < n; i++) {
-        const char* t = crispasr_session_result_segment_text(r, i);
+        const char* t = stelnettts_session_result_segment_text(r, i);
         if (t) {
             if (!text.empty())
                 text += ' ';
@@ -125,7 +125,7 @@ struct scoped_env {
 };
 
 const char* parakeet_model() {
-    const char* p = std::getenv("CRISPASR_MODEL_PARAKEET");
+    const char* p = std::getenv("STELNETTTS_MODEL_PARAKEET");
     if (!p || !*p)
         return nullptr;
     FILE* f = fopen(p, "rb");
@@ -140,7 +140,7 @@ const char* parakeet_model() {
 TEST_CASE("parakeet long-form: chunked entry point stays bounded (issue #350)", "[integration][parakeet-longform]") {
     const char* model_path = parakeet_model();
     if (!model_path)
-        SKIP("CRISPASR_MODEL_PARAKEET not set or not readable");
+        SKIP("STELNETTTS_MODEL_PARAKEET not set or not readable");
     const auto pcm = long_fixture();
     if (pcm.empty())
         SKIP("samples/jfk.wav not found — run from the repo root");
@@ -148,15 +148,15 @@ TEST_CASE("parakeet long-form: chunked entry point stays bounded (issue #350)", 
     // Gap-fill OFF: this case is about ROUTING alone. chunk_seconds = 0 means
     // "per-model defaults", so the call must be sliced, not run as one decode —
     // with the repair pass disabled, a single unbounded pass has no way back.
-    const scoped_env no_gap_fill("CRISPASR_GAP_FILL", "0");
+    const scoped_env no_gap_fill("STELNETTTS_GAP_FILL", "0");
 
-    crispasr_session* s = crispasr_session_open(model_path, 4);
+    stelnettts_session* s = stelnettts_session_open(model_path, 4);
     REQUIRE(s != nullptr);
-    crispasr_session_result* r = crispasr_session_transcribe_chunked(s, pcm.data(), (int)pcm.size(), 0, -1);
+    stelnettts_session_result* r = stelnettts_session_transcribe_chunked(s, pcm.data(), (int)pcm.size(), 0, -1);
     REQUIRE(r != nullptr);
     const std::string text = transcript_of(r);
-    crispasr_session_result_free(r);
-    crispasr_session_close(s);
+    stelnettts_session_result_free(r);
+    stelnettts_session_close(s);
 
     // 21 repetitions × 2 "country" = 42. One unbounded pass scored 34.
     INFO("transcript(" << text.size() << " bytes): " << text);
@@ -166,20 +166,20 @@ TEST_CASE("parakeet long-form: chunked entry point stays bounded (issue #350)", 
 TEST_CASE("parakeet long-form: dropped spans are repaired (issue #350)", "[integration][parakeet-longform]") {
     const char* model_path = parakeet_model();
     if (!model_path)
-        SKIP("CRISPASR_MODEL_PARAKEET not set or not readable");
+        SKIP("STELNETTTS_MODEL_PARAKEET not set or not readable");
     const auto pcm = long_fixture();
     if (pcm.empty())
         SKIP("samples/jfk.wav not found — run from the repo root");
 
     // Plain transcribe: 231 s is under the 300 s cap, so this IS the single
     // full-length pass — the one the gap-fill repair has to rescue.
-    crispasr_session* s = crispasr_session_open(model_path, 4);
+    stelnettts_session* s = stelnettts_session_open(model_path, 4);
     REQUIRE(s != nullptr);
-    crispasr_session_result* r = crispasr_session_transcribe(s, pcm.data(), (int)pcm.size());
+    stelnettts_session_result* r = stelnettts_session_transcribe(s, pcm.data(), (int)pcm.size());
     REQUIRE(r != nullptr);
     const std::string text = transcript_of(r);
-    crispasr_session_result_free(r);
-    crispasr_session_close(s);
+    stelnettts_session_result_free(r);
+    stelnettts_session_close(s);
 
     INFO("transcript(" << text.size() << " bytes): " << text);
     CHECK(count_occurrences(text, "country") >= 40);

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert nari-labs/Dia-1.6B HuggingFace safetensors -> GGUF F16 for the
-CrispASR `dia` backend.
+StelnetTTS `dia` backend.
 
 Dia 1.6B is a dialogue-style TTS model with:
   - Text encoder: 12-layer Llama-style transformer (1024-d, 16 heads)

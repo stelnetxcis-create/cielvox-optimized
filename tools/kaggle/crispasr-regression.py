@@ -1,5 +1,5 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — full-suite regression / re-bake (Kaggle)
+# # StelnetTTS — full-suite regression / re-bake (Kaggle)
 #
 # Two modes, picked by a flag at the top of cell 1:
 #
@@ -8,10 +8,10 @@
 # infra. For each `tests/regression/manifest.json` entry:
 #   1. Download the GGUF under test at the pinned HF revision.
 #   2. Download the reference dump from
-#      `cstr/crispasr-regression-fixtures` at the pinned revision.
-#   3. Run `crispasr` and assert the transcript matches
+#      `Xenna/stelnettts-regression-fixtures` at the pinned revision.
+#   3. Run `stelnettts` and assert the transcript matches
 #      `expected_transcript` byte-for-byte.
-#   4. Run `crispasr-diff` and assert per-stage `cos_min ≥ threshold`.
+#   4. Run `stelnettts-diff` and assert per-stage `cos_min ≥ threshold`.
 # Use this to confirm a release branch before tagging, or to validate
 # any backend that's too heavy for the nightly GH Actions runner
 # (vibevoice 7 GB, voxtral4b 4 GB, …).
@@ -19,7 +19,7 @@
 # **`MODE = "rebake"`** — regenerates the reference dumps from the
 # real Python source models (NeMo / transformers / torch) for every
 # backend. Stages them locally, optionally uploads to HF. The new
-# `cstr/crispasr-regression-fixtures` commit SHA is printed at the
+# `Xenna/stelnettts-regression-fixtures` commit SHA is printed at the
 # end; the maintainer pastes it into `manifest.json`'s
 # `fixtures.revision`. Run this whenever:
 #   - A reference module changes (`tools/reference_backends/...`).
@@ -38,7 +38,7 @@
 #
 # Requirements:
 # - Kaggle accelerator: any (CPU works; GPU only matters if you
-#   want to validate the CUDA path of CrispASR).
+#   want to validate the CUDA path of StelnetTTS).
 # - Internet ON (model downloads + optional HF upload).
 # - Optional Kaggle secrets:
 #     `HF_TOKEN` — required for `MODE="rebake"` + `UPLOAD=True`.
@@ -81,8 +81,8 @@ _T0 = time.time()
 # only diagnosable via the browser UI's websocket. To get
 # *programmatic* mid-run visibility, every step() also rolls the
 # local JSONL file up to a fixed path in a dedicated public HF
-# dataset (`cstr/crispasr-kaggle-progress`). Anyone with HF read
-# access can poll `huggingface.co/datasets/cstr/crispasr-kaggle-progress`
+# dataset (`Xenna/stelnettts-kaggle-progress`). Anyone with HF read
+# access can poll `huggingface.co/datasets/Xenna/stelnettts-kaggle-progress`
 # and see live progress, including after the kernel hangs / crashes.
 #
 # Rate-limited to one HF push every 30 s (or on the first step
@@ -90,7 +90,7 @@ _T0 = time.time()
 # Skips silently if HF_TOKEN isn't available (batch-mode kernels
 # without secret access just rely on the local JSONL post-mortem
 # fallback — same as before this change).
-_HF_PROGRESS_REPO = "cstr/crispasr-kaggle-progress"
+_HF_PROGRESS_REPO = "Xenna/stelnettts-kaggle-progress"
 _HF_PROGRESS_PATH = (
     f"runs/{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     f"-{os.environ.get('KAGGLE_KERNEL_RUN_TYPE', 'local').lower()}"
@@ -244,23 +244,23 @@ def build_heartbeat(label: str, interval_s: float = 30.0):
 
 step("script.start")
 
-MODE = os.environ.get("CRISPASR_REGRESSION_MODE", "validate")  # or "rebake"
+MODE = os.environ.get("STELNETTTS_REGRESSION_MODE", "validate")  # or "rebake"
 
 # Only consulted in rebake mode.
-UPLOAD = os.environ.get("CRISPASR_REGRESSION_UPLOAD", "0") == "1"
+UPLOAD = os.environ.get("STELNETTTS_REGRESSION_UPLOAD", "0") == "1"
 
 # Restrict to a subset of backends (comma-separated names). Empty == all.
-BACKEND_FILTER = os.environ.get("CRISPASR_REGRESSION_BACKENDS", "").strip()
+BACKEND_FILTER = os.environ.get("STELNETTTS_REGRESSION_BACKENDS", "").strip()
 
 # Build flags. Default to CPU; flip to "cuda" to test the GPU path.
-BUILD_FLAVOUR = os.environ.get("CRISPASR_REGRESSION_BUILD", "cpu")  # cpu | cuda
+BUILD_FLAVOUR = os.environ.get("STELNETTTS_REGRESSION_BUILD", "cpu")  # cpu | cuda
 
-# CrispASR commit to test. Default to main; pin a SHA to bisect.
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+# StelnetTTS commit to test. Default to main; pin a SHA to bisect.
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 
 # ── Workspace layout ──────────────────────────────────────────────────────
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 HF_CACHE = WORK / "hf_cache"
 RESULTS = WORK / "results"
@@ -274,10 +274,10 @@ for d in (HF_CACHE, RESULTS, REBAKE_STAGE):
 os.environ["HF_HOME"] = str(HF_CACHE)
 os.environ["HUGGINGFACE_HUB_CACHE"] = str(HF_CACHE)
 
-print(f"crispasr-regression {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+print(f"stelnettts-regression {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 print(f"  MODE             = {MODE}")
 print(f"  BUILD_FLAVOUR    = {BUILD_FLAVOUR}")
-print(f"  CRISPASR_REF     = {CRISPASR_REF}")
+print(f"  STELNETTTS_REF     = {STELNETTTS_REF}")
 print(f"  BACKEND_FILTER   = {BACKEND_FILTER or '(all)'}")
 print(f"  UPLOAD           = {UPLOAD}")
 
@@ -288,7 +288,7 @@ def kaggle_secret(name: str, retries: int = 3, backoff_s: float = 5.0) -> str | 
     """Pull a Kaggle secret if available, with verbose diagnostics if
     not. The previous silent fall-back to anonymous made a missing
     secret look identical to a missing-attach-toggle, which burned us
-    on chr1str/crispasr-auto-rebake-refs.
+    on chr1str/stelnettts-auto-rebake-refs.
 
     Kaggle injects `KAGGLE_USER_SECRETS_TOKEN` (a JWT) into the runtime
     ONLY when at least one secret is attached to the kernel. So if
@@ -343,10 +343,10 @@ def kaggle_token_from_dataset(filename: str = "hf_token.txt") -> str | None:
     Secrets API entirely — datasets are filesystem-mounted at
     `/kaggle/input/<dataset-slug>/<files>` before the script runs.
 
-    Expected dataset: `chr1str/crispasr-hf-token` (private) containing
+    Expected dataset: `chr1str/stelnettts-hf-token` (private) containing
     a single file `hf_token.txt` with the write-scoped HF token.
     Mounted via `tools/kaggle/rebake/kernel-metadata.json:
-    dataset_sources: ["chr1str/crispasr-hf-token"]`.
+    dataset_sources: ["chr1str/stelnettts-hf-token"]`.
 
     Note: Kaggle's UI has NO "Add-ons → Variables" option — only
     Secrets, Internet, Accelerator, Data Sources. The previous
@@ -354,7 +354,7 @@ def kaggle_token_from_dataset(filename: str = "hf_token.txt") -> str | None:
     the only reliable non-Secrets workaround.
     """
     candidates = [
-        Path("/kaggle/input/crispasr-hf-token") / filename,
+        Path("/kaggle/input/stelnettts-hf-token") / filename,
     ]
     input_root = Path("/kaggle/input")
     if input_root.exists():
@@ -388,7 +388,7 @@ print(f"Kaggle env keys present: {_kaggle_env_keys}", flush=True)
 #      Kaggle env-var mechanism if they ever add one). Always free.
 #   2. Kaggle Secret via UserSecretsClient (with retry-with-backoff —
 #      the API flakes on batch-mode kernels with ConnectionError).
-#   3. /kaggle/input/crispasr-hf-token/hf_token.txt — a private Kaggle
+#   3. /kaggle/input/stelnettts-hf-token/hf_token.txt — a private Kaggle
 #      Dataset mounted via kernel-metadata.json:dataset_sources.
 #      Bypasses the Secrets API entirely; reliable.
 #
@@ -409,7 +409,7 @@ if hf_token:
     print("HF auth: token present (will verify next)", flush=True)
 else:
     print("HF auth: anonymous (rebake+upload will fail without HF_TOKEN). "
-          "Ensure the private Kaggle Dataset chr1str/crispasr-hf-token is "
+          "Ensure the private Kaggle Dataset chr1str/stelnettts-hf-token is "
           "attached to this kernel (kernel-metadata.json:dataset_sources) "
           "AND that the file hf_token.txt in it contains a write-scoped "
           "HuggingFace token. Kaggle's Secrets API is the alternative but "
@@ -454,7 +454,7 @@ def preflight_hf() -> None:
     #    Writability is harder to introspect cleanly — the cheapest
     #    proof is the upload step itself — but we can at least confirm
     #    the repo exists and the user can see it.
-    fixtures_repo = "cstr/crispasr-regression-fixtures"
+    fixtures_repo = "Xenna/stelnettts-regression-fixtures"
     try:
         info = api.repo_info(repo_id=fixtures_repo, repo_type="model")
         print(f"HF fixtures: {fixtures_repo} reachable (last_modified={info.last_modified})")
@@ -523,15 +523,15 @@ if MODE == "rebake":
 
 # ─────────────────────────── cell 3 (code) ───────────────────────────
 step("cell_3_begin")
-# ── Clone + build CrispASR ────────────────────────────────────────────────
+# ── Clone + build StelnetTTS ────────────────────────────────────────────────
 def sh(cmd: str, cwd: Path | None = None) -> None:
     print(f"$ {cmd}")
     subprocess.check_call(cmd, shell=True, cwd=str(cwd) if cwd else None)
 
 
 if not REPO.exists():
-    sh(f"git clone --recursive https://github.com/CrispStrobe/CrispASR.git {REPO}")
-sh(f"git fetch origin && git checkout {CRISPASR_REF}", cwd=REPO)
+    sh(f"git clone --recursive https://github.com/Cyna/StelnetTTS.git {REPO}")
+sh(f"git fetch origin && git checkout {STELNETTTS_REF}", cwd=REPO)
 sh("git submodule update --init --recursive", cwd=REPO)
 
 # ── Switch to the shared harness now that the repo (which carries it)
@@ -611,14 +611,14 @@ with build_heartbeat("cmake.configure"):
     sh(
         f"cmake -S {REPO} -B {BUILD} -G Ninja "
         f"-DCMAKE_BUILD_TYPE=Release "
-        f"-DCRISPASR_BUILD_TESTS=OFF "
-        f"-DCRISPASR_BUILD_EXAMPLES=ON "
-        f"-DCRISPASR_BUILD_SERVER=OFF "
+        f"-DSTELNETTTS_BUILD_TESTS=OFF "
+        f"-DSTELNETTTS_BUILD_EXAMPLES=ON "
+        f"-DSTELNETTTS_BUILD_SERVER=OFF "
         + " ".join(build_flags)
     )
-# CMake target `crispasr-cli` produces bin/crispasr (target/output names
+# CMake target `stelnettts-cli` produces bin/stelnettts (target/output names
 # intentionally diverge per examples/cli/CMakeLists.txt:12). Asking for
-# target `crispasr` here builds only the library, leaving bin/crispasr
+# target `stelnettts` here builds only the library, leaving bin/stelnettts
 # absent — exactly what burned the GH regression workflow on its first
 # run (commit 08d1872f) and what just burned this Kaggle one.
 #
@@ -636,7 +636,7 @@ with build_heartbeat("cmake.build"):
     # the pipe, ninja's own buffer can delay emission of those lines
     # by tens of seconds without it.
     sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} "
-                     f"--target crispasr-cli crispasr-diff "
+                     f"--target stelnettts-cli stelnettts-diff "
                      f"-j{kh.safe_build_jobs(gpu=(BUILD_FLAVOUR == 'cuda'))}")
 
 if HAS_CCACHE:
@@ -710,10 +710,10 @@ def run_validate() -> list[dict]:
             else:
                 sample = REPO / entry["sample"]
 
-            crispasr_bin = BUILD / "bin" / "crispasr"
-            diff_bin = BUILD / "bin" / "crispasr-diff"
+            stelnettts_bin = BUILD / "bin" / "stelnettts"
+            diff_bin = BUILD / "bin" / "stelnettts-diff"
 
-            actual = run_one.run_transcript(crispasr_bin, gguf_local, sample)
+            actual = run_one.run_transcript(stelnettts_bin, gguf_local, sample)
             transcript_ok = (actual == entry["expected_transcript"])
             if skip_diff:
                 stages, passes, fails, missing, extras = {}, [], [], [], {}
@@ -924,7 +924,7 @@ def run_validate_tts() -> list[dict]:
     for e in entries:
         print(f"  - {e['name']:30s} (gguf ~{e['gguf'].get('approx_size_mb','?')} MB)")
 
-    crispasr_bin = BUILD / "bin" / "crispasr"
+    stelnettts_bin = BUILD / "bin" / "stelnettts"
     out = []
     for entry in entries:
         name = entry["name"]
@@ -932,7 +932,7 @@ def run_validate_tts() -> list[dict]:
         t0 = time.time()
         work = Path(tempfile.mkdtemp(prefix=f"tts-{name}-"))
         try:
-            failures = run_one.tts_roundtrip_for(name, MANIFEST, work, crispasr_bin)
+            failures = run_one.tts_roundtrip_for(name, MANIFEST, work, stelnettts_bin)
             out.append({
                 "backend": name,
                 "mode": "validate-tts",
@@ -1025,21 +1025,21 @@ if MODE == "rebake" and UPLOAD:
               f"{', '.join(failed)}", flush=True)
     from huggingface_hub import HfApi
     api = HfApi()
-    print(f"\nUploading {REBAKE_STAGE}/ → cstr/crispasr-regression-fixtures")
+    print(f"\nUploading {REBAKE_STAGE}/ → Xenna/stelnettts-regression-fixtures")
     # Use upload_folder so the structure mirrors the staging dir
     # exactly. delete_patterns kept empty: never silently delete a
     # ref.gguf that's still in the manifest.
     commit_info = api.upload_folder(
-        repo_id="cstr/crispasr-regression-fixtures",
+        repo_id="Xenna/stelnettts-regression-fixtures",
         repo_type="model",
         folder_path=str(REBAKE_STAGE),
         commit_message=f"rebake {len(successful)}/{len(RESULTS_DATA)} "
-                       f"backend(s) — crispasr ref {CRISPASR_REF} — "
+                       f"backend(s) — stelnettts ref {STELNETTTS_REF} — "
                        f"ok: {', '.join(successful)}",
     )
     print(f"\nNew fixtures commit: {commit_info.oid}")
     print(f"  → bump manifest.json's fixtures.revision to {commit_info.oid}")
-    print(f"  → https://huggingface.co/cstr/crispasr-regression-fixtures/commit/{commit_info.oid}")
+    print(f"  → https://huggingface.co/Xenna/stelnettts-regression-fixtures/commit/{commit_info.oid}")
 
 # Exit non-zero so a Kaggle scheduled run shows up as failed when
 # anything regressed. Without this, Kaggle treats any successful

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Audit HuggingFace model licenses: compare cstr/ repos against upstream base models.
+Audit HuggingFace model licenses: compare Xenna/ repos against upstream base models.
 
 Usage:
     python tools/audit-hf-licenses.py [--fix] [--filter PATTERN] [--check-readmes]
 
-Checks every model under the cstr/ HF namespace:
+Checks every model under the Xenna/ HF namespace:
   1. Reads base_model from card_data (if set)
   2. If no base_model: infers upstream repo from name (strips -GGUF, -ONNX, etc.)
   3. Fetches upstream license via HF API (with rate-limit retry)
@@ -129,16 +129,16 @@ def get_license(repo_id: str) -> tuple[str | None, str]:
 
 def infer_upstream(repo_name: str) -> list[str]:
     """
-    Infer possible upstream repo IDs from a cstr/ repo name.
+    Infer possible upstream repo IDs from a Xenna/ repo name.
     Returns a list of candidates to try (most likely first).
 
     Strategy:
       1. Strip format suffixes (-GGUF, -ONNX, etc.)
       2. Try known owner patterns (fast, no API call)
-      3. Search HF by name, sorted by downloads — pick the top non-cstr/ result
+      3. Search HF by name, sorted by downloads — pick the top non-Xenna/ result
     """
-    # Strip "cstr/" prefix
-    name = repo_name.replace("cstr/", "")
+    # Strip "Xenna/" prefix
+    name = repo_name.replace("Xenna/", "")
 
     # Strip known suffixes
     base = name
@@ -165,7 +165,7 @@ def infer_upstream(repo_name: str) -> list[str]:
     try:
         results = list(api.list_models(search=base, sort="downloads", direction=-1, limit=10))
         for r in results:
-            if r.id.startswith("cstr/"):
+            if r.id.startswith("Xenna/"):
                 continue  # skip our own repos
             if r.id not in candidates:
                 candidates.append(r.id)
@@ -179,7 +179,7 @@ def infer_upstream(repo_name: str) -> list[str]:
         try:
             results = list(api.list_models(search=base.lower(), sort="downloads", direction=-1, limit=5))
             for r in results:
-                if not r.id.startswith("cstr/"):
+                if not r.id.startswith("Xenna/"):
                     candidates.append(r.id)
         except Exception:
             pass
@@ -189,11 +189,11 @@ def infer_upstream(repo_name: str) -> list[str]:
 
 def check_readmes(models_list, filter_str: str = ""):
     """
-    Check all public (non-private) cstr/ repos for missing README/model cards.
+    Check all public (non-private) Xenna/ repos for missing README/model cards.
     A repo is flagged if it has no card_data or card_data has no text content.
     """
     print("=" * 70)
-    print("README / Model Card Audit — cstr/ namespace (public repos only)")
+    print("README / Model Card Audit — Xenna/ namespace (public repos only)")
     print("=" * 70)
     print(f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Filter: {filter_str or '(all)'}")
@@ -255,20 +255,20 @@ def check_readmes(models_list, filter_str: str = ""):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Audit cstr/ HF model licenses")
+    parser = argparse.ArgumentParser(description="Audit Xenna/ HF model licenses")
     parser.add_argument("--fix", action="store_true", help="Auto-fix mismatches")
     parser.add_argument("--filter", type=str, default="", help="Only check repos matching pattern")
     parser.add_argument("--check-readmes", action="store_true", help="List repos missing README/model card")
     args = parser.parse_args()
 
     print("=" * 70)
-    print("HuggingFace License Audit — cstr/ namespace")
+    print("HuggingFace License Audit — Xenna/ namespace")
     print("=" * 70)
     print(f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Filter: {args.filter or '(all)'}")
     print()
 
-    print("Fetching cstr/ models...")
+    print("Fetching Xenna/ models...")
     rate_limit()
     models = list(api.list_models(author="cstr"))
     print(f"Found {len(models)} models total")

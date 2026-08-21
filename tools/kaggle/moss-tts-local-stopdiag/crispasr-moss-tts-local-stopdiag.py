@@ -1,4 +1,4 @@
-# CrispASR — MOSS-TTS-Local 4B STOP-HEAD diagnostic (#249, P5 debug) — CPU-only
+# StelnetTTS — MOSS-TTS-Local 4B STOP-HEAD diagnostic (#249, P5 debug) — CPU-only
 #
 # run1/run2 proved the codec decode is correct (ASR overlap 1.0) but the C++
 # generation RUNS AWAY (binary stop head never fires) for short text + Q4_K; the
@@ -35,12 +35,12 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 HF_MODEL = os.environ.get("MOSS_MODEL", "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5")
 MAXF = int(os.environ.get("MOSS_MAXF", "256"))
 # Multiple seeds (incl. 0 = our C++ default p.seed=0) to measure STOP RELIABILITY,
@@ -130,12 +130,12 @@ def run_reference(hf_token):
 
 
 def main():
-    summary = {"ref_branch": CRISPASR_REF, "seed": SEED, "maxf": MAXF, "hf_model": HF_MODEL}
-    log(f"clone {CRISPASR_REF} (for kaggle_harness)")
+    summary = {"ref_branch": STELNETTTS_REF, "seed": SEED, "maxf": MAXF, "hf_model": HF_MODEL}
+    log(f"clone {STELNETTTS_REF} (for kaggle_harness)")
     if not REPO.exists():
         import subprocess
-        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-                               CRISPASR_REPO, str(REPO)])
+        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+                               STELNETTTS_REPO, str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()

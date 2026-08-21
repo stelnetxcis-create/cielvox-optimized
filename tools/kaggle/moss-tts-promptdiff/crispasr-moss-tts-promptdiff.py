@@ -1,4 +1,4 @@
-# CrispASR — MOSS-TTS prompt-token diff (#249)
+# StelnetTTS — MOSS-TTS prompt-token diff (#249)
 #
 # The greedy code-parity failed from frame 0 — a classic "gate the input first"
 # signal. This kernel diffs the PROMPT itself: the HF processor's col-0 text ids
@@ -22,15 +22,15 @@ from pathlib import Path
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TMP / "moss-models"
 WORK = Path("/kaggle/working")
 MODELS.mkdir(parents=True, exist_ok=True)
 
-REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-parity-diff")
+REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-parity-diff")
 HF_MODEL = os.environ.get("MOSS_TTS_MODEL", "OpenMOSS-Team/MOSS-TTS-v1.5")
-HF_GGUF = os.environ.get("MOSS_TTS_GGUF_REPO", "cstr/moss-tts-v1.5-GGUF")
+HF_GGUF = os.environ.get("MOSS_TTS_GGUF_REPO", "Xenna/moss-tts-v1.5-GGUF")
 TEXT = os.environ.get("MOSS_TTS_TEXT", "The quick brown fox jumps over the lazy dog.")
 
 _T0 = time.time()
@@ -98,7 +98,7 @@ def main():
     log(f"clone {REF}")
     if not REPO.exists():
         subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF, "--recursive",
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()
@@ -111,10 +111,10 @@ def main():
                     "-DBUILD_SHARED_LIBS=ON"] + list(kh.cache_and_link_flags()) + list(kh.cuda_build_flags(arch)),
                    env=env, check=True, timeout=300)
     with kh.build_heartbeat("promptdiff build"):
-        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-lib "
+        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-lib "
                             f"-j{kh.safe_build_jobs(gpu=True)}")
     import glob
-    lib_path = glob.glob(str(BUILD / "src" / "libcrispasr.so*"))[0]
+    lib_path = glob.glob(str(BUILD / "src" / "libstelnettts.so*"))[0]
     os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub"])

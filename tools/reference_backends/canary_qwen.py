@@ -5,7 +5,7 @@ SALM architecture:
   * Linear projection (1024 -> 2048) inside the perception module
   * Qwen3-1.7B LLM decoder with merged LoRA (28L, d=2048, GQA 16/8)
 
-Captures, for crispasr-diff parity against the C++ runtime:
+Captures, for stelnettts-diff parity against the C++ runtime:
 
   raw_audio        (N,)             input PCM (added by dump_reference.py)
   mel_spectrogram  (T_mel, n_mels)  perception.preprocessor output, batch-

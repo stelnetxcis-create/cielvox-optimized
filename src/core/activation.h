@@ -9,7 +9,7 @@
 //   snake_alpha  — Snake-α activation, used by BigVGAN-family vocoders
 //                  (Kokoro generator, SNAC decoder, future iSTFTNet /
 //                  ConvNeXt-vocoder ports). Per-channel learnable α, init=1.
-//   snake_beta   — SnakeBeta activation, used by the qwen3-tts codec
+//   snake_beta   — SnakeBeta activation, used by the cielvox2-tts codec
 //                  decoder (BigVGAN-style with separate α frequency and
 //                  β amplitude scales).
 
@@ -44,7 +44,7 @@ static inline ggml_tensor* snake_alpha(ggml_context* ctx, ggml_tensor* x, ggml_t
 // SnakeBeta activation: y = x + exp(-β) · sin²(x · exp(α)).
 //
 // BigVGAN's two-parameter variant — α controls the frequency, β the
-// amplitude, both per-channel. Used by the qwen3-tts codec decoder
+// amplitude, both per-channel. Used by the cielvox2-tts codec decoder
 // (and likely by Chatterbox / VoxCPM2 when those land).
 //
 // Input  x:     (C, T)  F32, channel-major.

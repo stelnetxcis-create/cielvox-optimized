@@ -9,7 +9,7 @@
 //
 // Two things block that in this tree. The first is CMake — every per-model
 // library links `ggml-cuda` / `ggml-metal` explicitly (a MODULE target cannot
-// be linked), handled by the crispasr_link_ggml_* interface targets in the
+// be linked), handled by the stelnettts_link_ggml_* interface targets in the
 // top-level CMakeLists.
 //
 // The second is this file's reason to exist. Under DL the CPU backend is a

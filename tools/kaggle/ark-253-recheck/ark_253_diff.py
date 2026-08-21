@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Issue #253 ROOT CAUSE — ARK C++ port vs the original Python model, head-to-head.
 
-Runs the SHIPPED C++ (crispasr from main) and the ORIGINAL Python model
+Runs the SHIPPED C++ (stelnettts from main) and the ORIGINAL Python model
 (AutoArk-AI/ARK-ASR-3B, apply_chat_template + greedy generate) on the SAME 30 s
 windows of the reporter's t501-3.75m.wav, and compares:
   - does the Python model LOOP where the C++ loops? (port bug vs model behavior)
@@ -12,12 +12,12 @@ import os, sys, json, re, shutil, subprocess, urllib.request, zipfile
 from pathlib import Path
 
 WORK = Path("/kaggle/working"); TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"; BUILD = TMP / "build"
+REPO = TMP / "StelnetTTS"; BUILD = TMP / "build"
 MODELS = Path("/tmp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 REFMODEL = Path("/tmp/refmodel"); REFMODEL.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "results"; RESULTS.mkdir(parents=True, exist_ok=True)
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-GGUF_REPO = "cstr/ark-asr-3b-GGUF"; ORIG_REPO = "AutoArk-AI/ARK-ASR-3B"
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+GGUF_REPO = "Xenna/ark-asr-3b-GGUF"; ORIG_REPO = "AutoArk-AI/ARK-ASR-3B"
 CLIP_URL = "https://github.com/user-attachments/files/29962358/t501-3.75m.wav.zip"
 
 def jstep(n, **kv): print(f"[STEP] {n} " + " ".join(f"{k}={v}" for k, v in kv.items()), flush=True)
@@ -35,15 +35,15 @@ def loopscore(text):
 
 # ── build ──
 if REPO.exists(): shutil.rmtree(REPO)
-subprocess.check_call(["git","clone","--depth","1","--recursive",CRISPASR_REPO,str(REPO)])
+subprocess.check_call(["git","clone","--depth","1","--recursive",STELNETTTS_REPO,str(REPO)])
 sys.path.insert(0, str(REPO/"tools"/"kaggle")); import kaggle_harness as kh; kh.init_progress()
 SHA = subprocess.check_output(["git","-C",str(REPO),"rev-parse","HEAD"],text=True).strip()
 jstep("cloned", sha=SHA[:12])
 kh.install_build_toolchain()
 subprocess.check_call(["cmake","-S",str(REPO),"-B",str(BUILD),"-DCMAKE_BUILD_TYPE=Release","-DBUILD_SHARED_LIBS=ON"])
 with kh.build_heartbeat("build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}")
-CLI = BUILD/"bin"/"crispasr"; assert CLI.exists(); jstep("built")
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}")
+CLI = BUILD/"bin"/"stelnettts"; assert CLI.exists(); jstep("built")
 
 # ── downloads ──
 import torch, numpy as np, soundfile as sf
@@ -99,9 +99,9 @@ for wi in range(n_win):
     wpath = TMP/f"win_{wi}.wav"; sf.write(str(wpath), seg, sr)
     r = subprocess.run([str(CLI),"-m",GGUF,"--language","en","--no-punctuation","-f",str(wpath)],
                        capture_output=True, text=True, timeout=1200,
-                       env={**os.environ,"CRISPASR_ARKASR_MAX_SINGLE_PASS_S":"60","CRISPASR_ARKASR_DEBUG_GEN":"1"})
+                       env={**os.environ,"STELNETTTS_ARKASR_MAX_SINGLE_PASS_S":"60","STELNETTTS_ARKASR_DEBUG_GEN":"1"})
     cpp = norm(" ".join(l for l in r.stdout.splitlines()
-                        if l.strip() and not l.lstrip().startswith(("[","whisper","crispasr","load","main:"))))
+                        if l.strip() and not l.lstrip().startswith(("[","whisper","stelnettts","load","main:"))))
     rec = {"win": wi, "t0s": t0,
            "py": norm(py_clean)[:400], "py_loop": loopscore(py_clean),
            "cpp": cpp[:400], "cpp_loop": loopscore(cpp),

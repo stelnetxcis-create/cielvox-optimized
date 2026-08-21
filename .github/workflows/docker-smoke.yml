@@ -68,15 +68,15 @@ jobs:
           ./models/download-ggml-model.sh base.en
 
       - name: Build image
-        run: docker build -f .devops/main.Dockerfile -t crispasr-local:main .
+        run: docker build -f .devops/main.Dockerfile -t stelnettts-local:main .
 
       - name: Start server
         run: |
           cp .env.example .env
           {
-            echo "CRISPASR_MODEL=/models/ggml-base.en.bin"
-            echo "CRISPASR_BACKEND=whisper"
-            echo "CRISPASR_LANGUAGE=en"
+            echo "STELNETTTS_MODEL=/models/ggml-base.en.bin"
+            echo "STELNETTTS_BACKEND=whisper"
+            echo "STELNETTTS_LANGUAGE=en"
           } >> .env
           docker compose up -d
 
@@ -106,4 +106,4 @@ jobs:
           submodules: recursive
 
       - name: Build Hugging Face Space image
-        run: docker build -t crispasr-hf-space hf-space/
+        run: docker build -t stelnettts-hf-space hf-space/

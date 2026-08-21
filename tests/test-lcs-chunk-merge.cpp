@@ -19,12 +19,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "core/crispasr_lcs.h"
+#include "core/stelnettts_lcs.h"
 
 #include <vector>
 
-using crispasr_lcs::lcs_dedup_prefix_count;
-using crispasr_lcs::longest_common_subsequence_merge;
+using stelnettts_lcs::lcs_dedup_prefix_count;
+using stelnettts_lcs::longest_common_subsequence_merge;
 
 TEST_CASE("LCS: empty inputs produce no slice", "[unit][lcs]") {
     REQUIRE(lcs_dedup_prefix_count({}, {1, 2, 3}) == 0);

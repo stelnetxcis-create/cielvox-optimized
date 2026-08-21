@@ -17,7 +17,7 @@ base_model: dattazigzag/moonshine-tiny-de
 
 # Moonshine Tiny (German, dattazigzag) -- GGUF
 
-GGUF conversions and quantisations of [`dattazigzag/moonshine-tiny-de`](https://huggingface.co/dattazigzag/moonshine-tiny-de) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`dattazigzag/moonshine-tiny-de`](https://huggingface.co/dattazigzag/moonshine-tiny-de) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -37,11 +37,11 @@ GGUF conversions and quantisations of [`dattazigzag/moonshine-tiny-de`](https://
 - **License:** MIT (inherited from upstream)
 - **Source:** [`dattazigzag/moonshine-tiny-de`](https://huggingface.co/dattazigzag/moonshine-tiny-de)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Explicit model path
-./build/bin/crispasr --backend moonshine -m moonshine-tiny-de-dattazigzag-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend moonshine -m moonshine-tiny-de-dattazigzag-q4_k.gguf -f audio.wav
 ```
 
 ## Notes

@@ -15,7 +15,7 @@ base_model: facebook/omniASR-LLM-300M
 
 # OmniASR LLM Unlimited-300M v2 — GGUF
 
-GGUF conversion of Meta's `omniASR_LLM_Unlimited_300M_v2` from [`facebookresearch/omnilingual-asr`](https://github.com/facebookresearch/omnilingual-asr) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of Meta's `omniASR_LLM_Unlimited_300M_v2` from [`facebookresearch/omnilingual-asr`](https://github.com/facebookresearch/omnilingual-asr) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 OmniASR is Meta's **multilingual ASR** model family supporting **1600+ languages** (1,627,603,584 parameters). Apache-2.0 license.
 
@@ -27,7 +27,7 @@ The "300M" in the name refers to the encoder size; the full model with LLM decod
 
 | Variant | Max Audio | Model |
 | --- | --- | --- |
-| Standard | ~40s | [omniasr-llm-300m-v2-GGUF](https://huggingface.co/cstr/omniasr-llm-300m-v2-GGUF) |
+| Standard | ~40s | [omniasr-llm-300m-v2-GGUF](https://huggingface.co/Xenna/omniasr-llm-300m-v2-GGUF) |
 | **Unlimited** | No limit | This repo |
 
 ## Files
@@ -40,17 +40,17 @@ The "300M" in the name refers to the encoder size; the full model with LLM decod
 ## Quick Start
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR && cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS && cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 
-./build/bin/crispasr --backend omniasr-llm \
+./build/bin/stelnettts --backend omniasr-llm \
     -m omniasr-llm-unlimited-300m-v2-q4_k.gguf \
     -f audio.wav
 ```
 
 ## Source
 
-Converted from [`omniASR-LLM-Unlimited-300M-v2.pt`](https://dl.fbaipublicfiles.com/mms/omniASR-LLM-Unlimited-300M-v2.pt) published at [facebookresearch/omnilingual-asr](https://github.com/facebookresearch/omnilingual-asr) (not from HuggingFace). Uses CrispASR's converter with fixed positional conv weight normalization (per-kernel-position norm).
+Converted from [`omniASR-LLM-Unlimited-300M-v2.pt`](https://dl.fbaipublicfiles.com/mms/omniASR-LLM-Unlimited-300M-v2.pt) published at [facebookresearch/omnilingual-asr](https://github.com/facebookresearch/omnilingual-asr) (not from HuggingFace). Uses StelnetTTS's converter with fixed positional conv weight normalization (per-kernel-position norm).
 
 ## License
 

@@ -34,14 +34,14 @@ WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp")
 TEMP.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-REPO = TEMP / "CrispASR"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+REPO = TEMP / "StelnetTTS"
 
 # ── clone + harness (must come from the clone, not a bundled sibling) ────────
 if not REPO.exists():
     # --recursive: the build needs the bundled ggml submodule, and a plain
     # --depth 1 clone leaves cmake dying on a missing ggml/CMakeLists.txt.
-    subprocess.check_call(["git", "clone", "--depth", "1", "--recursive", CRISPASR_URL, str(REPO)])
+    subprocess.check_call(["git", "clone", "--depth", "1", "--recursive", STELNETTTS_URL, str(REPO)])
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
@@ -55,16 +55,16 @@ kh.step("hf_token", status="ok" if token else "MISSING")
 with kh.build_heartbeat("build", 30):
     kh.install_build_toolchain()
     build = REPO / "build"
-    # cache_and_link_flags() folds in ccache/mold AND -DCRISPASR_NO_C2PA_NATIVE
+    # cache_and_link_flags() folds in ccache/mold AND -DSTELNETTTS_NO_C2PA_NATIVE
     # (the c2pa-audio submodule is irrelevant here and breaks generate).
     subprocess.check_call(
         ["cmake", "-S", str(REPO), "-B", str(build), "-DCMAKE_BUILD_TYPE=Release",
-         "-DCRISPASR_BUILD_TESTS=OFF", "-DGGML_CUDA=OFF"] + kh.cache_and_link_flags(),
+         "-DSTELNETTTS_BUILD_TESTS=OFF", "-DGGML_CUDA=OFF"] + kh.cache_and_link_flags(),
     )
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {build} --target crispasr-cli -j{kh.safe_build_jobs(gpu=False)}"
+        f"stdbuf -oL -eL cmake --build {build} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=False)}"
     )
-cli = build / "bin" / "crispasr"
+cli = build / "bin" / "stelnettts"
 if not cli.exists():
     raise SystemExit(f"build produced no {cli}")
 kh.step("build", status="ok")
@@ -90,7 +90,7 @@ kh.step("corpus", status="ok", files=len(ref))
 # ── models ──────────────────────────────────────────────────────────────────
 asr = hf_hub_download(repo_id="ggerganov/whisper.cpp", filename="ggml-tiny.bin",
                       token=token, cache_dir=str(TEMP / "hf"))
-emb = hf_hub_download(repo_id="cstr/wespeaker-resnet34-lm-GGUF",
+emb = hf_hub_download(repo_id="Xenna/wespeaker-resnet34-lm-GGUF",
                       filename="wespeaker-resnet34-lm.gguf",
                       token=token, cache_dir=str(TEMP / "hf"))
 kh.step("models", status="ok")
@@ -133,7 +133,7 @@ BASE = [
 ]
 
 summary = {}
-for arm, env_extra in (("bic", {}), ("nme-sc", {"CRISPASR_DIARIZE_COUNT": "nme-sc"})):
+for arm, env_extra in (("bic", {}), ("nme-sc", {"STELNETTTS_DIARIZE_COUNT": "nme-sc"})):
     env = dict(os.environ)
     env.update(env_extra)
     out_json = WORK / f"eval_{arm}.json"

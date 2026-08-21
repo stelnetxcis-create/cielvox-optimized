@@ -18,7 +18,7 @@
 #include "core/gguf_loader.h"
 #include "core/hifigan.h"
 #include "core/lstm.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
@@ -42,7 +42,7 @@
 static bool debug_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_BANANAMIND_DEBUG");
+        const char* e = getenv("STELNETTTS_BANANAMIND_DEBUG");
         v = (e && e[0] == '1') ? 1 : 0;
     }
     return v == 1;
@@ -55,7 +55,7 @@ static bool debug_enabled() {
 static bool bananamind_tts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_BANANAMIND_TTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_BANANAMIND_TTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;

@@ -1,7 +1,7 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — Voxtral-4B-TTS diff harness vs mudler reference C (>99% check)
+# # StelnetTTS — Voxtral-4B-TTS diff harness vs mudler reference C (>99% check)
 #
-# Rigorous stage-by-stage correctness of the CrispASR voxtral-tts runtime
+# Rigorous stage-by-stage correctness of the StelnetTTS voxtral-tts runtime
 # against the MIT reference C (github.com/mudler/voxtral-tts.c, validated vs
 # vLLM-Omni), on a clean box. Same text + seed + voice; both dump per-frame
 # |h| and the 37 codes; we diff them.
@@ -15,7 +15,7 @@
 #   3. Codec — runtime codec vs reference codec on the SAME ref codes → PCM max|Δ|
 # Plus a step-count perf sweep (8/7/6/5) on the GPU.
 #
-# Datasets: chr1str/crispasr-hf-token, chr1str/crispasr-ccache,
+# Datasets: chr1str/stelnettts-hf-token, chr1str/stelnettts-ccache,
 #           (reference C source is vendored in the repo under refsrc/).
 # Needs GPU + Internet + ~30 GB disk (ref model 8 GB + F16 8 GB + Q4_K 2.3 GB).
 # HF token MUST have accepted mistralai/Voxtral-4B-TTS-2603 (gated CC-BY-NC).
@@ -33,7 +33,7 @@ import wave
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 REFBUILD = WORK / "ref"
 # ~18 GB of model downloads (BF16 ref 8 GB + F16 GGUF 8 GB + Q4_K 2.3 GB) must go on
@@ -45,10 +45,10 @@ RESULTS = WORK / "results"  # small (dumps, wavs, summary.json) — keep as down
 for d in (REFBUILD, MODELS, REFMODEL, RESULTS):
     d.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 ORIG_REPO = "mistralai/Voxtral-4B-TTS-2603"
-GGUF_REPO = "cstr/voxtral-4b-tts-GGUF"
+GGUF_REPO = "Xenna/voxtral-4b-tts-GGUF"
 
 TEXT = os.environ.get("VTTS_TEXT", "Hello world.")
 VOICE = "neutral_female"
@@ -70,11 +70,11 @@ def run(cmd, check=True, env=None, cwd=None, timeout=None, quiet=False):
     return r
 
 
-# ─────────────────────────── cell 2 (code) — clone + build crispasr ───────
-step("start", ref=CRISPASR_REF)
+# ─────────────────────────── cell 2 (code) — clone + build stelnettts ───────
+step("start", ref=STELNETTTS_REF)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
@@ -90,12 +90,12 @@ BUILD.mkdir(parents=True, exist_ok=True)
 run(["cmake", "-S", str(REPO), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON"]
     + kh.cuda_build_flags(arch) + kh.cache_and_link_flags())
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}")
-CLI = BUILD / "examples" / "cli" / "crispasr"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}")
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    CLI = next(c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK))
+    CLI = next(c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
-step("crispasr_built", cli=str(CLI))
+step("stelnettts_built", cli=str(CLI))
 
 # ─────────────────────────── cell 3 (code) — build reference C (BLAS/CPU) ─
 run(["bash", "-lc", "apt-get install -y -q libopenblas-dev >/dev/null 2>&1 || sudo apt-get install -y -q libopenblas-dev"],
@@ -159,7 +159,7 @@ def run_reference(out_wav, timeout=3600):
 
 
 def run_runtime(gguf, out_wav, extra_env=None, timeout=1800):
-    env = {"CRISPASR_VOXTRAL_TTS_DEBUG": "1", **(extra_env or {})}
+    env = {"STELNETTTS_VOXTRAL_TTS_DEBUG": "1", **(extra_env or {})}
     cmd = [str(CLI), "--backend", "voxtral-tts", "-m", gguf, "--seed", str(SEED),
            "--tts", TEXT, "--voice", VOICE, "--tts-output", str(out_wav)]
     r = subprocess.run(cmd, env={**os.environ, **env}, timeout=timeout,
@@ -256,7 +256,7 @@ if ref:
         g = GGUF.get("f16") or GGUF.get("q4_k")
         subprocess.run([str(CLI), "--backend", "voxtral-tts", "-m", g, "--tts", TEXT, "--voice", VOICE,
                         "--tts-output", str(RESULTS / "mine_codec.wav")],
-                       env={**os.environ, "CRISPASR_VOXTRAL_TTS_CODEC_FROM_FILE": str(codes_file)}, timeout=900,
+                       env={**os.environ, "STELNETTTS_VOXTRAL_TTS_CODEC_FROM_FILE": str(codes_file)}, timeout=900,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         ra, rb = wav_pcm(RESULTS / "ref_codec.wav"), wav_pcm(RESULTS / "mine_codec.wav")
         n = min(len(ra), len(rb))
@@ -278,9 +278,9 @@ _FR = re.compile(r"generated\s+(\d+)\s+frames")
 g = GGUF.get("q4_k") or GGUF.get("f16")
 if g and _FULL:
     for steps in (8, 7, 6, 5):
-        env = {"CRISPASR_VOXTRAL_TTS_TIMING": "1"}
+        env = {"STELNETTTS_VOXTRAL_TTS_TIMING": "1"}
         if steps != 8:
-            env["CRISPASR_VOXTRAL_TTS_FM_STEPS"] = str(steps)
+            env["STELNETTTS_VOXTRAL_TTS_FM_STEPS"] = str(steps)
         vals = []
         fr = None
         for i in range(4):  # 1 warmup + 3

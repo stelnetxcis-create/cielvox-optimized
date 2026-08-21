@@ -2,7 +2,7 @@
 //
 // Drives the CFM Euler flow solver (`cosyvoice3_tts_solve_flow_euler`) with FIXED
 // mu / spks / cond / x_init, so its output mel depends only on the weights, the
-// graph, and CRISPASR_COSYVOICE3_CFG_INTERVAL. This isolates interval-CFG:
+// graph, and STELNETTTS_COSYVOICE3_CFG_INTERVAL. This isolates interval-CFG:
 //   - K=1 (env unset or =1): EXACT path — must be byte-identical run-to-run and to
 //     the legacy build (the new branch is only entered when K>1).
 //   - K>1: APPROXIMATE — reuses a stale uncond forward every K steps. Compare its
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
         if (std::fabs(v) > amax)
             amax = std::fabs(v);
     }
-    const char* env = getenv("CRISPASR_COSYVOICE3_CFG_INTERVAL");
+    const char* env = getenv("STELNETTTS_COSYVOICE3_CFG_INTERVAL");
     printf("CFG_INTERVAL=%s  T_mel=%d  n=%zu  hash=%016llx  sum=%.6f  max|m|=%.6f  nan=%d\n", env ? env : "(unset=1)",
            T_mel, mel_n, (unsigned long long)fnv1a(mel, mel_n), sum, amax, nan_seen ? 1 : 0);
 

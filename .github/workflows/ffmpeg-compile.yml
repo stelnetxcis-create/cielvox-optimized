@@ -1,8 +1,8 @@
 name: FFmpeg TU compile (#297 guard)
 
-# ffmpeg-transcode.cpp is the only source gated behind -DCRISPASR_FFMPEG=ON, and
+# ffmpeg-transcode.cpp is the only source gated behind -DSTELNETTTS_FFMPEG=ON, and
 # NOTHING in CI built with it on. That is exactly how #297 shipped: the #265 env
-# refactor put a C++ header (crispasr_env.h → <mutex>/<ratio>) inside the file's
+# refactor put a C++ header (stelnettts_env.h → <mutex>/<ratio>) inside the file's
 # `extern "C"` block, which GCC 15 rejects with "template with C linkage" — but no
 # job ever recompiled the TU. This job syntax-checks that one translation unit
 # with GCC (the reporter's compiler) + real FFmpeg headers, so the regression
@@ -13,13 +13,13 @@ on:
     branches: [main]
     paths:
       - 'examples/ffmpeg-transcode.cpp'
-      - 'src/core/crispasr_env.h'
+      - 'src/core/stelnettts_env.h'
       - '.github/workflows/ffmpeg-compile.yml'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - 'examples/ffmpeg-transcode.cpp'
-      - 'src/core/crispasr_env.h'
+      - 'src/core/stelnettts_env.h'
       - '.github/workflows/ffmpeg-compile.yml'
 
 concurrency:
@@ -41,10 +41,10 @@ jobs:
             g++ pkg-config \
             libavformat-dev libavcodec-dev libavutil-dev libswresample-dev
 
-      - name: Syntax-check ffmpeg-transcode.cpp with -DCRISPASR_FFMPEG
+      - name: Syntax-check ffmpeg-transcode.cpp with -DSTELNETTTS_FFMPEG
         run: |
           g++ --version
-          g++ -std=c++17 -fsyntax-only -DCRISPASR_FFMPEG \
+          g++ -std=c++17 -fsyntax-only -DSTELNETTTS_FFMPEG \
             -I include -I src -I ggml/include \
             $(pkg-config --cflags libavformat libavcodec libavutil libswresample) \
             examples/ffmpeg-transcode.cpp

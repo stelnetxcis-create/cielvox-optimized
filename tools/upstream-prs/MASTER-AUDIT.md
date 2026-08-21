@@ -6,9 +6,9 @@ upstream" cases. None are already fixed; all still apply in shape.
 Two notes worth keeping in mind:
 - `im2col` gained a second target site (`im2col_3d_kernel`) since
   v0.10.0. The PR 02 patch covers both kernels.
-- The original audit grep only matched `// CrispASR patch` and missed
+- The original audit grep only matched `// StelnetTTS patch` and missed
   the conv-graph kernel-cast hunks in `ggml.c` (marked
-  `// CrispASR fork`). They're now bundled into PR 01 — without them,
+  `// StelnetTTS fork`). They're now bundled into PR 01 — without them,
   PR 01's type-traits change crashes kokoro F16 CPU at
   `ggml_backend_sched_split_graph`.
 

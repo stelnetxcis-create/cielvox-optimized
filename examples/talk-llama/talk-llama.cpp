@@ -3,8 +3,8 @@
 
 #include "common-sdl.h"
 #include "common.h"
-#include "common-crispasr.h"
-#include "crispasr.h"
+#include "common-stelnettts.h"
+#include "stelnettts.h"
 #include "llama.h"
 
 #include <chrono>
@@ -243,7 +243,7 @@ static std::string transcribe(whisper_context* ctx, const whisper_params& params
 
     std::vector<whisper_token> prompt_tokens;
 
-    whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+    whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
 
     prompt_tokens.resize(1024);
     prompt_tokens.resize(whisper_tokenize(ctx, prompt_text.c_str(), prompt_tokens.data(), prompt_tokens.size()));
@@ -353,7 +353,7 @@ int main(int argc, char** argv) {
 
     struct whisper_context* ctx_wsp = whisper_init_from_file_with_params(params.model_wsp.c_str(), cparams);
     if (!ctx_wsp) {
-        fprintf(stderr, "No crispasr model specified. Please provide using -mw <modelfile>\n");
+        fprintf(stderr, "No stelnettts model specified. Please provide using -mw <modelfile>\n");
         return 1;
     }
 
@@ -408,7 +408,7 @@ int main(int argc, char** argv) {
     // init audio
 
     audio_async audio(30 * 1000);
-    if (!audio.init(params.capture_id, CRISPASR_SAMPLE_RATE)) {
+    if (!audio.init(params.capture_id, STELNETTTS_SAMPLE_RATE)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }
@@ -620,7 +620,7 @@ int main(int argc, char** argv) {
         {
             audio.get(2000, pcmf32_cur);
 
-            if (::vad_simple(pcmf32_cur, CRISPASR_SAMPLE_RATE, 1250, params.vad_thold, params.freq_thold,
+            if (::vad_simple(pcmf32_cur, STELNETTTS_SAMPLE_RATE, 1250, params.vad_thold, params.freq_thold,
                              params.print_energy) ||
                 force_speak) {
                 //fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 # Import the binding module
-sys.path.insert(0, str(Path(__file__).parent.parent / "python" / "crispasr"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "python" / "stelnettts"))
 import _binding
 
 
@@ -54,7 +54,7 @@ class TestFunctionSignatures:
         try:
             name = _binding.detect_backend_from_gguf(str(fixture))
         except OSError:
-            pytest.skip("native crispasr library not built/loadable")
+            pytest.skip("native stelnettts library not built/loadable")
         assert name == "vibevoice", f"expected 'vibevoice', got {name!r}"
 
     def test_vad_span_dataclass(self):

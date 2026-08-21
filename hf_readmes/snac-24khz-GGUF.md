@@ -11,15 +11,15 @@ tags:
 - snac
 - residual-vector-quantization
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # SNAC 24 kHz Codec — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz) — the 24 kHz Multi-Scale Neural Audio Codec used by Orpheus-TTS — for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz) — the 24 kHz Multi-Scale Neural Audio Codec used by Orpheus-TTS — for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
-SNAC is a small (~25 MB) Residual Vector Quantisation codec by Hubert Siuzdak. Pair it with the [`cstr/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/cstr/orpheus-3b-0.1-ft-GGUF) talker (or any other GGUF orpheus checkpoint) — the talker emits codec tokens but doesn't render audio without this codec.
+SNAC is a small (~25 MB) Residual Vector Quantisation codec by Hubert Siuzdak. Pair it with the [`Xenna/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/Xenna/orpheus-3b-0.1-ft-GGUF) talker (or any other GGUF orpheus checkpoint) — the talker emits codec tokens but doesn't render audio without this codec.
 
 ## Files
 
@@ -27,15 +27,15 @@ SNAC is a small (~25 MB) Residual Vector Quantisation codec by Hubert Siuzdak. P
 |---|---|---:|---|
 | `snac-24khz.gguf` | F32 | 25 MB | Full-precision codec — model is small enough that quantisation is not worth the quality risk |
 
-The codec runs in C++ inside `libcrispasr` once `--codec-model snac-24khz.gguf` is passed; no Python required at inference time.
+The codec runs in C++ inside `libstelnettts` once `--codec-model snac-24khz.gguf` is passed; no Python required at inference time.
 
 ## Quick start
 
 ```bash
-huggingface-cli download cstr/orpheus-3b-0.1-ft-GGUF orpheus-3b-0.1-ft-q8_0.gguf --local-dir .
-huggingface-cli download cstr/snac-24khz-GGUF       snac-24khz.gguf            --local-dir .
+huggingface-cli download Xenna/orpheus-3b-0.1-ft-GGUF orpheus-3b-0.1-ft-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/snac-24khz-GGUF       snac-24khz.gguf            --local-dir .
 
-./build/bin/crispasr --backend orpheus \
+./build/bin/stelnettts --backend orpheus \
     -m orpheus-3b-0.1-ft-q8_0.gguf \
     --codec-model snac-24khz.gguf \
     --voice tara --temperature 0.6 \
@@ -43,7 +43,7 @@ huggingface-cli download cstr/snac-24khz-GGUF       snac-24khz.gguf            -
     --tts-output hello.wav
 ```
 
-Or pass `-m auto` and CrispASR's auto-download fetches both files from HF.
+Or pass `-m auto` and StelnetTTS's auto-download fetches both files from HF.
 
 ## Architecture
 
@@ -70,9 +70,9 @@ No quantisation — the model is small enough (~25 MB) that the disk savings wou
 
 ## Used by
 
-- [`cstr/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/cstr/orpheus-3b-0.1-ft-GGUF) — canonical English Orpheus 3B-FT.
-- (queued) `cstr/orpheus-kartoffel-de-GGUF` — German Kartoffel_Orpheus finetunes.
-- (queued) `cstr/orpheus-3b-de-q8_0-GGUF` — lex-au Orpheus-3B-DE Q8 mirror.
+- [`Xenna/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/Xenna/orpheus-3b-0.1-ft-GGUF) — canonical English Orpheus 3B-FT.
+- (queued) `Xenna/orpheus-kartoffel-de-GGUF` — German Kartoffel_Orpheus finetunes.
+- (queued) `Xenna/orpheus-3b-de-q8_0-GGUF` — lex-au Orpheus-3B-DE Q8 mirror.
 
 All three reuse this exact codec — only the talker GGUF changes.
 
@@ -81,7 +81,7 @@ All three reuse this exact codec — only the talker GGUF changes.
 - **Original codec:** [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz) (MIT). Hubert Siuzdak.
 - **Reference paper:** [SNAC: Multi-Scale Neural Audio Codec](https://arxiv.org/abs/2410.14411).
 - **Reference codec implementation:** [hubertsiuzdak/snac](https://github.com/hubertsiuzdak/snac).
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR) — see `src/orpheus_snac.cpp` and `models/convert-snac-to-gguf.py`.
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS) — see `src/orpheus_snac.cpp` and `models/convert-snac-to-gguf.py`.
 
 ## License
 

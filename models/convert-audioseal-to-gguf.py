@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert Meta AudioSeal PyTorch checkpoints → GGUF for the CrispASR
+Convert Meta AudioSeal PyTorch checkpoints → GGUF for the StelnetTTS
 C++ audioseal watermark generator + detector.
 
 The AudioSeal library handles weight_norm fusion internally, so we

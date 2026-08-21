@@ -7,7 +7,7 @@ entry naming a HuggingFace repo that had never been created shipped to main and
 `-m auto` would have 404'd for that backend (tabcnn, 2026-07-20). The failure is
 invisible until a user tries to download.
 
-This closes that gap: parse `src/crispasr_model_registry.cpp`, HEAD every URL,
+This closes that gap: parse `src/stelnettts_model_registry.cpp`, HEAD every URL,
 report anything that does not resolve.
 
     python tools/check-registry-urls.py                 # all entries
@@ -32,7 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "src" / "crispasr_model_registry.cpp"
+REGISTRY = ROOT / "src" / "stelnettts_model_registry.cpp"
 
 # {"name", "file.gguf", "https://…", "~size", companion_file, companion_url, …}
 # Entries span lines and contain nullptrs, so match the URL string literals and
@@ -76,7 +76,7 @@ def parse_registry(path: Path):
 
 def check(url: str, timeout: float, attempts: int = 3):
     req = urllib.request.Request(url, method="HEAD",
-                                 headers={"User-Agent": "crispasr-registry-check"})
+                                 headers={"User-Agent": "stelnettts-registry-check"})
     last = "no attempt"
     for attempt in range(attempts):
         try:
@@ -89,7 +89,7 @@ def check(url: str, timeout: float, attempts: int = 3):
             if e.code in (403, 405, 501):
                 try:
                     g = urllib.request.Request(
-                        url, headers={"User-Agent": "crispasr-registry-check", "Range": "bytes=0-0"})
+                        url, headers={"User-Agent": "stelnettts-registry-check", "Range": "bytes=0-0"})
                     with urllib.request.urlopen(g, timeout=timeout) as r2:
                         return r2.status, "(via GET)"
                 except Exception as e2:

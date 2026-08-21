@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-CrispASR — Comprehensive Backend Benchmark on macOS / Apple Silicon
+StelnetTTS — Comprehensive Backend Benchmark on macOS / Apple Silicon
 
 Adaptation of tools/kaggle-benchmark-all-backends.py for local M1/M2/M3 use.
 
 Differences from the Kaggle script:
-  - Doesn't clone or build CrispASR — assumes ./build/bin/crispasr already
+  - Doesn't clone or build StelnetTTS — assumes ./build/bin/stelnettts already
     built via `scripts/dev-build.sh` (Ninja + ccache + libomp + Metal).
   - Models live on the attached SSD (default /Volumes/backups/ai/). Each
     backend's model is checked there first; if missing, downloaded once
@@ -39,7 +39,7 @@ from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRISPASR = REPO_ROOT / "build" / "bin" / "crispasr"
+CRISPASR = REPO_ROOT / "build" / "bin" / "stelnettts"
 JFK_WAV = REPO_ROOT / "samples" / "jfk.wav"
 
 JFK_REF = (
@@ -76,30 +76,30 @@ SLOW_BACKENDS = [
 # Per-backend model registry: (local_filename, hf_repo, hf_filename)
 # local_filename is what we look for on disk; download saves under same name.
 MODEL_REGISTRY = {
-    "whisper":           ("ggml-base.bin",                       "ggerganov/crispasr",                     "ggml-base.bin"),
-    "parakeet":          ("parakeet-tdt-0.6b-v3-q4_k.gguf",      "cstr/parakeet-tdt-0.6b-v3-GGUF",            "parakeet-tdt-0.6b-v3-q4_k.gguf"),
-    "moonshine":         ("moonshine-tiny-q4_k.gguf",            "cstr/moonshine-tiny-GGUF",                  "moonshine-tiny-q4_k.gguf"),
-    "wav2vec2":          ("wav2vec2-xlsr-en-q4_k.gguf",          "cstr/wav2vec2-large-xlsr-53-english-GGUF",  "wav2vec2-xlsr-en-q4_k.gguf"),
-    "fastconformer-ctc": ("stt-en-fastconformer-ctc-large-q4_k.gguf", "cstr/stt-en-fastconformer-ctc-large-GGUF", "stt-en-fastconformer-ctc-large-q4_k.gguf"),
-    "data2vec":          ("data2vec-audio-base-960h-q4_k.gguf",  "cstr/data2vec-audio-960h-GGUF",             "data2vec-audio-base-960h-q4_k.gguf"),
-    "hubert":            ("hubert-large-ls960-ft-q4_k.gguf",     "cstr/hubert-large-ls960-ft-GGUF",           "hubert-large-ls960-ft-q4_k.gguf"),
-    "canary":            ("canary-1b-v2-q4_k.gguf",              "cstr/canary-1b-v2-GGUF",                    "canary-1b-v2-q4_k.gguf"),
-    "cohere":            ("cohere-transcribe-q4_k.gguf",         "cstr/cohere-transcribe-03-2026-GGUF",       "cohere-transcribe-q4_k.gguf"),
-    "qwen3":             ("qwen3-asr-0.6b-q4_k.gguf",            "cstr/qwen3-asr-0.6b-GGUF",                  "qwen3-asr-0.6b-q4_k.gguf"),
-    "omniasr":           ("omniasr-ctc-1b-v2-q4_k.gguf",         "cstr/omniASR-CTC-1B-v2-GGUF",               "omniasr-ctc-1b-v2-q4_k.gguf"),
-    "omniasr-llm":       ("omniasr-llm-300m-v2-q4_k.gguf",       "cstr/omniasr-llm-300m-v2-GGUF",             "omniasr-llm-300m-v2-q4_k.gguf"),
-    "glm-asr":           ("glm-asr-nano-q4_k.gguf",              "cstr/glm-asr-nano-GGUF",                    "glm-asr-nano-q4_k.gguf"),
-    "firered-asr":       ("firered-asr2-aed-q4_k.gguf",          "cstr/firered-asr2-aed-GGUF",                "firered-asr2-aed-q4_k.gguf"),
-    "kyutai-stt":        ("kyutai-stt-1b-q4_k.gguf",             "cstr/kyutai-stt-1b-GGUF",                   "kyutai-stt-1b-q4_k.gguf"),
-    "vibevoice":         ("vibevoice-asr-7b-q4_k-fixed.gguf",    "cstr/vibevoice-asr-GGUF",                   "vibevoice-asr-q4_k.gguf"),  # use fixed GGUF (original had tokenizer + lm_head bugs)
-    "voxtral":           ("voxtral-mini-3b-2507-q4_k.gguf",      "cstr/voxtral-mini-3b-2507-GGUF",            "voxtral-mini-3b-2507-q4_k.gguf"),
-    "voxtral4b":         ("voxtral-mini-4b-realtime-q4_k.gguf",  "cstr/voxtral-mini-4b-realtime-GGUF",        "voxtral-mini-4b-realtime-q4_k.gguf"),
-    "granite":           ("granite-speech-4.0-1b-q4_k.gguf",     "cstr/granite-speech-4.0-1b-GGUF",           "granite-speech-4.0-1b-q4_k.gguf"),
+    "whisper":           ("ggml-base.bin",                       "ggerganov/stelnettts",                     "ggml-base.bin"),
+    "parakeet":          ("parakeet-tdt-0.6b-v3-q4_k.gguf",      "Xenna/parakeet-tdt-0.6b-v3-GGUF",            "parakeet-tdt-0.6b-v3-q4_k.gguf"),
+    "moonshine":         ("moonshine-tiny-q4_k.gguf",            "Xenna/moonshine-tiny-GGUF",                  "moonshine-tiny-q4_k.gguf"),
+    "wav2vec2":          ("wav2vec2-xlsr-en-q4_k.gguf",          "Xenna/wav2vec2-large-xlsr-53-english-GGUF",  "wav2vec2-xlsr-en-q4_k.gguf"),
+    "fastconformer-ctc": ("stt-en-fastconformer-ctc-large-q4_k.gguf", "Xenna/stt-en-fastconformer-ctc-large-GGUF", "stt-en-fastconformer-ctc-large-q4_k.gguf"),
+    "data2vec":          ("data2vec-audio-base-960h-q4_k.gguf",  "Xenna/data2vec-audio-960h-GGUF",             "data2vec-audio-base-960h-q4_k.gguf"),
+    "hubert":            ("hubert-large-ls960-ft-q4_k.gguf",     "Xenna/hubert-large-ls960-ft-GGUF",           "hubert-large-ls960-ft-q4_k.gguf"),
+    "canary":            ("canary-1b-v2-q4_k.gguf",              "Xenna/canary-1b-v2-GGUF",                    "canary-1b-v2-q4_k.gguf"),
+    "cohere":            ("cohere-transcribe-q4_k.gguf",         "Xenna/cohere-transcribe-03-2026-GGUF",       "cohere-transcribe-q4_k.gguf"),
+    "qwen3":             ("cielvox2-asr-0.6b-q4_k.gguf",            "Xenna/cielvox2-asr-0.6b-GGUF",                  "cielvox2-asr-0.6b-q4_k.gguf"),
+    "omniasr":           ("omniasr-ctc-1b-v2-q4_k.gguf",         "Xenna/omniASR-CTC-1B-v2-GGUF",               "omniasr-ctc-1b-v2-q4_k.gguf"),
+    "omniasr-llm":       ("omniasr-llm-300m-v2-q4_k.gguf",       "Xenna/omniasr-llm-300m-v2-GGUF",             "omniasr-llm-300m-v2-q4_k.gguf"),
+    "glm-asr":           ("glm-asr-nano-q4_k.gguf",              "Xenna/glm-asr-nano-GGUF",                    "glm-asr-nano-q4_k.gguf"),
+    "firered-asr":       ("firered-asr2-aed-q4_k.gguf",          "Xenna/firered-asr2-aed-GGUF",                "firered-asr2-aed-q4_k.gguf"),
+    "kyutai-stt":        ("kyutai-stt-1b-q4_k.gguf",             "Xenna/kyutai-stt-1b-GGUF",                   "kyutai-stt-1b-q4_k.gguf"),
+    "vibevoice":         ("vibevoice-asr-7b-q4_k-fixed.gguf",    "Xenna/vibevoice-asr-GGUF",                   "vibevoice-asr-q4_k.gguf"),  # use fixed GGUF (original had tokenizer + lm_head bugs)
+    "voxtral":           ("voxtral-mini-3b-2507-q4_k.gguf",      "Xenna/voxtral-mini-3b-2507-GGUF",            "voxtral-mini-3b-2507-q4_k.gguf"),
+    "voxtral4b":         ("voxtral-mini-4b-realtime-q4_k.gguf",  "Xenna/voxtral-mini-4b-realtime-GGUF",        "voxtral-mini-4b-realtime-q4_k.gguf"),
+    "granite":           ("granite-speech-4.0-1b-q4_k.gguf",     "Xenna/granite-speech-4.0-1b-GGUF",           "granite-speech-4.0-1b-q4_k.gguf"),
 }
 
 # Some backends need extra files (tokenizer, voice, alt-name fallbacks).
 EXTRA_FILES = {
-    "moonshine": [("tokenizer.bin", "cstr/moonshine-tiny-GGUF", "tokenizer.bin")],
+    "moonshine": [("tokenizer.bin", "Xenna/moonshine-tiny-GGUF", "tokenizer.bin")],
 }
 
 
@@ -164,7 +164,7 @@ def calc_wer(ref: str, hyp: str) -> float | None:
     return compute_wer(r, h)
 
 
-def run_one(crispasr: Path, model: Path, backend: str, audio: Path, use_gpu: bool,
+def run_one(stelnettts: Path, model: Path, backend: str, audio: Path, use_gpu: bool,
             timeout: int, audio_duration: float, verbose: bool = True) -> dict:
     """Run a single inference, return parsed result dict.
 
@@ -172,7 +172,7 @@ def run_one(crispasr: Path, model: Path, backend: str, audio: Path, use_gpu: boo
     runs this includes process startup + model load + (cold) Metal kernel
     JIT — see the `--warmup` flag for steady-state numbers."""
     cmd = [
-        str(crispasr),
+        str(stelnettts),
         "--backend", backend,
         "-m", str(model),
         "-f", str(audio),
@@ -183,7 +183,7 @@ def run_one(crispasr: Path, model: Path, backend: str, audio: Path, use_gpu: boo
         cmd.append("-v")
     if not use_gpu:
         cmd.append("-ng")
-    env = {**os.environ, "CRISPASR_VERBOSE": "1"}
+    env = {**os.environ, "STELNETTTS_VERBOSE": "1"}
     t0 = time.time()
     try:
         r = subprocess.run(cmd, capture_output=True, text=True,
@@ -288,7 +288,7 @@ def benchmark_backend(backend: str, display: str, timeout: int, notes: str,
 
 def emit_markdown(results: list[dict], sysinfo: dict, run_cpu: bool, warmup: bool) -> str:
     md = []
-    md.append("# CrispASR Backend Benchmark — macOS\n")
+    md.append("# StelnetTTS Backend Benchmark — macOS\n")
     md.append(f"**Date:** {sysinfo['date']}  ")
     md.append(f"**Platform:** {sysinfo['platform']}  ")
     md.append(f"**Audio:** {sysinfo['audio']}  ")
@@ -353,7 +353,7 @@ def maybe_gist(report_md: str, payload: dict) -> str | None:
         return None
     import urllib.request
     body = {
-        "description": f"CrispASR macOS benchmark — {payload['system']['date']}",
+        "description": f"StelnetTTS macOS benchmark — {payload['system']['date']}",
         "public": True,
         "files": {
             "benchmark_results.md": {"content": report_md},
@@ -394,7 +394,7 @@ def main():
                     help="Skip the warmup pass; report cold-start wall RT instead "
                          "(default: warmup ON for steady-state numbers)")
     ap.add_argument("--quiet", dest="verbose", action="store_false",
-                    help="Don't pass -v to crispasr (default: verbose ON)")
+                    help="Don't pass -v to stelnettts (default: verbose ON)")
     args = ap.parse_args()
 
     if not CRISPASR.is_file():
@@ -432,7 +432,7 @@ def main():
                                     capture_output=True, text=True,
                                     cwd=REPO_ROOT).stdout.strip(),
     }
-    print(f"CrispASR macOS benchmark — {sysinfo['date']}")
+    print(f"StelnetTTS macOS benchmark — {sysinfo['date']}")
     print(f"  HEAD: {sysinfo['git']}")
     print(f"  Models: {models_dir}  ({len(backend_set)} backends, "
           f"{'Metal+CPU' if args.cpu else 'Metal only'}, "

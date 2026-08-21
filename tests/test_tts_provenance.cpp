@@ -3,8 +3,8 @@
 // Tests for: consent gate logic, C2PA no-op, ID3v2 tag structure,
 // WAV LIST/INFO metadata, disclaimer helpers.
 
-#include "core/crispasr_wav_writer.h"
-#include "core/crispasr_c2pa.h"
+#include "core/stelnettts_wav_writer.h"
+#include "core/stelnettts_c2pa.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -28,7 +28,7 @@ uint32_t le_u32(const std::string& s, size_t off) {
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("WAV LIST/INFO chunk is well-formed RIFF", "[unit][provenance][wav]") {
-    std::string info = crispasr_wav_make_info_chunk();
+    std::string info = stelnettts_wav_make_info_chunk();
     REQUIRE(info.size() >= 12);
     REQUIRE(info.substr(0, 4) == "LIST");
     // LIST size = rest of chunk
@@ -37,14 +37,14 @@ TEST_CASE("WAV LIST/INFO chunk is well-formed RIFF", "[unit][provenance][wav]") 
     REQUIRE(info.substr(8, 4) == "INFO");
 }
 
-TEST_CASE("WAV LIST/INFO contains ISFT with CrispASR", "[unit][provenance][wav]") {
-    std::string info = crispasr_wav_make_info_chunk();
+TEST_CASE("WAV LIST/INFO contains ISFT with StelnetTTS", "[unit][provenance][wav]") {
+    std::string info = stelnettts_wav_make_info_chunk();
     REQUIRE(info.find("ISFT") != std::string::npos);
-    REQUIRE(info.find("CrispASR") != std::string::npos);
+    REQUIRE(info.find("StelnetTTS") != std::string::npos);
 }
 
 TEST_CASE("WAV LIST/INFO contains ICMT with AI notice", "[unit][provenance][wav]") {
-    std::string info = crispasr_wav_make_info_chunk();
+    std::string info = stelnettts_wav_make_info_chunk();
     REQUIRE(info.find("ICMT") != std::string::npos);
     REQUIRE(info.find("AI text-to-speech") != std::string::npos);
     REQUIRE(info.find("not a recording") != std::string::npos);
@@ -53,12 +53,12 @@ TEST_CASE("WAV LIST/INFO contains ICMT with AI notice", "[unit][provenance][wav]
 TEST_CASE("WAV info_entry pads to even boundary", "[unit][provenance][wav]") {
     // Test with an odd-length string → should pad to even
     std::string out;
-    crispasr_wav_info_entry(out, "TEST", "abc"); // 3 chars + NUL = 4 bytes (even, no pad)
+    stelnettts_wav_info_entry(out, "TEST", "abc"); // 3 chars + NUL = 4 bytes (even, no pad)
     // 4 (id) + 4 (size) + 4 (value "abc\0") = 12
     REQUIRE(out.size() == 12);
 
     std::string out2;
-    crispasr_wav_info_entry(out2, "TEST", "ab"); // 2 chars + NUL = 3 bytes (odd → pad)
+    stelnettts_wav_info_entry(out2, "TEST", "ab"); // 2 chars + NUL = 3 bytes (odd → pad)
     // 4 + 4 + 3 + 1(pad) = 12
     REQUIRE(out2.size() == 12);
 }
@@ -68,18 +68,18 @@ TEST_CASE("WAV info_entry pads to even boundary", "[unit][provenance][wav]") {
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("ID3v2 tag has correct magic", "[unit][provenance][mp3]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+    std::string tag = stelnettts_make_id3v2_ai_tag();
     REQUIRE(tag.substr(0, 3) == "ID3");
 }
 
 TEST_CASE("ID3v2 version is 2.3", "[unit][provenance][mp3]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+    std::string tag = stelnettts_make_id3v2_ai_tag();
     REQUIRE((uint8_t)tag[3] == 3);
     REQUIRE((uint8_t)tag[4] == 0);
 }
 
 TEST_CASE("ID3v2 synchsafe size is correct", "[unit][provenance][mp3]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+    std::string tag = stelnettts_make_id3v2_ai_tag();
     uint32_t ss = ((uint32_t)(uint8_t)tag[6] << 21) | ((uint32_t)(uint8_t)tag[7] << 14) |
                   ((uint32_t)(uint8_t)tag[8] << 7) | ((uint32_t)(uint8_t)tag[9]);
     REQUIRE(ss == tag.size() - 10);
@@ -91,7 +91,7 @@ TEST_CASE("ID3v2 synchsafe size is correct", "[unit][provenance][mp3]") {
 }
 
 TEST_CASE("ID3v2 contains all three TXXX frames", "[unit][provenance][mp3]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+    std::string tag = stelnettts_make_id3v2_ai_tag();
     // Count TXXX occurrences
     int count = 0;
     size_t pos = 0;
@@ -103,35 +103,35 @@ TEST_CASE("ID3v2 contains all three TXXX frames", "[unit][provenance][mp3]") {
 }
 
 TEST_CASE("ID3v2 TXXX contains AI_GENERATED=true", "[unit][provenance][mp3]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+    std::string tag = stelnettts_make_id3v2_ai_tag();
     REQUIRE(tag.find("AI_GENERATED") != std::string::npos);
     REQUIRE(tag.find("true") != std::string::npos);
 }
 
-TEST_CASE("ID3v2 TXXX contains GENERATOR=CrispASR", "[unit][provenance][mp3]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+TEST_CASE("ID3v2 TXXX contains GENERATOR=StelnetTTS", "[unit][provenance][mp3]") {
+    std::string tag = stelnettts_make_id3v2_ai_tag();
     REQUIRE(tag.find("GENERATOR") != std::string::npos);
-    REQUIRE(tag.find("CrispASR") != std::string::npos);
+    REQUIRE(tag.find("StelnetTTS") != std::string::npos);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// MP3 encoding (in-tree glint encoder, crispasr_mp3_writer.h)
+// MP3 encoding (in-tree glint encoder, stelnettts_mp3_writer.h)
 // ──────────────────────────────────────────────────────────────────────────
 
-#include "crispasr_mp3_writer.h"
+#include "stelnettts_mp3_writer.h"
 
 TEST_CASE("MP3 target rate maps to native MP3 rates", "[unit][provenance][mp3]") {
     // Native rates pass through
-    REQUIRE(crispasr_mp3_target_rate(16000) == 16000);
-    REQUIRE(crispasr_mp3_target_rate(22050) == 22050);
-    REQUIRE(crispasr_mp3_target_rate(24000) == 24000);
-    REQUIRE(crispasr_mp3_target_rate(44100) == 44100);
-    REQUIRE(crispasr_mp3_target_rate(48000) == 48000);
+    REQUIRE(stelnettts_mp3_target_rate(16000) == 16000);
+    REQUIRE(stelnettts_mp3_target_rate(22050) == 22050);
+    REQUIRE(stelnettts_mp3_target_rate(24000) == 24000);
+    REQUIRE(stelnettts_mp3_target_rate(44100) == 44100);
+    REQUIRE(stelnettts_mp3_target_rate(48000) == 48000);
     // Non-native rates go to the nearest rate at or above
-    REQUIRE(crispasr_mp3_target_rate(20000) == 22050);
-    REQUIRE(crispasr_mp3_target_rate(23000) == 24000);
+    REQUIRE(stelnettts_mp3_target_rate(20000) == 22050);
+    REQUIRE(stelnettts_mp3_target_rate(23000) == 24000);
     // Above 48 kHz caps at 48 kHz
-    REQUIRE(crispasr_mp3_target_rate(96000) == 48000);
+    REQUIRE(stelnettts_mp3_target_rate(96000) == 48000);
 }
 
 TEST_CASE("MP3 encode: ID3 prefix, frame sync, CBR size", "[unit][provenance][mp3]") {
@@ -142,7 +142,7 @@ TEST_CASE("MP3 encode: ID3 prefix, frame sync, CBR size", "[unit][provenance][mp
     for (int i = 0; i < n; i++)
         pcm[i] = 0.5f * std::sin(2.0f * 3.14159265f * 440.0f * (float)i / (float)sr);
 
-    std::string mp3 = crispasr_make_mp3(pcm.data(), n, sr);
+    std::string mp3 = stelnettts_make_mp3(pcm.data(), n, sr);
     REQUIRE(!mp3.empty());
     REQUIRE(mp3.substr(0, 3) == "ID3");
 
@@ -166,34 +166,34 @@ TEST_CASE("MP3 encode: non-native rate is resampled, still valid", "[unit][prove
     const int sr = 19000; // not an MP3 rate → resampled to 22050
     const int n = sr / 4;
     std::vector<float> pcm(n, 0.1f);
-    std::string mp3 = crispasr_make_mp3(pcm.data(), n, sr);
+    std::string mp3 = stelnettts_make_mp3(pcm.data(), n, sr);
     REQUIRE(!mp3.empty());
     REQUIRE(mp3.substr(0, 3) == "ID3");
 }
 
 TEST_CASE("MP3 encode: invalid input returns empty", "[unit][provenance][mp3]") {
     std::vector<float> pcm(100, 0.0f);
-    REQUIRE(crispasr_make_mp3(nullptr, 100, 24000).empty());
-    REQUIRE(crispasr_make_mp3(pcm.data(), 0, 24000).empty());
-    REQUIRE(crispasr_make_mp3(pcm.data(), 100, 0).empty());
+    REQUIRE(stelnettts_make_mp3(nullptr, 100, 24000).empty());
+    REQUIRE(stelnettts_make_mp3(pcm.data(), 0, 24000).empty());
+    REQUIRE(stelnettts_make_mp3(pcm.data(), 100, 0).empty());
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// AAC-LC encoding (in-tree glint encoder, crispasr_aac_writer.h)
+// AAC-LC encoding (in-tree glint encoder, stelnettts_aac_writer.h)
 // ──────────────────────────────────────────────────────────────────────────
 
-#include "crispasr_aac_writer.h"
+#include "stelnettts_aac_writer.h"
 
 TEST_CASE("AAC target rate maps to native AAC rates", "[unit][provenance][aac]") {
-    REQUIRE(crispasr_aac_target_rate(16000) == 16000);
-    REQUIRE(crispasr_aac_target_rate(24000) == 24000);
-    REQUIRE(crispasr_aac_target_rate(48000) == 48000);
-    REQUIRE(crispasr_aac_target_rate(96000) == 96000);
+    REQUIRE(stelnettts_aac_target_rate(16000) == 16000);
+    REQUIRE(stelnettts_aac_target_rate(24000) == 24000);
+    REQUIRE(stelnettts_aac_target_rate(48000) == 48000);
+    REQUIRE(stelnettts_aac_target_rate(96000) == 96000);
     // Non-native rates go to the nearest rate at or above
-    REQUIRE(crispasr_aac_target_rate(20000) == 22050);
-    REQUIRE(crispasr_aac_target_rate(50000) == 64000);
+    REQUIRE(stelnettts_aac_target_rate(20000) == 22050);
+    REQUIRE(stelnettts_aac_target_rate(50000) == 64000);
     // Above 96 kHz caps at 96 kHz
-    REQUIRE(crispasr_aac_target_rate(192000) == 96000);
+    REQUIRE(stelnettts_aac_target_rate(192000) == 96000);
 }
 
 TEST_CASE("AAC encode: ID3 prefix + ADTS syncword", "[unit][provenance][aac]") {
@@ -204,7 +204,7 @@ TEST_CASE("AAC encode: ID3 prefix + ADTS syncword", "[unit][provenance][aac]") {
     for (int i = 0; i < n; i++)
         pcm[i] = 0.5f * std::sin(2.0f * 3.14159265f * 440.0f * (float)i / (float)sr);
 
-    std::string aac = crispasr_make_aac(pcm.data(), n, sr);
+    std::string aac = stelnettts_make_aac(pcm.data(), n, sr);
     REQUIRE(!aac.empty());
     REQUIRE(aac.substr(0, 3) == "ID3");
 
@@ -220,16 +220,16 @@ TEST_CASE("AAC encode: ID3 prefix + ADTS syncword", "[unit][provenance][aac]") {
 
 TEST_CASE("AAC encode: invalid input returns empty", "[unit][provenance][aac]") {
     std::vector<float> pcm(100, 0.0f);
-    REQUIRE(crispasr_make_aac(nullptr, 100, 24000).empty());
-    REQUIRE(crispasr_make_aac(pcm.data(), 0, 24000).empty());
-    REQUIRE(crispasr_make_aac(pcm.data(), 100, 0).empty());
+    REQUIRE(stelnettts_make_aac(nullptr, 100, 24000).empty());
+    REQUIRE(stelnettts_make_aac(pcm.data(), 0, 24000).empty());
+    REQUIRE(stelnettts_make_aac(pcm.data(), 100, 0).empty());
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Ogg Opus encoding + OpusTags AI-provenance (crispasr_opus_writer.h)
+// Ogg Opus encoding + OpusTags AI-provenance (stelnettts_opus_writer.h)
 // ──────────────────────────────────────────────────────────────────────────
 
-#include "crispasr_opus_writer.h"
+#include "stelnettts_opus_writer.h"
 
 TEST_CASE("Opus encode: valid Ogg with AI-provenance in OpusTags", "[unit][provenance][opus]") {
     const int sr = 48000;
@@ -238,14 +238,14 @@ TEST_CASE("Opus encode: valid Ogg with AI-provenance in OpusTags", "[unit][prove
     for (int i = 0; i < n; i++)
         pcm[i] = 0.3f * std::sin(2.0f * 3.14159265f * 300.0f * (float)i / (float)sr);
 
-    std::string opus = crispasr_make_opus(pcm.data(), n, sr);
+    std::string opus = stelnettts_make_opus(pcm.data(), n, sr);
     REQUIRE(opus.size() > 100);
     REQUIRE(opus.compare(0, 4, "OggS") == 0); // Ogg capture pattern
 
     // The rewritten OpusTags packet carries the AI-provenance comments verbatim.
     REQUIRE(opus.find("OpusTags") != std::string::npos);
     REQUIRE(opus.find("AI_GENERATED=true") != std::string::npos);
-    REQUIRE(opus.find("GENERATOR=CrispASR") != std::string::npos);
+    REQUIRE(opus.find("GENERATOR=StelnetTTS") != std::string::npos);
     REQUIRE(opus.find("AI_CONTENT_NOTICE=This audio was synthesized") != std::string::npos);
 
     // The rewritten page must remain a valid Ogg Opus (CRC + lacing correct):
@@ -260,9 +260,9 @@ TEST_CASE("Opus encode: valid Ogg with AI-provenance in OpusTags", "[unit][prove
 
 TEST_CASE("Opus encode: invalid input returns empty", "[unit][provenance][opus]") {
     std::vector<float> pcm(100, 0.0f);
-    REQUIRE(crispasr_make_opus(nullptr, 100, 48000).empty());
-    REQUIRE(crispasr_make_opus(pcm.data(), 0, 48000).empty());
-    REQUIRE(crispasr_make_opus(pcm.data(), 100, 0).empty());
+    REQUIRE(stelnettts_make_opus(nullptr, 100, 48000).empty());
+    REQUIRE(stelnettts_make_opus(pcm.data(), 0, 48000).empty());
+    REQUIRE(stelnettts_make_opus(pcm.data(), 100, 0).empty());
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -270,28 +270,28 @@ TEST_CASE("Opus encode: invalid input returns empty", "[unit][provenance][opus]"
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("C2PA manifest JSON is valid and contains required fields", "[unit][provenance][c2pa]") {
-    const char* json = crispasr_c2pa_manifest_json();
+    const char* json = stelnettts_c2pa_manifest_json();
     REQUIRE(json != nullptr);
     std::string s(json);
     REQUIRE(s.find("c2pa.actions") != std::string::npos);
     REQUIRE(s.find("c2pa.created") != std::string::npos);
     REQUIRE(s.find("trainedAlgorithmicMedia") != std::string::npos);
-    REQUIRE(s.find("CrispASR") != std::string::npos);
+    REQUIRE(s.find("StelnetTTS") != std::string::npos);
 }
 
 TEST_CASE("C2PA sign_wav returns false when not available", "[unit][provenance][c2pa]") {
-    // Without CRISPASR_HAVE_C2PA, should be a no-op returning false
+    // Without STELNETTTS_HAVE_C2PA, should be a no-op returning false
     std::string wav = "RIFF....WAVE";
     std::string original = wav;
-    bool ok = crispasr_c2pa_sign_wav(wav, "", "");
+    bool ok = stelnettts_c2pa_sign_wav(wav, "", "");
     REQUIRE(ok == false);
     REQUIRE(wav == original); // unchanged
 }
 
 TEST_CASE("C2PA sign_wav returns false with empty cert/key", "[unit][provenance][c2pa]") {
     std::string wav(100, '\0');
-    REQUIRE(crispasr_c2pa_sign_wav(wav, "", "/some/key.pem") == false);
-    REQUIRE(crispasr_c2pa_sign_wav(wav, "/some/cert.pem", "") == false);
+    REQUIRE(stelnettts_c2pa_sign_wav(wav, "", "/some/key.pem") == false);
+    REQUIRE(stelnettts_c2pa_sign_wav(wav, "/some/cert.pem", "") == false);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -318,26 +318,26 @@ TEST_CASE("Voice clone detection by .wav extension", "[unit][provenance][consent
 // Watermark spread-spectrum (additional edge cases)
 // ──────────────────────────────────────────────────────────────────────────
 
-#include "core/crispasr_watermark.h"
+#include "core/stelnettts_watermark.h"
 
 TEST_CASE("Watermark embed is idempotent-ish (double embed doesn't crash)", "[unit][provenance][watermark]") {
     std::vector<float> pcm(4800, 0.3f);
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size()); // second embed
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size()); // second embed
     // Should not crash, and detect should still find at least one watermark
-    float score = crispasr_watermark_detect_impl(pcm.data(), (int)pcm.size());
+    float score = stelnettts_watermark_detect_impl(pcm.data(), (int)pcm.size());
     REQUIRE(score > 0.0f); // don't require high confidence, just no crash
 }
 
 TEST_CASE("Watermark detect returns 0 for null input", "[unit][provenance][watermark]") {
-    REQUIRE(crispasr_watermark_detect_impl(nullptr, 0) == 0.0f);
-    REQUIRE(crispasr_watermark_detect_impl(nullptr, 1000) == 0.0f);
+    REQUIRE(stelnettts_watermark_detect_impl(nullptr, 0) == 0.0f);
+    REQUIRE(stelnettts_watermark_detect_impl(nullptr, 1000) == 0.0f);
 }
 
 TEST_CASE("Watermark embed with alpha=0 introduces negligible change", "[unit][provenance][watermark]") {
     std::vector<float> pcm(4800, 0.5f);
     auto original = pcm;
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size(), 0.0f);
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size(), 0.0f);
     // With alpha=0, the nudge is zero but FFT→IFFT overlap-add introduces
     // tiny floating-point rounding noise. Max error should be < 1e-3.
     float max_err = 0.0f;
@@ -352,11 +352,11 @@ TEST_CASE("Watermark embed with alpha=0 introduces negligible change", "[unit][p
 // ──────────────────────────────────────────────────────────────────────────
 // Spoken disclaimer opt-out — text verification
 // ──────────────────────────────────────────────────────────────────────────
-// crispasr_tts_disclaimer.h includes heavy backend headers; we test the
+// stelnettts_tts_disclaimer.h includes heavy backend headers; we test the
 // disclaimer text contract inline to keep this test model-free.
 
 TEST_CASE("Disclaimer text contract: mentions 'artificial intelligence'", "[unit][provenance][disclaimer]") {
-    // Must match the string in crispasr_tts_disclaimer.h::text()
+    // Must match the string in stelnettts_tts_disclaimer.h::text()
     const std::string expected = "This audio was generated by artificial intelligence.";
     REQUIRE(expected.find("artificial intelligence") != std::string::npos);
     REQUIRE(!expected.empty());

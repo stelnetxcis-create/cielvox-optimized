@@ -14,13 +14,13 @@ tags:
 - meanflow
 - hifi-gan
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Chatterbox-Turbo TTS — GGUF (ggml)
 
-GGUF / ggml conversion of [`ResembleAI/chatterbox-turbo`](https://huggingface.co/ResembleAI/chatterbox-turbo) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`ResembleAI/chatterbox-turbo`](https://huggingface.co/ResembleAI/chatterbox-turbo) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Chatterbox-Turbo is a distilled 350M-parameter TTS pipeline: GPT-2 tokenizer + AR text-to-speech model + meanflow S3Gen (2-step CFM, vs 10 for base Chatterbox) + HiFTGenerator vocoder. Distributed under **MIT license**.
 
@@ -42,15 +42,15 @@ Encoder attention/FFN weights are stored at F32 precision for quality. Vocoder w
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 cmake --build build -j --target chatterbox
 
 # 2. Pull both model files (Q8_0 recommended)
-huggingface-cli download cstr/chatterbox-turbo-GGUF chatterbox-turbo-t3-q8_0.gguf --local-dir .
-huggingface-cli download cstr/chatterbox-turbo-GGUF chatterbox-turbo-s3gen-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/chatterbox-turbo-GGUF chatterbox-turbo-t3-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/chatterbox-turbo-GGUF chatterbox-turbo-s3gen-q8_0.gguf --local-dir .
 
 # 3. Synthesise (C API — CLI adapter in progress)
 # See test programs in SESSION_HANDOVER.md for usage examples
@@ -104,5 +104,5 @@ python models/convert-chatterbox-to-gguf.py \
 
 ## Related models
 
-- [`cstr/chatterbox-GGUF`](https://huggingface.co/cstr/chatterbox-GGUF) — base Chatterbox (Llama T3, 10-step CFM)
-- [`cstr/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/cstr/lahgtna-chatterbox-v1-GGUF) — Arabic T3 variant
+- [`Xenna/chatterbox-GGUF`](https://huggingface.co/Xenna/chatterbox-GGUF) — base Chatterbox (Llama T3, 10-step CFM)
+- [`Xenna/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/Xenna/lahgtna-chatterbox-v1-GGUF) — Arabic T3 variant

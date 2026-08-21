@@ -1,10 +1,10 @@
-# CrispASR — MOSS-TTS-Local codec GGUF convert + upload (#249 ship, CPU, no build)
+# StelnetTTS — MOSS-TTS-Local codec GGUF convert + upload (#249 ship, CPU, no build)
 #
 # The 4B port is validated (F16 round-trip overlap 0.969). The backbone F16 GGUF
 # is already hosted; the only missing artifact is the decode-only codec GGUF.
-# This CPU kernel (no crispasr build): curl-download MOSS-Audio-Tokenizer-v2
+# This CPU kernel (no stelnettts build): curl-download MOSS-Audio-Tokenizer-v2
 # safetensors (curl -C - resume — hf_transfer wedges on Kaggle), run
-# write_codec_gguf, and upload to cstr/moss-tts-local-v1.5-GGUF with a
+# write_codec_gguf, and upload to Xenna/moss-tts-local-v1.5-GGUF with a
 # hang-tolerant + server-verified upload (dev-notes HF pattern).
 
 import os
@@ -18,15 +18,15 @@ os.environ["PYTHONUNBUFFERED"] = "1"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
 
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 MODELS = TEMP / "codec-models"
 MODELS.mkdir(parents=True, exist_ok=True)
 
 # feat/moss-tts-local-4b was merged long ago; cloning it pinned this kernel to a
 # stale converter, so a re-run would silently reproduce the old decode-only GGUF.
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 HF_CODEC = os.environ.get("MOSS_CODEC", "OpenMOSS-Team/MOSS-Audio-Tokenizer-v2")
-GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "cstr/moss-tts-local-v1.5-GGUF")
+GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "Xenna/moss-tts-local-v1.5-GGUF")
 # The encoder-carrying codec is roughly twice the size and is useless until
 # encode() lands, so it does NOT overwrite the shipped decode-only file yet:
 # Subtitle Edit downloads that path. Ship it under a dev name, validate cloning
@@ -37,8 +37,8 @@ HFBASE = "https://huggingface.co"
 
 def main():
     if not REPO.exists():
-        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     if str(REPO / "tools" / "kaggle") not in sys.path:
         sys.path.insert(0, str(Path(__file__).resolve().parent))

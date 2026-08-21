@@ -1,7 +1,7 @@
 """kyutai/stt-1b-en_fr and kyutai/stt-2.6b-en reference dump backend.
 
 Runs the full Mimi + LM pipeline in PyTorch and captures intermediate
-activations at every architectural boundary for crispasr-diff.
+activations at every architectural boundary for stelnettts-diff.
 
 Architecture:
   16 kHz PCM → append silence tail → resample 24 kHz

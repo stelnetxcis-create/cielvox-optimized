@@ -1,5 +1,5 @@
 #include "ggml.h"
-#include "crispasr.h"
+#include "stelnettts.h"
 
 #include <emscripten.h>
 #include <emscripten/bind.h>
@@ -35,7 +35,7 @@ void stream_main(size_t index, const std::string& lang) {
     stream_set_status("loading data ...");
 
     struct whisper_full_params wparams =
-        whisper_full_default_params(whisper_sampling_strategy::CRISPASR_SAMPLING_GREEDY);
+        whisper_full_default_params(whisper_sampling_strategy::STELNETTTS_SAMPLING_GREEDY);
     bool is_multilingual = whisper_is_multilingual(g_contexts[index]);
 
     wparams.n_threads = std::min(N_THREAD, (int)std::thread::hardware_concurrency());
@@ -64,7 +64,7 @@ void stream_main(size_t index, const std::string& lang) {
     auto& ctx = g_contexts[index];
 
     // 5 seconds interval
-    const int64_t window_samples = 5 * CRISPASR_SAMPLE_RATE;
+    const int64_t window_samples = 5 * STELNETTTS_SAMPLE_RATE;
 
     while (g_running) {
         stream_set_status("waiting for audio ...");

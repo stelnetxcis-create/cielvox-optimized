@@ -14,9 +14,9 @@ segmenter would consume this, and unvoiced frames have no true pitch.
 """
 import subprocess, sys, os, math, json
 
-CLI = "./build/bin/crispasr"
+CLI = "./build/bin/stelnettts"
 SONGS = "/private/tmp/claude-501/-Users-christianstrobele-code-mus/c4eefe59-aea5-4022-98d3-840f0bb73f22/scratchpad/songs"
-SCRATCH = "/private/tmp/claude-501/-Volumes-backups-ai-CrispASR/60fa4f2b-c095-4ac2-ba89-5799246836e7/scratchpad"
+SCRATCH = "/private/tmp/claude-501/-Volumes-backups-ai-StelnetTTS/60fa4f2b-c095-4ac2-ba89-5799246836e7/scratchpad"
 THRESH = 0.5
 
 # rough tessitura (Hz) for a sanity check, generous bounds

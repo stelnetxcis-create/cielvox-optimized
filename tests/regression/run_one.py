@@ -5,9 +5,9 @@ For each backend in ``tests/regression/manifest.json``:
 
 1. Download the GGUF under test at the pinned HF revision SHA.
 2. Download the reference-dump archive at the pinned fixtures revision.
-3. Run ``crispasr -m <gguf> -f <sample>`` and assert the transcript
+3. Run ``stelnettts -m <gguf> -f <sample>`` and assert the transcript
    matches the pinned ``expected_transcript`` byte-for-byte.
-4. Run ``crispasr-diff <backend_id> <gguf> <ref> <sample>`` and assert
+4. Run ``stelnettts-diff <backend_id> <gguf> <ref> <sample>`` and assert
    every stage's ``cos_min`` is at or above its pinned threshold.
 
 Backends with ``"skip_diff": true`` in the manifest skip steps 2 and 4
@@ -28,7 +28,7 @@ Usage:
 
   tests/regression/run_one.py parakeet-tdt-0.6b-ja
   BUILD_DIR=build-ninja-compile tests/regression/run_one.py parakeet-tdt-0.6b-ja
-  CRISPASR_BIN=/path/crispasr DIFF_BIN=/path/crispasr-diff \\
+  STELNETTTS_BIN=/path/stelnettts DIFF_BIN=/path/stelnettts-diff \\
     tests/regression/run_one.py parakeet-tdt-0.6b-ja
 
   # Dry-run: HEAD-check every pinned HF object referenced by the
@@ -39,10 +39,10 @@ Usage:
 
 Env:
 
-  BUILD_DIR       Build directory containing bin/crispasr + bin/crispasr-diff
+  BUILD_DIR       Build directory containing bin/stelnettts + bin/stelnettts-diff
                   (default: build-regression).
-  CRISPASR_BIN    Override the crispasr binary path entirely.
-  DIFF_BIN        Override the crispasr-diff binary path entirely.
+  STELNETTTS_BIN    Override the stelnettts binary path entirely.
+  DIFF_BIN        Override the stelnettts-diff binary path entirely.
   WORK_DIR        Where to stage downloads (default: a tempdir; cleaned on
                   exit unless KEEP_WORK=1).
   KEEP_WORK       If set to 1, don't delete WORK_DIR on exit.
@@ -163,7 +163,7 @@ def compute_transcript_metrics(expected: str, actual: str) -> tuple[float, float
 
 
 # The spoken AI-disclosure the CLI prepends to voice-cloned TTS output
-# (examples/cli/crispasr_tts_disclaimer.h → crispasr_disclaimer::text()).
+# (examples/cli/stelnettts_tts_disclaimer.h → stelnettts_disclaimer::text()).
 # `--no-watermark` removes only the inaudible watermark, NOT this spoken
 # sentence, so the roundtrip ASR always transcribes it ahead of the actual
 # phrase. It must be stripped before WER or every voice-clone roundtrip eats
@@ -190,15 +190,15 @@ def strip_ai_disclaimer(transcript: str) -> str:
     return transcript
 
 
-def run_transcript(crispasr_bin: Path, gguf: Path, sample: Path) -> str:
-    """Run `crispasr -m gguf -f sample`, return the transcript line.
+def run_transcript(stelnettts_bin: Path, gguf: Path, sample: Path) -> str:
+    """Run `stelnettts -m gguf -f sample`, return the transcript line.
 
     The CLI prints the transcript on its own line near the end, after
     the "transcribed N s audio in M s (Kx realtime)" status line.
     Grab the last non-empty non-status line.
     """
     proc = subprocess.run(
-        [str(crispasr_bin), "-m", str(gguf), "-f", str(sample)],
+        [str(stelnettts_bin), "-m", str(gguf), "-f", str(sample)],
         capture_output=True,
         text=True,
         check=True,
@@ -210,13 +210,13 @@ def run_transcript(crispasr_bin: Path, gguf: Path, sample: Path) -> str:
     text_lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
     if not text_lines:
         die(
-            "crispasr produced no stdout; "
+            "stelnettts produced no stdout; "
             f"stderr tail: ...{proc.stderr[-400:]}"
         )
     return text_lines[-1]
 
 
-# Diff-harness output line format (examples/cli/crispasr_diff_main.cpp):
+# Diff-harness output line format (examples/cli/stelnettts_diff_main.cpp):
 #   [PASS] encoder_output         shape=[1024,176]       cos_min=0.999594  cos_mean=...
 #   [FAIL] mel_spectrogram        shape=[80,1407]        cos_min=0.951084  cos_mean=...
 _DIFF_LINE = re.compile(
@@ -225,7 +225,7 @@ _DIFF_LINE = re.compile(
 
 
 def parse_diff_stdout(stdout: str) -> dict[str, float]:
-    """Parse a crispasr-diff stdout blob into {stage_name: cos_min}.
+    """Parse a stelnettts-diff stdout blob into {stage_name: cos_min}.
 
     Module-level so the smoke test (and the Kaggle multi-backend
     driver) can re-use it without spawning subprocesses.
@@ -266,9 +266,9 @@ def evaluate_stage_thresholds(
 
 
 def run_diff(diff_bin: Path, backend_id: str, gguf: Path, ref: Path, sample: Path) -> dict:
-    """Run crispasr-diff and return {stage_name: cos_min}.
+    """Run stelnettts-diff and return {stage_name: cos_min}.
 
-    crispasr-diff exits non-zero (the count of failed stages) when any
+    stelnettts-diff exits non-zero (the count of failed stages) when any
     captured stage falls below its built-in 0.999 cos_min threshold,
     even if we accept that under the manifest's per-stage threshold.
     We do our own pass/fail accounting against `diff_thresholds`, so
@@ -284,15 +284,15 @@ def run_diff(diff_bin: Path, backend_id: str, gguf: Path, ref: Path, sample: Pat
         timeout=600,
     )
     if proc.returncode < 0:
-        die(f"crispasr-diff died from signal {-proc.returncode}\n"
+        die(f"stelnettts-diff died from signal {-proc.returncode}\n"
             f"  stderr tail: {proc.stderr[-400:]}")
-    # crispasr-diff prints summary lines on stdout. Parse the [PASS]/[FAIL]
+    # stelnettts-diff prints summary lines on stdout. Parse the [PASS]/[FAIL]
     # lines; ignore the diff harness's own pass/fail verdict — we apply our
     # own per-stage thresholds from the manifest.
     result = parse_diff_stdout(proc.stdout)
     if not result:
         die(
-            f"crispasr-diff produced no parseable stage lines.\n"
+            f"stelnettts-diff produced no parseable stage lines.\n"
             f"  stdout tail: {proc.stdout[-400:]}\n"
             f"  stderr tail: {proc.stderr[-400:]}"
         )
@@ -300,7 +300,7 @@ def run_diff(diff_bin: Path, backend_id: str, gguf: Path, ref: Path, sample: Pat
 
 
 def regression_for(name: str, manifest: dict, work_dir: Path,
-                   crispasr_bin: Path, diff_bin: Path) -> int:
+                   stelnettts_bin: Path, diff_bin: Path) -> int:
     """Run one backend's regression. Return number of failures."""
     entry = next((b for b in manifest["backends"] if b["name"] == name), None)
     if entry is None:
@@ -339,7 +339,7 @@ def regression_for(name: str, manifest: dict, work_dir: Path,
             work_dir,
         )
     # Sample WAVs live alongside the ref dumps in the fixtures HF repo
-    # (samples/.gitignore in CrispASR excludes them from the source
+    # (samples/.gitignore in StelnetTTS excludes them from the source
     # tree to keep clones small). An in-tree fallback `sample` field
     # remains supported for legacy entries that lived in the repo.
     if "fixture_sample_path" in entry:
@@ -359,7 +359,7 @@ def regression_for(name: str, manifest: dict, work_dir: Path,
 
     # ----- 1. Transcript -----
     print(f"\n[transcript] {name}")
-    actual = run_transcript(crispasr_bin, gguf_local, sample)
+    actual = run_transcript(stelnettts_bin, gguf_local, sample)
     expected = entry["expected_transcript"]
     # DEFAULT to a zero-tolerance metric gate (not immediate byte-equal FAIL):
     # a space-delimited transcript that differs ONLY in the punctuation/case
@@ -432,7 +432,7 @@ def regression_for(name: str, manifest: dict, work_dir: Path,
 
 
 def tts_roundtrip_for(name: str, manifest: dict, work_dir: Path,
-                      crispasr_bin: Path) -> int:
+                      stelnettts_bin: Path) -> int:
     """Run one TTS backend's TTS->ASR roundtrip regression.
 
     1. Download the TTS GGUF + companion voice file at pinned revision.
@@ -475,7 +475,7 @@ def tts_roundtrip_for(name: str, manifest: dict, work_dir: Path,
     #   * `voice` block: download a separate voice GGUF (kokoro pattern —
     #     voices live in a sibling repo).
     #   * `voice_preset`: a name like "eric" baked into the TTS model
-    #     (qwen3-tts-CustomVoice pattern — speaker embeds inside the
+    #     (cielvox2-tts-CustomVoice pattern — speaker embeds inside the
     #     model). Passed to `--voice <name>` without a path.
     # Exactly one of these must be set.
     voice_local: Path | None = None
@@ -489,7 +489,7 @@ def tts_roundtrip_for(name: str, manifest: dict, work_dir: Path,
         )
 
     # Optional `codec` block — separate codec/tokenizer GGUF passed via
-    # `--codec-model` (qwen3-tts needs this; kokoro doesn't).
+    # `--codec-model` (cielvox2-tts needs this; kokoro doesn't).
     codec_local: Path | None = None
     if "codec" in entry:
         codec_local = hf_download(
@@ -547,14 +547,14 @@ def tts_roundtrip_for(name: str, manifest: dict, work_dir: Path,
     # An entry can still override via tts_extra_args (appended after this).
     tts_seed = str(entry.get("tts_seed", 1234))
     syn_cmd = [
-        str(crispasr_bin), "-m", str(gguf_local),
+        str(stelnettts_bin), "-m", str(gguf_local),
         "--tts", tts_phrase,
         "--tts-output", str(out_wav),
         "--seed", tts_seed,
         "--no-prints",
     ]
     # `--voice` takes either a path (voice GGUF) or a name (baked
-    # preset like qwen3-tts's `eric`).
+    # preset like cielvox2-tts's `eric`).
     if voice_preset:
         syn_cmd += ["--voice", voice_preset]
     elif voice_local is not None:
@@ -583,7 +583,7 @@ def tts_roundtrip_for(name: str, manifest: dict, work_dir: Path,
         return 1
 
     # ---- 4. Transcribe with parakeet (or whichever ASR is pinned) ----
-    asr_cmd = [str(crispasr_bin),
+    asr_cmd = [str(stelnettts_bin),
                "--backend", asr_entry["backend_id"],
                "-m", str(asr_gguf_local),
                "-f", str(out_wav),
@@ -730,7 +730,7 @@ def dry_run(manifest: dict, backend_filter: str | None = None) -> int:
         print(f"  \033[32mPASS\033[0m {name}")
 
     # TTS backends — check the TTS GGUF + the voice GGUF (separate
-    # repo/revision since kokoro voices live in cstr/kokoro-voices-GGUF
+    # repo/revision since kokoro voices live in Xenna/kokoro-voices-GGUF
     # rather than the kokoro-82m repo) + optional companion files. The
     # `roundtrip_asr_backend` reference must resolve to a real ASR
     # entry in `manifest.backends`.
@@ -836,13 +836,13 @@ def main() -> int:
     backend_name = backend_filter
 
     build_dir = Path(os.environ.get("BUILD_DIR", "build-regression"))
-    crispasr_bin = Path(os.environ.get(
-        "CRISPASR_BIN", build_dir / "bin" / "crispasr"))
+    stelnettts_bin = Path(os.environ.get(
+        "STELNETTTS_BIN", build_dir / "bin" / "stelnettts"))
     diff_bin = Path(os.environ.get(
-        "DIFF_BIN", build_dir / "bin" / "crispasr-diff"))
-    if not crispasr_bin.exists():
-        die(f"crispasr binary not found at {crispasr_bin}. "
-            f"Build it first or set CRISPASR_BIN.")
+        "DIFF_BIN", build_dir / "bin" / "stelnettts-diff"))
+    if not stelnettts_bin.exists():
+        die(f"stelnettts binary not found at {stelnettts_bin}. "
+            f"Build it first or set STELNETTTS_BIN.")
 
     # `backend_name` can match either an ASR backend (manifest.backends)
     # or a TTS backend (manifest.tts_backends). Route on which list
@@ -856,25 +856,25 @@ def main() -> int:
         die(f"backend '{backend_name}' not in manifest.backends or "
             f"manifest.tts_backends")
 
-    # crispasr-diff is only needed for full ASR diff entries
+    # stelnettts-diff is only needed for full ASR diff entries
     # (skip_diff=false). TTS roundtrip doesn't use it.
     if asr_entry and not asr_entry.get("skip_diff", False) and not diff_bin.exists():
-        die(f"crispasr-diff binary not found at {diff_bin}. "
+        die(f"stelnettts-diff binary not found at {diff_bin}. "
             f"Build it first or set DIFF_BIN. "
             f"(Not needed for skip_diff=true entries.)")
 
     work_root = Path(os.environ.get(
         "WORK_DIR",
-        tempfile.mkdtemp(prefix="crispasr-regression-")))
+        tempfile.mkdtemp(prefix="stelnettts-regression-")))
     keep_work = os.environ.get("KEEP_WORK") == "1"
 
     try:
         if tts_entry is not None:
             failures = tts_roundtrip_for(
-                backend_name, manifest, work_root, crispasr_bin)
+                backend_name, manifest, work_root, stelnettts_bin)
         else:
             failures = regression_for(
-                backend_name, manifest, work_root, crispasr_bin, diff_bin)
+                backend_name, manifest, work_root, stelnettts_bin, diff_bin)
         if failures == 0:
             print(f"\n\033[32mOK\033[0m  {backend_name}: all checks passed")
             return 0

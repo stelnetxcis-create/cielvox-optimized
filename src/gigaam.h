@@ -105,7 +105,7 @@ int gigaam_est_enc_frames(struct gigaam_context* ctx, int n_samples);
 // default. No effect on CTC heads.
 void gigaam_set_max_symbols(struct gigaam_context* ctx, int max_symbols);
 
-// ---- Stage-level entry points (for crispasr-diff) ----
+// ---- Stage-level entry points (for stelnettts-diff) ----
 // Each returns a malloc'd F32 buffer the caller must free(), or nullptr.
 
 // Log-mel spectrogram of raw 16 kHz mono PCM.

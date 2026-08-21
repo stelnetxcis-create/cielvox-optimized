@@ -1,8 +1,8 @@
 """Orpheus SNAC 24 kHz codec decoder reference dump backend.
 
 Captures stage-by-stage activations from the official PyTorch SNAC
-24 kHz model (hubertsiuzdak/snac_24khz) so the CrispASR C++ SNAC
-decoder can be diffed via `crispasr-diff orpheus`.
+24 kHz model (hubertsiuzdak/snac_24khz) so the StelnetTTS C++ SNAC
+decoder can be diffed via `stelnettts-diff orpheus`.
 
 The Orpheus talker emits a stream of `<custom_token_N>` LM tokens; the
 de-interleave from those into 3 SNAC codebook tensors is verbatim from
@@ -20,7 +20,7 @@ canopyai/Orpheus-TTS:orpheus_tts_pypi/orpheus_tts/decoder.py:
                                          # frame sliding window (Orpheus
                                          # streaming protocol)
 
-Stages dumped (matching `crispasr-diff orpheus` C++ side):
+Stages dumped (matching `stelnettts-diff orpheus` C++ side):
   snac_codes_0      — (B=1, T_g0)         int32 as float32
   snac_codes_1      — (B=1, T_g1)         int32 as float32, T_g1 = 2·T_g0
   snac_codes_2      — (B=1, T_g2)         int32 as float32, T_g2 = 4·T_g0

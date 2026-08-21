@@ -1,4 +1,4 @@
-# CrispASR — MOSS-TTS-v1.5 voice-cloning round-trip validation (#249 follow-up)
+# StelnetTTS — MOSS-TTS-v1.5 voice-cloning round-trip validation (#249 follow-up)
 #
 # The codec ENCODER + --voice wiring are in place (moss_tts_set_reference_wav*,
 # CLI --voice, c_api set_voice_prompt). This kernel validates the path END-TO-END,
@@ -16,7 +16,7 @@
 #      — the reference actually pulled the timbre toward R vs the un-cloned
 #      baseline. (Speaker embeddings via Resemblyzer's VoiceEncoder, CPU.)
 #
-# Uses the SHIPPED GGUFs (cstr/moss-tts-v1.5-GGUF) — no re-convert. ccache under
+# Uses the SHIPPED GGUFs (Xenna/moss-tts-v1.5-GGUF) — no re-convert. ccache under
 # /kaggle/temp (usage #22). Q4_K on GPU.
 
 import json
@@ -31,7 +31,7 @@ from pathlib import Path
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TMP / "moss-models"
 WORK = Path("/kaggle/working")
@@ -39,8 +39,8 @@ RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 MODELS.mkdir(parents=True, exist_ok=True)
 
-REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-parity-diff")
-HF_GGUF = os.environ.get("MOSS_TTS_GGUF_REPO", "cstr/moss-tts-v1.5-GGUF")
+REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-parity-diff")
+HF_GGUF = os.environ.get("MOSS_TTS_GGUF_REPO", "Xenna/moss-tts-v1.5-GGUF")
 REF_TEXT = os.environ.get("MOSS_TTS_REF_TEXT",
                           "This is the reference speaker reading a calm sentence aloud.")
 CLONE_TEXT = os.environ.get("MOSS_TTS_CLONE_TEXT",
@@ -97,7 +97,7 @@ def synth(cli, backbone, codec, text, out_wav, voice=None, timeout=2400) -> dict
 def asr(cli, wav, timeout=900) -> str:
     """Return the whisper stdout, ANSI/progress-bar stripped. Do NOT truncate or
     over-filter — word_overlap only needs the transcript words to be PRESENT, and
-    the crispasr whisper CLI interleaves device/model-load noise on the same lines
+    the stelnettts whisper CLI interleaves device/model-load noise on the same lines
     as the transcript (fireredpunc punctuation model). Keep it all."""
     import re
     if not wav.exists():
@@ -141,7 +141,7 @@ def main():
     log(f"clone {REF}")
     if not REPO.exists():
         subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF, "--recursive",
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()
@@ -154,11 +154,11 @@ def main():
                     "-DCMAKE_BUILD_TYPE=Release"] + list(kh.cache_and_link_flags())
                    + list(kh.cuda_build_flags(arch)), env=env, check=True, timeout=300)
     with kh.build_heartbeat("voiceclone build"):
-        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
                             f"-j{kh.safe_build_jobs(gpu=True)}")
-    cli = BUILD / "bin" / "crispasr"
+    cli = BUILD / "bin" / "stelnettts"
     if not cli.exists():
-        cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+        cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
         cli = cands[0] if cands else cli
     os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
     log(f"built {cli}")

@@ -12,8 +12,8 @@
 //   - Tekken BPE tokenizer pattern from voxtral4b.cpp
 //
 // Env knobs:
-//   CRISPASR_VOXTRAL_TTS_TIMING=1    print per-stage LLM/FM ms/frame
-//   CRISPASR_VOXTRAL_TTS_FM_STEPS=N  Euler ODE step count (default 8 → 7 intervals).
+//   STELNETTTS_VOXTRAL_TTS_TIMING=1    print per-stage LLM/FM ms/frame
+//   STELNETTTS_VOXTRAL_TTS_FM_STEPS=N  Euler ODE step count (default 8 → 7 intervals).
 //                                    EXPERIMENTAL quality/speed lever. On a clean CUDA
 //                                    GPU (P100) 7 steps is ~11% faster end-to-end, but
 //                                    it is a QUALITY TRADEOFF not free speed: fewer
@@ -22,9 +22,9 @@
 //                                    lowering. The model is calibrated for 8.
 //                                    (FM-on-CPU was tried and dropped: 18x slower on
 //                                    CUDA, slower on Metal — a real GPU always wins.)
-//   CRISPASR_VOXTRAL_TTS_DEBUG=1     per-frame code dump + semantic-argmax diag
-//   CRISPASR_VOXTRAL_TTS_SEMANTIC_CB=<f32 blob>  side-load codec.semantic_cb
-//   CRISPASR_VOXTRAL_TTS_CODEC_FROM_FILE=<codes> codec-only diff-harness mode
+//   STELNETTTS_VOXTRAL_TTS_DEBUG=1     per-frame code dump + semantic-argmax diag
+//   STELNETTTS_VOXTRAL_TTS_SEMANTIC_CB=<f32 blob>  side-load codec.semantic_cb
+//   STELNETTTS_VOXTRAL_TTS_CODEC_FROM_FILE=<codes> codec-only diff-harness mode
 
 #include "voxtral_tts.h"
 
@@ -35,7 +35,7 @@
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
 #include "core/gpu_backend_pref.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include "ggml.h"
 #include "ggml-alloc.h"
@@ -48,7 +48,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem> // crispasr-diff LLM stage temp dir (portable; replaces POSIX mkdtemp/unistd.h — no unistd.h on MSVC, breaks the Windows build)
+#include <filesystem> // stelnettts-diff LLM stage temp dir (portable; replaces POSIX mkdtemp/unistd.h — no unistd.h on MSVC, breaks the Windows build)
 #include <map>
 #include <memory>
 #include <numeric>
@@ -242,7 +242,7 @@ struct voxtral_tts_context {
     ggml_gallocr_t fm_alloc = nullptr;
     std::vector<uint8_t> fm_meta;
 
-    // Euler ODE step count (default 8 → 7 intervals). CRISPASR_VOXTRAL_TTS_FM_STEPS=N
+    // Euler ODE step count (default 8 → 7 intervals). STELNETTTS_VOXTRAL_TTS_FM_STEPS=N
     // overrides — experimental quality/speed lever (see file-header note).
     int fm_flow_steps = 8; // = VTTS_FLOW_STEPS
 
@@ -263,7 +263,7 @@ struct voxtral_tts_context {
 
     // Semantic VQ codebook as host F32 (8192 × 256). The codec's 292-d input is
     // [semantic_cb[sem] (256) ; FSQ(acoustic) (36)]. Populated from the GGUF
-    // tensor if present, else side-loaded from CRISPASR_VOXTRAL_TTS_SEMANTIC_CB
+    // tensor if present, else side-loaded from STELNETTTS_VOXTRAL_TTS_SEMANTIC_CB
     // (a raw float32 blob) since older GGUFs dropped codec.semantic_cb.weight.
     std::vector<float> semantic_cb_host;
 
@@ -297,13 +297,13 @@ static inline float vtts_randn(uint64_t* s) {
 // ---------------------------------------------------------------------------
 
 static bool env_bool(const char* name) {
-    const char* v = crispasr_env::get(name);
+    const char* v = stelnettts_env::get(name);
     return v && (*v == '1' || *v == 'y' || *v == 'Y');
 }
 
 // Env int with fallback (returns def if unset/unparseable/<=0).
 static int env_int(const char* name, int def) {
-    const char* v = crispasr_env::get(name);
+    const char* v = stelnettts_env::get(name);
     if (!v || !*v)
         return def;
     int n = atoi(v);
@@ -578,7 +578,7 @@ extern "C" voxtral_tts_context* voxtral_tts_init_from_file(const char* path_mode
     ggml_backend_t be = core_cpu_backend::init();
     ctx->backend_cpu = be;
     if (params.use_gpu) {
-        ggml_backend_t gpu = crispasr_init_gpu_backend();
+        ggml_backend_t gpu = stelnettts_init_gpu_backend();
         if (gpu) {
             ctx->backend = gpu;
             be = gpu;
@@ -591,7 +591,7 @@ extern "C" voxtral_tts_context* voxtral_tts_init_from_file(const char* path_mode
         core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
     // FM_STEPS: experimental Euler ODE step-count override (default 8). See header.
-    ctx->fm_flow_steps = env_int("CRISPASR_VOXTRAL_TTS_FM_STEPS", VTTS_FLOW_STEPS);
+    ctx->fm_flow_steps = env_int("STELNETTTS_VOXTRAL_TTS_FM_STEPS", VTTS_FLOW_STEPS);
 
     core_gguf::WeightLoad wl;
     if (!core_gguf::load_weights(path_model, ctx->backend, "voxtral_tts", wl)) {
@@ -712,7 +712,7 @@ extern "C" voxtral_tts_context* voxtral_tts_init_from_file(const char* path_mode
             ctx->semantic_cb_host.resize((size_t)rows * cols);
             ggml_backend_tensor_get(ctx->model.codec_semantic_cb, ctx->semantic_cb_host.data(), 0,
                                     ctx->semantic_cb_host.size() * sizeof(float));
-        } else if (const char* p = std::getenv("CRISPASR_VOXTRAL_TTS_SEMANTIC_CB")) {
+        } else if (const char* p = std::getenv("STELNETTTS_VOXTRAL_TTS_SEMANTIC_CB")) {
             FILE* fp = fopen(p, "rb");
             if (fp) {
                 ctx->semantic_cb_host.resize((size_t)rows * cols);
@@ -991,9 +991,9 @@ static ggml_cgraph* voxtral_tts_build_graph_llm(voxtral_tts_context* ctx, int n_
         cur = ggml_add(ctx0, residual, ffn);
 
         // Per-stage diff harness: expose every LLM layer output for a per-layer cos
-        // comparison vs the reference (CRISPASR_VOXTRAL_TTS_DIFF_DUMP). set_output is
+        // comparison vs the reference (STELNETTTS_VOXTRAL_TTS_DIFF_DUMP). set_output is
         // required or ggml reuses the buffer and later layers overwrite it.
-        if (std::getenv("CRISPASR_VOXTRAL_TTS_DIFF_DUMP")) {
+        if (std::getenv("STELNETTTS_VOXTRAL_TTS_DIFF_DUMP")) {
             char nm[24];
             snprintf(nm, sizeof(nm), "llm_L%d", il);
             ggml_set_name(cur, nm);
@@ -1056,7 +1056,7 @@ static std::vector<float> voxtral_tts_run_llm(voxtral_tts_context* ctx, const fl
     // every LLM layer + the final hidden, per run_llm call, as raw f32. call 0 =
     // prompt prefill, call 1 = frame-0 (h0) decode, etc. Compared per stage vs the
     // reference dumps (same layout) to find the first divergent layer.
-    if (const char* dd = std::getenv("CRISPASR_VOXTRAL_TTS_DIFF_DUMP")) {
+    if (const char* dd = std::getenv("STELNETTTS_VOXTRAL_TTS_DIFF_DUMP")) {
         static int call = 0;
         auto dump = [&](const char* stage, ggml_tensor* t) {
             if (!t)
@@ -1294,7 +1294,7 @@ static int vtts_fm_semantic_argmax(voxtral_tts_context* ctx, const float* h) {
             best = i;
 
     static bool logged = false;
-    if (!logged && env_bool("CRISPASR_VOXTRAL_TTS_DEBUG")) {
+    if (!logged && env_bool("STELNETTTS_VOXTRAL_TTS_DEBUG")) {
         logged = true;
         // rank of [END]=1 and margin of the winner vs runner-up
         float second = -1e30f;
@@ -1326,7 +1326,7 @@ static std::vector<int> vtts_acoustic_forward(voxtral_tts_context* ctx, const st
     std::vector<float> x(VTTS_ACOUSTIC_DIM);
     for (int i = 0; i < VTTS_ACOUSTIC_DIM; i++)
         x[i] = vtts_randn(&ctx->rng_state) * VTTS_NOISE_SCALE;
-    const int n_steps = ctx->fm_flow_steps; // = VTTS_FLOW_STEPS unless CRISPASR_VOXTRAL_TTS_FM_STEPS
+    const int n_steps = ctx->fm_flow_steps; // = VTTS_FLOW_STEPS unless STELNETTTS_VOXTRAL_TTS_FM_STEPS
     for (int step = 0; step < n_steps - 1; step++) {
         float t = (float)step / (float)(n_steps - 1);
         float dt = (float)(step + 1) / (float)(n_steps - 1) - t;
@@ -1504,7 +1504,7 @@ static std::vector<float> vtts_codec_decode(voxtral_tts_context* ctx, const std:
     const int nh = hp.codec_n_heads;
 
     if (ctx->semantic_cb_host.empty()) {
-        fprintf(stderr, "voxtral_tts: codec needs semantic_cb (GGUF tensor or CRISPASR_VOXTRAL_TTS_SEMANTIC_CB)\n");
+        fprintf(stderr, "voxtral_tts: codec needs semantic_cb (GGUF tensor or STELNETTTS_VOXTRAL_TTS_SEMANTIC_CB)\n");
         return {};
     }
 
@@ -1588,8 +1588,8 @@ extern "C" float* voxtral_tts_synthesize(voxtral_tts_context* ctx, const char* t
 
     // Diff-harness codec isolation: decode a codes file (37 ints/line) directly,
     // bypassing the LLM+FM, so my codec can be compared to the reference codec on
-    // IDENTICAL codes. Gated by CRISPASR_VOXTRAL_TTS_CODEC_FROM_FILE.
-    if (const char* cf = std::getenv("CRISPASR_VOXTRAL_TTS_CODEC_FROM_FILE")) {
+    // IDENTICAL codes. Gated by STELNETTTS_VOXTRAL_TTS_CODEC_FROM_FILE.
+    if (const char* cf = std::getenv("STELNETTTS_VOXTRAL_TTS_CODEC_FROM_FILE")) {
         FILE* fp = fopen(cf, "r");
         if (!fp)
             return nullptr;
@@ -1622,7 +1622,7 @@ extern "C" float* voxtral_tts_synthesize(voxtral_tts_context* ctx, const char* t
     std::vector<int32_t> text_ids = voxtral_tts_tokenize(ctx, text);
     if (ctx->verbosity >= 1) {
         fprintf(stderr, "voxtral_tts: tokenized %d tokens from \"%s\"\n", (int)text_ids.size(), text);
-        if (env_bool("CRISPASR_VOXTRAL_TTS_DEBUG")) {
+        if (env_bool("STELNETTTS_VOXTRAL_TTS_DEBUG")) {
             fprintf(stderr, "voxtral_tts: token ids =");
             for (int32_t id : text_ids)
                 fprintf(stderr, " %d", id);
@@ -1695,8 +1695,8 @@ extern "C" float* voxtral_tts_synthesize(voxtral_tts_context* ctx, const char* t
     int n_frames = 0;
     bool got_end = false;
 
-    const bool dbg = env_bool("CRISPASR_VOXTRAL_TTS_DEBUG");
-    const bool timing = dbg || env_bool("CRISPASR_VOXTRAL_TTS_TIMING");
+    const bool dbg = env_bool("STELNETTTS_VOXTRAL_TTS_DEBUG");
+    const bool timing = dbg || env_bool("STELNETTTS_VOXTRAL_TTS_TIMING");
     int64_t t_fm_us = 0, t_llm_us = 0;
     for (int frame = 0; frame < max_frames; frame++) {
         if (dbg && frame == 0) {
@@ -1825,9 +1825,9 @@ extern "C" void voxtral_tts_free(voxtral_tts_context* ctx) {
     delete ctx;
 }
 
-// crispasr-diff LLM stage: per-layer frame-0 cos vs the reference GGUF produced by
+// stelnettts-diff LLM stage: per-layer frame-0 cos vs the reference GGUF produced by
 // tools/reference_backends/voxtral_tts.py (manual PyTorch forward, no vllm). Runs the
-// real synth path with CRISPASR_VOXTRAL_TTS_DIFF_DUMP so the per-layer dumps come from
+// real synth path with STELNETTTS_VOXTRAL_TTS_DIFF_DUMP so the per-layer dumps come from
 // the actual runtime graph, then compares embed + each LLM layer + hidden against the
 // ref tensors of the same name. Prints the FIRST divergent stage (structural bug) or
 // confirms the LLM path is correct (so any code divergence is downstream/stochastic).
@@ -1857,23 +1857,23 @@ extern "C" int voxtral_tts_llm_diff(const char* model_gguf, const char* ref_gguf
     }
     const std::string dir_s = dir.string();
 #if defined(_WIN32)
-    _putenv_s("CRISPASR_VOXTRAL_TTS_DIFF_DUMP", dir_s.c_str());
+    _putenv_s("STELNETTTS_VOXTRAL_TTS_DIFF_DUMP", dir_s.c_str());
 #else
-    setenv("CRISPASR_VOXTRAL_TTS_DIFF_DUMP", dir_s.c_str(), 1);
+    setenv("STELNETTTS_VOXTRAL_TTS_DIFF_DUMP", dir_s.c_str(), 1);
 #endif
-    const char* text = crispasr_env::get("CRISPASR_VOXTRAL_TTS_TEXT") ? crispasr_env::get("CRISPASR_VOXTRAL_TTS_TEXT")
+    const char* text = stelnettts_env::get("STELNETTTS_VOXTRAL_TTS_TEXT") ? stelnettts_env::get("STELNETTTS_VOXTRAL_TTS_TEXT")
                                                                       : "Hello world.";
-    const char* voice = crispasr_env::get("CRISPASR_VOXTRAL_TTS_VOICE")
-                            ? crispasr_env::get("CRISPASR_VOXTRAL_TTS_VOICE")
+    const char* voice = stelnettts_env::get("STELNETTTS_VOXTRAL_TTS_VOICE")
+                            ? stelnettts_env::get("STELNETTTS_VOXTRAL_TTS_VOICE")
                             : "neutral_female";
     int n_samples = 0;
     float* pcm = voxtral_tts_synthesize(ctx, text, voice, &n_samples); // dumps mine.c1.<stage> (frame 0)
     if (pcm)
         voxtral_tts_pcm_free(pcm);
 #if defined(_WIN32)
-    _putenv_s("CRISPASR_VOXTRAL_TTS_DIFF_DUMP", "");
+    _putenv_s("STELNETTTS_VOXTRAL_TTS_DIFF_DUMP", "");
 #else
-    unsetenv("CRISPASR_VOXTRAL_TTS_DIFF_DUMP");
+    unsetenv("STELNETTTS_VOXTRAL_TTS_DIFF_DUMP");
 #endif
 
     std::vector<std::string> stages = {"embed"};

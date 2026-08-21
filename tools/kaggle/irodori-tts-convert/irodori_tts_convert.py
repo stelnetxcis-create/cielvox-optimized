@@ -3,8 +3,8 @@
 Kaggle kernel: Irodori-TTS-500M-v3 → GGUF F16 + Q4_K + reference dump.
 
 Downloads Aratako/Irodori-TTS-500M-v3, converts to GGUF (F16),
-builds crispasr-quantize to produce Q4_K, runs Python reference
-dump for crispasr-diff parity validation, uploads to HuggingFace.
+builds stelnettts-quantize to produce Q4_K, runs Python reference
+dump for stelnettts-diff parity validation, uploads to HuggingFace.
 
 Outputs:
   - irodori-tts-500m-v3-f16.gguf     (~1 GB)
@@ -39,14 +39,14 @@ def log(msg):
 
 log("Kernel started")
 
-# ── Clone CrispASR (feat/irodori-tts branch) ─────────────────────────
+# ── Clone StelnetTTS (feat/irodori-tts branch) ─────────────────────────
 
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
-    log("Cloning CrispASR (feat/irodori-tts branch)...")
+    log("Cloning StelnetTTS (feat/irodori-tts branch)...")
     subprocess.check_call([
         "git", "clone", "--depth", "1", "--branch", "feat/irodori-tts",
-        "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+        "https://github.com/Cyna/StelnetTTS.git", str(REPO),
     ])
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -64,9 +64,9 @@ except Exception as e:
         def step(self, msg): log(f"[step] {msg}")
         def resolve_hf_token(self):
             import os
-            for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-                      "/kaggle/input/datasets/chr1str/crispasr-hf-token/hf_token.txt",
-                      "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+            for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+                      "/kaggle/input/datasets/chr1str/stelnettts-hf-token/hf_token.txt",
+                      "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
                 if os.path.exists(p):
                     return open(p).read().strip()
             return os.environ.get("HF_TOKEN")
@@ -139,9 +139,9 @@ subprocess.check_call(cmd)
 elapsed = time.time() - t0
 log(f"F16 GGUF done in {elapsed:.1f}s: {output_f16.stat().st_size / 1024 / 1024:.1f} MB")
 
-# ── Build crispasr-quantize ──────────────────────────────────────────
+# ── Build stelnettts-quantize ──────────────────────────────────────────
 
-kh.step("building crispasr-quantize")
+kh.step("building stelnettts-quantize")
 kh.install_build_toolchain()
 
 build_dir = Path("/kaggle/temp/quant-build")
@@ -150,33 +150,33 @@ cmake_env["CCACHE_DIR"] = "/kaggle/working/.ccache"
 
 kh.sh_with_progress(
     f"cmake -G Ninja -B {build_dir} -S {REPO}"
-    f" -DCMAKE_BUILD_TYPE=Release -DCRISPASR_NO_C2PA_NATIVE=ON -DGGML_CUDA=OFF"
+    f" -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_NO_C2PA_NATIVE=ON -DGGML_CUDA=OFF"
     f" -DCMAKE_C_COMPILER_LAUNCHER=ccache"
     f" -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
 )
 n_jobs = kh.safe_build_jobs(gpu=False)
 kh.sh_with_progress(
-    f"cmake --build {build_dir} -j{n_jobs} --target crispasr-quantize"
+    f"cmake --build {build_dir} -j{n_jobs} --target stelnettts-quantize"
 )
 
 # Find the binary
 quantize_bin = None
 import glob
 for candidate in [
-    build_dir / "bin" / "crispasr-quantize",
-    build_dir / "examples" / "crispasr-quantize" / "crispasr-quantize",
+    build_dir / "bin" / "stelnettts-quantize",
+    build_dir / "examples" / "stelnettts-quantize" / "stelnettts-quantize",
 ]:
     if candidate.exists():
         quantize_bin = candidate
         break
 if quantize_bin is None:
-    hits = glob.glob(str(build_dir / "**" / "crispasr-quantize"), recursive=True)
+    hits = glob.glob(str(build_dir / "**" / "stelnettts-quantize"), recursive=True)
     if hits:
         quantize_bin = Path(hits[0])
 
 if quantize_bin is None or not quantize_bin.exists():
-    log("ERROR: crispasr-quantize not found")
-    kh.sh_with_progress(f"find {build_dir} -name 'crispasr*' -type f | head -20")
+    log("ERROR: stelnettts-quantize not found")
+    kh.sh_with_progress(f"find {build_dir} -name 'stelnettts*' -type f | head -20")
     sys.exit(1)
 
 log(f"quantize binary: {quantize_bin}")
@@ -218,7 +218,7 @@ except Exception as e:
     log(f"DACVAE conversion failed (non-fatal): {e}")
     dacvae_gguf = None
 
-# ── Python reference dump (intermediates for crispasr-diff) ──────────
+# ── Python reference dump (intermediates for stelnettts-diff) ──────────
 
 kh.step("running reference dump")
 
@@ -350,7 +350,7 @@ kh.step("uploading to HuggingFace")
 try:
     from huggingface_hub import HfApi
     api = HfApi(token=token)
-    hf_repo = "cstr/irodori-tts-GGUF"
+    hf_repo = "Xenna/irodori-tts-GGUF"
 
     api.create_repo(repo_id=hf_repo, exist_ok=True, repo_type="model")
 

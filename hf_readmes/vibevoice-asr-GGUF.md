@@ -71,7 +71,7 @@ base_model: microsoft/VibeVoice-ASR
 
 # VibeVoice-ASR — GGUF
 
-GGUF / ggml conversions of [`microsoft/VibeVoice-ASR`](https://huggingface.co/microsoft/VibeVoice-ASR) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`microsoft/VibeVoice-ASR`](https://huggingface.co/microsoft/VibeVoice-ASR) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 VibeVoice-ASR is Microsoft's **7B-parameter speech-LLM** capable of transcribing **up to 60 minutes of audio in a single pass**. Unlike most ASR models it outputs structured JSON containing **who** (speaker diarization), **when** (timestamps), and **what** (content) simultaneously — with support for **customised hotwords** and **50+ languages**.
 
@@ -93,18 +93,18 @@ VibeVoice-ASR is Microsoft's **7B-parameter speech-LLM** capable of transcribing
 ## Quick Start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON   # macOS
 cmake --build build -j$(nproc)
 
 # 2. Download the quantised GGUF
-huggingface-cli download cstr/vibevoice-asr-GGUF \
+huggingface-cli download Xenna/vibevoice-asr-GGUF \
     vibevoice-asr-q4_k.gguf --local-dir .
 
 # 3. Transcribe
-./build/bin/crispasr --model vibevoice-asr-q4_k.gguf \
+./build/bin/stelnettts --model vibevoice-asr-q4_k.gguf \
     --file audio.wav --backend vibevoice
 ```
 
@@ -116,7 +116,7 @@ ffmpeg -i input.mp3 -ar 24000 -ac 1 -c:a pcm_s16le output.wav
 ### With hotwords / context
 
 ```bash
-./build/bin/crispasr --model vibevoice-asr-q4_k.gguf \
+./build/bin/stelnettts --model vibevoice-asr-q4_k.gguf \
     --file meeting.wav --backend vibevoice \
     --context "ACME Corp, John Smith, Q3 earnings"
 ```
@@ -197,21 +197,21 @@ The C++ runtime validates against the PyTorch reference at every pipeline bounda
 
 ## How this was made
 
-1. `microsoft/VibeVoice-ASR` safetensors converted to GGUF F16 by [`models/convert-vibevoice-to-gguf.py`](https://github.com/CrispStrobe/CrispASR/blob/main/models/convert-vibevoice-to-gguf.py). Tensors loaded in native dtype (BF16) to avoid OOM on the large embedding table; converted to F16/F32 per-tensor at write time.
-2. Quantised variants produced by the CrispASR `quantize` binary (Q4_K_M).
-3. Full pipeline implemented in [`src/vibevoice.{h,cpp}`](https://github.com/CrispStrobe/CrispASR/blob/main/src/vibevoice.cpp): two encoder graphs + two connector graphs + Qwen2 autoregressive decoder with F16 KV cache.
+1. `microsoft/VibeVoice-ASR` safetensors converted to GGUF F16 by [`models/convert-vibevoice-to-gguf.py`](https://github.com/Cyna/StelnetTTS/blob/main/models/convert-vibevoice-to-gguf.py). Tensors loaded in native dtype (BF16) to avoid OOM on the large embedding table; converted to F16/F32 per-tensor at write time.
+2. Quantised variants produced by the StelnetTTS `quantize` binary (Q4_K_M).
+3. Full pipeline implemented in [`src/vibevoice.{h,cpp}`](https://github.com/Cyna/StelnetTTS/blob/main/src/vibevoice.cpp): two encoder graphs + two connector graphs + Qwen2 autoregressive decoder with F16 KV cache.
 
 ## Related
 
 - **Original model**: [`microsoft/VibeVoice-ASR`](https://huggingface.co/microsoft/VibeVoice-ASR) (MIT)
 - **Reference code**: [microsoft/VibeVoice](https://github.com/microsoft/VibeVoice)
-- **C++ runtime**: [CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)
+- **C++ runtime**: [Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)
 - **Technical report**: [arxiv.org/pdf/2601.18184](https://arxiv.org/pdf/2601.18184)
 - Sister releases:
-  - [`cstr/qwen3-asr-0.6b-GGUF`](https://huggingface.co/cstr/qwen3-asr-0.6b-GGUF) — Qwen3-ASR 0.6B (fast, 30 languages)
-  - [`cstr/voxtral-mini-3b-2507-GGUF`](https://huggingface.co/cstr/voxtral-mini-3b-2507-GGUF) — Voxtral Mini 3B (audio Q&A)
-  - [`cstr/granite-speech-3.3-8b-GGUF`](https://huggingface.co/cstr/granite-speech-3.3-8b-GGUF) — Granite Speech 8B
-  - [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) — Parakeet TDT 600M
+  - [`Xenna/cielvox2-asr-0.6b-GGUF`](https://huggingface.co/Xenna/cielvox2-asr-0.6b-GGUF) — Qwen3-ASR 0.6B (fast, 30 languages)
+  - [`Xenna/voxtral-mini-3b-2507-GGUF`](https://huggingface.co/Xenna/voxtral-mini-3b-2507-GGUF) — Voxtral Mini 3B (audio Q&A)
+  - [`Xenna/granite-speech-3.3-8b-GGUF`](https://huggingface.co/Xenna/granite-speech-3.3-8b-GGUF) — Granite Speech 8B
+  - [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) — Parakeet TDT 600M
 
 ## License
 

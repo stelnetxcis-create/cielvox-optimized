@@ -4,7 +4,7 @@
 Skips the F16 intermediate. Quantizes per tensor and writes to disk
 immediately. Peak RAM ≈ size of the largest single tensor (~2.5 GB
 for the 7B LM embed in F32 + Q4_K output buffer), well below the
-14 GB+ that crispasr-quantize would need to load a full F16 GGUF.
+14 GB+ that stelnettts-quantize would need to load a full F16 GGUF.
 
 Memory strategy:
   Pass 1: scan all shards, gather tensor metadata + decide target dtype.
@@ -82,7 +82,7 @@ def shorten(name):
 
 
 # ---------------------------------------------------------------------------
-# Per-tensor target dtype policy — same as crispasr-quantize q4_k:
+# Per-tensor target dtype policy — same as stelnettts-quantize q4_k:
 #   - 1D (norms / biases / scales)        → F32  (no quant)
 #   - 3D / 4D weights (conv kernels)      → F16  (Q4_K can't represent)
 #   - 2D embedding lookups                → F16  (lookup table, not matmul)

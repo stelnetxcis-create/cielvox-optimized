@@ -7,15 +7,15 @@
 #include "core/g2p_de.h"
 #include "core/g2p_fr.h"
 #include "core/g2p_es.h"
-// Auto-download support — only when compiled as part of crispasr-lib.
+// Auto-download support — only when compiled as part of stelnettts-lib.
 // Unit tests compile phonemizer.cpp standalone without the cache library.
-#ifdef CRISPASR_BUILD
-#include "crispasr_cache.h"
-#define CRISPASR_HAS_CACHE 1
+#ifdef STELNETTTS_BUILD
+#include "stelnettts_cache.h"
+#define STELNETTTS_HAS_CACHE 1
 #endif
 
 // OLaPh (MIT) and open-dict-data (CC-BY-SA) URL templates.
-// CRISPASR_G2P_DICT_SOURCE env var selects provider:
+// STELNETTTS_G2P_DICT_SOURCE env var selects provider:
 //   "olaph"      → OLaPh (MIT, iisys-hof/olaph) — default
 //   "open-dict"  → open-dict-data (CC-BY-SA, Wiktionary-sourced)
 struct g2p_dict_urls {
@@ -31,21 +31,21 @@ struct g2p_dict_urls {
 // not GPL-covered (same as GCC output not being GPL).
 static const g2p_dict_urls G2P_URLS_DE = {
     "espeak_de.tsv",
-    "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/espeak_de.tsv",
+    "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/espeak_de.tsv",
     "olaph_de.txt",
-    "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/olaph_de.txt",
+    "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/olaph_de.txt",
 };
 static const g2p_dict_urls G2P_URLS_FR = {
     "espeak_fr.tsv",
-    "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/espeak_fr.tsv",
+    "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/espeak_fr.tsv",
     "olaph_fr.txt",
-    "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/olaph_fr.txt",
+    "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/olaph_fr.txt",
 };
 static const g2p_dict_urls G2P_URLS_ES = {
     "espeak_es.tsv",
-    "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/espeak_es.tsv",
+    "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/espeak_es.tsv",
     "olaph_es.txt",
-    "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/olaph_es.txt",
+    "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/olaph_es.txt",
 };
 static const g2p_dict_urls G2P_URLS_IT = {
     "olaph_it.txt",
@@ -83,7 +83,7 @@ void phonemizer_set_dict_source(const std::string& source) {
 static bool prefer_opendict() {
     if (!g_dict_source_override.empty())
         return g_dict_source_override == "open-dict";
-    const char* src = std::getenv("CRISPASR_G2P_DICT_SOURCE");
+    const char* src = std::getenv("STELNETTTS_G2P_DICT_SOURCE");
     return src && std::string(src) == "open-dict";
 }
 
@@ -104,7 +104,7 @@ static int try_load_dict(Dict& dict, const char* env_var, const g2p_dict_urls& u
     if (!home)
         home = std::getenv("USERPROFILE");
     if (home) {
-        std::string base = std::string(home) + "/.cache/crispasr/";
+        std::string base = std::string(home) + "/.cache/stelnettts/";
         if (urls.olaph_file) {
             int n = loader(dict, base + urls.olaph_file);
             if (n > 0)
@@ -116,7 +116,7 @@ static int try_load_dict(Dict& dict, const char* env_var, const g2p_dict_urls& u
                 return n;
         }
     }
-#ifdef CRISPASR_HAS_CACHE
+#ifdef STELNETTTS_HAS_CACHE
     // 3. Auto-download
     bool use_od = prefer_opendict();
     const char* file = nullptr;
@@ -132,7 +132,7 @@ static int try_load_dict(Dict& dict, const char* env_var, const g2p_dict_urls& u
         url = urls.opendict_url;
     }
     if (file && url) {
-        std::string path = crispasr_cache::ensure_cached_file(file, url, /*quiet=*/true, "crispasr", "");
+        std::string path = stelnettts_cache::ensure_cached_file(file, url, /*quiet=*/true, "stelnettts", "");
         if (!path.empty())
             return loader(dict, path);
     }
@@ -140,7 +140,7 @@ static int try_load_dict(Dict& dict, const char* env_var, const g2p_dict_urls& u
     return 0;
 }
 
-namespace crispasr {
+namespace stelnettts {
 
 // ── Built-in English G2P (LTS rules + optional CMUdict/neural) ───────
 
@@ -152,7 +152,7 @@ static bool g_g2p_cmudict_tried = false;
 static void ensure_neural_g2p_loaded() {
     if (g_g2p_ctx.neural.loaded)
         return;
-    const char* env = std::getenv("CRISPASR_G2P_MODEL_PATH");
+    const char* env = std::getenv("STELNETTTS_G2P_MODEL_PATH");
     if (env && *env) {
         if (g2p_en::load_neural_g2p_file(g_g2p_ctx.neural, env))
             fprintf(stderr, "g2p: loaded neural G2P model from %s\n", env);
@@ -163,7 +163,7 @@ static void ensure_neural_g2p_loaded() {
     if (!home)
         home = std::getenv("USERPROFILE");
     if (home) {
-        std::string p = std::string(home) + "/.cache/crispasr/g2p_en.json";
+        std::string p = std::string(home) + "/.cache/stelnettts/g2p_en.json";
         if (g2p_en::load_neural_g2p_file(g_g2p_ctx.neural, p))
             fprintf(stderr, "g2p: loaded neural G2P model from %s\n", p.c_str());
     }
@@ -175,7 +175,7 @@ static void ensure_cmudict_loaded() {
     g_g2p_cmudict_tried = true;
 
     // Check env var first
-    const char* env = std::getenv("CRISPASR_CMUDICT_PATH");
+    const char* env = std::getenv("STELNETTTS_CMUDICT_PATH");
     if (env && *env) {
         int n = g2p_en::load_cmudict_file(g_g2p_ctx.dict, env);
         if (n > 0) {
@@ -189,18 +189,18 @@ static void ensure_cmudict_loaded() {
     if (!home)
         home = std::getenv("USERPROFILE");
     if (home) {
-        std::string cache_path = std::string(home) + "/.cache/crispasr/cmudict.dict";
+        std::string cache_path = std::string(home) + "/.cache/stelnettts/cmudict.dict";
         int n = g2p_en::load_cmudict_file(g_g2p_ctx.dict, cache_path);
         if (n > 0) {
             fprintf(stderr, "g2p: loaded CMUdict (%d entries) from %s\n", n, cache_path.c_str());
             return;
         }
     }
-#ifdef CRISPASR_HAS_CACHE
+#ifdef STELNETTTS_HAS_CACHE
     // Auto-download (BSD license, public domain data)
     static const char* CMUDICT_URL =
         "https://raw.githubusercontent.com/cmusphinx/cmudict/refs/heads/master/cmudict.dict";
-    std::string path = crispasr_cache::ensure_cached_file("cmudict.dict", CMUDICT_URL, /*quiet=*/true, "crispasr", "");
+    std::string path = stelnettts_cache::ensure_cached_file("cmudict.dict", CMUDICT_URL, /*quiet=*/true, "stelnettts", "");
     if (!path.empty()) {
         int n = g2p_en::load_cmudict_file(g_g2p_ctx.dict, path);
         if (n > 0) {
@@ -236,14 +236,14 @@ static void ensure_misaki_lexicon_loaded() {
     // the article "a" was read as the LETTER, `ˈA` (#316).
     g2p_en::configure_for_misaki(g_g2p_misaki_ctx);
     std::string path;
-    if (const char* env = std::getenv("CRISPASR_MISAKI_DICT_PATH"); env && *env) {
+    if (const char* env = std::getenv("STELNETTTS_MISAKI_DICT_PATH"); env && *env) {
         path = env;
     } else {
         const char* home = std::getenv("HOME");
         if (!home)
             home = std::getenv("USERPROFILE");
         if (home)
-            path = std::string(home) + "/.cache/crispasr/misaki-us.txt";
+            path = std::string(home) + "/.cache/stelnettts/misaki-us.txt";
     }
     if (!path.empty()) {
         // A .json path is misaki's own file; anything else is the TSV that
@@ -258,10 +258,10 @@ static void ensure_misaki_lexicon_loaded() {
             fprintf(stderr, "g2p: loaded misaki lexicon (%d entries) from %s\n", n, path.c_str());
         }
     }
-#ifdef CRISPASR_HAS_CACHE
+#ifdef STELNETTTS_HAS_CACHE
     if (!g_g2p_misaki_ctx.espeak_ipa.loaded) {
-        // Fetch from UPSTREAM, not from a CrispASR mirror. The user receives the
-        // lexicon from hexgrad/misaki under hexgrad's own terms, so CrispASR
+        // Fetch from UPSTREAM, not from a StelnetTTS mirror. The user receives the
+        // lexicon from hexgrad/misaki under hexgrad's own terms, so StelnetTTS
         // redistributes nothing and no relicensing question arises — the same
         // route ensure_cmudict_loaded() already uses for cmusphinx/cmudict.
         //
@@ -279,8 +279,8 @@ static void ensure_misaki_lexicon_loaded() {
         int total = 0;
         // gold FIRST so it wins: load_misaki_json keeps the first entry seen.
         for (const char* which : {"us_gold.json", "us_silver.json"}) {
-            std::string p2 = crispasr_cache::ensure_cached_file(std::string("misaki-") + which, base + which,
-                                                                /*quiet=*/true, "crispasr", "");
+            std::string p2 = stelnettts_cache::ensure_cached_file(std::string("misaki-") + which, base + which,
+                                                                /*quiet=*/true, "stelnettts", "");
             if (p2.empty())
                 continue;
             total += g2p_en::load_misaki_json(g_g2p_misaki_ctx.espeak_ipa, g_g2p_misaki_ctx.phrase_final, p2,
@@ -315,12 +315,12 @@ static void ensure_misaki_lexicon_loaded() {
     // Words outside the lexicon still need SOME pronunciation; reuse the same
     // CMUdict + LTS tiers the default path uses.
     g2p_en::load_cmudict_file(g_g2p_misaki_ctx.dict, [] {
-        if (const char* e = std::getenv("CRISPASR_CMUDICT_PATH"); e && *e)
+        if (const char* e = std::getenv("STELNETTTS_CMUDICT_PATH"); e && *e)
             return std::string(e);
         const char* home = std::getenv("HOME");
         if (!home)
             home = std::getenv("USERPROFILE");
-        return home ? std::string(home) + "/.cache/crispasr/cmudict.dict" : std::string();
+        return home ? std::string(home) + "/.cache/stelnettts/cmudict.dict" : std::string();
     }());
 }
 
@@ -372,7 +372,7 @@ static void ensure_de_dict_loaded() {
     if (g_g2p_de_ctx.dict.loaded || g_g2p_de_tried)
         return;
     g_g2p_de_tried = true;
-    int n = try_load_dict(g_g2p_de_ctx.dict, "CRISPASR_DE_DICT_PATH", G2P_URLS_DE, g2p_de::load_ipa_dict_file);
+    int n = try_load_dict(g_g2p_de_ctx.dict, "STELNETTTS_DE_DICT_PATH", G2P_URLS_DE, g2p_de::load_ipa_dict_file);
     if (n > 0)
         fprintf(stderr, "g2p: loaded German IPA dict (%d entries)\n", n);
 }
@@ -390,7 +390,7 @@ bool phonemize_builtin_de(const std::string& lang, const std::string& text, std:
     // German Kokoro training recipe phonemizes whole sentences through espeak,
     // so the citation form is a spelling the model never saw.
     static const bool de_unstress = [] {
-        const char* v = std::getenv("CRISPASR_G2P_DE_UNSTRESS");
+        const char* v = std::getenv("STELNETTTS_G2P_DE_UNSTRESS");
         return !(v && *v && std::strcmp(v, "0") == 0);
     }();
     g_g2p_de_ctx.unstress_function_words = de_unstress;
@@ -408,7 +408,7 @@ static void ensure_fr_dict_loaded() {
     if (g_g2p_fr_ctx.dict.loaded || g_g2p_fr_tried)
         return;
     g_g2p_fr_tried = true;
-    int n = try_load_dict(g_g2p_fr_ctx.dict, "CRISPASR_FR_DICT_PATH", G2P_URLS_FR, g2p_fr::load_ipa_dict_file);
+    int n = try_load_dict(g_g2p_fr_ctx.dict, "STELNETTTS_FR_DICT_PATH", G2P_URLS_FR, g2p_fr::load_ipa_dict_file);
     if (n > 0)
         fprintf(stderr, "g2p: loaded French IPA dict (%d entries)\n", n);
 }
@@ -435,7 +435,7 @@ static void ensure_es_dict_loaded() {
     if (g_g2p_es_ctx.dict.loaded || g_g2p_es_tried)
         return;
     g_g2p_es_tried = true;
-    int n = try_load_dict(g_g2p_es_ctx.dict, "CRISPASR_ES_DICT_PATH", G2P_URLS_ES, g2p_es::load_ipa_dict_file);
+    int n = try_load_dict(g_g2p_es_ctx.dict, "STELNETTTS_ES_DICT_PATH", G2P_URLS_ES, g2p_es::load_ipa_dict_file);
     if (n > 0)
         fprintf(stderr, "g2p: loaded Spanish IPA dict (%d entries)\n", n);
 }
@@ -468,9 +468,9 @@ bool phonemize_espeak_dlopen(const std::string& lang, const std::string& text, s
     if (!g_espeak_inited) {
         if (!dl.load())
             return false;
-        const char* data_path = std::getenv("CRISPASR_ESPEAK_DATA_PATH");
-        int sr = dl.Initialize(CRISPASR_ESPEAK_AUDIO_OUTPUT_SYNCHRONOUS, 0, data_path,
-                               CRISPASR_ESPEAK_INITIALIZE_PHONEME_IPA | CRISPASR_ESPEAK_INITIALIZE_DONT_EXIT);
+        const char* data_path = std::getenv("STELNETTTS_ESPEAK_DATA_PATH");
+        int sr = dl.Initialize(STELNETTTS_ESPEAK_AUDIO_OUTPUT_SYNCHRONOUS, 0, data_path,
+                               STELNETTTS_ESPEAK_INITIALIZE_PHONEME_IPA | STELNETTTS_ESPEAK_INITIALIZE_DONT_EXIT);
         if (sr < 0) {
             g_espeak_init_failed = true;
             return false;
@@ -487,7 +487,7 @@ bool phonemize_espeak_dlopen(const std::string& lang, const std::string& text, s
     out.clear();
     const void* tp = text.c_str();
     while (tp) {
-        const char* chunk = dl.TextToPhonemes(&tp, CRISPASR_ESPEAK_CHARS_UTF8, 0x02);
+        const char* chunk = dl.TextToPhonemes(&tp, STELNETTTS_ESPEAK_CHARS_UTF8, 0x02);
         if (chunk && *chunk) {
             if (!out.empty())
                 out += ' ';
@@ -541,4 +541,4 @@ bool phonemize_espeak_popen(const std::string& lang, const std::string& text, st
 #undef PHON_PCLOSE
 }
 
-} // namespace crispasr
+} // namespace stelnettts

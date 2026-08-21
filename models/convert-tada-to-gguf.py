@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert any HumeAI/tada-* HuggingFace safetensors → GGUF F16 for the
-CrispASR `tada-tts` backend.
+StelnetTTS `tada-tts` backend.
 
 Supports both TADA variants:
   tada-3b-ml: Llama-3.2-3B backbone, num_time_classes=1024, head_layers=4

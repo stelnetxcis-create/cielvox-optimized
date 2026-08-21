@@ -4,7 +4,7 @@
 # The realtime/1.5b/7b VibeVoice TTS models generate audio with a diffusion
 # prediction head (pred.*) that runs under classifier-free guidance over 20
 # solver steps. Quantizing that head lets a tiny error compound into a
-# hallucinated non-speech "music"/hum onset before the voice. crispasr-quantize
+# hallucinated non-speech "music"/hum onset before the voice. stelnettts-quantize
 # therefore keeps the trajectory/control stack (pred.*, at_conn.*, se_conn.*,
 # tts_eos.*, tts_types.*) at source precision for any `vibevoice-*` arch, while
 # the LM backbone (lm.*, tts_lm.*) and the deterministic VAE decoder (at_dec.*)
@@ -16,7 +16,7 @@ QUANT="${1:-}"
 FIXTURE="${2:-}"
 # Fall back to conventional locations when run outside ctest.
 if [ -z "$QUANT" ]; then
-    for c in build/bin/crispasr-quantize ./crispasr-quantize; do
+    for c in build/bin/stelnettts-quantize ./stelnettts-quantize; do
         [ -x "$c" ] && QUANT="$c" && break
     done
 fi
@@ -24,7 +24,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -z "$FIXTURE" ] && FIXTURE="$SCRIPT_DIR/fixtures/vibevoice-quant-carveout.gguf"
 
 if [ -z "$QUANT" ] || [ ! -x "$QUANT" ]; then
-    echo "SKIP: crispasr-quantize binary not found (pass as \$1)"; exit 0
+    echo "SKIP: stelnettts-quantize binary not found (pass as \$1)"; exit 0
 fi
 if [ ! -f "$FIXTURE" ]; then
     echo "SKIP: fixture GGUF not found at $FIXTURE"; exit 0
@@ -62,9 +62,9 @@ done
 
 # The escape hatch must quantize everything, including pred.*.
 LOG="$TMP/all.log"
-CRISPASR_VIBEVOICE_QUANT_ALL=1 "$QUANT" "$FIXTURE" "$TMP/out-all.gguf" q8_0 >"$LOG" 2>&1 \
+STELNETTTS_VIBEVOICE_QUANT_ALL=1 "$QUANT" "$FIXTURE" "$TMP/out-all.gguf" q8_0 >"$LOG" 2>&1 \
     || fail "quantize with QUANT_ALL exited non-zero"
 assert_decision "$LOG" "pred\." quantizing
-echo "OK: CRISPASR_VIBEVOICE_QUANT_ALL=1 quantizes pred.*"
+echo "OK: STELNETTTS_VIBEVOICE_QUANT_ALL=1 quantizes pred.*"
 
 echo "PASS: vibevoice quant carve-out"

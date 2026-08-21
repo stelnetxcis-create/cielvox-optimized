@@ -1,7 +1,7 @@
 """Per-layer hidden-state dump for the Python chatterbox-turbo reference, to
 diff against the C++ GPT-2 graph (issue #94 follow-up).
 
-Pairs with `CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS=1` on the C++ side:
+Pairs with `STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS=1` on the C++ side:
 both implementations write `(D, T)` float32 binary files under `/tmp`
 named:
 
@@ -15,11 +15,11 @@ The companion `tools/cb_turbo_perlayer_diff.py` then walks both sets and
 prints per-layer cosine similarity. Run order:
 
     # 1) C++ side — server with the dump env knob, hit /v1/audio/speech once.
-    CRISPASR_GGUF_MMAP=1 CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS=1 \\
-        CRISPASR_CHATTERBOX_T3_SEED=0 \\
-        ./build-ninja-compile/bin/crispasr --server --backend chatterbox-turbo \\
-        -m /Volumes/backups/ai/crispasr/chatterbox-turbo-t3-q8_0.gguf \\
-        --codec-model /Volumes/backups/ai/crispasr/chatterbox-turbo-s3gen-q8_0.gguf \\
+    STELNETTTS_GGUF_MMAP=1 STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS=1 \\
+        STELNETTTS_CHATTERBOX_T3_SEED=0 \\
+        ./build-ninja-compile/bin/stelnettts --server --backend chatterbox-turbo \\
+        -m /Volumes/backups/ai/stelnettts/chatterbox-turbo-t3-q8_0.gguf \\
+        --codec-model /Volumes/backups/ai/stelnettts/chatterbox-turbo-s3gen-q8_0.gguf \\
         --host 127.0.0.1 --port 51820 --voice-dir /tmp/emptyvoice &
     curl -s -X POST -H "Content-Type: application/json" \\
         -d '{"input":"hello world test"}' \\

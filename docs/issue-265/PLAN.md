@@ -9,25 +9,25 @@ lists/explains all env vars.
 Branch `feat/issue-265-consistency-docs` (worktree
 `.claude/worktrees/issue-265-consistency-docs`).
 
-- **Item 1 — cache location: DONE.** OmniVoice's bespoke `~/.cache/crispasr`
-  code cache migrated onto the shared `crispasr_ref_cache`
-  (`src/core/tts_ref_cache.h`) — same `<TMPDIR>/crispasr-tts-refcache` dir and
-  same `CRISPASR_TTS_REF_CACHE=0` disable switch as irodori/f5/openvoice2/
+- **Item 1 — cache location: DONE.** OmniVoice's bespoke `~/.cache/stelnettts`
+  code cache migrated onto the shared `stelnettts_ref_cache`
+  (`src/core/tts_ref_cache.h`) — same `<TMPDIR>/stelnettts-tts-refcache` dir and
+  same `STELNETTTS_TTS_REF_CACHE=0` disable switch as irodori/f5/openvoice2/
   indextts. Added content-addressed `get_bytes`/`put_bytes` helpers (OmniVoice
-  caches int32 RVQ codes, not floats). Legacy `CRISPASR_OMNIVOICE_VOICE_CACHE=0`
+  caches int32 RVQ codes, not floats). Legacy `STELNETTTS_OMNIVOICE_VOICE_CACHE=0`
   kept as an alias. Same content-address key (preprocessed pcm + encoder
   fingerprint). `src/omnivoice.cpp`, `src/core/tts_ref_cache.h`.
 - **Item 2 — env-var naming: CODE DONE, build pending.** Chosen scope = FULL
-  rename (user decision). New helper `src/core/crispasr_env.h`
-  (`crispasr_env::get/truthy/present`): looks up the canonical `CRISPASR_`
+  rename (user decision). New helper `src/core/stelnettts_env.h`
+  (`stelnettts_env::get/truthy/present`): looks up the canonical `STELNETTTS_`
   name, auto-falls-back to the prefix-stripped legacy name, and prints a
   one-time stderr deprecation warning (silence with
-  `CRISPASR_SUPPRESS_ENV_DEPRECATION=1`). Mechanically renamed every bare
+  `STELNETTTS_SUPPRESS_ENV_DEPRECATION=1`). Mechanically renamed every bare
   app-owned var in `src/` + `examples/` (main build) to
-  `CRISPASR_<BACKEND>_<FEATURE>` via `scratchpad/rename_env.py` (492 subs across
+  `STELNETTTS_<BACKEND>_<FEATURE>` via `scratchpad/rename_env.py` (492 subs across
   94 files); routed the 5 wrapper helpers (env_bool/env_str/… in kokoro,
-  qwen3_tts, omnivoice, voxtral_tts, voxcpm2) through the helper. Fixed the
-  pre-existing double-prefix bug `CRISPASR_CRISPASR_NEMOTRON_NO_WINDOW_MASK`.
+  cielvox2_tts, omnivoice, voxtral_tts, voxcpm2) through the helper. Fixed the
+  pre-existing double-prefix bug `STELNETTTS_STELNETTTS_NEMOTRON_NO_WINDOW_MASK`.
   EXCLUDED (own conventions / synced siblings / vendored): external OS vars
   (HOME/TMPDIR/HF_TOKEN/CUDA_VISIBLE_DEVICES/GGML_VK_VISIBLE_DEVICES/LLAMA_*),
   `crisp_audio` (`CRISP_AUDIO_*`), `glint` (`GLINT_*`), the

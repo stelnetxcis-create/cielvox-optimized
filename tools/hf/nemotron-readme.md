@@ -44,14 +44,14 @@ tags:
   - fastconformer
   - rnnt
   - multilingual
-  - crispasr
+  - stelnettts
 pipeline_tag: automatic-speech-recognition
 base_model: nvidia/nemotron-3.5-asr-streaming-0.6b
 ---
 
 # Nemotron-3.5-ASR-Streaming-0.6B GGUF
 
-GGUF conversion of [nvidia/nemotron-3.5-asr-streaming-0.6b](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [nvidia/nemotron-3.5-asr-streaming-0.6b](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model details
 
@@ -91,20 +91,20 @@ GGUF conversion of [nvidia/nemotron-3.5-asr-streaming-0.6b](https://huggingface.
 | `nemotron-3.5-asr-streaming-0.6b-f16.gguf` | 1.3 GB | F16 weights (full precision, F32 pre-encode) |
 | `nemotron-3.5-asr-streaming-0.6b-q4_k.gguf` | 458 MB | Q4_K quantized (recommended, ~2x faster) |
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Download (Q4_K recommended — 458 MB, ~2x faster than F16)
-huggingface-cli download cstr/nemotron-3.5-asr-streaming-GGUF \
+huggingface-cli download Xenna/nemotron-3.5-asr-streaming-GGUF \
   nemotron-3.5-asr-streaming-0.6b-q4_k.gguf --local-dir models/
 
 # Transcribe (English, default)
-crispasr --backend nemotron \
+stelnettts --backend nemotron \
   -m models/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf \
   -f audio.wav
 
 # Transcribe in German
-crispasr --backend nemotron \
+stelnettts --backend nemotron \
   -m models/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf \
   -f audio.wav --language de-DE
 ```
@@ -122,7 +122,7 @@ python models/convert-nemotron-to-gguf.py \
 Quantized variants can be produced with:
 
 ```bash
-crispasr-quantize models/nemotron-3.5-asr-streaming-0.6b-f16.gguf \
+stelnettts-quantize models/nemotron-3.5-asr-streaming-0.6b-f16.gguf \
   models/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf Q4_K
 ```
 

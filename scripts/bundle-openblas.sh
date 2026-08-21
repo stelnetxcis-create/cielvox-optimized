@@ -5,13 +5,13 @@
 # Why this exists (#296). Linking OpenBLAS made `--separate`
 # (mel-band-roformer) ~26x faster, and the Linux release jobs `apt-get install
 # libopenblas-dev` so the fast SGEMM path is compiled in. But apt gives a
-# DYNAMIC libopenblas.so.0, so the shipped `crispasr` carries
+# DYNAMIC libopenblas.so.0, so the shipped `stelnettts` carries
 #
 #     NEEDED  libopenblas.so.0
 #
-# while the tarball contained only crispasr, crispasr-quantize and
+# while the tarball contained only stelnettts, stelnettts-quantize and
 # libc2pa_c.so. Verified against the published v0.8.25
-# crispasr-linux-x86_64.tar.gz. On any machine without OpenBLAS installed that
+# stelnettts-linux-x86_64.tar.gz. On any machine without OpenBLAS installed that
 # is not a slow fallback — the binary does not start at all:
 #
 #     error while loading shared libraries: libopenblas.so.0
@@ -28,12 +28,12 @@
 set -uo pipefail
 
 DEST="${1:-}"
-BIN="${2:-crispasr}"
+BIN="${2:-stelnettts}"
 
 [ -n "$DEST" ] && [ -d "$DEST" ] || { echo "bundle-openblas: no dest dir '$DEST'; skipping"; exit 0; }
 
 # Nothing to do when the binary does not actually depend on OpenBLAS (a build
-# with CRISPASR_MEL_BLAS=OFF, a static link, or a non-Linux package).
+# with STELNETTTS_MEL_BLAS=OFF, a static link, or a non-Linux package).
 if command -v objdump >/dev/null 2>&1 && [ -f "$DEST/$BIN" ]; then
     if ! objdump -p "$DEST/$BIN" 2>/dev/null | grep -q 'NEEDED.*libopenblas'; then
         echo "bundle-openblas: $BIN has no libopenblas NEEDED entry — nothing to bundle"

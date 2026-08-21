@@ -111,7 +111,7 @@ echo "  F16 GGUF: $(du -sh "$F16_OUT" | cut -f1)"
 if [[ "$DO_QUANTIZE" -eq 1 ]]; then
     Q4_NAME="${F16_NAME/f16/q4_k}"
     Q4_OUT="$OUT_DIR/$Q4_NAME"
-    QUANTIZE="$REPO_DIR/build/bin/crispasr-quantize"
+    QUANTIZE="$REPO_DIR/build/bin/stelnettts-quantize"
 
     echo ""
     echo "── Step 4: quantize Q4_K_M → $Q4_OUT"
@@ -138,5 +138,5 @@ else
 fi
 echo ""
 echo "Test with:"
-echo "  $REPO_DIR/build/bin/crispasr --model $MODEL_FILE \\"
+echo "  $REPO_DIR/build/bin/stelnettts --model $MODEL_FILE \\"
 echo "      --file /path/to/audio.wav --backend vibevoice"

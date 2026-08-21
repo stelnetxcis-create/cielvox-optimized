@@ -19,7 +19,7 @@ base_model: TransWithAI/Whisper-Vad-EncDec-ASMR-onnx
 
 # Whisper-VAD-EncDec-ASMR -- GGUF
 
-GGUF conversion of [`TransWithAI/Whisper-Vad-EncDec-ASMR-onnx`](https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversion of [`TransWithAI/Whisper-Vad-EncDec-ASMR-onnx`](https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -47,26 +47,26 @@ Tested on 10 diverse audio files (English, German, 1s-89s, clean/noisy):
 | **FireRedVAD** | **2.4 MB** | **~50 ms** | **Clean (1-2 slices)** |
 | Whisper-VAD-ASMR (Q4_K) | 25 MB | ~650 ms CPU / ~200 ms Metal per 30 s window | Clean (1-2 slices) |
 
-This model runs on the GPU (Metal / CUDA / Vulkan) by default in CrispASR — about
+This model runs on the GPU (Metal / CUDA / Vulkan) by default in StelnetTTS — about
 3.3x faster than CPU on an M1 (measured at Q4_K). Force CPU with
-`CRISPASR_VAD_ENCDEC_CPU=1`. FireRedVAD is still the smallest/fastest option; this
+`STELNETTTS_VAD_ENCDEC_CPU=1`. FireRedVAD is still the smallest/fastest option; this
 model is useful as an alternative VAD or for ensembling.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Use as VAD with any ASR backend
-crispasr --backend whisper -m auto --auto-download \
+stelnettts --backend whisper -m auto --auto-download \
   --vad -vm whisper-vad-asmr-q4_k.gguf \
   -f audio.wav
 
-# Works with all CrispASR backends
-crispasr --backend parakeet -m auto --auto-download \
+# Works with all StelnetTTS backends
+stelnettts --backend parakeet -m auto --auto-download \
   --vad -vm whisper-vad-asmr-q4_k.gguf \
   -f audio.wav
 ```
 
-The model is auto-detected by filename pattern (`*whisper*vad*.gguf`) and dispatched through CrispASR's external VAD pipeline.
+The model is auto-detected by filename pattern (`*whisper*vad*.gguf`) and dispatched through StelnetTTS's external VAD pipeline.
 
 ## Conversion
 
@@ -78,7 +78,7 @@ python models/convert-whisper-vad-onnx-to-gguf.py \
   --output whisper-vad-asmr.gguf
 
 # Quantize
-crispasr-quantize whisper-vad-asmr.gguf whisper-vad-asmr-q4_k.gguf q4_k
+stelnettts-quantize whisper-vad-asmr.gguf whisper-vad-asmr-q4_k.gguf q4_k
 ```
 
 The converter uses ONNX graph topology tracing to correctly map anonymous tensor initializers to named weights (whisper-base encoder was fine-tuned, not frozen).
@@ -88,5 +88,5 @@ The converter uses ONNX graph topology tracing to correctly map anonymous tensor
 - The whisper encoder weights are **fine-tuned** (not identical to `openai/whisper-base`)
 - The decoder uses learned position queries (1500 x 512) as input, cross-attending to encoder output
 - Frame classifier applies sigmoid to produce per-frame speech probabilities
-- VAD segmentation uses hysteresis thresholding. The frame classifier's calibration sits lower than Silero / FireRed — on continuous speech the mean probability is around 0.25–0.30 even when activity is steady — so CrispASR auto-lowers the positive threshold to **0.30** (negative threshold 0.15 via the standard 0.15-step hysteresis) when `--vad-threshold` isn't set explicitly. Pass `-vt 0.5` to keep the legacy stricter behaviour, or `-vt 0.2` for noisier/softer material.
+- VAD segmentation uses hysteresis thresholding. The frame classifier's calibration sits lower than Silero / FireRed — on continuous speech the mean probability is around 0.25–0.30 even when activity is steady — so StelnetTTS auto-lowers the positive threshold to **0.30** (negative threshold 0.15 via the standard 0.15-step hysteresis) when `--vad-threshold` isn't set explicitly. Pass `-vt 0.5` to keep the legacy stricter behaviour, or `-vt 0.2` for noisier/softer material.
 - The runtime casts conv weights to F16 (ggml im2col requirement) and quantized biases to F32 at graph build time

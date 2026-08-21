@@ -1,7 +1,7 @@
 // src/core/asr_parity.h — canonical segment-parity predicate (improvements
 // Phase 0).
 //
-// Different CrispASR surfaces (CLI adapter, HTTP server, session C-ABI) should
+// Different StelnetTTS surfaces (CLI adapter, HTTP server, session C-ABI) should
 // produce the SAME transcription for the same audio. This header defines the
 // one canonical rule for "do two segment lists match", used by the surface-
 // parity harness and pinned by a unit test. It is the acceptance gate for the

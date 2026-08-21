@@ -1,9 +1,9 @@
-// test_watermark.cpp — unit tests for the CrispASR audio watermark.
+// test_watermark.cpp — unit tests for the StelnetTTS audio watermark.
 //
 // Verifies embed + detect round-trip, detection threshold semantics,
 // and robustness against simple transformations (volume scaling).
 
-#include "core/crispasr_watermark.h"
+#include "core/stelnettts_watermark.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -29,13 +29,13 @@ TEST_CASE("Watermark embed + detect round-trip", "[unit][watermark]") {
     auto pcm = make_sine(48000);
     auto original = pcm; // keep a copy
 
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
-    float score = crispasr_watermark_detect_impl(pcm.data(), (int)pcm.size());
+    float score = stelnettts_watermark_detect_impl(pcm.data(), (int)pcm.size());
     REQUIRE(score > 0.65f);
 
     // Unwatermarked audio should score low
-    float score_orig = crispasr_watermark_detect_impl(original.data(), (int)original.size());
+    float score_orig = stelnettts_watermark_detect_impl(original.data(), (int)original.size());
     REQUIRE(score_orig < 0.65f);
 }
 
@@ -43,7 +43,7 @@ TEST_CASE("Watermark is imperceptible (low distortion)", "[unit][watermark]") {
     auto pcm = make_sine(48000);
     auto original = pcm;
 
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
     // Compute SNR — watermark should be well below the signal
     double signal_power = 0.0, noise_power = 0.0;
@@ -97,10 +97,10 @@ TEST_CASE("Watermark on speech-like signal: detectable + inaudible comb (issue #
     auto pcm = make_speechlike(72000); // 3 s
     auto clean = pcm;
 
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
-    float score_wm = crispasr_watermark_detect_impl(pcm.data(), (int)pcm.size());
-    float score_clean = crispasr_watermark_detect_impl(clean.data(), (int)clean.size());
+    float score_wm = stelnettts_watermark_detect_impl(pcm.data(), (int)pcm.size());
+    float score_clean = stelnettts_watermark_detect_impl(clean.data(), (int)clean.size());
 
     // Detection survives moving the comb into the speech band, with clean
     // separation from unwatermarked audio.
@@ -122,8 +122,8 @@ TEST_CASE("Watermark on speech-like signal: detectable + inaudible comb (issue #
             re_d[i] = pcm[start + i] - clean[start + i];
             im_d[i] = 0.0f;
         }
-        crispasr_wm::fft_radix2(re.data(), im.data(), n_fft, false);
-        crispasr_wm::fft_radix2(re_d.data(), im_d.data(), n_fft, false);
+        stelnettts_wm::fft_radix2(re.data(), im.data(), n_fft, false);
+        stelnettts_wm::fft_radix2(re_d.data(), im_d.data(), n_fft, false);
         for (int k = k_5khz; k < n_fft / 2 - 4; k++) {
             sig_hi += (double)re[k] * re[k] + (double)im[k] * im[k];
             noise_hi += (double)re_d[k] * re_d[k] + (double)im_d[k] * im_d[k];
@@ -137,19 +137,19 @@ TEST_CASE("Watermark on speech-like signal: detectable + inaudible comb (issue #
 
 TEST_CASE("Watermark survives volume normalization", "[unit][watermark]") {
     auto pcm = make_sine(48000, 24000, 440.0f, 0.3f);
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
     // Scale volume by 2x (normalize up)
     for (auto& s : pcm)
         s *= 2.0f;
 
-    float score = crispasr_watermark_detect_impl(pcm.data(), (int)pcm.size());
+    float score = stelnettts_watermark_detect_impl(pcm.data(), (int)pcm.size());
     REQUIRE(score > 0.60f);
 }
 
 TEST_CASE("Watermark detection on silence returns low score", "[unit][watermark]") {
     std::vector<float> silence(48000, 0.0f);
-    float score = crispasr_watermark_detect_impl(silence.data(), (int)silence.size());
+    float score = stelnettts_watermark_detect_impl(silence.data(), (int)silence.size());
     // Silence has no spectral content — detection should not false-positive
     REQUIRE(score < 0.65f);
 }
@@ -157,33 +157,33 @@ TEST_CASE("Watermark detection on silence returns low score", "[unit][watermark]
 TEST_CASE("Watermark embed is no-op for very short audio", "[unit][watermark]") {
     std::vector<float> short_pcm = {0.1f, 0.2f, 0.3f};
     auto original = short_pcm;
-    crispasr_watermark_embed_impl(short_pcm.data(), (int)short_pcm.size());
+    stelnettts_watermark_embed_impl(short_pcm.data(), (int)short_pcm.size());
     // Should be unchanged (< 1 FFT frame)
     REQUIRE(short_pcm == original);
 }
 
 TEST_CASE("Watermark detect on very short audio returns 0", "[unit][watermark]") {
     std::vector<float> short_pcm = {0.1f, 0.2f, 0.3f};
-    float score = crispasr_watermark_detect_impl(short_pcm.data(), (int)short_pcm.size());
+    float score = stelnettts_watermark_detect_impl(short_pcm.data(), (int)short_pcm.size());
     REQUIRE(score == 0.0f);
 }
 
 TEST_CASE("Watermark detect on null/invalid input returns 0", "[unit][watermark]") {
-    REQUIRE(crispasr_watermark_detect_impl(nullptr, 0) == 0.0f);
-    REQUIRE(crispasr_watermark_detect_impl(nullptr, 100) == 0.0f);
+    REQUIRE(stelnettts_watermark_detect_impl(nullptr, 0) == 0.0f);
+    REQUIRE(stelnettts_watermark_detect_impl(nullptr, 100) == 0.0f);
 }
 
 // ─── Round-trip through int16 WAV conversion ────────────────────────────────
 // Verifies that the watermark survives the float32 → int16 → float32
 // quantization that happens when writing a WAV file and reading it back.
-// This is the same path as crispasr_make_wav_int16 + the simple reader
+// This is the same path as stelnettts_make_wav_int16 + the simple reader
 // used by --detect-watermark.
 
 TEST_CASE("Watermark survives int16 round-trip (WAV writer path)", "[unit][watermark]") {
     auto pcm = make_sine(48000, 24000, 440.0f, 0.5f);
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
-    // Simulate int16 quantization (same as crispasr_make_wav_int16)
+    // Simulate int16 quantization (same as stelnettts_make_wav_int16)
     std::vector<int16_t> pcm_i16(pcm.size());
     for (size_t i = 0; i < pcm.size(); i++) {
         float s = pcm[i];
@@ -200,12 +200,12 @@ TEST_CASE("Watermark survives int16 round-trip (WAV writer path)", "[unit][water
         pcm_back[i] = (float)pcm_i16[i] / 32768.0f;
     }
 
-    float score = crispasr_watermark_detect_impl(pcm_back.data(), (int)pcm_back.size());
+    float score = stelnettts_watermark_detect_impl(pcm_back.data(), (int)pcm_back.size());
     REQUIRE(score > 0.60f);
 }
 
 // ─── Post-embed verification threshold semantics ────────────────────────────
-// The post-embed verification in crispasr_run.cpp warns when confidence
+// The post-embed verification in stelnettts_run.cpp warns when confidence
 // < 0.6. Verify that a properly watermarked signal exceeds this, and
 // that unwatermarked audio falls below.
 
@@ -213,10 +213,10 @@ TEST_CASE("Post-embed verification threshold: watermarked > 0.6, clean < 0.6", "
     auto pcm = make_sine(48000, 24000, 440.0f, 0.5f);
     auto clean = pcm;
 
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
-    float score_wm = crispasr_watermark_detect_impl(pcm.data(), (int)pcm.size());
-    float score_clean = crispasr_watermark_detect_impl(clean.data(), (int)clean.size());
+    float score_wm = stelnettts_watermark_detect_impl(pcm.data(), (int)pcm.size());
+    float score_clean = stelnettts_watermark_detect_impl(clean.data(), (int)clean.size());
 
     // Watermarked audio must pass the post-embed verification threshold
     REQUIRE(score_wm >= 0.6f);
@@ -226,7 +226,7 @@ TEST_CASE("Post-embed verification threshold: watermarked > 0.6, clean < 0.6", "
 
 // ---------------------------------------------------------------------------
 // Per-frame detector (the default since 2026-08-03). The sign test above stays
-// guarded because CRISPASR_WATERMARK_DETECT=sign still reaches it.
+// guarded because STELNETTTS_WATERMARK_DETECT=sign still reaches it.
 //
 // Note the round-trip below uses a SINE, and a stationary tone is the one input
 // where consistency alone lies: every decoy pattern scores just as extremely on
@@ -239,12 +239,12 @@ TEST_CASE("Per-frame watermark embed + detect round-trip", "[unit][watermark]") 
     auto pcm = make_sine(48000);
     auto original = pcm;
 
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
-    const float score = crispasr_watermark_detect_frames_impl(pcm.data(), (int)pcm.size());
+    const float score = stelnettts_watermark_detect_frames_impl(pcm.data(), (int)pcm.size());
     REQUIRE(score > 0.65f);
 
-    const float score_orig = crispasr_watermark_detect_frames_impl(original.data(), (int)original.size());
+    const float score_orig = stelnettts_watermark_detect_frames_impl(original.data(), (int)original.size());
     REQUIRE(score_orig < 0.65f);
 }
 
@@ -252,33 +252,33 @@ TEST_CASE("Per-frame detector needs enough frames before it answers", "[unit][wa
     // Below kDetectMinFrames it returns 0 rather than guess from a handful of
     // frames — the t would be computed over a sample too small to mean anything.
     std::vector<float> tiny(1024 * 4, 0.5f);
-    REQUIRE(crispasr_watermark_detect_frames_impl(tiny.data(), (int)tiny.size()) == 0.0f);
+    REQUIRE(stelnettts_watermark_detect_frames_impl(tiny.data(), (int)tiny.size()) == 0.0f);
     std::vector<float> shorter(512, 0.5f);
-    REQUIRE(crispasr_watermark_detect_frames_impl(shorter.data(), (int)shorter.size()) == 0.0f);
+    REQUIRE(stelnettts_watermark_detect_frames_impl(shorter.data(), (int)shorter.size()) == 0.0f);
 }
 
 TEST_CASE("Per-frame detector does not fire on silence", "[unit][watermark]") {
     std::vector<float> silence(48000, 0.0f);
-    REQUIRE(crispasr_watermark_detect_frames_impl(silence.data(), (int)silence.size()) < 0.65f);
+    REQUIRE(stelnettts_watermark_detect_frames_impl(silence.data(), (int)silence.size()) < 0.65f);
 }
 
-TEST_CASE("The detector selector honours CRISPASR_WATERMARK_DETECT", "[unit][watermark]") {
+TEST_CASE("The detector selector honours STELNETTTS_WATERMARK_DETECT", "[unit][watermark]") {
     // Both surfaces (CLI dispatch, session C-ABI) route through the selector,
     // so this is the single place the choice is made.
     auto pcm = make_sine(48000);
-    crispasr_watermark_embed_impl(pcm.data(), (int)pcm.size());
+    stelnettts_watermark_embed_impl(pcm.data(), (int)pcm.size());
 
-    setenv("CRISPASR_WATERMARK_DETECT", "sign", 1);
-    REQUIRE_FALSE(crispasr_watermark_detect_uses_frames());
-    REQUIRE(crispasr_watermark_detect_select(pcm.data(), (int)pcm.size()) ==
-            crispasr_watermark_detect_impl(pcm.data(), (int)pcm.size()));
+    setenv("STELNETTTS_WATERMARK_DETECT", "sign", 1);
+    REQUIRE_FALSE(stelnettts_watermark_detect_uses_frames());
+    REQUIRE(stelnettts_watermark_detect_select(pcm.data(), (int)pcm.size()) ==
+            stelnettts_watermark_detect_impl(pcm.data(), (int)pcm.size()));
 
-    setenv("CRISPASR_WATERMARK_DETECT", "frames", 1);
-    REQUIRE(crispasr_watermark_detect_uses_frames());
-    REQUIRE(crispasr_watermark_detect_select(pcm.data(), (int)pcm.size()) ==
-            crispasr_watermark_detect_frames_impl(pcm.data(), (int)pcm.size()));
+    setenv("STELNETTTS_WATERMARK_DETECT", "frames", 1);
+    REQUIRE(stelnettts_watermark_detect_uses_frames());
+    REQUIRE(stelnettts_watermark_detect_select(pcm.data(), (int)pcm.size()) ==
+            stelnettts_watermark_detect_frames_impl(pcm.data(), (int)pcm.size()));
 
     // Unset => the compiled-in default, which is the per-frame statistic.
-    unsetenv("CRISPASR_WATERMARK_DETECT");
-    REQUIRE(crispasr_watermark_detect_uses_frames());
+    unsetenv("STELNETTTS_WATERMARK_DETECT");
+    REQUIRE(stelnettts_watermark_detect_uses_frames());
 }

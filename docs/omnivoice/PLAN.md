@@ -5,15 +5,15 @@ stranded GPU commit `feat/omnivoice-gpu` = "run the LLM on GPU").
 
 ## LANDED 2026-08-08 — encode diff wired to the harness front door, and the gate can finally go red
 
-`crispasr-diff omnivoice` was a stub (loaded the model, printed the ref token
+`stelnettts-diff omnivoice` was a stub (loaded the model, printed the ref token
 count, compared nothing, exited 0) while the REAL per-stage comparison —
-`omnivoice_encode_diff()`, #254 — hid behind `CRISPASR_OMNIVOICE_ENCODE_DIFF`
+`omnivoice_encode_diff()`, #254 — hid behind `STELNETTTS_OMNIVOICE_ENCODE_DIFF`
 in the CLI adapter. Worse, `run_encode_diff` returned 0 unconditionally: a run
 with the corrupt tokenizer printed `acoustic_enc … FAIL` and `FULL wav→codes
 15.0%` and still exited clean. Both fixed:
 
 - The diff-main branch now resolves the audio tokenizer
-  (`CRISPASR_OMNIVOICE_TOKENIZER_GGUF` env, else next-to-model candidates) and
+  (`STELNETTTS_OMNIVOICE_TOKENIZER_GGUF` env, else next-to-model candidates) and
   runs the encode diff as a counted harness stage.
 - `run_encode_diff` counts main-chain failures and returns nonzero. New
   explicit gates: RVQ ≥ 99.5% exact (measured 99.9%), FULL wav→codes ≥ 95%
@@ -23,9 +23,9 @@ with the corrupt tokenizer printed `acoustic_enc … FAIL` and `FULL wav→codes
 Current metrics (M1, q4_k LLM + f16 tokenizer `710ef610`, vs
 `omnivoice-encode-ref.gguf`): acoustic_enc / encoder_semantic / concat+fc all
 cos_min=1.000000, RVQ 2197/2200, FULL 2178/2200. Verified red-first: corrupt
-tokenizer → 2 stages FAILED, `crispasr-diff` rc=6, CLI env path rc=1.
+tokenizer → 2 stages FAILED, `stelnettts-diff` rc=6, CLI env path rc=1.
 
-**⚠ Local-disk trap, defused:** `/Volumes/backups/ai/crispasr-gguf/` still had
+**⚠ Local-disk trap, defused:** `/Volumes/backups/ai/stelnettts-gguf/` still had
 the CORRUPT Jul-11 `omnivoice-tokenizer-f16.gguf` under the canonical name the
 env-live-tests default and next-to-model discovery both resolve — the clean
 regen only existed as `-fixed`. HF has shipped the fixed bytes under the
@@ -51,7 +51,7 @@ arm is target-audio-only in both, so the tag lives only in the cond branch; and
 `normalize_text` is language-dependent but defaults off and the official CLI
 never passes it. One thing I had wrong: treating `"auto"` as cleared is not an
 addition on top of the blueprint — `demo.py:186` does exactly that.
-`CRISPASR_OMNIVOICE_DEBUG` now prints the style ids so this stays a one-command
+`STELNETTTS_OMNIVOICE_DEBUG` now prints the style ids so this stays a one-command
 check.
 
 **`_resolve_instruct` sits ten lines below `_resolve_language`, and we mirrored
@@ -92,8 +92,8 @@ Ratcliff/Obershelp, we use an LCS ratio at the same 0.6 cutoff. It changes no
 model input, only the error string — noted in the header.
 
 **Correction + closed (2026-08-07, follow-up):** I reported "there is no session
-instruct setter at all". Wrong — `crispasr_session_set_instruct` has existed all
-along, handling qwen3-tts and parler; **omnivoice fell through to `return -3`**,
+instruct setter at all". Wrong — `stelnettts_session_set_instruct` has existed all
+along, handling cielvox2-tts and parler; **omnivoice fell through to `return -3`**,
 i.e. "this backend has no instruct contract". So it was the same wiring bug a
 third time, not a missing feature. Now dispatched, which makes voice design
 reachable from every binding (the Python `set_instruct` needed no change beyond
@@ -127,12 +127,12 @@ for its own reason — the classic multi-surface dispatch trap (dev guide point 
 
 **What was broken**
 
-1. `crispasr_backend_omnivoice.cpp::synthesize()` applied only `tts_num_steps`
+1. `stelnettts_backend_omnivoice.cpp::synthesize()` applied only `tts_num_steps`
    per call; `omnivoice_set_language` ran ONLY in `init()`. The server owns one
    backend instance for the whole session, so after the first line the menu
-   could never change anything — even though `crispasr_server.cpp` has parsed
+   could never change anything — even though `stelnettts_server.cpp` has parsed
    `language`/`target_lang` into `rp.language` since #249/#304.
-2. `crispasr_c_api.cpp` — the session's omnivoice arm was a bare
+2. `stelnettts_c_api.cpp` — the session's omnivoice arm was a bare
    `omnivoice_synthesize()`. `set_target_language` never reached it, so
    bindings / Flutter / Android had no language knob by any route. This is
    #329's cosyvoice3 bug, one backend over.
@@ -151,7 +151,7 @@ adapter and the session arm now apply it per call.
 
 **Verified at the CODE level, not the WAV level** — output is watermarked and
 carries a spoken disclaimer, so `cmp` on the audio measures the watermark. Use
-`CRISPASR_OMNIVOICE_DUMP_CODES` + `--no-spoken-disclaimer`. All three surfaces,
+`STELNETTTS_OMNIVOICE_DUMP_CODES` + `--no-spoken-disclaimer`. All three surfaces,
 English `jfk.wav` reference → German target:
 
 | comparison | result | what it proves |
@@ -194,7 +194,7 @@ accepts `TtsLanguage? language` and never sends it — the payload is
 `{input, response_format, speed}` — and the launch args carry no `-l`. Rather
 than leave the fix blocked on someone else's release, omnivoice now **guesses
 the language from the target text when nobody supplied one**
-(`CRISPASR_OMNIVOICE_AUTO_LANG`, default ON;
+(`STELNETTTS_OMNIVOICE_AUTO_LANG`, default ON;
 `core_omnivoice_lang::auto_detect` = `core_tts_lang::detect` → `resolve`).
 
 *The measurement that justifies guessing, and would retract it.* Guessing is
@@ -212,7 +212,7 @@ Verified end to end (codes, `--no-spoken-disclaimer`):
 | arm | vs | result |
 |---|---|---|
 | no `-l` at all, fallback on | explicit `-l de` | **IDENTICAL** |
-| `CRISPASR_OMNIVOICE_AUTO_LANG=0` | old untagged behaviour | **IDENTICAL** (clean opt-out) |
+| `STELNETTTS_OMNIVOICE_AUTO_LANG=0` | old untagged behaviour | **IDENTICAL** (clean opt-out) |
 | explicit `-l en` on German text | the pre-existing `-l en` result | **IDENTICAL** (the guess never overrides) |
 | **SE-shaped POST** `{input, response_format}`, no language field | explicit `-l de` | **IDENTICAL** |
 
@@ -271,14 +271,14 @@ target slice is used), single-threaded triple-log-softmax CFG scoring (~13M
   ~2 days to reset); alternative: the A1000 box. Kernel is ready:
   `tools/kaggle/omnivoice-fused-step-ab/` (legacy vs fused vs fused+2-forward,
   reporter's paragraph, byte-identity gate + median gen s + per-stage bench;
-  `CRISPASR_REF=main`). Local M1 timing is load-noise (loadavg 100–290 all
+  `STELNETTTS_REF=main`). Local M1 timing is load-noise (loadavg 100–290 all
   day; legacy vs fused gen 370→234 s directional only, decode-stage noise
   3.8× between arms of identical code).
 - ✅ **Reference-voice disk cache shipped (2026-07-16):** the reporter's last
   ask (omnivoice.cpp `--ref-rvq` parity). Automatic content-addressed cache of
   the RVQ ref codes (FNV-1a over preprocessed pcm + encoder fingerprint, OVC1
   file, same dir resolution as the pocket_tts latents cache);
-  `CRISPASR_OMNIVOICE_VOICE_CACHE=0` disables. Verified: run 2 logs "voice
+  `STELNETTTS_OMNIVOICE_VOICE_CACHE=0` disables. Verified: run 2 logs "voice
   codes loaded from cache", codes byte-identical, WAV audio data bit-identical.
 - ✅ **M1 matched-load per-stage A/B (load≈29 both arms):** fused vs legacy gen
   is NEUTRAL on Metal (96.3 s vs 93.7 s totals, per-forward medians within
@@ -287,11 +287,11 @@ target slice is used), single-threaded triple-log-softmax CFG scoring (~13M
   everywhere stands (identical output, neutral Metal, big CUDA).
   Same-box omnivoice.cpp: its Metal backend fails to init on macOS 26 (bf16
   Metal-shader compile error in their ggml), CPU-only path is gen 728 s
-  (RTF 34) vs our Metal ~90-116 s — CrispASR is the only implementation with
+  (RTF 34) vs our Metal ~90-116 s — StelnetTTS is the only implementation with
   a working GPU path on this Mac.
 - ✅ **CUDA A/B verdict IN (2026-07-16, reporter, RTX 5070 Ti):** `cmp`
   byte-identical on CUDA; gen 3.55 s → **1.53 s (2.3×)**, RTF 0.17 → **0.07**
-  (vs omnivoice.cpp 0.144 — CrispASR is now ~2× FASTER than the reference
+  (vs omnivoice.cpp 0.144 — StelnetTTS is now ~2× FASTER than the reference
   implementation); single CUDA-graph warmup. Per-step 45.9 ms = fwd 27.4 +
   score_cfg 11.6 + read_logits 5.2 + sample 1.5. → **CUDA default flipped to
   fused** (this commit). Reporter's remaining ask: reference-voice caching to
@@ -306,7 +306,7 @@ target slice is used), single-threaded triple-log-softmax CFG scoring (~13M
   reporter to re-bench. Expected: kills the ~44 ms/step host overhead that is
   the residual RTF 0.17-vs-0.144 gap.
 
-Reporter's residual complaint after the over-length + word-drop fixes: "CrispASR
+Reporter's residual complaint after the over-length + word-drop fixes: "StelnetTTS
 is still slower than alternative implementations" and "decoding is on cpu, which
 is now taking longer." **Profiled → confirmed:** the DAC decode runs 100% on CPU
 (`tok.backend = ggml_backend_cpu_init()`, hardcoded) and was the wall — on M1 the
@@ -315,7 +315,7 @@ the short tail chunk was decode-RTF **2.7** (per-call F16→F32 kernel casts + i
 copies amortized over few frames).
 
 - ✅ **FASTCONV (`OMNIVOICE_CODEC_FASTCONV`, default ON)** — the dev-guide
-  `QWEN3_TTS_CODEC_FASTCONV` pattern applied to `higgs_decode`: (1) **bake F32
+  `CIELVOX2_TTS_CODEC_FASTCONV` pattern applied to `higgs_decode`: (1) **bake F32
   decode conv kernels once at load** (`bake_decode_f32_kernels`) so the fork's
   per-graph `ggml_cast(F16→F32)` inside every `ggml_conv_1d`/`conv_transpose_1d`
   becomes a no-op; (2) **k=1 conv → `ggml_mul_mat`** (skip the pure-copy im2col);
@@ -345,15 +345,15 @@ copies amortized over few frames).
 - ✅ **`--tts-steps` / `OMNIVOICE_NUM_STEPS` knob** — stage0 (now the dominant cost
   post-FASTCONV) is exactly `num_steps × 2` backbone forwards, so it's the biggest
   remaining speed lever. Wired the codebase-standard `--tts-steps` flag into
-  OmniVoice (`omnivoice_set_num_steps` + `crispasr_session_set_tts_steps` dispatch),
+  OmniVoice (`omnivoice_set_num_steps` + `stelnettts_session_set_tts_steps` dispatch),
   default 32 (quality). Env `OMNIVOICE_NUM_STEPS=N` for quick A/B. Validated ASR
   roundtrip stays clean down to N≈16 (2× fewer forwards); see sweep in this doc.
   Tunable from EVERY consumer (CLI/server-per-request/C-ABI/Python/Go/Dart).
 
 ### Single-shot synthesis (#254 reporter: "reduce chunking")
-Reporter (CUDA, q8_0, `OMNIVOICE_CODEC_GPU=1`) benched CrispASR at RTF 0.17–0.21 vs
+Reporter (CUDA, q8_0, `OMNIVOICE_CODEC_GPU=1`) benched StelnetTTS at RTF 0.17–0.21 vs
 omnivoice.cpp 0.144 on the SAME text/params — a 15–20% gap traced entirely to
-**chunking**: CrispASR sentence-split the paragraph into 3 chunks (292+197+54
+**chunking**: StelnetTTS sentence-split the paragraph into 3 chunks (292+197+54
 frames), each a different T, so the CUDA graph re-warmed per chunk (visible
 `warmup complete`/`reset` spam) and stage0 ran 3×32 iterations. omnivoice.cpp does
 the whole paragraph as one T=544 MaskGIT pass (one warmup, 32 steps). Their decode
@@ -361,7 +361,7 @@ was already free on CUDA (0.05 s via `OMNIVOICE_CODEC_GPU=1` — the gate wins o
 as predicted).
 
 - ✅ **Fix:** added `omnivoice` to the single-shot whitelist in
-  `crispasr_tts_plan_chunks_for_backend` (alongside vibevoice/qwen3-tts/tada/dots-tts).
+  `stelnettts_tts_plan_chunks_for_backend` (alongside vibevoice/cielvox2-tts/tada/dots-tts).
   OmniVoice is masked-iterative — it synthesizes the whole target span in one
   fixed-`num_steps` pass with a single length estimate (no per-token duration head,
   no `MAX_FRAMES` truncation), exactly like omnivoice.cpp. Verified: the reporter's
@@ -381,7 +381,7 @@ as predicted).
   fewer graph builds, load-independent structural win) outweighs the ~6% gen
   penalty. This flips the earlier worry that it would regress Metal. On CUDA the
   gen graph-reuse is an additional, larger win (the reporter's case).
-- 🔌 **Escape hatch:** `CRISPASR_OMNIVOICE_CHUNK=1` forces the legacy sentence-split
+- 🔌 **Escape hatch:** `STELNETTTS_OMNIVOICE_CHUNK=1` forces the legacy sentence-split
   path (also the A/B toggle) — for a Metal user feeding pathologically long text
   where O(T²) attention could dominate.
 
@@ -421,7 +421,7 @@ Their README is candid and **corroborates our design decisions**:
   **f32 codec convs (no cast)**; they expose `--codec-conv-f32` as an opt-in. FASTCONV
   gets the same cast-free decode **automatically from the f16 model** (baked F32
   kernels) — no 2.7 GB f32 GGUF, no ~24 GB CPU RAM — and adds **k=1→matmul** (they
-  im2col k=1). CrispASR weights: q4_k 597 MB / q8_0 818 MB vs their f32 2.7 GB.
+  im2col k=1). StelnetTTS weights: q4_k 597 MB / q8_0 818 MB vs their f32 2.7 GB.
 - **stage0 is the same shape:** 2 separate cond/uncond forwards, 32 steps, persistent
   graph — matched on both. The one stage0 lever they flag as *not done* ("unbatched
   CFG, ~2×") is one **we already have** (`OMNIVOICE_UNIFIED_CFG`, +13% CUDA).
@@ -436,7 +436,7 @@ Root cause: `llm.token_embd.weight` in shipped `omnivoice-f16.gguf` had 4094
 ZEROED rows (ids ~3380–12594; "quick"=3974) from a post-conversion WRITE
 corruption (source clean SHA-verified; reconvert clean → converter is fine).
 Reconverted f16/q4_k/q8_0 (0 zeroed rows) → fox + reporter paragraph render
-EVERY word. Re-uploaded all 3 to `cstr/omnivoice-GGUF`, **SHA-verified server-
+EVERY word. Re-uploaded all 3 to `Xenna/omnivoice-GGUF`, **SHA-verified server-
 side** (f16 670592a5, q8_0 9d8835c8, q4_k a1a9c6fc). Local canonical files
 swapped. Issue #254 updated (comment 4977208265). Registry needs no change
 (stores URL+size, not SHA; sizes unchanged). DONE.**
@@ -463,13 +463,13 @@ swapped. Issue #254 updated (comment 4977208265). Registry needs no change
   local HF cache — only config/tokenizer; original convert ran on VPS);
   (2) reconvert f16, verify `token_embd` has 0 zeroed rows + re-run fox ASR
   (must say "quick"); (3) re-derive q4_k/q8_0; (4) re-upload to
-  `cstr/omnivoice-GGUF` (SHA-verified) + bump registry SHAs; (5) tell reporter.
+  `Xenna/omnivoice-GGUF` (SHA-verified) + bump registry SHAs; (5) tell reporter.
 - 🧰 Tooling landed: `OMNIVOICE_DUMP_DIR` step-0 embed/logits dump; diagnostic
   temp/guidance env knobs.
 - ⚠ The shipped HF `omnivoice-f16.gguf` is almost certainly the corrupt file the
   reporter used (their dropped words match our local file exactly).
 
-- 🐞 **Reporter** ([comment](https://github.com/CrispStrobe/CrispASR/issues/254#issuecomment-4973702610)):
+- 🐞 **Reporter** ([comment](https://github.com/Cyna/StelnetTTS/issues/254#issuecomment-4973702610)):
   long English paragraph drops words ("started", "One", "See", "pick" missing;
   "TTS"→"T"). JP length now fine.
 - ✅ **Reproduced** on our build. Minimal repro: `--tts "The quick brown fox
@@ -501,7 +501,7 @@ swapped. Issue #254 updated (comment 4977208265). Registry needs no change
 **Prior (DONE): duration estimator adopted + `--tts-speed` knob**
 on `main` (`224420b8e`, `19151d124`). Reporter confirmed ref-voice scaling works.
 
-- ✅ **Reporter re-verified** ([#254 comment](https://github.com/CrispStrobe/CrispASR/issues/254#issuecomment-4973702610)):
+- ✅ **Reporter re-verified** ([#254 comment](https://github.com/Cyna/StelnetTTS/issues/254#issuecomment-4973702610)):
   no-ref JP line = 6.72 s (good); WITH a (slow) ref voice it grew to 11.60 s —
   too slow, unnatural inter-letter pauses. Asked for a duration-multiplier knob.
 - ✅ **`--tts-speed X` knob** (`19151d124`): speaking-rate multiplier scaling the
@@ -556,16 +556,16 @@ on `main` (`224420b8e`, `19151d124`). Reporter confirmed ref-voice scaling works
   scale) but bloats latency + trailing silence. Track separately.
 
 - ✅ **Encode reference dumped + validated** — isolated venv (torch 2.13,
-  transformers 5.13.1) at `/Volumes/backups/ai/crispasr-gguf/.venv-omnivoice-ref`;
+  transformers 5.13.1) at `/Volumes/backups/ai/stelnettts-gguf/.venv-omnivoice-ref`;
   `tools/dump_omnivoice_encode_reference.py` runs the REAL `encode()` with forward
-  hooks → `/Volumes/backups/ai/crispasr-gguf/omnivoice-encode-ref.gguf`. jfk.wav
+  hooks → `/Volumes/backups/ai/stelnettts-gguf/omnivoice-encode-ref.gguf`. jfk.wav
   (11 s) → **275 frames @ 25 Hz** (264000/960), all stage shapes match the blueprint:
   `sem_hidden_mean`(550,768)→`sem_ds`(275,768)→`e_semantic`(275,768),
   `e_acoustic`(275,256), `emb_fc`(275,1024), `codes`(8,275) ∈ [1,1023]. ref.gguf
-  (5.7 MB) → upload to `cstr/crispasr-regression-fixtures` (NOT in git).
+  (5.7 MB) → upload to `Xenna/stelnettts-regression-fixtures` (NOT in git).
 
 ### ⚠ SHIPPED GGUF BUG (found via bisect) — corrupt tokenizer weight
-`omnivoice-tokenizer-f16.gguf` (HF `cstr/omnivoice-GGUF`, SHA-matched) has
+`omnivoice-tokenizer-f16.gguf` (HF `Xenna/omnivoice-GGUF`, SHA-matched) has
 `acoustic_encoder.block.4.conv1.weight` with **511 contiguous output channels
 (1411–1921) zeroed** — a ~6 MB zeroed block in a 25 MB tensor (file/write
 corruption, same class as [[cohere-arabic-gguf-zeroed-norms]]). Every other tensor
@@ -599,7 +599,7 @@ Closed-loop speaker cosine (Resemblyzer VoiceEncoder), clone jfk→"quick brown 
 timbre toward the reference. Runs end-to-end: "voice prompt encoded — 275 ref
 frames". **Issue #1 (voice cloning doesn't work) RESOLVED.**
 
-### ✅ Shipped to HF `cstr/omnivoice-GGUF` (all SHA-verified)
+### ✅ Shipped to HF `Xenna/omnivoice-GGUF` (all SHA-verified)
 - `omnivoice-tokenizer-f16.gguf` → **replaced corrupt file** with clean regen (sha 710ef610).
 - `omnivoice-q4_k.gguf` → **new** main-model quant, 597 MB, ASR-clean (sha e9ae2a80).
 - **Tokenizer stays F16** — quantizing it collapses RVQ code match to 0.6% (q8 AND
@@ -684,7 +684,7 @@ signed CAS URL rejects Range → rc=22); clone to `/kaggle/temp` (#22); flushed
 2. Match torchaudio resample (Hann sinc) to push encode codes >99%.
 3. Re-confirm CUDA win with a 2nd run + T4-vs-P100 before over-trusting one box.
 3. **Ship the GGUF fix**: `omnivoice-tokenizer-f16-fixed.gguf` (0 zeroed channels)
-   → replace corrupt HF `cstr/omnivoice-GGUF` + registry SHA bump.
+   → replace corrupt HF `Xenna/omnivoice-GGUF` + registry SHA bump.
 4. RTF wins (issue #2), gated + A/B'd.
 
 ### Next (implementation)
@@ -701,9 +701,9 @@ signed CAS URL rejects Range → rc=22); clone to `/kaggle/temp` (#22); flushed
 4. RTF wins, gated + A/B'd.
 
 - ✅ Rebased the stranded `feat/omnivoice-gpu` (single commit `c80328e08`, never
-  merged to main) onto current `main`. GPU-backend init + `CRISPASR_OMNIVOICE_CPU`
+  merged to main) onto current `main`. GPU-backend init + `STELNETTTS_OMNIVOICE_CPU`
   gate are the only pre-existing changes.
-- ✅ Model SHA verification vs HF `cstr/omnivoice-GGUF` (user requirement):
+- ✅ Model SHA verification vs HF `Xenna/omnivoice-GGUF` (user requirement):
   - `omnivoice-q8_0.gguf` local == HF `4e0bbc93…` ✅
   - `omnivoice-tokenizer-f16.gguf` local == HF `9cb7741a…` ✅
   - (f16 LLM not yet local; download+verify when F16 A/B is needed.)
@@ -746,7 +746,7 @@ alloc" family):
 - The persistent-graph reuse (#245) is already in for the two LLM arms; good.
 
 ## Validation regime (mandatory)
-- Per-stage diff vs Python `ref.gguf` (`crispasr-diff`), earliest divergence = bug.
+- Per-stage diff vs Python `ref.gguf` (`stelnettts-diff`), earliest divergence = bug.
 - Decoded-output roundtrip: TTS→ASR overlap; voice-clone closed-loop
   cosine(C,R) > cosine(B,R) (Resemblyzer).
 - ServeurpersoCom/omnivoice.cpp = **black-box output oracle only**; do not read its

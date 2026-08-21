@@ -1,4 +1,4 @@
-// gemma4_e2b.cpp — CrispASR runtime for Google Gemma-4-E2B
+// gemma4_e2b.cpp — StelnetTTS runtime for Google Gemma-4-E2B
 //
 // Architecture: USM Conformer audio encoder (12L, 1024d, chunked attention,
 // LightConv1d, macaron FFN) + Gemma4 LLM decoder (35L, 1536d, GQA 8Q/1KV,
@@ -16,8 +16,8 @@
 #include "core/beam_decode.h"
 #include "core/greedy_decode.h"
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml.h"
 #include "gguf.h"
@@ -42,7 +42,7 @@
 static bool gemma4_e2b_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_GEMMA4_E2B_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_GEMMA4_E2B_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -499,7 +499,7 @@ static void g4e_gen_mel_filterbank(int n_mels, int n_fft, int sr, std::vector<fl
 // matches HF's natural FE output and binds 1:1 to a ggml tensor of
 // ne=(n_mels, T_mel, 1, 1) (n_mels=fast), which is the conv2d input
 // shape that mirrors HF's (B, 1, T, n_mels) interpretation (T as H,
-// n_mels as W). The crispasr-diff hook passes this layout through.
+// n_mels as W). The stelnettts-diff hook passes this layout through.
 static std::vector<float> g4e_compute_mel_hf_faithful(const float* pcm, int n_samples, int n_fft, int win_length,
                                                       int hop_length, int n_mels,
                                                       const float* window /* size win_length */,
@@ -868,7 +868,7 @@ static ggml_tensor* build_conformer_self_attn(ggml_context* ctx, ggml_tensor* x,
 
         // Sum + softcap + boundary mask.
         // DEBUG: toggle to disable rel_pos_bias contribution.
-        ggml_tensor* scores = std::getenv("CRISPASR_NO_REL_POS") ? matrix_ac : ggml_add(ctx, matrix_ac, matrix_bd);
+        ggml_tensor* scores = std::getenv("STELNETTTS_NO_REL_POS") ? matrix_ac : ggml_add(ctx, matrix_ac, matrix_bd);
         (void)matrix_bd;
         scores = ggml_scale(ctx, scores, 1.0f / softcap);
         scores = ggml_tanh(ctx, scores);
@@ -1390,10 +1390,10 @@ static float* g4e_embed_tokens(gemma4_e2b_context* ctx, const int32_t* ids, int 
 
     // Fast path: single-token lookup avoids graph build + sched overhead.
     // Must apply Gemma embedding scale (sqrt(hidden_size)) manually.
-    // Gated by CRISPASR_GEMMA4_E2B_EMBED_FAST (default ON).
+    // Gated by STELNETTTS_GEMMA4_E2B_EMBED_FAST (default ON).
     static int use_fast = -1;
     if (use_fast < 0) {
-        const char* e = std::getenv("CRISPASR_GEMMA4_E2B_EMBED_FAST");
+        const char* e = std::getenv("STELNETTTS_GEMMA4_E2B_EMBED_FAST");
         use_fast = (!e || *e != '0') ? 1 : 0;
     }
     if (n == 1 && use_fast && ctx->model.llm_embed_w) {
@@ -1517,7 +1517,7 @@ static char* g4e_run_prompt(gemma4_e2b_context* ctx, const std::vector<int32_t>&
         return nullptr;
     auto& m = ctx->model;
     auto& lhp = m.llm_hp;
-    const bool verbose = ctx->verbosity >= 2 || crispasr_env::get("CRISPASR_GEMMA4_E2B_BENCH");
+    const bool verbose = ctx->verbosity >= 2 || stelnettts_env::get("STELNETTTS_GEMMA4_E2B_BENCH");
     const int d = (int)lhp.hidden_size;
     const int total = (int)prompt_ids.size();
 
@@ -1814,7 +1814,7 @@ extern "C" struct gemma4_e2b_context* gemma4_e2b_init_from_file(const char* path
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -1822,11 +1822,11 @@ extern "C" struct gemma4_e2b_context* gemma4_e2b_init_from_file(const char* path
     // use_gpu=true). Was hardcoded to backend_cpu under the old
     // assumption that Q4_K CPU SIMD beat the Metal/CUDA path; today's
     // GPU Q4_K kernels are mature.
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total LLM
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total LLM
     // layers, route llm.layers.<il>.* with il >= N onto the CPU backend.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)lhp.num_layers;
@@ -1840,7 +1840,7 @@ extern "C" struct gemma4_e2b_context* gemma4_e2b_init_from_file(const char* path
             delete ctx;
             return nullptr;
         }
-        fprintf(stderr, "gemma4_e2b: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "gemma4_e2b: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path_model, ctx->backend, "gemma4_e2b", wl)) {
@@ -2118,7 +2118,7 @@ static char* gemma4_e2b_transcribe_impl(struct gemma4_e2b_context* ctx, const fl
     auto& m = ctx->model;
     auto& ahp = m.audio_hp;
     auto& lhp = m.llm_hp;
-    const bool verbose = ctx->verbosity >= 2 || crispasr_env::get("CRISPASR_GEMMA4_E2B_BENCH");
+    const bool verbose = ctx->verbosity >= 2 || stelnettts_env::get("STELNETTTS_GEMMA4_E2B_BENCH");
     const float eps = lhp.rms_norm_eps;
     gemma4_e2b_bench_stage _b_total("total");
 
@@ -2454,7 +2454,7 @@ extern "C" const char* gemma4_e2b_token_text(struct gemma4_e2b_context* ctx, int
     return ctx->model.vocab[id].c_str();
 }
 
-// ── Stage hooks for crispasr-diff ──────────────────────────────────────────
+// ── Stage hooks for stelnettts-diff ──────────────────────────────────────────
 // These mirror the parakeet/voxtral pattern: each one runs a slice of the
 // pipeline and returns a malloc'd float buffer the caller frees. They share
 // the mel + encoder code path used by gemma4_e2b_transcribe so any number
@@ -2662,11 +2662,11 @@ extern "C" float* gemma4_e2b_run_encoder(struct gemma4_e2b_context* ctx, const f
     ggml_backend_tensor_get(enc_out_t, out, 0, n_floats * sizeof(float));
 
     // Optional intermediate-stage dump for the diff harness. When
-    // CRISPASR_DUMP_DIR is set, write each named stage (audio_subsample
+    // STELNETTTS_DUMP_DIR is set, write each named stage (audio_subsample
     // _output, audio_layer_<il>, audio_tower_output) to <dir>/<name>.bin
     // as raw F32. The diff harness then compares per-stage cos against
     // the python reference.
-    if (const char* dump_dir = std::getenv("CRISPASR_DUMP_DIR")) {
+    if (const char* dump_dir = std::getenv("STELNETTTS_DUMP_DIR")) {
         auto dump = [&](const char* name) {
             ggml_tensor* t = ggml_graph_get_tensor(enc_gf, name);
             if (!t)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """check-registry-repos.py — audit that every registry download URL is publicly reachable.
 
-Why this exists: issue #331. `cstr/piper-en_US-lessac-medium-GGUF` — the default
+Why this exists: issue #331. `Xenna/piper-en_US-lessac-medium-GGUF` — the default
 Piper voice — was flipped **private** by an out-of-band step during the 2026-08-03
 speaker_identity stamping pass. Nothing in the repo changed, no test failed, and
 the file was still there; it simply stopped being downloadable by anyone but the
@@ -37,7 +37,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REGISTRY = ROOT / "src" / "crispasr_model_registry.cpp"
+REGISTRY = ROOT / "src" / "stelnettts_model_registry.cpp"
 
 # Matches the resolve URLs in the registry's string literals.
 REPO_RE = re.compile(r"https://huggingface\.co/([^/\"]+/[^/\"]+)/resolve")
@@ -60,7 +60,7 @@ def referenced_repos(path):
 def check(repo):
     """(repo, ok, detail) — is this repo readable with no credentials at all?"""
     url = f"https://huggingface.co/api/models/{repo}"
-    req = urllib.request.Request(url, headers={"User-Agent": "crispasr-registry-audit"})
+    req = urllib.request.Request(url, headers={"User-Agent": "stelnettts-registry-audit"})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             body = resp.read(4096).decode("utf-8", "replace")

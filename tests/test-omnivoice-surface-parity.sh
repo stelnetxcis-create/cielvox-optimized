@@ -21,22 +21,22 @@
 # SKIPs cleanly (exit 0) without a model.
 #
 # Env:
-#   CRISPASR_TEST_OMNIVOICE_MODEL      main GGUF (required; else SKIP)
-#   CRISPASR_TEST_OMNIVOICE_TOKENIZER  audio-tokenizer GGUF (required; else SKIP)
+#   STELNETTTS_TEST_OMNIVOICE_MODEL      main GGUF (required; else SKIP)
+#   STELNETTTS_TEST_OMNIVOICE_TOKENIZER  audio-tokenizer GGUF (required; else SKIP)
 
 set -u
 
-MODEL="${CRISPASR_TEST_OMNIVOICE_MODEL:-}"
-TOK="${CRISPASR_TEST_OMNIVOICE_TOKENIZER:-}"
-BIN="${CRISPASR_BIN:-./build/bin/crispasr}"
-PORT="${CRISPASR_TEST_PORT:-8489}"
-# The session arm imports the crispasr package (needs numpy), so allow an
+MODEL="${STELNETTTS_TEST_OMNIVOICE_MODEL:-}"
+TOK="${STELNETTTS_TEST_OMNIVOICE_TOKENIZER:-}"
+BIN="${STELNETTTS_BIN:-./build/bin/stelnettts}"
+PORT="${STELNETTTS_TEST_PORT:-8489}"
+# The session arm imports the stelnettts package (needs numpy), so allow an
 # interpreter override — a bare system python3 often cannot.
-PYTHON="${CRISPASR_TEST_PYTHON:-python3}"
+PYTHON="${STELNETTTS_TEST_PYTHON:-python3}"
 TEXT="Ich möchte heute Abend über die Straße gehen und frische Brötchen kaufen."
 
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ] || [ -z "$TOK" ] || [ ! -f "$TOK" ]; then
-    echo "SKIP: CRISPASR_TEST_OMNIVOICE_MODEL / _TOKENIZER not set (both needed)"
+    echo "SKIP: STELNETTTS_TEST_OMNIVOICE_MODEL / _TOKENIZER not set (both needed)"
     exit 0
 fi
 [ -x "$BIN" ] || { echo "SKIP: $BIN not built"; exit 0; }
@@ -62,7 +62,7 @@ differ() {
 
 cli() { # <out.bin> <auto_lang 0|1> [args...]
     local out="$1" auto="$2"; shift 2
-    CRISPASR_OMNIVOICE_DUMP_CODES="$out" CRISPASR_OMNIVOICE_AUTO_LANG="$auto" \
+    STELNETTTS_OMNIVOICE_DUMP_CODES="$out" STELNETTTS_OMNIVOICE_AUTO_LANG="$auto" \
         "$BIN" --backend omnivoice \
         -m "$MODEL" --codec-model "$TOK" --tts "$TEXT" --tts-output "$TMP/o.wav" \
         --no-spoken-disclaimer --accept-marking-responsibility "$@" \
@@ -90,7 +90,7 @@ differ "de!=agnostic        " "$TMP/cli_de.bin" "$TMP/cli_agnostic.bin"
 same   "auto-detect==explicit" "$TMP/cli_auto.bin" "$TMP/cli_de.bin"
 
 echo "== server arms (one process, language varied PER REQUEST)"
-CRISPASR_OMNIVOICE_DUMP_CODES="$TMP/srv.bin" "$BIN" --server --backend omnivoice \
+STELNETTTS_OMNIVOICE_DUMP_CODES="$TMP/srv.bin" "$BIN" --server --backend omnivoice \
     -m "$MODEL" --codec-model "$TOK" --host 127.0.0.1 --port "$PORT" \
     --no-spoken-disclaimer --accept-marking-responsibility > "$TMP/srv.log" 2>&1 &
 SRV_PID=$!
@@ -134,8 +134,8 @@ echo "== session ABI (the surface that had no language wiring at all)"
 "$PYTHON" - <<PY > "$TMP/sess.log" 2>&1
 import os, sys
 sys.path.insert(0, "python")
-os.environ["CRISPASR_OMNIVOICE_DUMP_CODES"] = "$TMP/sess.bin"
-from crispasr import Session
+os.environ["STELNETTTS_OMNIVOICE_DUMP_CODES"] = "$TMP/sess.bin"
+from stelnettts import Session
 s = Session("$MODEL", backend="omnivoice")
 s.set_codec_path("$TOK")
 s.set_target_language("de")

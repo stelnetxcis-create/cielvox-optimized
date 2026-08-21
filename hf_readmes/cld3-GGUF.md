@@ -69,7 +69,7 @@ Only F16 ships. CLD3 is too small (~1.5 MB FP32) for K-quants to be
 meaningful — Q4_K would only save ~200 KB and adds a quantization
 cosine penalty that's pointless at this size.
 
-## Usage (CrispASR C++ runtime)
+## Usage (StelnetTTS C++ runtime)
 
 ```c
 #include "lid_cld3.h"
@@ -88,7 +88,7 @@ lid_cld3_free(ctx);
 ```
 
 C ABI mirrors `lid_fasttext_*` (the GlotLID / LID-176 backend) so
-the auto-routing text-LID dispatcher in CrispASR picks between them
+the auto-routing text-LID dispatcher in StelnetTTS picks between them
 at load time based on the GGUF's `general.architecture` field.
 
 ## Multilingual smoke set (F16)

@@ -1,9 +1,9 @@
 """
-CrispASR — Zonos TTS diff harness (PLAN #130)
+StelnetTTS — Zonos TTS diff harness (PLAN #130)
 
 Stage-by-stage comparison of Python reference vs C++ runtime:
   1. Run Python Zonos reference -> dump conditioning, codes, PCM
-  2. Build C++ crispasr-cli with CUDA
+  2. Build C++ stelnettts-cli with CUDA
   3. Run C++ Zonos -> dump codes
   4. Compare: conditioning prefix, AR codes, DAC PCM
 
@@ -19,14 +19,14 @@ from pathlib import Path
 import numpy as np
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 REF_DIR = WORK / "ref_dump"
 CPP_DIR = WORK / "cpp_dump"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 TEXT = "Hello world"
 SEED = 42
@@ -65,8 +65,8 @@ REF_DIR.mkdir(parents=True, exist_ok=True)
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-subprocess.run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-                "--recursive", CRISPASR_REPO, str(REPO)])
+subprocess.run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+                "--recursive", STELNETTTS_REPO, str(REPO)])
 
 ref_wav = WORK / "ref_output.wav"
 ref_codes = WORK / "ref_codes.txt"
@@ -113,7 +113,7 @@ try:
     from huggingface_hub import hf_hub_download
     token = os.environ.get("HF_TOKEN")
     spk_emb_path = Path(hf_hub_download(
-        "cstr/zonos-v0.1-transformer-GGUF", "jfk_speaker_emb.bin",
+        "Xenna/zonos-v0.1-transformer-GGUF", "jfk_speaker_emb.bin",
         cache_dir=str(WORK / "models"), token=token,
     ))
     print(f"  Speaker embedding: {spk_emb_path}", flush=True)
@@ -142,22 +142,22 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = (
     ["cmake", "-S", str(REPO), "-B", str(BUILD),
      "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-     "-DCRISPASR_BUILD_TESTS=OFF"]
+     "-DSTELNETTTS_BUILD_TESTS=OFF"]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
 )
 run(cmake_args)
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr")
+    cands = [c for c in BUILD.rglob("stelnettts")
              if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found"
+    assert cands, "stelnettts binary not found"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -176,12 +176,12 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 zonos_gguf = Path(hf_hub_download(
-    "cstr/zonos-v0.1-transformer-GGUF",
+    "Xenna/zonos-v0.1-transformer-GGUF",
     "zonos-v0.1-transformer-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 dac_gguf = Path(hf_hub_download(
-    "cstr/dac-44khz-GGUF",
+    "Xenna/dac-44khz-GGUF",
     "dac-44khz-f16.gguf",
     cache_dir=str(MODELS), token=token,
 ))
@@ -244,7 +244,7 @@ if ref_cond.exists():
 asr_model = None
 try:
     asr_model = Path(hf_hub_download(
-        "cstr/parakeet-tdt-0.6b-v2-GGUF",
+        "Xenna/parakeet-tdt-0.6b-v2-GGUF",
         "parakeet-tdt-0.6b-v2-q4_k.gguf",
         cache_dir=str(MODELS), token=token,
     ))

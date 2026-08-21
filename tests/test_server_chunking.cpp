@@ -5,7 +5,7 @@
 // over-split (acceptable), Unicode terminator support, max_chars
 // fallback, concat with silence pad.
 
-#include "crispasr_tts_chunking.h"
+#include "stelnettts_tts_chunking.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -13,25 +13,25 @@
 #include <vector>
 
 TEST_CASE("splitter empty / whitespace-only input → empty vector", "[unit][chunking]") {
-    REQUIRE(crispasr_tts_split_sentences("").empty());
-    REQUIRE(crispasr_tts_split_sentences("   ").empty());
-    REQUIRE(crispasr_tts_split_sentences("\n\t  \r\n").empty());
+    REQUIRE(stelnettts_tts_split_sentences("").empty());
+    REQUIRE(stelnettts_tts_split_sentences("   ").empty());
+    REQUIRE(stelnettts_tts_split_sentences("\n\t  \r\n").empty());
 }
 
 TEST_CASE("splitter single sentence stays whole (with terminator)", "[unit][chunking]") {
-    auto out = crispasr_tts_split_sentences("Hello there.");
+    auto out = stelnettts_tts_split_sentences("Hello there.");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == "Hello there.");
 }
 
 TEST_CASE("splitter single sentence stays whole (no terminator)", "[unit][chunking]") {
-    auto out = crispasr_tts_split_sentences("Hello there");
+    auto out = stelnettts_tts_split_sentences("Hello there");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == "Hello there");
 }
 
 TEST_CASE("splitter handles all three ASCII terminators", "[unit][chunking]") {
-    auto out = crispasr_tts_split_sentences("Wait. Really? Yes!");
+    auto out = stelnettts_tts_split_sentences("Wait. Really? Yes!");
     REQUIRE(out.size() == 3);
     REQUIRE(out[0] == "Wait.");
     REQUIRE(out[1] == "Really?");
@@ -39,7 +39,7 @@ TEST_CASE("splitter handles all three ASCII terminators", "[unit][chunking]") {
 }
 
 TEST_CASE("splitter trims whitespace from each chunk", "[unit][chunking]") {
-    auto out = crispasr_tts_split_sentences("  First.    Second.   Third.  ");
+    auto out = stelnettts_tts_split_sentences("  First.    Second.   Third.  ");
     REQUIRE(out.size() == 3);
     REQUIRE(out[0] == "First.");
     REQUIRE(out[1] == "Second.");
@@ -49,7 +49,7 @@ TEST_CASE("splitter trims whitespace from each chunk", "[unit][chunking]") {
 TEST_CASE("splitter does NOT split decimal numbers", "[unit][chunking]") {
     // The period in "1.5" is followed by a digit, not whitespace, so
     // it must stay intact.
-    auto out = crispasr_tts_split_sentences("The value is 1.5 today.");
+    auto out = stelnettts_tts_split_sentences("The value is 1.5 today.");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == "The value is 1.5 today.");
 }
@@ -58,7 +58,7 @@ TEST_CASE("splitter over-splits English abbreviations (documented)", "[unit][chu
     // "Mr. Smith" gets split — the period is followed by whitespace.
     // Documented limitation; produces an extra ~200 ms pause but
     // doesn't break audio. Real fix is ICU BreakIterator.
-    auto out = crispasr_tts_split_sentences("Mr. Smith said hi.");
+    auto out = stelnettts_tts_split_sentences("Mr. Smith said hi.");
     REQUIRE(out.size() == 2);
     REQUIRE(out[0] == "Mr.");
     REQUIRE(out[1] == "Smith said hi.");
@@ -68,7 +68,7 @@ TEST_CASE("splitter handles CJK ideographic full stop U+3002", "[unit][chunking]
     // Two Japanese sentences: 「これは最初。」「これは二番目。」
     const std::string ja = "\xe3\x81\x93\xe3\x82\x8c\xe3\x81\xaf\xe6\x9c\x80\xe5\x88\x9d\xe3\x80\x82 "
                            "\xe3\x81\x93\xe3\x82\x8c\xe3\x81\xaf\xe4\xba\x8c\xe7\x95\xaa\xe7\x9b\xae\xe3\x80\x82";
-    auto out = crispasr_tts_split_sentences(ja);
+    auto out = stelnettts_tts_split_sentences(ja);
     REQUIRE(out.size() == 2);
     // First chunk ends with U+3002.
     REQUIRE(out[0].substr(out[0].size() - 3) == "\xe3\x80\x82");
@@ -81,7 +81,7 @@ TEST_CASE("splitter handles Devanagari danda U+0964", "[unit][chunking]") {
                            "\xe0\xa4\xb9\xe0\xa5\x88\xe0\xa5\xa4 \xe0\xa4\xaf\xe0\xa4\xb9 "
                            "\xe0\xa4\xa6\xe0\xa5\x82\xe0\xa4\xb8\xe0\xa4\xb0\xe0\xa4\xbe "
                            "\xe0\xa4\xb9\xe0\xa5\x88\xe0\xa5\xa4";
-    auto out = crispasr_tts_split_sentences(hi);
+    auto out = stelnettts_tts_split_sentences(hi);
     REQUIRE(out.size() == 2);
     REQUIRE(out[0].substr(out[0].size() - 3) == "\xe0\xa5\xa4");
     REQUIRE(out[1].substr(out[1].size() - 3) == "\xe0\xa5\xa4");
@@ -93,7 +93,7 @@ TEST_CASE("splitter max_chars fallback splits run-on input", "[unit][chunking]")
     std::string run_on;
     for (int i = 0; i < 10; i++)
         run_on += "wordA wordB wordC ";
-    auto out = crispasr_tts_split_sentences(run_on, /*max_chars=*/20);
+    auto out = stelnettts_tts_split_sentences(run_on, /*max_chars=*/20);
     REQUIRE(out.size() >= 2);
     for (const auto& chunk : out) {
         REQUIRE(chunk.size() <= 20);
@@ -106,18 +106,18 @@ TEST_CASE("splitter max_chars splits a too-long single sentence", "[unit][chunki
     for (int i = 0; i < 20; i++)
         long_sent += "alpha beta ";
     long_sent += "end.";
-    auto out = crispasr_tts_split_sentences(long_sent, /*max_chars=*/30);
+    auto out = stelnettts_tts_split_sentences(long_sent, /*max_chars=*/30);
     REQUIRE(out.size() >= 2);
 }
 
 TEST_CASE("splitter handles trailing terminator with no whitespace after", "[unit][chunking]") {
-    auto out = crispasr_tts_split_sentences("Just one thing.");
+    auto out = stelnettts_tts_split_sentences("Just one thing.");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == "Just one thing.");
 }
 
 TEST_CASE("splitter handles multiple paragraphs", "[unit][chunking]") {
-    auto out = crispasr_tts_split_sentences("First sentence. Second sentence.\n\nThird sentence. Fourth.");
+    auto out = stelnettts_tts_split_sentences("First sentence. Second sentence.\n\nThird sentence. Fourth.");
     REQUIRE(out.size() == 4);
 }
 
@@ -126,14 +126,14 @@ TEST_CASE("splitter pathological no-whitespace blob still splits at max_chars", 
     // <=max_chars chunks; falling back to mid-word split is acceptable
     // — we'd rather degrade speech quality than OOM the synth loop.
     std::string blob(200, 'x');
-    auto out = crispasr_tts_split_sentences(blob, /*max_chars=*/50);
+    auto out = stelnettts_tts_split_sentences(blob, /*max_chars=*/50);
     REQUIRE(out.size() >= 4);
     for (const auto& chunk : out)
         REQUIRE(chunk.size() <= 50);
 }
 
 TEST_CASE("server TTS policy keeps VibeVoice voice cloning single-shot", "[unit][chunking]") {
-    auto out = crispasr_tts_plan_chunks_for_backend("First sentence. Second sentence. Third sentence.", "vibevoice");
+    auto out = stelnettts_tts_plan_chunks_for_backend("First sentence. Second sentence. Third sentence.", "vibevoice");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == "First sentence. Second sentence. Third sentence.");
 }
@@ -147,17 +147,17 @@ TEST_CASE("server TTS policy keeps ALL vibevoice* TTS variants single-shot", "[u
     const char* text = "First sentence. Second sentence. Third sentence.";
     for (const char* name : {"vibevoice-tts", "vibevoice-1.5b", "vibevoice-tts-1.5b", "vibevoice-tts-base"}) {
         CAPTURE(name);
-        auto out = crispasr_tts_plan_chunks_for_backend(text, name);
+        auto out = stelnettts_tts_plan_chunks_for_backend(text, name);
         REQUIRE(out.size() == 1);
         REQUIRE(out[0] == text);
     }
 }
 
-TEST_CASE("server TTS policy keeps qwen3-tts variants single-shot", "[unit][chunking]") {
+TEST_CASE("server TTS policy keeps cielvox2-tts variants single-shot", "[unit][chunking]") {
     const char* text = "First sentence. Second sentence. Third sentence.";
-    for (const char* name : {"qwen3-tts", "qwen3-tts-1.7b-base", "qwen3-tts-customvoice", "qwen3-tts-voicedesign"}) {
+    for (const char* name : {"cielvox2-tts", "cielvox2-tts-1.7b-base", "cielvox2-tts-customvoice", "cielvox2-tts-voicedesign"}) {
         CAPTURE(name);
-        auto out = crispasr_tts_plan_chunks_for_backend(text, name);
+        auto out = stelnettts_tts_plan_chunks_for_backend(text, name);
         REQUIRE(out.size() == 1);
         REQUIRE(out[0] == text);
     }
@@ -172,7 +172,7 @@ TEST_CASE("server TTS policy keeps tada single-shot", "[unit][chunking]") {
     const char* text = "Hi. My name is Bob. It's really nice to meet you!";
     for (const char* name : {"tada", "tada-1b", "tada-tts-1b", "tada-3b-ml"}) {
         CAPTURE(name);
-        auto out = crispasr_tts_plan_chunks_for_backend(text, name);
+        auto out = stelnettts_tts_plan_chunks_for_backend(text, name);
         REQUIRE(out.size() == 1);
         REQUIRE(out[0] == text);
     }
@@ -186,36 +186,36 @@ TEST_CASE("server TTS policy keeps tada single-shot", "[unit][chunking]") {
 // backend registers as "dots-tts".
 TEST_CASE("server TTS policy keeps dots-tts single-shot", "[unit][chunking]") {
     const char* text = "First sentence. Second sentence. Third sentence.";
-    auto out = crispasr_tts_plan_chunks_for_backend(text, "dots-tts");
+    auto out = stelnettts_tts_plan_chunks_for_backend(text, "dots-tts");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == text);
 }
 
 TEST_CASE("server TTS policy chunks sentence-safe backends", "[unit][chunking]") {
-    auto out = crispasr_tts_plan_chunks_for_backend("First sentence. Second sentence.", "kokoro");
+    auto out = stelnettts_tts_plan_chunks_for_backend("First sentence. Second sentence.", "kokoro");
     REQUIRE(out.size() == 2);
     REQUIRE(out[0] == "First sentence.");
     REQUIRE(out[1] == "Second sentence.");
 }
 
 TEST_CASE("server TTS policy preserves whitespace-only requests", "[unit][chunking]") {
-    auto out = crispasr_tts_plan_chunks_for_backend("   ", "qwen3-tts");
+    auto out = stelnettts_tts_plan_chunks_for_backend("   ", "cielvox2-tts");
     REQUIRE(out.size() == 1);
     REQUIRE(out[0] == "   ");
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// crispasr_tts_concat_with_silence
+// stelnettts_tts_concat_with_silence
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("concat empty input → empty output", "[unit][chunking]") {
-    auto out = crispasr_tts_concat_with_silence({}, 4800);
+    auto out = stelnettts_tts_concat_with_silence({}, 4800);
     REQUIRE(out.empty());
 }
 
 TEST_CASE("concat single chunk has no silence pad", "[unit][chunking]") {
     std::vector<std::vector<float>> chunks = {{0.1f, 0.2f, 0.3f}};
-    auto out = crispasr_tts_concat_with_silence(chunks, 4800);
+    auto out = stelnettts_tts_concat_with_silence(chunks, 4800);
     REQUIRE(out.size() == 3);
     REQUIRE(out[0] == 0.1f);
     REQUIRE(out[1] == 0.2f);
@@ -224,7 +224,7 @@ TEST_CASE("concat single chunk has no silence pad", "[unit][chunking]") {
 
 TEST_CASE("concat two chunks inserts silence between but not at boundaries", "[unit][chunking]") {
     std::vector<std::vector<float>> chunks = {{1.0f, 2.0f}, {3.0f, 4.0f}};
-    auto out = crispasr_tts_concat_with_silence(chunks, 5);
+    auto out = stelnettts_tts_concat_with_silence(chunks, 5);
     REQUIRE(out.size() == 2 + 5 + 2);
     REQUIRE(out[0] == 1.0f);
     REQUIRE(out[1] == 2.0f);
@@ -236,7 +236,7 @@ TEST_CASE("concat two chunks inserts silence between but not at boundaries", "[u
 
 TEST_CASE("concat with silence_samples=0 just concatenates", "[unit][chunking]") {
     std::vector<std::vector<float>> chunks = {{1.0f}, {2.0f}, {3.0f}};
-    auto out = crispasr_tts_concat_with_silence(chunks, 0);
+    auto out = stelnettts_tts_concat_with_silence(chunks, 0);
     REQUIRE(out.size() == 3);
     REQUIRE(out[0] == 1.0f);
     REQUIRE(out[1] == 2.0f);
@@ -245,6 +245,6 @@ TEST_CASE("concat with silence_samples=0 just concatenates", "[unit][chunking]")
 
 TEST_CASE("concat negative silence_samples treated as zero", "[unit][chunking]") {
     std::vector<std::vector<float>> chunks = {{1.0f}, {2.0f}};
-    auto out = crispasr_tts_concat_with_silence(chunks, -100);
+    auto out = stelnettts_tts_concat_with_silence(chunks, -100);
     REQUIRE(out.size() == 2);
 }

@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-parakeet-mem-policy-cuda",
-  "title": "crispasr-parakeet-mem-policy-cuda",
-  "code_file": "crispasr-parakeet-mem-policy-cuda.py",
+  "id": "chr1str/stelnettts-parakeet-mem-policy-cuda",
+  "title": "stelnettts-parakeet-mem-policy-cuda",
+  "code_file": "stelnettts-parakeet-mem-policy-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

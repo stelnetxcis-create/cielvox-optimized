@@ -23,11 +23,11 @@ does not depend on directory order.
 Usage
 -----
     python tools/diarize_eval.py --wav-dir DIR --ref DIR/ref.json \\
-        --cmd './build/bin/crispasr -m MODEL -f {wav} -t 8 --diarize \\
+        --cmd './build/bin/stelnettts -m MODEL -f {wav} -t 8 --diarize \\
                --diarize-method foxnose --diarize-embedder EMB -oj -of {out}'
 
 `{wav}` and `{out}` are substituted per file; the command must write {out}.json
-in CrispASR's JSON layout. Add --jobs N to run files concurrently.
+in StelnetTTS's JSON layout. Add --jobs N to run files concurrently.
 
 Corpus
 ------

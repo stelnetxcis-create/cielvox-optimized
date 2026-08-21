@@ -64,11 +64,11 @@ void gemma4_e2b_set_beam_size(struct gemma4_e2b_context* ctx, int beam_size);
 // clear and resume the default. The string is copied internally.
 void gemma4_e2b_set_ask(struct gemma4_e2b_context* ctx, const char* prompt);
 
-// ── Stage hooks for crispasr-diff ───────────────────────────────────────────
+// ── Stage hooks for stelnettts-diff ───────────────────────────────────────────
 //
 // These mirror the parakeet/voxtral/canary stage API: each one runs a
 // well-defined slice of the forward pass and returns a malloc'd float
-// buffer the caller frees. Used by examples/cli/crispasr_diff_main.cpp
+// buffer the caller frees. Used by examples/cli/stelnettts_diff_main.cpp
 // to compare each architectural boundary against tools/dump_reference.py
 // activations.
 

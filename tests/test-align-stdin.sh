@@ -1,7 +1,7 @@
 #!/bin/bash
 # tests/test-align-stdin.sh — live test for `--align-only --text-file -` (#317).
 #
-# #317: Subtitle Edit's "Import plain text" flow calls crispasr with the audio
+# #317: Subtitle Edit's "Import plain text" flow calls stelnettts with the audio
 # but never hands over the transcript, so --align-only correctly refused with
 # "requires --ref-text or --text-file" and two people read that as the aligner
 # being broken. The SE-side fix writes a temp file; accepting the transcript on
@@ -18,24 +18,24 @@
 #   bash tests/test-align-stdin.sh
 #
 # Env vars:
-#   CRISPASR_BIN            — crispasr binary (default: ./build/bin/crispasr)
-#   CRISPASR_MODEL_ALIGNER  — CTC aligner GGUF (canary-ctc-aligner / wav2vec2)
-#   CRISPASR_TEST_AUDIO     — mono 16 kHz speech clip
+#   STELNETTTS_BIN            — stelnettts binary (default: ./build/bin/stelnettts)
+#   STELNETTTS_MODEL_ALIGNER  — CTC aligner GGUF (canary-ctc-aligner / wav2vec2)
+#   STELNETTTS_TEST_AUDIO     — mono 16 kHz speech clip
 #
 # Skips (exit 77, ctest SKIP_RETURN_CODE) when the model or audio is absent.
 
 set -u
 
-BIN="${CRISPASR_BIN:-./build/bin/crispasr}"
-ALIGNER="${CRISPASR_MODEL_ALIGNER:-}"
-AUDIO="${CRISPASR_TEST_AUDIO:-samples/jfk.wav}"
+BIN="${STELNETTTS_BIN:-./build/bin/stelnettts}"
+ALIGNER="${STELNETTTS_MODEL_ALIGNER:-}"
+AUDIO="${STELNETTTS_TEST_AUDIO:-samples/jfk.wav}"
 
 if [ ! -x "$BIN" ]; then
-    echo "SKIP: crispasr binary not found at $BIN"
+    echo "SKIP: stelnettts binary not found at $BIN"
     exit 77
 fi
 if [ -z "$ALIGNER" ] || [ ! -f "$ALIGNER" ]; then
-    echo "SKIP: CRISPASR_MODEL_ALIGNER not set or missing"
+    echo "SKIP: STELNETTTS_MODEL_ALIGNER not set or missing"
     exit 77
 fi
 if [ ! -f "$AUDIO" ]; then

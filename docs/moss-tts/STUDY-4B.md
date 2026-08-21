@@ -39,7 +39,7 @@ transformer autoregressively emits the 12 codebooks *within* that frame.
 
 ## Modules (modeling_moss_tts.py)
 
-- `transformer = MossQwen3Model(qwen3_config)` — the backbone (reuse CrispASR's
+- `transformer = MossQwen3Model(qwen3_config)` — the backbone (reuse StelnetTTS's
   in-house Qwen3 KV path, as the 8B did; just smaller dims + tied embeddings).
 - `local_transformer = MossTTSNanoGPT2Model(local_gpt2_config)` with `wte = Identity()`
   (consumes `inputs_embeds` directly, no token embedding). Static KV cache of length
@@ -68,7 +68,7 @@ Pre-norm GPT2-style, 1 layer:
 `input_ids` is `[batch, seq, 1 + n_vq]` (13 channels). Embedding =
 `embed_tokens(col0) + Σ_k audio_embeddings[k](col_{k+1})`, with pad channels
 (`== audio_pad_token_id`) masked to zero. Identical structure to the 8B's summed
-input embedding → CrispASR's `moss_tts_compute_input_embeddings` generalizes (n_vq 12).
+input embedding → StelnetTTS's `moss_tts_compute_input_embeddings` generalizes (n_vq 12).
 
 ## Generate loop (the core — `generate`, depth-first)
 

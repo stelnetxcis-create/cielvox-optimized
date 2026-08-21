@@ -4,14 +4,14 @@
 // Audio encoder, projector, Tekken tokenizer, and audio injection are all
 // deferred to later stages — see voxtral-todo.md.
 //
-// The LLM forward is structurally a strict subset of qwen3_asr.cpp's
+// The LLM forward is structurally a strict subset of cielvox2_asr.cpp's
 // build_llm_body: same SwiGLU + GQA + NEOX RoPE + RMSNorm pattern, just
 // without the Qwen3-specific Q-norm/K-norm and with different hyperparams
 // (30 layers, d=3072, GQA 32/8, head_dim=128, FFN=8192, RoPE θ=1e8,
 // vocab=131072). No biases anywhere.
 
 #include "voxtral.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -19,7 +19,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "gguf.h"
 
@@ -50,7 +50,7 @@
 static bool voxtral_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_VOXTRAL_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_VOXTRAL_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -217,7 +217,7 @@ struct voxtral_context {
 
     std::vector<uint8_t> compute_meta;
 
-    // KV cache (F16, same pattern as qwen3_asr)
+    // KV cache (F16, same pattern as cielvox2_asr)
     ggml_context* kv_ctx = nullptr;
     ggml_backend_buffer_t kv_buf = nullptr;
     ggml_tensor* kv_k = nullptr;
@@ -317,11 +317,11 @@ static bool voxtral_load_model(voxtral_model& model, voxtral_vocab& vocab, const
     }
 
     // ---- pass 2: tensor data via shared helper ----
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total layers,
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total layers,
     // route layers [N..total) onto the CPU backend.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)model.hparams.llm_n_layers;
@@ -333,7 +333,7 @@ static bool voxtral_load_model(voxtral_model& model, voxtral_vocab& vocab, const
                                            "voxtral", wl)) {
             return false;
         }
-        fprintf(stderr, "voxtral: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "voxtral: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path, backend, "voxtral", wl)) {
@@ -444,7 +444,7 @@ static bool voxtral_load_model(voxtral_model& model, voxtral_vocab& vocab, const
 }
 
 // ===========================================================================
-// FFT + Mel computation (cargo-cult from qwen3_asr.cpp — same parameters)
+// FFT + Mel computation (cargo-cult from cielvox2_asr.cpp — same parameters)
 // ===========================================================================
 
 static void voxtral_dft(const float* in, int N, float* out) {
@@ -495,7 +495,7 @@ static void voxtral_fft(float* in, int N, float* out) {
 #include "core/mel.h"
 #include "core/ffn.h"
 #include "core/attention.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -726,7 +726,7 @@ static ggml_cgraph* voxtral_build_graph_encoder(voxtral_context* ctx, ggml_conte
 // LLM forward graph (Stage V1)
 //
 // Pure text-only Llama 3 / Mistral forward, no audio injection, no KV cache.
-// This is structurally a strict subset of qwen3_asr's build_llm_body:
+// This is structurally a strict subset of cielvox2_asr's build_llm_body:
 //   - same SwiGLU + GQA + NEOX RoPE + RMSNorm pattern
 //   - NO Q-norm/K-norm
 //   - NO biases anywhere
@@ -839,7 +839,7 @@ extern "C" voxtral_context* voxtral_init_from_file(const char* path, voxtral_con
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
     // Try GPU backend first (Metal, CUDA, Vulkan...), fall back to CPU.
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -863,7 +863,7 @@ extern "C" voxtral_context* voxtral_init_from_file(const char* path, voxtral_con
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
@@ -873,7 +873,7 @@ extern "C" voxtral_context* voxtral_init_from_file(const char* path, voxtral_con
     // byte-concat. Routes through core_attn::kv_self_attn's qkv_w branch
     // for one matmul/layer instead of three.
     //
-    // **Opt-in** (CRISPASR_VOXTRAL_FUSED_QKV=1) because A/B measurement on
+    // **Opt-in** (STELNETTTS_VOXTRAL_FUSED_QKV=1) because A/B measurement on
     // JFK 11 s with Q4_K showed no measurable speedup vs the unfused path
     // (mean 16.37 s vs 16.43 s, within run-to-run noise). The voxtral4b
     // fuse delivered 7-8 % because its decode loop is much longer
@@ -884,7 +884,7 @@ extern "C" voxtral_context* voxtral_init_from_file(const char* path, voxtral_con
     // opt-in so memory-tight deployments aren't penalised, but available
     // for long-form workloads where decode dominates.
     {
-        const char* fuse_env = getenv("CRISPASR_VOXTRAL_FUSED_QKV");
+        const char* fuse_env = getenv("STELNETTTS_VOXTRAL_FUSED_QKV");
         const bool fuse_enabled = (fuse_env != nullptr) && (atoi(fuse_env) != 0);
         auto& blocks = ctx->model.llm.blocks;
         bool can_fuse = fuse_enabled && !blocks.empty();
@@ -1006,7 +1006,7 @@ extern "C" const uint8_t* voxtral_token_text(voxtral_context* ctx, int id, int* 
 }
 
 // ===========================================================================
-// KV-cached LLM graph (Stage V3) — same pattern as qwen3_asr's build_graph_llm_kv
+// KV-cached LLM graph (Stage V3) — same pattern as cielvox2_asr's build_graph_llm_kv
 // ===========================================================================
 
 static ggml_cgraph* voxtral_build_graph_llm_kv(voxtral_context* ctx, int n_past, int n_tokens) {
@@ -1125,8 +1125,8 @@ extern "C" bool voxtral_kv_init(voxtral_context* ctx, int max_ctx) {
     const int hd = (int)hp.llm_head_dim, n_kv = (int)hp.llm_n_kv_heads, nl = (int)hp.llm_n_layers;
     ggml_init_params kp = {ggml_tensor_overhead() * 4 + 1024, nullptr, true};
     ctx->kv_ctx = ggml_init(kp);
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("voxtral");
     ctx->kv_k = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.k, hd, max_ctx, n_kv, nl);
     ctx->kv_v = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.v, hd, max_ctx, n_kv, nl);

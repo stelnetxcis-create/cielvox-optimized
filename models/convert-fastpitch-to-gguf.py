@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert NVIDIA FastPitch + HiFi-GAN (.nemo archives or HuggingFace) -> single GGUF
-for the CrispASR `fastpitch` backend.
+for the StelnetTTS `fastpitch` backend.
 
 FastPitch architecture (non-autoregressive parallel TTS):
   - Text encoder: N-layer bidirectional Transformer (FFTransformerEncoder)
@@ -902,14 +902,14 @@ def main():
         # F16 therefore wrote f32 bytes tagged F16, and a reader took the first
         # half of them and reinterpreted each 4-byte float as two 2-byte ones.
         #
-        # That is what shipped in cstr/fastpitch-en-GGUF's f16 build: HALF the
+        # That is what shipped in Xenna/fastpitch-en-GGUF's f16 build: HALF the
         # weights missing and the survivors garbage — 943,872 NaNs across 138
         # decoder tensors, values to 6.5e4 where the real range is +-0.33. It
         # went unnoticed because the model card recommends q8_0.
         #
         # Q8_0 HAS THE SAME BUG and it is easy to conclude otherwise: the
         # published q8_0/q4_k files are fine, because they were made by
-        # crispasr-quantize from a good source, NOT by this path. Verified
+        # stelnettts-quantize from a good source, NOT by this path. Verified
         # directly — add_tensor(f32_array, raw_dtype=Q8_0) writes the right
         # BYTE COUNT from the wrong bytes, and dequantizes to noise (max error
         # 1978 on weights that live in +-0.3). It needs an explicit quantize.

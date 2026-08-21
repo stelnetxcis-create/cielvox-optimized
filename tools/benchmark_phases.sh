@@ -4,7 +4,7 @@
 set -euo pipefail
 
 THREADS="${1:-4}"
-BIN="./build/bin/crispasr"
+BIN="./build/bin/stelnettts"
 DIR="/mnt/akademie_storage/test_cohere"
 SHORT="samples/jfk.wav"
 LONG="/tmp/jfk_55s.wav"
@@ -24,7 +24,7 @@ export WAV2VEC2_BENCH=1
 export OMNIASR_BENCH=1
 
 echo "================================================================"
-echo "CrispASR Phase Benchmark — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "StelnetTTS Phase Benchmark — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "Threads: $THREADS, Short: 11s, Long: 55s"
 echo "================================================================"
 
@@ -36,7 +36,7 @@ declare -A MODELS=(
     ["parakeet"]="$DIR/parakeet-tdt-0.6b-v3-q4_k.gguf"
     ["canary"]="$DIR/canary-1b-v2-q4_k.gguf"
     ["cohere"]="$DIR/cohere-transcribe-q4_k.gguf"
-    ["qwen3"]="$DIR/qwen3-asr-0.6b-q4_k.gguf"
+    ["qwen3"]="$DIR/cielvox2-asr-0.6b-q4_k.gguf"
     ["firered"]="$DIR/firered-asr2-aed-q4_k.gguf"
     ["moonshine"]="$DIR/moonshine-tiny-q4_k.gguf"
     ["fc-ctc"]="$DIR/stt-en-fastconformer-ctc-large-q4_k.gguf"

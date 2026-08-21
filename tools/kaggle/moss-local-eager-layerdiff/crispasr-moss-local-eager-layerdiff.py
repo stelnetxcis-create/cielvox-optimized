@@ -3,7 +3,7 @@
 #
 # The stop A/B was too noisy (stochastic sampling). DETERMINISTIC test: dump the
 # layer-10 attention output (sub_attn_10) and the block-9/10 outputs for BOTH our
-# eager (default) and flash (CRISPASR_CORE_ATTN_EAGER_F32=0) paths, and compare
+# eager (default) and flash (STELNETTTS_CORE_ATTN_EAGER_F32=0) paths, and compare
 # each to the HF reference. If eager pushes cos 0.972 -> ~0.9999, it fixes the
 # forward (stop A/B was noise). If eager stays ~0.972, flash-vs-eager is NOT the
 # bug and mudler's 4.6e-05 parity comes from something else.
@@ -12,20 +12,20 @@
 import json, os, subprocess, sys, gc, math, shutil
 from pathlib import Path
 
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 WORK = Path("/kaggle/working")
-REF = os.environ.get("CRISPASR_REF", "fix/249-moss")
+REF = os.environ.get("STELNETTTS_REF", "fix/249-moss")
 LAYER = 10
 HF = "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5"
 TEXT = "Hello world."
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", "--branch", REF,
-                           "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
                            "--recursive", "--depth", "1"], timeout=1800)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("start", ref=REF, layer=LAYER)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -62,17 +62,17 @@ def robust_download(repo, fname, local_dir, token, tries=3, timeout=900):
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=False)}")
-CLI = (BUILD / "bin" / "crispasr") if (BUILD / "bin" / "crispasr").exists() else next(iter(BUILD.rglob("crispasr")))
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=False)}")
+CLI = (BUILD / "bin" / "stelnettts") if (BUILD / "bin" / "stelnettts").exists() else next(iter(BUILD.rglob("stelnettts")))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done")
 
 MODELS = Path("/kaggle/temp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 with kh.build_heartbeat("download"):
-    CODEC = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(MODELS), TOKEN)
-    F16 = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(MODELS), TOKEN)
+    CODEC = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(MODELS), TOKEN)
+    F16 = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(MODELS), TOKEN)
 
 
 def read_sub(path):
@@ -91,12 +91,12 @@ ours = {}
 for mode in ("eager", "flash"):
     sub = WORK / f"sub_{mode}.txt"
     lay = WORK / f"lay_{mode}.txt"
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER": str(LAYER),
-           "CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH": str(sub),
-           "CRISPASR_MOSS_TTS_LOCAL_DUMP_LAYERS": str(lay),
-           "CRISPASR_MOSS_TTS_LOCAL_MAX_FRAMES": "2"}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER": str(LAYER),
+           "STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH": str(sub),
+           "STELNETTTS_MOSS_TTS_LOCAL_DUMP_LAYERS": str(lay),
+           "STELNETTTS_MOSS_TTS_LOCAL_MAX_FRAMES": "2"}
     if mode == "flash":
-        env["CRISPASR_CORE_ATTN_EAGER_F32"] = "0"
+        env["STELNETTTS_CORE_ATTN_EAGER_F32"] = "0"
     with kh.build_heartbeat(f"ours.{mode}"):
         try:
             subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", F16, "--codec-model", CODEC,

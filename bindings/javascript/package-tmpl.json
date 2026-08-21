@@ -1,10 +1,10 @@
 {
-  "name": "crispasr",
+  "name": "stelnettts",
   "version": "@PROJECT_VERSION@",
-  "description": "CrispASR speech recognition",
-  "main": "crispasr.js",
+  "description": "StelnetTTS speech recognition",
+  "main": "stelnettts.js",
   "exports": {
-    ".": "./crispasr.js",
+    ".": "./stelnettts.js",
     "./c2pa": "./c2pa.mjs",
     "./c2pa-verify": "./c2pa-verify.mjs"
   },
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CrispStrobe/CrispASR"
+    "url": "git+https://github.com/Cyna/StelnetTTS"
   },
   "keywords": [
     "openai",
@@ -27,7 +27,7 @@
   "author": "Georgi Gerganov",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/CrispStrobe/CrispASR/issues"
+    "url": "https://github.com/Cyna/StelnetTTS/issues"
   },
-  "homepage": "https://github.com/CrispStrobe/CrispASR#readme"
+  "homepage": "https://github.com/Cyna/StelnetTTS#readme"
 }

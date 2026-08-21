@@ -1,8 +1,8 @@
 # Contributing — adding a new backend
 
-Adding a new ASR model to CrispASR is a focused exercise in five
+Adding a new ASR model to StelnetTTS is a focused exercise in five
 files. The worked examples to copy from are the existing
-`crispasr_backend_*.cpp` adapters.
+`stelnettts_backend_*.cpp` adapters.
 
 > **‼️ `clang-format` MUST be v18 — never use v22 (Homebrew's default
 > `clang-format` keg, or Xcode's bundled clang-format, both currently
@@ -74,10 +74,10 @@ is unset (~1 ns cached getenv).
 
 ## 2. Write the backend adapter
 
-Create `examples/cli/crispasr_backend_yourmodel.cpp`:
+Create `examples/cli/stelnettts_backend_yourmodel.cpp`:
 
 ```cpp
-#include "crispasr_backend.h"
+#include "stelnettts_backend.h"
 #include "whisper_params.h"
 #include "yourmodel.h"
 
@@ -89,7 +89,7 @@ public:
         return CAP_TIMESTAMPS_CTC | CAP_AUTO_DOWNLOAD | /* ... */;
     }
     bool init(const whisper_params & p) override { /* yourmodel_init_from_file(...) */ }
-    std::vector<crispasr_segment> transcribe(
+    std::vector<stelnettts_segment> transcribe(
         const float * samples, int n, int64_t t_off,
         const whisper_params & p) override { /* call yourmodel_transcribe and return segments */ }
     void shutdown() override { /* yourmodel_free(...) */ }
@@ -98,7 +98,7 @@ private:
 };
 } // namespace
 
-std::unique_ptr<CrispasrBackend> crispasr_make_yourmodel_backend() {
+std::unique_ptr<CrispasrBackend> stelnettts_make_yourmodel_backend() {
     return std::make_unique<YourmodelBackend>();
 }
 ```
@@ -121,7 +121,7 @@ does nothing — this was #292, found in **10 backends at once**. Instead:
   The `max_new_tokens_explicit` flag exists precisely so the CLI's global 512
   default never SHRINKS a backend whose own default is higher (diarize is 1024).
   Pass `<= 0` to keep the backend default.
-- forward it on the session path too (`src/crispasr_c_api.cpp`, next to where the
+- forward it on the session path too (`src/stelnettts_c_api.cpp`, next to where the
   backend's other setters are called): `yourmodel_set_max_new_tokens(s->yourmodel_ctx, s->max_new_tokens);`
   — the session default is 0, so no explicit flag is needed there.
 
@@ -130,14 +130,14 @@ for #292 confirmed those were already forwarded; max_new_tokens was the one gap.
 
 ## 3. Register with the factory
 
-In `examples/cli/crispasr_backend.cpp`:
+In `examples/cli/stelnettts_backend.cpp`:
 
 ```cpp
-std::unique_ptr<CrispasrBackend> crispasr_make_yourmodel_backend();
+std::unique_ptr<CrispasrBackend> stelnettts_make_yourmodel_backend();
 // ...
-if (name == "yourmodel") return crispasr_make_yourmodel_backend();
+if (name == "yourmodel") return stelnettts_make_yourmodel_backend();
 // ...
-std::vector<std::string> crispasr_list_backends() {
+std::vector<std::string> stelnettts_list_backends() {
     return { ..., "yourmodel" };
 }
 ```
@@ -153,7 +153,7 @@ In `examples/cli/CMakeLists.txt`:
 ```cmake
 add_executable(${TARGET}
     # ...
-    crispasr_backend_yourmodel.cpp
+    stelnettts_backend_yourmodel.cpp
 )
 
 target_link_libraries(${TARGET} PRIVATE
@@ -165,7 +165,7 @@ target_link_libraries(${TARGET} PRIVATE
 ## 5. Optional: add to the model registry
 
 If your model has a canonical Q4_K HuggingFace release, add it to
-`src/crispasr_model_registry.cpp` so `-m auto` / `-m <name> --auto-download`
+`src/stelnettts_model_registry.cpp` so `-m auto` / `-m <name> --auto-download`
 works (one `k_registry[]` row: `{"name", "file.gguf", "https://…", "~size",
 nullptr, nullptr}`).
 
@@ -195,8 +195,8 @@ TTS backends need extra wiring beyond ASR:
    it's not 24000 (default). The CLI uses this for WAV header + any
    downstream resampling.
 
-   **Also register the rate in `crispasr_session_output_sample_rate()`
-   (`src/crispasr_c_api.cpp`) — the session ABI cannot reach the CLI
+   **Also register the rate in `stelnettts_session_output_sample_rate()`
+   (`src/stelnettts_c_api.cpp`) — the session ABI cannot reach the CLI
    adapter, so the getter keeps its own per-backend table (#332).** Every
    audio-producing ctx must appear there: a backend at the 24 kHz default
    adds its ctx to the 24 kHz fallthrough list; a non-24 kHz backend adds
@@ -207,21 +207,21 @@ TTS backends need extra wiring beyond ASR:
 4. **Codec companion loading**: if your backend needs a separate codec
    GGUF (SNAC, DAC, Mimi), handle `params.tts_codec_model` in `init()`:
    ```cpp
-   #include "crispasr_model_mgr_cli.h"
-   #include "crispasr_model_registry.h"
+   #include "stelnettts_model_mgr_cli.h"
+   #include "stelnettts_model_registry.h"
    // ... in init():
    std::string codec_path = p.tts_codec_model;
    if (!codec_path.empty() && codec_path != "auto")
-       codec_path = crispasr_resolve_model_cli(codec_path, ...);
+       codec_path = stelnettts_resolve_model_cli(codec_path, ...);
    if (codec_path.empty())
        codec_path = discover_snac(p.model); // look next to model
    if (codec_path.empty()) {
        CrispasrRegistryEntry entry;
-       if (crispasr_registry_lookup(p.backend, entry, ...) && ...)
-           codec_path = crispasr_resolve_model_cli(entry.companion_filename, ...);
+       if (stelnettts_registry_lookup(p.backend, entry, ...) && ...)
+           codec_path = stelnettts_resolve_model_cli(entry.companion_filename, ...);
    }
    ```
-   See `crispasr_backend_orpheus.cpp` or `crispasr_backend_mini_omni2.cpp`
+   See `stelnettts_backend_orpheus.cpp` or `stelnettts_backend_mini_omni2.cpp`
    for worked examples.
 
 ## 6. Expose through the C ABI, bindings, and docs
@@ -233,7 +233,7 @@ below. **`chatterbox` is the canonical template** — `grep -n chatterbox`
 
 ### Auto-detection — filename pass + the shared architecture table
 So `-m model.gguf` *without* `--backend` routes correctly, wire **both** passes:
-- Pass 1 (filename heuristic, CLI only) in `examples/cli/crispasr_backend.cpp`:
+- Pass 1 (filename heuristic, CLI only) in `examples/cli/stelnettts_backend.cpp`:
   `if (contains_ci("yourmodel")) return "yourmodel";`
 - Pass 2 (GGUF `general.architecture`) in **`src/core/arch_backend_map.h`**:
   `{"<arch>", "yourmodel"},` — `<arch>` is whatever your converter passes to
@@ -241,7 +241,7 @@ So `-m model.gguf` *without* `--backend` routes correctly, wire **both** passes:
   that ships.
 
 That table is the single source of truth for both the CLI's pass 2 and the C
-ABI's `crispasr_detect_backend_from_gguf()`. **It used to be two copies, and
+ABI's `stelnettts_detect_backend_from_gguf()`. **It used to be two copies, and
 issue #335 is what that cost:** they drifted by 113 architecture strings, so
 granite-speech (converter writes `granite_speech`, the C-ABI copy only knew
 `granite-speech`) opened fine in the CLI — rescued by the filename pass — and
@@ -253,30 +253,30 @@ real C-ABI export over a synthesised metadata-only GGUF.
 The `--list-backends` capability row is read live from the backend's
 `capabilities()`, so it needs no separate edit.
 
-### C ABI — `src/crispasr_c_api.cpp` (this is what the bindings/server call)
+### C ABI — `src/stelnettts_c_api.cpp` (this is what the bindings/server call)
 Python/Go/Dart/server use the **session C ABI**, not the CLI factory.
 Nine edit points, each mirroring the `CA_HAVE_CHATTERBOX` blocks:
 1. **include + flag:** `#if __has_include("yourmodel.h")` → `#include` →
    `#define CA_HAVE_YOURMODEL 1` → `#endif`.
 2. **session struct field:** `#ifdef CA_HAVE_YOURMODEL  yourmodel_context* yourmodel_ctx = nullptr;  #endif`.
-3. **`crispasr_session_open_explicit()`** dispatch: when `s->backend ==
+3. **`stelnettts_session_open_explicit()`** dispatch: when `s->backend ==
    "yourmodel"`, build params + `yourmodel_init_from_file(model_path, p)`.
-4. **`crispasr_session_synthesize()`** (TTS) or transcribe dispatch:
+4. **`stelnettts_session_synthesize()`** (TTS) or transcribe dispatch:
    `if (s->yourmodel_ctx) return yourmodel_synthesize(s->yourmodel_ctx, text, out_n_samples);`.
-4b. **`crispasr_session_speech_to_speech()`** (S2S) — if the backend has
+4b. **`stelnettts_session_speech_to_speech()`** (S2S) — if the backend has
    `CAP_S2S`. Dispatch to `yourmodel_speech_to_speech(ctx, in, n, lang, &text, &n_out)`.
    The server exposes this via `POST /v1/audio/speech-to-speech`.
-5. **`crispasr_session_free()`:** free the ctx.
-6. **`crispasr_session_set_temperature()`** — if sampling-capable.
-7. **`crispasr_session_set_tts_seed()`** — if seedable.
-8. **`crispasr_session_available_backends()`:** append `,yourmodel`. The
+5. **`stelnettts_session_free()`:** free the ctx.
+6. **`stelnettts_session_set_temperature()`** — if sampling-capable.
+7. **`stelnettts_session_set_tts_seed()`** — if seedable.
+8. **`stelnettts_session_available_backends()`:** append `,yourmodel`. The
    Python binding rejects any backend missing from this list, so this is
    not optional.
 9. **`set_ask` wiring** — if the backend is an instruct-tuned audio-LLM
    (has a user/system prompt template): add a `yourmodel_set_ask(ctx,
    prompt)` setter to the runtime, and forward `s->ask` in the transcribe
    dispatch. This lets `set_ask()` override the default transcription
-   instruction. Currently wired for: granite, voxtral, qwen3-asr,
+   instruction. Currently wired for: granite, voxtral, cielvox2-asr,
    glm-asr, gemma4-e2b, mimo-asr, higgs-stt.
 9b. **`params.language` wiring** — if the backend is an audio-LLM, also
    inject a language hint into the prompt when `params.language` is set
@@ -284,80 +284,80 @@ Nine edit points, each mirroring the `CA_HAVE_CHATTERBOX` blocks:
    != "auto") { sys_instruction = "Transcribe the speech in " + lang_name(params.language) + "."; }`.
    For **English-only** models (moonshine-streaming, kyutai-stt), emit a
    `fprintf(stderr, ...)` warning instead of silently ignoring the flag.
-   Currently wired for: granite (v3 + v4 templates), qwen3-asr, glm-asr,
+   Currently wired for: granite (v3 + v4 templates), cielvox2-asr, glm-asr,
    moss-audio, mimo-asr, higgs-stt; warned for moonshine-streaming, kyutai-stt.
-10. **`crispasr_session_set_speaker_id()`** — if the backend is a
+10. **`stelnettts_session_set_speaker_id()`** — if the backend is a
     multi-speaker TTS model with integer-indexed speakers (e.g. melotts,
     piper, fastpitch). Add a dispatch block that bounds-checks against
     `yourmodel_num_speakers()` and calls `yourmodel_set_speaker_id()`.
-    Also wire `crispasr_session_n_speakers()` to return the count.
+    Also wire `stelnettts_session_n_speakers()` to return the count.
     For **name-based** speaker selection (orpheus-style), wire
-    `crispasr_session_set_speaker_name()` instead.
+    `stelnettts_session_set_speaker_name()` instead.
 
 ### CMake — link into the C-ABI library, `src/CMakeLists.txt`
 §4 links the backend into the CLI binary. The C ABI needs it in
-`libcrispasr` too. In the "C-ABI wrappers" block (grep
-`target_link_libraries(crispasr-lib PUBLIC`):
+`libstelnettts` too. In the "C-ABI wrappers" block (grep
+`target_link_libraries(stelnettts-lib PUBLIC`):
 ```cmake
 if (TARGET yourmodel_lib)
-    target_link_libraries(crispasr-lib PUBLIC yourmodel_lib)
+    target_link_libraries(stelnettts-lib PUBLIC yourmodel_lib)
 endif()
 ```
 
 ### Bindings — docstrings only for a new *backend* (dispatch is automatic once the C ABI is wired)
-- `python/crispasr/_binding.py` — add the name to the TTS-backend lists in
+- `python/stelnettts/_binding.py` — add the name to the TTS-backend lists in
   the `synthesize` comment + docstring.
-- `bindings/go/crispasr_session.go` — add to the header/type comments.
-  Go links `-lcrispasr` (not per-backend), so **no LDFLAGS change**.
-- `flutter/crispasr/lib/src/crispasr.dart` — add to the synthesize
+- `bindings/go/stelnettts_session.go` — add to the header/type comments.
+  Go links `-lstelnettts` (not per-backend), so **no LDFLAGS change**.
+- `flutter/stelnettts/lib/src/stelnettts.dart` — add to the synthesize
   docstring. Dart uses `DynamicLibrary.lookupFunction` with symbol-presence
   checks, so new C-ABI functions are discovered automatically.
 
-### Bindings — adding a new *session setter* (`crispasr_session_set_*`) or *method*
-This applies to any explicit session entry point — the `crispasr_session_set_*`
+### Bindings — adding a new *session setter* (`stelnettts_session_set_*`) or *method*
+This applies to any explicit session entry point — the `stelnettts_session_set_*`
 setters **and** the data-returning session methods such as
-`crispasr_session_synthesize`, `crispasr_session_synthesize_raw`, and
-`crispasr_session_speech_to_speech`. None of these are auto-discovered (only a new
+`stelnettts_session_synthesize`, `stelnettts_session_synthesize_raw`, and
+`stelnettts_session_speech_to_speech`. None of these are auto-discovered (only a new
 *backend* is — see the section above); every wrapper exposes them explicitly and
 they are kept at **full parity**. When you add one, add it to **all seven** wrappers
 (plus the WASM/JS binding and the server, listed below — mirror the nearest existing
 setter/method in each: argtypes/restype, error-on-rc≠0,
 and for PCM-returning methods copy `synthesize`: return the malloc'd `float*` as an
-owned buffer then free via `crispasr_pcm_free`; free any `out_text` via
-`crispasr_session_translate_text_free`):
-- `python/crispasr/_binding.py` — ctypes method on `Session`.
-- `bindings/go/crispasr_session.go` — the cgo-preamble `int crispasr_session_set_X(...)`
+owned buffer then free via `stelnettts_pcm_free`; free any `out_text` via
+`stelnettts_session_translate_text_free`):
+- `python/stelnettts/_binding.py` — ctypes method on `Session`.
+- `bindings/go/stelnettts_session.go` — the cgo-preamble `int stelnettts_session_set_X(...)`
   declaration **and** the `Set X` method.
-- **Rust (repo root, not `bindings/`)**: `crispasr-sys/src/lib.rs` extern decl
-  **and** `crispasr/src/lib.rs` safe `pub fn`.
-- `flutter/crispasr/lib/src/crispasr.dart` — `lookupFunction` + method.
+- **Rust (repo root, not `bindings/`)**: `stelnettts-sys/src/lib.rs` extern decl
+  **and** `stelnettts/src/lib.rs` safe `pub fn`.
+- `flutter/stelnettts/lib/src/stelnettts.dart` — `lookupFunction` + method.
 - `bindings/java/.../CrispasrSession.java` — JNA `Lib` interface decl + method.
-- `bindings/ruby/ext/ruby_crispasr_session.c` — `extern` decl, `rb_session_set_X`,
+- `bindings/ruby/ext/ruby_stelnettts_session.c` — `extern` decl, `rb_session_set_X`,
   and a `rb_define_singleton_method` registration.
-- `bindings/csharp/CrispASR/NativeMethods.cs` — `[DllImport]` P/Invoke, **and**
+- `bindings/csharp/StelnetTTS/NativeMethods.cs` — `[DllImport]` P/Invoke, **and**
   the public method on `Session` in `Session.cs`. Callback delegates need
   `[UnmanagedFunctionPointer(CallingConvention.Cdecl)]` and a static field to
   survive GC; `const char*` params are `[MarshalAs(UnmanagedType.LPUTF8Str)]`.
-- The HTTP server (`examples/cli/crispasr_server.cpp`) exposes the equivalent as
+- The HTTP server (`examples/cli/stelnettts_server.cpp`) exposes the equivalent as
   a per-request `form_*` field on the transcription endpoints (or a startup flag
   for resident post-processors).
 - `bindings/javascript/emscripten.cpp` — WASM/JS (built with emcc).
-The canonical surface is `include/crispasr_session.h`; `docs/bindings.md` has the
+The canonical surface is `include/stelnettts_session.h`; `docs/bindings.md` has the
 per-wrapper setter table.
 
 ### Append-only ABI structs — update EVERY hand-written mirror in the same commit
 
 Some ABI entry points take struct pointers whose layout is defined only in
-`src/crispasr_c_api.cpp` (`crispasr_diarize_seg_abi`, `crispasr_diarize_opts_abi`)
-or in `include/crispasr_session.h` (`crispasr_vad_abi_opts`). Bindings that
+`src/stelnettts_c_api.cpp` (`stelnettts_diarize_seg_abi`, `stelnettts_diarize_opts_abi`)
+or in `include/stelnettts_session.h` (`stelnettts_vad_abi_opts`). Bindings that
 cannot include a C header lay these structs out **by hand**, byte for byte:
-the Go cgo preamble, `crispasr-sys/src/lib.rs` (`#[repr(C)]` mirrors), and the
-flutter binding's offset-written buffers in `crispasr.dart`.
+the Go cgo preamble, `stelnettts-sys/src/lib.rs` (`#[repr(C)]` mirrors), and the
+flutter binding's offset-written buffers in `stelnettts.dart`.
 
 The C side reads **every field unconditionally**, so a mirror that is one
 append behind makes the C side read past the caller's allocation — undefined
 behaviour on every call, not just calls that use the new fields. This is not
-hypothetical: #324 appended the FoxNose fields to `crispasr_diarize_opts_abi`
+hypothetical: #324 appended the FoxNose fields to `stelnettts_diarize_opts_abi`
 and updated only the Go mirror; #332 found the Rust and Dart mirrors 24 bytes
 short, with a garbage pointer handed to `std::string` on the C side.
 
@@ -367,11 +367,11 @@ Rules when you touch one of these structs:
    append-only by contract — old mirrors must stay prefix-compatible
    while they're being caught up (they aren't safe, but they're findable).
 2. **Update every mirror in the same commit.** The authoritative mirror
-   list lives in the comment next to the struct in `crispasr_c_api.cpp`;
+   list lives in the comment next to the struct in `stelnettts_c_api.cpp`;
    extend that list when a new binding grows a mirror.
 3. **Keep the layout guards in sync**: the `static_assert`s next to the
-   struct in `crispasr_c_api.cpp` pin the canonical sizes/offsets, and each
-   mirror carries its own guard — `crispasr-sys`'s `diarize_abi_layout`
+   struct in `stelnettts_c_api.cpp` pin the canonical sizes/offsets, and each
+   mirror carries its own guard — `stelnettts-sys`'s `diarize_abi_layout`
    test, flutter's `DiarizeMethod` index-parity smoke test, and
    `tests/test-session-abi-nulls.cpp` (which calls the ABI through a
    fourth hand-written mirror, so a silent layout change fails a unit
@@ -382,7 +382,7 @@ Rules when you touch one of these structs:
    calls to the wrong method. The index-parity tests pin this.
 
 **C# is CI-tested** (`.github/workflows/bindings-csharp.yml`) — it compiles the
-binding against the ABI and runs `CrispASR.Tests`. Do not let it drift; it was
+binding against the ABI and runs `StelnetTTS.Tests`. Do not let it drift; it was
 unbuilt for a long time and shipped a units bug (#291) precisely because nothing
 compiled the wrapper against the header.
 
@@ -393,17 +393,17 @@ compiled the wrapper against the header.
   architecture details"; README/tts.md link `docs/architecture.md#yourmodel`.
 
 ### Build targets (don't be fooled by stale binaries)
-- `crispasr` → the **library** (libcrispasr / `.dylib`).
-- `crispasr-cli` → the **CLI binary** (`OUTPUT_NAME crispasr`).
-- `crispasr-diff` → the diff harness.
+- `stelnettts` → the **library** (libstelnettts / `.dylib`).
+- `stelnettts-cli` → the **CLI binary** (`OUTPUT_NAME stelnettts`).
+- `stelnettts-diff` → the diff harness.
 
-After C-ABI edits, build **`crispasr`** (the dylib) and re-test the Python
-`Session` — building only `crispasr-cli` may leave the dylib stale, and the
+After C-ABI edits, build **`stelnettts`** (the dylib) and re-test the Python
+`Session` — building only `stelnettts-cli` may leave the dylib stale, and the
 binding then loads an old backend list. Verify with:
 ```python
-import crispasr
-assert "yourmodel" in crispasr.Session.available_backends()
-crispasr.Session("model.gguf", backend="yourmodel")  # opens?
+import stelnettts
+assert "yourmodel" in stelnettts.Session.available_backends()
+stelnettts.Session("model.gguf", backend="yourmodel")  # opens?
 ```
 
 **Audit the wiring automatically.** After adding a backend, run the audit — it
@@ -414,7 +414,7 @@ reference dumper, README, registry, streaming). Aliases and standalone reference
 dumpers are handled, not false-flagged:
 
 ```bash
-python tools/check-backend-wiring.py --crispasr ./build/bin/crispasr   # exit 1 on a required gap
+python tools/check-backend-wiring.py --stelnettts ./build/bin/stelnettts   # exit 1 on a required gap
 ```
 
 > ⚠️ **Commit from a separate `git worktree`, or `git pull --rebase`
@@ -428,7 +428,7 @@ python tools/check-backend-wiring.py --crispasr ./build/bin/crispasr   # exit 1 
 Everything above assumes the backend produces TEXT and therefore fits
 `transcribe()`. Some do not: source separation returns stems, pitch returns F0
 frames, chord recognition returns a chord timeline. None of those can be
-expressed as `crispasr_segment`s, so they get their OWN task surface instead of
+expressed as `stelnettts_segment`s, so they get their OWN task surface instead of
 being forced through the transcribe contract. Precedents:
 `htdemucs`/`mel-band-roformer` (`--separate`), `crepe` (`--pitch`), `btc-chords`
 (`--chords`).
@@ -437,40 +437,40 @@ The trap: because such a backend never appears in a transcribe path, it is easy
 to ship it working end-to-end while it remains invisible to the CLI's backend
 registry. `btc-chords` did exactly that — runtime, `--chords` dispatcher,
 session C ABI and wasm bindings all shipped and verified, while `btc` appeared
-NOWHERE in `examples/cli/crispasr_backend.cpp`. `--list-backends` did not know
+NOWHERE in `examples/cli/stelnettts_backend.cpp`. `--list-backends` did not know
 it existed, and `docs/feature-matrix.md` is generated from
 `--list-backends-json`, so any hand-written row for it would have been silently
 dropped on the next regeneration.
 
 Wire ALL of the following:
 
-1. **Task dispatcher** — `examples/cli/crispasr_<task>_cli.{h,cpp}`, called from
-   `crispasr_run_backend()` **and** from an early route in `cli.cpp`, before any
-   transcribe backend is constructed. Both: a dispatch in `crispasr_run.cpp`
+1. **Task dispatcher** — `examples/cli/stelnettts_<task>_cli.{h,cpp}`, called from
+   `stelnettts_run_backend()` **and** from an early route in `cli.cpp`, before any
+   transcribe backend is constructed. Both: a dispatch in `stelnettts_run.cpp`
    alone still falls through to whisper and dies on "invalid model data".
-2. **Capability bit** — a new `CAP_<TASK>` in `examples/cli/crispasr_backend.h`,
-   added to BOTH capability-name tables in `crispasr_backend.cpp` (the text one
+2. **Capability bit** — a new `CAP_<TASK>` in `examples/cli/stelnettts_backend.h`,
+   added to BOTH capability-name tables in `stelnettts_backend.cpp` (the text one
    and the JSON one) so it shows up in `--list-backends` and the matrix.
-3. **Redirect shim** — `examples/cli/crispasr_backend_<name>.cpp` implementing
+3. **Redirect shim** — `examples/cli/stelnettts_backend_<name>.cpp` implementing
    `CrispasrBackend` whose `init()` prints "run it with `--<task>`" and returns
    false, with `capabilities()` returning the task bit. This is what puts the
    backend in `--list-backends` and gives `--backend X` (without the task flag)
    a clear error instead of a confusing one. Copy
-   `crispasr_backend_crepe.cpp` or `crispasr_backend_btc.cpp`.
+   `stelnettts_backend_crepe.cpp` or `stelnettts_backend_btc.cpp`.
 4. **Factory + roster** — the `if (name == ...)` alias line and the roster list
-   entry in `crispasr_backend.cpp`, plus the shim's forward declaration, plus
+   entry in `stelnettts_backend.cpp`, plus the shim's forward declaration, plus
    the file in `examples/cli/CMakeLists.txt`.
-5. **Both detect passes** — the filename heuristic in `crispasr_backend.cpp`
+5. **Both detect passes** — the filename heuristic in `stelnettts_backend.cpp`
    (CLI only) and the GGUF `general.architecture` entry in the shared table
    `src/core/arch_backend_map.h` (CLI *and* every binding, since both the CLI's
-   pass 2 and `crispasr_detect_backend_from_gguf()` read it). The table was
+   pass 2 and `stelnettts_detect_backend_from_gguf()` read it). The table was
    itself two divergent copies until #335; crepe and htdemucs had already been
    caught getting a null session in every binding while working in the CLI, and
    granite-speech was that same bug again — unifying the table is what stops it
    recurring. Only the CLI has a filename pass, so **testing
    auto-detection through the CLI alone proves nothing about the bindings.**
 6. **Session C ABI** — task-specific entry points, NOT `transcribe()`. Follow
-   `crispasr_session_pitch*` / `crispasr_session_chords*`: a `run` call
+   `stelnettts_session_pitch*` / `stelnettts_session_chords*`: a `run` call
    returning a count, an `n_*` accessor, a FLAT float view for the bulk read,
    and any string lookup separately. Flat views must be all-float even when a
    field is logically an integer — a mixed int/float struct read through a float
@@ -494,7 +494,7 @@ Then run the audit, which now checks the reverse direction too (advertised by
 the C ABI but unreachable from the CLI):
 
 ```bash
-python tools/check-backend-wiring.py --crispasr ./build/bin/crispasr
+python tools/check-backend-wiring.py --stelnettts ./build/bin/stelnettts
 ```
 
 ## Running integration / live tests
@@ -506,7 +506,7 @@ env-var-gated — they SKIP cleanly when the env vars are unset.
 **Quick start:**
 ```bash
 # Point at your local model cache (auto-download also probes this):
-export CRISPASR_MODELS_DIR=/mnt/storage/gguf-models
+export STELNETTTS_MODELS_DIR=/mnt/storage/gguf-models
 
 # Source all env vars at once:
 source tests/env-live-tests.sh
@@ -516,19 +516,19 @@ ctest --test-dir build --rerun-failed --output-on-failure --timeout 300
 ```
 
 `tests/env-live-tests.sh` sets every env var the live tests expect.
-Override `CRISPASR_MODELS_DIR` to point at your local model directory;
+Override `STELNETTTS_MODELS_DIR` to point at your local model directory;
 all other vars derive from it unless individually overridden.
 
 **Key env vars** (see `env-live-tests.sh` for the full list):
 
 | Variable | Used by |
 |---|---|
-| `CRISPASR_MODELS_DIR` | Well-known search dir for all model lookups |
-| `CRISPASR_MODEL_WHISPER` | Beam search + VAD tests |
+| `STELNETTTS_MODELS_DIR` | Well-known search dir for all model lookups |
+| `STELNETTTS_MODEL_WHISPER` | Beam search + VAD tests |
 | `PARAFORMER_MODEL` | Paraformer live tests |
-| `CRISPASR_TEST_DIARIZE_MODEL` | Diarization live tests |
-| `CRISPASR_MODEL_ALIGNER` | CTC aligner live tests (canary-ctc-aligner) |
-| `CRISPASR_CHAT_TEST_MODEL` | Chat (LLM) smoke test |
+| `STELNETTTS_TEST_DIARIZE_MODEL` | Diarization live tests |
+| `STELNETTTS_MODEL_ALIGNER` | CTC aligner live tests (canary-ctc-aligner) |
+| `STELNETTTS_CHAT_TEST_MODEL` | Chat (LLM) smoke test |
 
 Tests that use `SKIP()` return exit code 4 (Catch2 convention). The
 CMakeLists.txt sets `SKIP_RETURN_CODE 4` so ctest reports them as
@@ -538,9 +538,9 @@ CMakeLists.txt sets `SKIP_RETURN_CODE 4` so ctest reports them as
 
 ### Does your model already punctuate? Declare it (`CAP_PUNCTUATION_NATIVE`)
 
-CrispASR auto-enables FireRedPunc for any backend that advertises neither
+StelnetTTS auto-enables FireRedPunc for any backend that advertises neither
 `CAP_PUNCTUATION_NATIVE` nor `CAP_PUNCTUATION_TOGGLE`
-(`crispasr_punctuation_policy.h`). Run that pass over text a model already
+(`stelnettts_punctuation_policy.h`). Run that pass over text a model already
 punctuated and you get `your country..` — and, before the fix below,
 `ANd so` as well. Every LLM-decoder ASR backend emits punctuated, sentence-cased
 text, so **it must declare `CAP_PUNCTUATION_NATIVE`**; CTC and other
@@ -548,12 +548,12 @@ unpunctuated backends must NOT (they need the pass).
 
 **Do not decide this by reading the model card, and do not use
 `--no-punctuation` to check.** That flag *strips* punctuation after the fact
-(`crispasr_run.cpp`), so a model that punctuates itself looks unpunctuated
+(`stelnettts_run.cpp`), so a model that punctuates itself looks unpunctuated
 under it — which is exactly how a whole audit can reach the wrong conclusion.
 Print the real thing instead:
 
 ```bash
-FIREREDPUNC_DEBUG=1 crispasr -m <model> -f samples/jfk.wav --backend <name> 2>&1 | grep PUNCDBG
+FIREREDPUNC_DEBUG=1 stelnettts -m <model> -f samples/jfk.wav --backend <name> 2>&1 | grep PUNCDBG
 # [PUNCDBG] in=<And so, my fellow Americans, … your country.>   ← the model's OWN output
 # [PUNCDBG] out=<And so, my fellow Americans, … your country..> ← the pass double-punctuating
 ```
@@ -685,7 +685,7 @@ not just M1.
 ## Watermarking tests
 
 All TTS output is automatically watermarked (on by default). The mark can be
-turned off with the `--no-watermark` CLI flag or the `CRISPASR_NO_WATERMARK`
+turned off with the `--no-watermark` CLI flag or the `STELNETTTS_NO_WATERMARK`
 env var — equivalent opt-outs, both emit a one-time stderr warning
 (`watermarking disabled. AI usage marking responsibility rests with the
 operator.`). The warning text is deliberately jurisdiction-neutral and does not
@@ -713,10 +713,10 @@ AUDIOSEAL_GGUF=audioseal.gguf build/bin/test_audioseal_cosine
 For ASR backends, the transcript is the regression target:
 
 ```bash
-./build/bin/crispasr --backend yourmodel -m model.gguf -f samples/jfk.wav -np > before.txt
+./build/bin/stelnettts --backend yourmodel -m model.gguf -f samples/jfk.wav -np > before.txt
 # ... make changes ...
-cmake --build build --target crispasr-lib
-./build/bin/crispasr --backend yourmodel -m model.gguf -f samples/jfk.wav -np > after.txt
+cmake --build build --target stelnettts-lib
+./build/bin/stelnettts --backend yourmodel -m model.gguf -f samples/jfk.wav -np > after.txt
 diff before.txt after.txt && echo BIT-IDENTICAL
 ```
 
@@ -734,10 +734,10 @@ HF_HOME=/path/to/hf-cache python tools/run_official_vibevoice.py \
     --output-wav /tmp/ref.wav \
     --output-dir /tmp/ref_dump
 
-# 2. Run crispasr with the same noise pinned and per-frame dumps
+# 2. Run stelnettts with the same noise pinned and per-frame dumps
 VIBEVOICE_TTS_NOISE=/tmp/ref_dump/noise.bin \
 VIBEVOICE_TTS_DUMP=/tmp/cpp_dump VIBEVOICE_TTS_DUMP_PERFRAME=1 \
-./build/bin/crispasr --tts "Hello, how are you today?" \
+./build/bin/stelnettts --tts "Hello, how are you today?" \
     -m vibevoice-realtime-0.5b-tts-f16.gguf \
     --voice vibevoice-voice-emma.gguf \
     --tts-output /tmp/cpp.wav -ng
@@ -770,7 +770,7 @@ python tools/dump_reference.py --backend voxtral \
     --output /tmp/voxtral-ref.gguf
 
 # 2. Compare your C++ forward pass against the reference, stage by stage
-./build/bin/crispasr-diff voxtral \
+./build/bin/stelnettts-diff voxtral \
     voxtral-mini-3b-2507-q4_k.gguf \
     /tmp/voxtral-ref.gguf \
     samples/jfk.wav
@@ -780,11 +780,11 @@ python tools/dump_reference.py --backend voxtral \
 # summary: 2 pass, 0 fail, 0 skip (cos threshold 0.999)
 ```
 
-**`crispasr-diff` works for TTS backends too**, not only ASR. For TTS,
+**`stelnettts-diff` works for TTS backends too**, not only ASR. For TTS,
 the 4th argument (`audio.wav`) is ignored — pass any valid WAV (e.g.
 `samples/jfk.wav`). Text and other TTS inputs come from env vars
 (`<BACKEND>_SYN_TEXT`, `ZONOS_TTS_TEXT`, `CHATTERBOX_SYN_TEXT`, …).
-See the **`chatterbox`** dispatch in `crispasr_diff_main.cpp` as the
+See the **`chatterbox`** dispatch in `stelnettts_diff_main.cpp` as the
 canonical TTS template; `zonos-tts` follows the same pattern.
 
 ```bash
@@ -797,7 +797,7 @@ python tools/dump_reference.py --backend zonos-tts \
     --output /tmp/zonos-ref.gguf
 
 ZONOS_TTS_TEXT="Hello world." ZONOS_SPEAKER_EMB_PATH=/path/to/jfk_speaker_emb.bin \
-./build/bin/crispasr-diff zonos-tts \
+./build/bin/stelnettts-diff zonos-tts \
     zonos-v0.1-transformer-q4_k.gguf \
     /tmp/zonos-ref.gguf \
     samples/jfk.wav
@@ -810,7 +810,7 @@ output, logits, argmax) and writes them to a single **GGUF tensor
 archive**. The C++ side loads the archive via
 `core_gguf::load_weights` and runs the backend's public stage helpers
 (`*_compute_mel`, `*_run_encoder`, etc.) to produce the same tensors,
-then the shared `crispasr_diff::Ref` compares them with **cosine
+then the shared `stelnettts_diff::Ref` compares them with **cosine
 similarity per row**, **max-abs error**, **RMS**, and — for logits —
 **top-1 argmax match rate**.
 
@@ -822,8 +822,8 @@ hooks and returns a dict `{stage_name: ndarray}`. Worked examples:
   `parakeet.py`, `gemma4.py`, `omniasr_llm.py`, `granite.py` —
   encoder-decoder / Audio-LLM ASR backends. Use the `_hooks.py`
   forward_hook helpers (`capture_modules`, `drop_hooks`, `finalize`).
-- `tools/reference_backends/qwen3_tts.py`, `qwen3_tts_codec.py`,
-  `qwen3_tts_spk.py`, `qwen3_tts_cenc.py` — TTS prefill / encoder
+- `tools/reference_backends/cielvox2_tts.py`, `cielvox2_tts_codec.py`,
+  `cielvox2_tts_spk.py`, `cielvox2_tts_cenc.py` — TTS prefill / encoder
   backends. Use `capture_modules(..., first_call_only=True)` for
   hooks that fire once per stage (e.g. talker prefill called from
   inside `generate()`).

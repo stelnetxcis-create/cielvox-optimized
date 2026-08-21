@@ -1,6 +1,6 @@
 {
-  "id": "chr1str/crispasr-vibevoice-diarize-300",
-  "title": "crispasr vibevoice diarize 300",
+  "id": "chr1str/stelnettts-vibevoice-diarize-300",
+  "title": "stelnettts vibevoice diarize 300",
   "code_file": "vibevoice-diarize-300.py",
   "language": "python",
   "kernel_type": "script",
@@ -8,7 +8,7 @@
   "enable_gpu": "true",
   "enable_internet": "true",
   "competition_sources": [],
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "kernel_sources": [],
   "model_sources": []
 }

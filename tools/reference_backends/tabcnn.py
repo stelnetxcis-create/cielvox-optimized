@@ -1,4 +1,4 @@
-"""TabCNN reference backend — amt_tools ground truth for crispasr-diff.
+"""TabCNN reference backend — amt_tools ground truth for stelnettts-diff.
 
 TabCNN (Wiggins & Kim, ISMIR 2019) is a ~0.83 M-parameter CNN that emits, per
 frame, six independent softmaxes over 21 fret classes — one per string. There
@@ -26,7 +26,7 @@ Usage:
         --audio samples/guitar.wav \\
         --output /tmp/tabcnn-ref.gguf
 
-    build/bin/crispasr-diff tabcnn tabcnn-f16.gguf \\
+    build/bin/stelnettts-diff tabcnn tabcnn-f16.gguf \\
         /tmp/tabcnn-ref.gguf samples/guitar.wav
 
 Geometry, read from the loaded object (not inferred):

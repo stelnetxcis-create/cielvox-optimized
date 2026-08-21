@@ -1,13 +1,13 @@
 {
-  "id": "chr1s4/crispasr-voxcpm2-176n-cuda",
-  "title": "crispasr-voxcpm2-176n-cuda",
-  "code_file": "crispasr-voxcpm2-176n-cuda.py",
+  "id": "chr1s4/stelnettts-voxcpm2-176n-cuda",
+  "title": "stelnettts-voxcpm2-176n-cuda",
+  "code_file": "stelnettts-voxcpm2-176n-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1s4/crispasr-hf-token", "chr1s4/crispasr-ccache"],
+  "dataset_sources": ["chr1s4/stelnettts-hf-token", "chr1s4/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

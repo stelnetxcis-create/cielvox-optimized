@@ -10,8 +10,8 @@
 #   ./tests/test-vibevoice-base-clone.sh [--keep-files]
 #
 # Requires:
-#   - build/bin/crispasr (or build-ninja-compile/bin/crispasr)
-#   - network access on first run, so -m auto can fetch cstr/vibevoice-1.5b-GGUF
+#   - build/bin/stelnettts (or build-ninja-compile/bin/stelnettts)
+#   - network access on first run, so -m auto can fetch Xenna/vibevoice-1.5b-GGUF
 #
 # Exit code: 0 if all pass, non-zero otherwise.
 
@@ -26,11 +26,11 @@ for arg in "$@"; do
 done
 
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
 if [ -z "$CRISPASR" ]; then
-    echo "ERROR: crispasr binary not found. Build first."
+    echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
 
@@ -40,7 +40,7 @@ if [ ! -f "$REF_WAV" ]; then
     exit 0
 fi
 
-TMPDIR=$(mktemp -d -t crispasr-vibevoice.XXXXXX)
+TMPDIR=$(mktemp -d -t stelnettts-vibevoice.XXXXXX)
 trap 'if [ "$KEEP_FILES" -eq 0 ]; then rm -rf "$TMPDIR"; fi' EXIT
 
 TEXT="This is a VibeVoice clone regression test."

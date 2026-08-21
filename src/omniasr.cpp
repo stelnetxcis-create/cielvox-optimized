@@ -10,8 +10,8 @@
 #include "core/beam_decode.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -37,7 +37,7 @@
 static bool omniasr_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_OMNIASR_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_OMNIASR_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -178,7 +178,7 @@ struct omniasr_perf {
 };
 
 static void omniasr_perf_print(const omniasr_perf& p, int n_samples, int verbosity) {
-    const char* bench = crispasr_env::get("CRISPASR_OMNIASR_BENCH");
+    const char* bench = stelnettts_env::get("STELNETTTS_OMNIASR_BENCH");
     if (verbosity < 2 && (!bench || !bench[0]))
         return;
     const double audio_s = n_samples / 16000.0;
@@ -448,7 +448,7 @@ extern "C" struct omniasr_context* omniasr_init_from_file(const char* path_model
 
     // Load weights
     if (params.use_gpu) {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
     }
     if (!ctx->backend) {
         ctx->backend = core_cpu_backend::init();
@@ -466,14 +466,14 @@ extern "C" struct omniasr_context* omniasr_init_from_file(const char* path_model
         core_cpu_backend::set_n_threads(ctx->backend, params.n_threads > 0 ? params.n_threads : 4);
     }
 
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total decoder
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total decoder
     // layers, route dec.<il>.* with il >= N onto the CPU backend.
     // Only meaningful for omniasr-llm; the CTC variant's "dec." tensors
     // are a fixed-depth post-encoder head, not transformer blocks.
     core_gguf::WeightLoad wl;
     const char* arch = hp.model_type == 1 ? "omniasr-llm" : "omniasr-ctc";
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)hp.n_dec;
@@ -485,7 +485,7 @@ extern "C" struct omniasr_context* omniasr_init_from_file(const char* path_model
         ok = core_gguf::load_weights_split(path_model, ctx->backend, ctx->backend_cpu,
                                            core_gguf::is_gpu_tensor_with_prefix, &cfg, arch, wl);
         if (ok) {
-            fprintf(stderr, "%s: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n", arch,
+            fprintf(stderr, "%s: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n", arch,
                     n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
         }
     } else {
@@ -601,8 +601,8 @@ static bool omniasr_alloc_kv_cache(omniasr_context* ctx, int max_ctx) {
     struct ggml_init_params kv_params = {mem, nullptr, true};
     ctx->kv_ctx = ggml_init(kv_params);
 
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("omniasr");
     ctx->kv_k = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.k, hd, max_ctx, nh, nl);
     ctx->kv_v = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.v, hd, max_ctx, nh, nl);
@@ -668,7 +668,7 @@ extern "C" char* omniasr_transcribe(struct omniasr_context* ctx, const float* sa
     ggml_context* ctx0 = ggml_init(gp);
     ggml_cgraph* gf = ggml_new_graph_custom(ctx0, 65536, false);
 
-    const char* dump_dir = crispasr_env::get("CRISPASR_OMNIASR_DUMP_DIR");
+    const char* dump_dir = stelnettts_env::get("STELNETTTS_OMNIASR_DUMP_DIR");
 
     // Input normalization: layer_norm(waveform) — zero mean, unit variance
     // This is a wav2vec2 convention, required for OmniASR.
@@ -841,7 +841,7 @@ extern "C" char* omniasr_transcribe(struct omniasr_context* ctx, const float* sa
     }
     perf.t_enc_compute_us += ggml_time_us() - t0;
 
-    // Dump intermediates for crispasr-diff comparison
+    // Dump intermediates for stelnettts-diff comparison
     if (dump_dir && dump_dir[0]) {
         auto dump_tensor = [&](const char* name) {
             ggml_tensor* t = ggml_graph_get_tensor(gf, name);

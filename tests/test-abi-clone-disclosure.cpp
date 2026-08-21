@@ -1,6 +1,6 @@
 // test-abi-clone-disclosure.cpp — the ABI's Art. 50(4) posture for voice clones.
 //
-// crispasr_session_synthesize() watermarks every clip, which discharges the
+// stelnettts_session_synthesize() watermarks every clip, which discharges the
 // machine-readable marking duty (Art. 50(2)) on the ABI. Art. 50(4) additionally
 // requires a visible or audible disclosure for deepfakes, and the ABI does not
 // prepend one — the CLI and server do. This file pins the three decisions that
@@ -31,14 +31,14 @@
 #include <sstream>
 #include <string>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
 
-// Mirror of the ends_with_wav test in crispasr_session_set_voice(), which is
-// also what crispasr_run.cpp:2984 and crispasr_server.cpp:2145 use.
+// Mirror of the ends_with_wav test in stelnettts_session_set_voice(), which is
+// also what stelnettts_run.cpp:2984 and stelnettts_server.cpp:2145 use.
 bool is_clone_voice(const std::string& path) {
     if (path.size() < 4)
         return false;
@@ -47,7 +47,7 @@ bool is_clone_voice(const std::string& path) {
             (tail[3] == 'v' || tail[3] == 'V'));
 }
 
-// Mirror of crispasr_session_warn_unmarked_clone()'s guard.
+// Mirror of stelnettts_session_warn_unmarked_clone()'s guard.
 struct SessionMarkingState {
     bool voice_is_clone = false;
     bool marking_responsibility_accepted = false;
@@ -119,8 +119,8 @@ TEST_CASE("get_disclaimer_pcm is refused once a clone voice is set", "[unit][com
 }
 
 TEST_CASE("the ABI disclosure text matches the CLI's", "[unit][compliance][marking]") {
-    // crispasr_session_disclaimer_text() and crispasr_disclaimer::text() in
-    // examples/cli/crispasr_tts_disclaimer.h must not drift: an integrator
+    // stelnettts_session_disclaimer_text() and stelnettts_disclaimer::text() in
+    // examples/cli/stelnettts_tts_disclaimer.h must not drift: an integrator
     // rendering the visible label should be saying exactly what the CLI speaks,
     // or the same product discloses two different things on two surfaces.
     //
@@ -128,7 +128,7 @@ TEST_CASE("the ABI disclosure text matches the CLI's", "[unit][compliance][marki
     // CrispasrBackend and whisper_params, and asserting a literal against itself
     // would be a test that cannot fail.
     auto disclaimer_literal_in = [](const std::string& rel) -> std::string {
-        const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/" + rel;
+        const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/" + rel;
         std::ifstream f(path);
         REQUIRE(f.good());
         std::ostringstream ss;
@@ -145,8 +145,8 @@ TEST_CASE("the ABI disclosure text matches the CLI's", "[unit][compliance][marki
         return src.substr(open + 1, close - open - 1);
     };
 
-    const std::string abi = disclaimer_literal_in("src/crispasr_c_api.cpp");
-    const std::string cli = disclaimer_literal_in("examples/cli/crispasr_tts_disclaimer.h");
+    const std::string abi = disclaimer_literal_in("src/stelnettts_c_api.cpp");
+    const std::string cli = disclaimer_literal_in("examples/cli/stelnettts_tts_disclaimer.h");
 
     INFO("ABI: " << abi);
     INFO("CLI: " << cli);

@@ -21,7 +21,7 @@ The encoder weights are fetched from HumeAI/tada-codec on HuggingFace
 (requires a HF token if the repo is gated).
 
 The output .gguf file can be used with:
-    crispasr -m tada-tts-3b-ml-q4_k.gguf --voice tada-ref-custom.gguf --tts "your text"
+    stelnettts -m tada-tts-3b-ml-q4_k.gguf --voice tada-ref-custom.gguf --tts "your text"
 """
 
 import argparse
@@ -156,15 +156,15 @@ def main():
     print(f"  {n} acoustic tokens, {waveform.shape[-1]/sr:.2f}s audio")
 
     out_path = args.output
-    w = GGUFWriter(out_path, arch="crispasr.reference", use_temp_file=False)
+    w = GGUFWriter(out_path, arch="stelnettts.reference", use_temp_file=False)
     w.add_name(Path(out_path).stem)
-    w.add_string("crispasr.ref.tada_tts_prompt_text", args.transcript)
-    # Voice-clone provenance — see examples/cli/crispasr_voice_clone_policy.h.
-    w.add_bool("crispasr.voice.cloned_from_recording", True)
+    w.add_string("stelnettts.ref.tada_tts_prompt_text", args.transcript)
+    # Voice-clone provenance — see examples/cli/stelnettts_voice_clone_policy.h.
+    w.add_bool("stelnettts.voice.cloned_from_recording", True)
     if args.consent_attestation:
-        w.add_string("crispasr.voice.consent_attestation", args.consent_attestation)
+        w.add_string("stelnettts.voice.consent_attestation", args.consent_attestation)
     if language:
-        w.add_string("crispasr.ref.tada_tts_language", language)
+        w.add_string("stelnettts.ref.tada_tts_language", language)
     w.add_tensor("prompt_token_values",    np.ascontiguousarray(vals), raw_dtype=GGMLQuantizationType.F32)
     w.add_tensor("prompt_token_positions", np.ascontiguousarray(pos),  raw_dtype=GGMLQuantizationType.F32)
     w.write_header_to_file()
@@ -172,7 +172,7 @@ def main():
     w.write_tensors_to_file()
     w.close()
     print(f"Saved: {out_path}  ({Path(out_path).stat().st_size // 1024} KB)")
-    print(f"\nUse with: crispasr -m tada-tts-3b-ml-q4_k.gguf --voice {out_path} --tts 'your text'")
+    print(f"\nUse with: stelnettts -m tada-tts-3b-ml-q4_k.gguf --voice {out_path} --tts 'your text'")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 # %% [markdown]
-# # CrispASR — re-convert wmt21-dense-24-wide-en-x with the fixed SP-BPE tokenizer
+# # StelnetTTS — re-convert wmt21-dense-24-wide-en-x with the fixed SP-BPE tokenizer
 #
 # facebook/wmt21-dense-24-wide-en-x runs through the m2m100 backend. Its GGUF was
 # built with the old converter, which (a) mis-scored the SP-BPE merge ranks (id
 # offset instead of by-string) and (b) omitted ~390 SP pieces needed as
 # intermediate BPE merges — so tokenization diverged from HF and translations
-# degraded. The converter is fixed (commit on CrispASR main); this kernel
+# degraded. The converter is fixed (commit on StelnetTTS main); this kernel
 # re-converts wmt21 with it.
 #
 # Runs on Kaggle (not the 16 GB Mac) because the model is 18.77 GB (4.7B params,
@@ -14,7 +14,7 @@
 #
 # Steps: download model → convert (fixed converter) → GGUF-level tokenizer check
 # (intermediates present + scores match SP by-string) → quantize q4_k → upload
-# q4_k (replace shipped) + f16 (exact) to cstr/wmt21-dense-24-wide-en-x-GGUF.
+# q4_k (replace shipped) + f16 (exact) to Xenna/wmt21-dense-24-wide-en-x-GGUF.
 
 # %% [code]
 import os
@@ -25,13 +25,13 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 
-# ── Kaggle regime: clone CrispASR (fixed converter) + import harness ───────────
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-REPO = WORK / "CrispASR"
+# ── Kaggle regime: clone StelnetTTS (fixed converter) + import harness ───────────
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
     try:
         subprocess.check_call(
-            ["git", "clone", "--depth", "1", CRISPASR_URL, str(REPO)])
+            ["git", "clone", "--depth", "1", STELNETTTS_URL, str(REPO)])
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     except Exception:
         pass  # fall through to bundled harness
@@ -55,7 +55,7 @@ from huggingface_hub import HfApi, snapshot_download
 step("install-deps.done")
 
 MODEL_ID = "facebook/wmt21-dense-24-wide-en-x"
-DST_REPO = "cstr/wmt21-dense-24-wide-en-x-GGUF"
+DST_REPO = "Xenna/wmt21-dense-24-wide-en-x-GGUF"
 
 
 def free_gb(p):
@@ -179,14 +179,14 @@ del r
 shutil.rmtree(MODEL_DIR, ignore_errors=True)
 step("source.deleted", free_gb=free_gb(str(BASE)))
 
-# ── 4. quantize f16 → q4_k (v0.8.6 tarball ships crispasr-quantize) ───────────
+# ── 4. quantize f16 → q4_k (v0.8.6 tarball ships stelnettts-quantize) ───────────
 RELEASE = "v0.8.6"
-QUANT = WORK / "bin" / "crispasr-quantize"
+QUANT = WORK / "bin" / "stelnettts-quantize"
 QUANT.parent.mkdir(exist_ok=True)
 step("quant-binary.download.begin", release=RELEASE)
 subprocess.check_call(
-    "wget -q https://github.com/CrispStrobe/CrispASR/releases/download/"
-    f"{RELEASE}/crispasr-linux-x86_64.tar.gz -O /tmp/c.tar.gz && "
+    "wget -q https://github.com/Cyna/StelnetTTS/releases/download/"
+    f"{RELEASE}/stelnettts-linux-x86_64.tar.gz -O /tmp/c.tar.gz && "
     f"tar -xzf /tmp/c.tar.gz -C {QUANT.parent} --strip-components=1", shell=True)
 QUANT.chmod(0o755)
 step("quant-binary.download.done", have=QUANT.is_file())

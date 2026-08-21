@@ -8,7 +8,7 @@ base_model: BidirLM/BidirLM-Omni-2.5B-Embedding
 
 # bidirlm-omni-2.5b GGUF
 
-GGUF format of [BidirLM/BidirLM-Omni-2.5B-Embedding](https://huggingface.co/BidirLM/BidirLM-Omni-2.5B-Embedding) for use with [CrispEmbed](https://github.com/CrispStrobe/CrispEmbed).
+GGUF format of [BidirLM/BidirLM-Omni-2.5B-Embedding](https://huggingface.co/BidirLM/BidirLM-Omni-2.5B-Embedding) for use with [StelnetEmbed](https://github.com/Cyna/StelnetEmbed).
 
 BidirLM-Omni 2.5B — Qwen3-derived bidirectional encoder, 2048-d shared embedding space, 90+ languages. Includes text + audio + vision paths (audio via the shared CrispAudio library; vision via the BidirLM ViT + DeepStack hierarchy).
 
@@ -34,15 +34,15 @@ ffmpeg -i clip.wav -ar 16000 -ac 1 -f f32le clip.raw
 ./crispembed -m bidirlm-omni-2.5b --audio clip.raw
 
 # Image (Python — preprocessor needs Pillow + transformers)
-python -c "from crispembed import CrispEmbed; ce=CrispEmbed('bidirlm-omni-2.5b'); print(ce.encode_image('photo.jpg').shape)"
+python -c "from crispembed import StelnetEmbed; ce=StelnetEmbed('bidirlm-omni-2.5b'); print(ce.encode_image('photo.jpg').shape)"
 ```
 
 ### Build requirements
 
 The audio path is provided by the shared **CrispAudio** library (lives in
-[CrispASR/crisp_audio](https://github.com/CrispStrobe/CrispASR/tree/main/crisp_audio)).
-CrispEmbed's CMake auto-discovers it at the sibling-repo path
-`../CrispASR/crisp_audio` (overridable via `-DCRISP_AUDIO_DIR=...`). If that
+[StelnetTTS/crisp_audio](https://github.com/Cyna/StelnetTTS/tree/main/crisp_audio)).
+StelnetEmbed's CMake auto-discovers it at the sibling-repo path
+`../StelnetTTS/crisp_audio` (overridable via `-DCRISP_AUDIO_DIR=...`). If that
 directory is not present at configure time, `crispembed_has_audio()` returns
 0 and the `--audio` flag fails — text encoding still works.
 
@@ -54,11 +54,11 @@ Image preprocessing in Python uses HF's `Qwen2VLImageProcessorFast` —
 
 | File | Quantization | Size |
 |------|-------------|------|
-| [bidirlm-omni-2.5b-f16.gguf](https://huggingface.co/cstr/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-f16.gguf) | F16 | 5264 MB |
-| [bidirlm-omni-2.5b-q4_k.gguf](https://huggingface.co/cstr/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q4_k.gguf) | Q4_K | 1475 MB |
-| [bidirlm-omni-2.5b-q5_k.gguf](https://huggingface.co/cstr/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q5_k.gguf) | Q5_K | 1729 MB |
-| [bidirlm-omni-2.5b-q6_k.gguf](https://huggingface.co/cstr/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q6_k.gguf) | Q6_K | 1998 MB |
-| [bidirlm-omni-2.5b-q8_0.gguf](https://huggingface.co/cstr/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q8_0.gguf) | Q8_0 | 3368 MB |
+| [bidirlm-omni-2.5b-f16.gguf](https://huggingface.co/Xenna/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-f16.gguf) | F16 | 5264 MB |
+| [bidirlm-omni-2.5b-q4_k.gguf](https://huggingface.co/Xenna/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q4_k.gguf) | Q4_K | 1475 MB |
+| [bidirlm-omni-2.5b-q5_k.gguf](https://huggingface.co/Xenna/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q5_k.gguf) | Q5_K | 1729 MB |
+| [bidirlm-omni-2.5b-q6_k.gguf](https://huggingface.co/Xenna/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q6_k.gguf) | Q6_K | 1998 MB |
+| [bidirlm-omni-2.5b-q8_0.gguf](https://huggingface.co/Xenna/bidirlm-omni-2.5b-GGUF/resolve/main/bidirlm-omni-2.5b-q8_0.gguf) | Q8_0 | 3368 MB |
 
 
 ## Parity vs HuggingFace reference
@@ -81,9 +81,9 @@ test set (text + audio (jfk.wav) + vision (cat.jpg)):
 
 ```bash
 # Download
-huggingface-cli download cstr/bidirlm-omni-2.5b-GGUF bidirlm-omni-2.5b-f16.gguf --local-dir .
+huggingface-cli download Xenna/bidirlm-omni-2.5b-GGUF bidirlm-omni-2.5b-f16.gguf --local-dir .
 
-# Run with CrispEmbed
+# Run with StelnetEmbed
 ./crispembed -m bidirlm-omni-2.5b-f16.gguf "Hello world"
 
 # Or with auto-download
@@ -106,15 +106,15 @@ huggingface-cli download cstr/bidirlm-omni-2.5b-GGUF bidirlm-omni-2.5b-f16.gguf 
 
 Verified bit-identical to HuggingFace sentence-transformers (cosine similarity >= 0.999 on test texts).
 
-## Usage with CrispEmbed
+## Usage with StelnetEmbed
 
-CrispEmbed is a lightweight C/C++ text embedding inference engine using ggml.
+StelnetEmbed is a lightweight C/C++ text embedding inference engine using ggml.
 No Python runtime, no ONNX. Supports BERT, XLM-R, Qwen3, and Gemma3 architectures.
 
 ```bash
-# Build CrispEmbed
-git clone https://github.com/CrispStrobe/CrispEmbed
-cd CrispEmbed
+# Build StelnetEmbed
+git clone https://github.com/Cyna/StelnetEmbed
+cd StelnetEmbed
 cmake -S . -B build && cmake --build build -j
 
 # Encode
@@ -129,5 +129,5 @@ curl -X POST http://localhost:8080/v1/embeddings \
 ## Credits
 
 - Original model: [BidirLM/BidirLM-Omni-2.5B-Embedding](https://huggingface.co/BidirLM/BidirLM-Omni-2.5B-Embedding)
-- Inference engine: [CrispEmbed](https://github.com/CrispStrobe/CrispEmbed) (ggml-based)
+- Inference engine: [StelnetEmbed](https://github.com/Cyna/StelnetEmbed) (ggml-based)
 - Conversion: `convert-decoder-embed-to-gguf.py`

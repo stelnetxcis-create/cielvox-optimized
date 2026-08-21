@@ -1,6 +1,6 @@
 services:
-  crispasr:
-    image: ${CRISPASR_IMAGE_CUDA:-crispasr-local:main-cuda}
+  stelnettts:
+    image: ${STELNETTTS_IMAGE_CUDA:-stelnettts-local:main-cuda}
     build:
       context: .
       dockerfile: .devops/main-cuda.Dockerfile

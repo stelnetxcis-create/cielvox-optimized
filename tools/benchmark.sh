@@ -1,5 +1,5 @@
 #!/bin/bash
-# tools/benchmark.sh — comprehensive CrispASR benchmark
+# tools/benchmark.sh — comprehensive StelnetTTS benchmark
 #
 # Runs each backend on standard audio samples at multiple lengths,
 # measures wall time + real-time factor, and prints a markdown table.
@@ -8,12 +8,12 @@
 #   bash tools/benchmark.sh [--backends "parakeet canary"] [--audio-dir /path]
 #
 # Requirements:
-#   - build/bin/crispasr must exist
+#   - build/bin/stelnettts must exist
 #   - Model GGUFs at the paths listed in MODELS below
 
 set -euo pipefail
 
-CRISPASR="${CRISPASR:-./build/bin/crispasr}"
+CRISPASR="${CRISPASR:-./build/bin/stelnettts}"
 THREADS="${THREADS:-4}"
 
 # ---- Models (backend → GGUF path) ----
@@ -23,7 +23,7 @@ declare -A MODELS=(
   [cohere]="/mnt/akademie_storage/test_cohere/cohere-transcribe-q5_0.gguf"
   [granite]="/mnt/akademie_storage/granite_gguf/granite-speech-4.0-1b-q5_0.gguf"
   [voxtral]="/mnt/akademie_storage/test_cohere/voxtral-mini-3b-2507-q4_k.gguf"
-  [qwen3]="/mnt/akademie_storage/test_cohere/qwen3-asr-0.6b-q4_k.gguf"
+  [qwen3]="/mnt/akademie_storage/test_cohere/cielvox2-asr-0.6b-q4_k.gguf"
   [fastconformer-ctc]="/mnt/akademie_storage/test_cohere/stt-en-fastconformer-ctc-large-q4_k.gguf"
 )
 
@@ -36,11 +36,11 @@ declare -A AUDIOS=(
 
 # ---- Check prerequisites ----
 if [ ! -x "$CRISPASR" ]; then
-  echo "ERROR: $CRISPASR not found. Build first: cmake --build build --target crispasr-cli" >&2
+  echo "ERROR: $CRISPASR not found. Build first: cmake --build build --target stelnettts-cli" >&2
   exit 1
 fi
 
-echo "# CrispASR Benchmark"
+echo "# StelnetTTS Benchmark"
 echo ""
 echo "Date: $(date -u '+%Y-%m-%d %H:%M UTC')"
 echo "CPU: $(grep 'model name' /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo 'unknown')"

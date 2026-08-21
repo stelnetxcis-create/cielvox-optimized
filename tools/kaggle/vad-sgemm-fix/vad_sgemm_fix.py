@@ -37,12 +37,12 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 RESULTS = WORK / "vad_sgemm_fix.json"
-CLONE = Path("/kaggle/temp/CrispASR")
+CLONE = Path("/kaggle/temp/StelnetTTS")
 
 if not CLONE.exists():
     try:
         subprocess.run(["git", "clone", "--recurse-submodules",
-                        "https://github.com/CrispStrobe/CrispASR.git", str(CLONE)],
+                        "https://github.com/Cyna/StelnetTTS.git", str(CLONE)],
                        check=True, timeout=1800)
     except Exception as e:  # noqa: BLE001
         print(f"clone failed: {e}", flush=True)
@@ -66,7 +66,7 @@ kh.resolve_hf_token()
 kh.install_build_toolchain()
 sh("apt-get install -y --no-install-recommends clang || true", timeout=900)
 
-SRC = CLONE / "src" / "crispasr.cpp"
+SRC = CLONE / "src" / "stelnettts.cpp"
 BEFORE = "    struct ggml_tensor* x_t = ggml_transpose(ctx0, cur);"
 AFTER = ("    // ggml_transpose returns a NON-CONTIGUOUS view (nb[0]/nb[1] swapped), and a\n"
          "    // transposed src1 makes llamafile_sgemm's ldb collapse to 1 while k is the\n"
@@ -80,7 +80,7 @@ SEG_RE = re.compile(r"VAD segment (\d+): start = ([\d.]+), end = ([\d.]+)")
 
 def build_and_run(tag, cc, cxx, build_type):
     bdir = f"build-{tag}"
-    flags = (f"-DCMAKE_BUILD_TYPE={build_type} -DGGML_NATIVE=OFF -DCRISPASR_BUILD_TESTS=ON "
+    flags = (f"-DCMAKE_BUILD_TYPE={build_type} -DGGML_NATIVE=OFF -DSTELNETTTS_BUILD_TESTS=ON "
              f"-DCMAKE_C_COMPILER={cc} -DCMAKE_CXX_COMPILER={cxx} " + " ".join(kh.cache_and_link_flags()))
     with kh.build_heartbeat(f"cmake.{tag}", 30):
         r = sh(f"cmake -S . -B {bdir} -G Ninja {flags}", cwd=str(CLONE), timeout=1800)

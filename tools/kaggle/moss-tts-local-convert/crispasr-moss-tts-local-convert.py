@@ -1,13 +1,13 @@
-# CrispASR — MOSS-TTS-Local (4B) P1 converter validation (#249 second deliverable)
+# StelnetTTS — MOSS-TTS-Local (4B) P1 converter validation (#249 second deliverable)
 #
 # Runs models/convert-moss-tts-local-to-gguf.py on the REAL 4B weights and reads
 # the produced GGUF back to confirm: arch = "moss-tts-local", the metadata KV, and
 # every tensor name/shape/dtype. Empirically validates the converter (which is
 # already correct-by-construction vs the 438 tensor names) before the runtime is
-# built against it. Optionally uploads the F16 GGUF to cstr/moss-tts-local-v1.5-GGUF.
+# built against it. Optionally uploads the F16 GGUF to Xenna/moss-tts-local-v1.5-GGUF.
 #
 # CPU kernel (no GPU needed for conversion). Stage under /tmp (~70 GB), not
-# /kaggle/working (~20 GB). HF auth via the chr1str/crispasr-hf-token dataset.
+# /kaggle/working (~20 GB). HF auth via the chr1str/stelnettts-hf-token dataset.
 
 import json
 import os
@@ -18,14 +18,14 @@ from pathlib import Path
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 MODELS = TMP / "moss-local"
 WORK = Path("/kaggle/working")
 MODELS.mkdir(parents=True, exist_ok=True)
 
-REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-parity-diff")
+REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-parity-diff")
 HF_MODEL = os.environ.get("MOSS_MODEL", "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5")
-UPLOAD_REPO = os.environ.get("MOSS_UPLOAD_REPO", "")  # set to cstr/... to upload
+UPLOAD_REPO = os.environ.get("MOSS_UPLOAD_REPO", "")  # set to Xenna/... to upload
 _T0 = time.time()
 
 
@@ -38,7 +38,7 @@ def main():
     log(f"clone {REF}")
     if not REPO.exists():
         subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF,
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     try:
         import kaggle_harness as kh

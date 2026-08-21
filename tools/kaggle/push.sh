@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push the CrispASR regression notebook to Kaggle.
+# Push the StelnetTTS regression notebook to Kaggle.
 #
 # Kaggle's `kernels push` API uploads the contents of the given
 # directory AND triggers an immediate run with the freshly-uploaded
@@ -9,12 +9,12 @@
 # After the first successful push, set up Kaggle's native weekly
 # schedule via the kernel's "Settings → Schedule a notebook run"
 # UI; the CLI doesn't expose scheduling. The script itself
-# `git clone`s CrispASR at the start of every run, so as long as
-# the local `tools/kaggle/crispasr-regression.py` we pushed is the
+# `git clone`s StelnetTTS at the start of every run, so as long as
+# the local `tools/kaggle/stelnettts-regression.py` we pushed is the
 # bootstrap, Kaggle picks up `main` automatically each cycle.
 #
 # Re-push when the bootstrap script itself changes (env knob
-# defaults, new pip deps). Pure C++ changes to CrispASR don't
+# defaults, new pip deps). Pure C++ changes to StelnetTTS don't
 # need a re-push — they get pulled at runtime.
 
 set -euo pipefail

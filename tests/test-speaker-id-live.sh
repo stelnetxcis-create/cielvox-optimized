@@ -7,12 +7,12 @@
 #     (--enroll-speaker / --speaker-db require --speaker-db-consent).
 #
 # Usage:
-#   bash tests/test-speaker-id-live.sh <crispasr-binary>
+#   bash tests/test-speaker-id-live.sh <stelnettts-binary>
 #
 # Inputs (all optional — the test SKIPs cleanly when prerequisites are
 # missing so it is safe to run in any environment):
-#   CRISPASR_TEST_AUDIO   path to a 16 kHz mono wav (else common paths tried)
-#   CRISPASR_TEST_MODEL   ASR model spec for -m (default: auto / auto-download)
+#   STELNETTTS_TEST_AUDIO   path to a 16 kHz mono wav (else common paths tried)
+#   STELNETTTS_TEST_MODEL   ASR model spec for -m (default: auto / auto-download)
 #
 # Models (TitaNet for enrollment, ASR for transcription) auto-download on
 # first use; the suite SKIPs the model-dependent cases if resolution fails
@@ -21,29 +21,29 @@
 set -u
 
 CRISPASR="${1:-${CRISPASR:-}}"
-[ -z "$CRISPASR" ] && CRISPASR="$(command -v crispasr || true)"
+[ -z "$CRISPASR" ] && CRISPASR="$(command -v stelnettts || true)"
 if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not provided/executable"
+    echo "SKIP: stelnettts binary not provided/executable"
     exit 0
 fi
 
 # Locate test audio.
-AUDIO="${CRISPASR_TEST_AUDIO:-}"
+AUDIO="${STELNETTTS_TEST_AUDIO:-}"
 if [ -z "$AUDIO" ]; then
     for c in samples/jfk.wav ./jfk.wav \
              /Volumes/backups/code/audio_samples/en/*.wav \
-             "$HOME/crispasr-live-cache"/*.wav; do
+             "$HOME/stelnettts-live-cache"/*.wav; do
         [ -f "$c" ] && AUDIO="$c" && break
     done
 fi
 if [ -z "$AUDIO" ] || [ ! -f "$AUDIO" ]; then
-    echo "SKIP: no test audio (set CRISPASR_TEST_AUDIO=<16k wav>)"
+    echo "SKIP: no test audio (set STELNETTTS_TEST_AUDIO=<16k wav>)"
     exit 0
 fi
 
-MODEL="${CRISPASR_TEST_MODEL:-auto}"
+MODEL="${STELNETTTS_TEST_MODEL:-auto}"
 # Keep scratch off /tmp (project rule); CWD is the repo root under ctest.
-WORK="$(mktemp -d "${CRISPASR_SCRATCH_DIR:-.}/spkid.XXXXXX")" || { echo "SKIP: cannot make scratch dir"; exit 0; }
+WORK="$(mktemp -d "${STELNETTTS_SCRATCH_DIR:-.}/spkid.XXXXXX")" || { echo "SKIP: cannot make scratch dir"; exit 0; }
 DB="$WORK/voiceprints"
 trap 'rm -rf "$WORK"' EXIT
 

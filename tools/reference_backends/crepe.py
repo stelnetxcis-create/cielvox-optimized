@@ -1,4 +1,4 @@
-"""CREPE reference backend — torchcrepe ground truth for crispasr-diff.
+"""CREPE reference backend — torchcrepe ground truth for stelnettts-diff.
 
 CREPE (Kim et al. 2018, MIT) is a monophonic F0 estimator: a 6-layer 1-D CNN
 over raw 16 kHz audio producing a 360-bin pitch activation per frame. There is
@@ -12,7 +12,7 @@ Usage:
         --audio samples/jfk.wav \\
         --output /tmp/crepe-ref.gguf
 
-    build/bin/crispasr-diff crepe crepe-tiny-f16.gguf \\
+    build/bin/stelnettts-diff crepe crepe-tiny-f16.gguf \\
         /tmp/crepe-ref.gguf samples/jfk.wav
 
 `--model-dir` is the *capacity*, not a directory: pass `tiny` or `full` (or a
@@ -41,7 +41,7 @@ Two traps this file deliberately does NOT step in:
 
   * **The ReLU is BEFORE the BatchNorm.** Do not reorder, and do not fold BN
     into the conv — the fold is invalid through a rectifier. (The first
-    CrispASR converter got this wrong from a fetched *summary* of
+    StelnetTTS converter got this wrong from a fetched *summary* of
     `torchcrepe/model.py`; the real source has relu first.)
   * **`torchcrepe.convert.bins_to_cents` applies triangular DITHERING**, i.e.
     it is random. Nothing decoded through it is reproducible, so this dumper
@@ -56,7 +56,7 @@ Stages
     conv6_out       (F, C, T)         per-layer output, after the maxpool
     embedding       (F, in_features)  channel-fastest flatten fed to classifier
 
-`activation` is the only stage `crispasr-diff crepe` can compare today —
+`activation` is the only stage `stelnettts-diff crepe` can compare today —
 `src/crepe.h` exposes `crepe_compute_activation()` and no per-layer stage API,
 so the per-layer captures are diagnostic: run this dumper twice (once per
 capacity, or against a modified graph) and diff the `.gguf` archives, or use

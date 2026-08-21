@@ -21,7 +21,7 @@ tags:
 
 GGUF quantizations of [ibm-granite/granite-4.0-1b-speech](https://huggingface.co/ibm-granite/granite-4.0-1b-speech), a **1B-parameter speech-to-text model** combining a Conformer encoder, BLIP-2 Q-Former projector, and Granite LLM with μP (maximal update parameterization).
 
-Converted and tested with [CrispASR](https://github.com/CrispStrobe/CrispASR), a multi-model ASR framework built on ggml.
+Converted and tested with [StelnetTTS](https://github.com/Cyna/StelnetTTS), a multi-model ASR framework built on ggml.
 
 ## Files
 
@@ -46,14 +46,14 @@ Q4_K recommended — 2× smaller, 1.6× faster, identical transcription quality.
 ## Usage
 
 ```bash
-# Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target granite-main
 
 # Download Q4_K (recommended)
-huggingface-cli download cstr/granite-speech-4.0-1b-GGUF \
+huggingface-cli download Xenna/granite-speech-4.0-1b-GGUF \
     granite-speech-1b-q4_k.gguf --local-dir .
 
 # Transcribe
@@ -91,7 +91,7 @@ python models/convert-granite-speech-to-gguf.py \
     --output granite-speech-1b.gguf
 
 # Quantize (only LLM weights are quantized; encoder/projector stay F32)
-./build/bin/crispasr-quantize granite-speech-1b.gguf granite-speech-1b-q4_k.gguf q4_k
+./build/bin/stelnettts-quantize granite-speech-1b.gguf granite-speech-1b-q4_k.gguf q4_k
 ```
 
 ## Output
@@ -105,4 +105,4 @@ Matches the HuggingFace Transformers reference output exactly.
 ## Credits
 
 - **Model**: IBM Granite team ([ibm-granite/granite-4.0-1b-speech](https://huggingface.co/ibm-granite/granite-4.0-1b-speech))
-- **Runtime**: [CrispASR](https://github.com/CrispStrobe/CrispASR) (MIT), built on [ggml](https://github.com/ggerganov/ggml)
+- **Runtime**: [StelnetTTS](https://github.com/Cyna/StelnetTTS) (MIT), built on [ggml](https://github.com/ggerganov/ggml)

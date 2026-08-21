@@ -1,9 +1,9 @@
 #include "napi.h"
 #include "common.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 
-#include "crispasr.h"
-#include "crispasr_session.h" // session C-ABI for the backend-agnostic transcribeSession() path
+#include "stelnettts.h"
+#include "stelnettts_session.h" // session C-ABI for the backend-agnostic transcribeSession() path
 
 #include <string>
 #include <thread>
@@ -119,8 +119,8 @@ void whisper_print_segment_callback(struct whisper_context* ctx, struct whisper_
         if (params.diarize && pcmf32s.size() == 2) {
             const int64_t n_samples = pcmf32s[0].size();
 
-            const int64_t is0 = timestamp_to_sample(t0, n_samples, CRISPASR_SAMPLE_RATE);
-            const int64_t is1 = timestamp_to_sample(t1, n_samples, CRISPASR_SAMPLE_RATE);
+            const int64_t is0 = timestamp_to_sample(t0, n_samples, STELNETTTS_SAMPLE_RATE);
+            const int64_t is1 = timestamp_to_sample(t1, n_samples, STELNETTTS_SAMPLE_RATE);
 
             double energy0 = 0.0f;
             double energy1 = 0.0f;
@@ -305,7 +305,7 @@ private:
                 fprintf(stderr,
                         "%s: processing '%s' (%d samples, %.1f sec), %d threads, %d processors, lang = %s, task = %s, "
                         "timestamps = %d, audio_ctx = %d ...\n",
-                        __func__, fname_inp.c_str(), int(pcmf32.size()), float(pcmf32.size()) / CRISPASR_SAMPLE_RATE,
+                        __func__, fname_inp.c_str(), int(pcmf32.size()), float(pcmf32.size()) / STELNETTTS_SAMPLE_RATE,
                         params.n_threads, params.n_processors, params.language.c_str(),
                         params.translate ? "translate" : "transcribe", params.no_timestamps ? 0 : 1, params.audio_ctx);
 
@@ -314,9 +314,9 @@ private:
 
             // Run inference
             {
-                whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+                whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
 
-                wparams.strategy = params.beam_size > 1 ? CRISPASR_SAMPLING_BEAM_SEARCH : CRISPASR_SAMPLING_GREEDY;
+                wparams.strategy = params.beam_size > 1 ? STELNETTTS_SAMPLING_BEAM_SEARCH : STELNETTTS_SAMPLING_GREEDY;
 
                 wparams.print_realtime = false;
                 wparams.print_progress = params.print_progress;
@@ -565,7 +565,7 @@ Napi::Value whisper(const Napi::CallbackInfo& info) {
 
 
 // ---------------------------------------------------------------------------
-// Session-based transcription via the crispasr_session C-ABI. Unlike whisper()
+// Session-based transcription via the stelnettts_session C-ABI. Unlike whisper()
 // above (whisper-only), this reaches every ASR backend and the session
 // post-processors — punctuation restoration (puncModel), beam search,
 // translation — matching the CLI/server/Python/Go/Dart surface. Returns the
@@ -579,28 +579,28 @@ static int run_session(whisper_params& params, whisper_result& result) {
         return 2;
     }
 
-    crispasr_session* s =
+    stelnettts_session* s =
         params.backend.empty()
-            ? crispasr_session_open(params.model.c_str(), params.n_threads)
-            : crispasr_session_open_explicit(params.model.c_str(), params.backend.c_str(), params.n_threads);
+            ? stelnettts_session_open(params.model.c_str(), params.n_threads)
+            : stelnettts_session_open_explicit(params.model.c_str(), params.backend.c_str(), params.n_threads);
     if (!s) {
-        fprintf(stderr, "error: failed to open crispasr session (model '%s', backend '%s')\n", params.model.c_str(),
+        fprintf(stderr, "error: failed to open stelnettts session (model '%s', backend '%s')\n", params.model.c_str(),
                 params.backend.c_str());
         return 3;
     }
 
     if (!params.source_lang.empty())
-        crispasr_session_set_source_language(s, params.source_lang.c_str());
+        stelnettts_session_set_source_language(s, params.source_lang.c_str());
     if (!params.target_lang.empty())
-        crispasr_session_set_target_language(s, params.target_lang.c_str());
-    crispasr_session_set_punctuation(s, params.punctuation ? 1 : 0);
+        stelnettts_session_set_target_language(s, params.target_lang.c_str());
+    stelnettts_session_set_punctuation(s, params.punctuation ? 1 : 0);
     if (!params.punc_model.empty())
-        crispasr_session_set_punc_model(s, params.punc_model.c_str());
-    crispasr_session_set_translate(s, params.translate ? 1 : 0);
+        stelnettts_session_set_punc_model(s, params.punc_model.c_str());
+    stelnettts_session_set_translate(s, params.translate ? 1 : 0);
     if (params.beam_size > 0)
-        crispasr_session_set_beam_size(s, params.beam_size);
+        stelnettts_session_set_beam_size(s, params.beam_size);
     if (params.temperature > 0.0f)
-        crispasr_session_set_temperature(s, params.temperature, params.seed);
+        stelnettts_session_set_temperature(s, params.temperature, params.seed);
 
     std::vector<float> pcmf32;
     std::vector<std::vector<float>> pcmf32s;
@@ -608,38 +608,38 @@ static int run_session(whisper_params& params, whisper_result& result) {
         pcmf32 = params.pcmf32;
     } else if (!::read_audio_data(params.fname_inp[0], pcmf32, pcmf32s, /*stereo=*/false)) {
         fprintf(stderr, "error: failed to read audio file '%s'\n", params.fname_inp[0].c_str());
-        crispasr_session_close(s);
+        stelnettts_session_close(s);
         return 4;
     }
 
     const char* lang =
         (params.language.empty() || params.language == "auto") ? nullptr : params.language.c_str();
     // issue #208: chunk_seconds >= 0 forces the bounded chunked long-form path
-    // (poll crispasr_get_progress() for a progress bar); otherwise plain.
-    crispasr_session_result* r =
+    // (poll stelnettts_get_progress() for a progress bar); otherwise plain.
+    stelnettts_session_result* r =
         params.chunk_seconds >= 0
-            ? crispasr_session_transcribe_chunked_lang(s, pcmf32.data(), (int)pcmf32.size(), params.chunk_seconds,
+            ? stelnettts_session_transcribe_chunked_lang(s, pcmf32.data(), (int)pcmf32.size(), params.chunk_seconds,
                                                        params.overlap_seconds, lang)
-            : crispasr_session_transcribe_lang(s, pcmf32.data(), (int)pcmf32.size(), lang);
+            : stelnettts_session_transcribe_lang(s, pcmf32.data(), (int)pcmf32.size(), lang);
     if (!r) {
-        crispasr_session_close(s);
+        stelnettts_session_close(s);
         return 5;
     }
 
     // The session API has no post-hoc LID accessor; echo the requested language.
     result.language = (lang ? params.language : std::string("auto"));
-    const int n = crispasr_session_result_n_segments(r);
+    const int n = stelnettts_session_result_n_segments(r);
     result.segments.resize(n);
     for (int i = 0; i < n; ++i) {
-        const int64_t t0 = crispasr_session_result_segment_t0(r, i);
-        const int64_t t1 = crispasr_session_result_segment_t1(r, i);
-        const char* text = crispasr_session_result_segment_text(r, i);
+        const int64_t t0 = stelnettts_session_result_segment_t0(r, i);
+        const int64_t t1 = stelnettts_session_result_segment_t1(r, i);
+        const char* text = stelnettts_session_result_segment_text(r, i);
         result.segments[i].emplace_back(to_timestamp(t0, params.comma_in_time));
         result.segments[i].emplace_back(to_timestamp(t1, params.comma_in_time));
         result.segments[i].emplace_back(text ? text : "");
     }
-    crispasr_session_result_free(r);
-    crispasr_session_close(s);
+    stelnettts_session_result_free(r);
+    stelnettts_session_close(s);
     return 0;
 }
 

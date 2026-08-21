@@ -35,7 +35,7 @@ bool get_audio(std::vector<float>& audio) {
 
 void wchess_main(size_t i) {
     struct whisper_full_params wparams =
-        whisper_full_default_params(whisper_sampling_strategy::CRISPASR_SAMPLING_GREEDY);
+        whisper_full_default_params(whisper_sampling_strategy::STELNETTTS_SAMPLING_GREEDY);
 
     wparams.n_threads = std::min(N_THREAD, (int)std::thread::hardware_concurrency());
     wparams.offset_ms = 0;

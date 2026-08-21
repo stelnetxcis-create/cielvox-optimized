@@ -1,7 +1,7 @@
 # Text-to-Speech (TTS)
 
-CrispASR ships **fourteen open-weights TTS engines** behind the same
-`crispasr` binary, each with a distinct voice / quality / footprint
+StelnetTTS ships **fourteen open-weights TTS engines** behind the same
+`stelnettts` binary, each with a distinct voice / quality / footprint
 trade-off:
 
 ## Contents
@@ -9,14 +9,14 @@ trade-off:
 - [dots.tts](#dotstts--voice-cloning-and-performance) — voice cloning, mixed quant, flow-match knobs
 - [TADA](#tada--multilingual-and-voice-cloning) — built-in per-language voices, baking a custom voice
   - [Switching voice at query time (server, #201)](#switching-voice-at-query-time-server-201)
-  - [Timing quality (`CRISPASR_TADA_NUM_CANDIDATES`)](#timing-quality-crispasr_tada_num_candidates)
+  - [Timing quality (`STELNETTTS_TADA_NUM_CANDIDATES`)](#timing-quality-stelnettts_tada_num_candidates)
 - [CosyVoice3](#cosyvoice3--voice-cloning-from-a-wav) — WAV cloning, `--ref-text`, base vs RL talker
 - [Output language and cross-lingual cloning](#output-language-and-cross-lingual-cloning--tl---sl) — `-tl` / `-sl`, what each backend does
 - [G2P Phonemization](#g2p-phonemization---g2p-dict) — `--g2p-dict`, number expansion, phoneme dialects
   - [Driving the phonemes directly (`--tts-phonemes`)](#driving-the-phonemes-directly---tts-phonemes)
 - [Kokoro](#kokoro--multilingual-smallest) — multilingual, smallest
-- [Qwen3-TTS](#qwen3-tts--voice-cloning-highest-fidelity) — voice cloning, highest fidelity
-  - [qwen3-tts environment switches](#qwen3-tts-environment-switches)
+- [Qwen3-TTS](#cielvox2-tts--voice-cloning-highest-fidelity) — voice cloning, highest fidelity
+  - [cielvox2-tts environment switches](#cielvox2-tts-environment-switches)
   - [pocket-tts voices and environment switches](#pocket-tts-voices-and-environment-switches)
 - [VibeVoice](#vibevoice--realtime-streaming-tts) — realtime streaming TTS
 - [VibeVoice 1.5B](#vibevoice-15b--base-tts-with-wav-cloning) — base TTS with WAV cloning
@@ -40,16 +40,16 @@ trade-off:
 
 | Backend | Why pick it | Voice cloning | First-run download |
 |---|---|---|---|
-| **`melotts`** | Multilingual VITS2 (MeloTTS). 4 English speakers (US/BR/India/AU). 44.1 kHz output, ~102 MB GGUF. Neural G2P + CMU dict. BERT companion (Q4_K 52 MB) auto-downloads with `-m auto`; also via `--codec-model` or `CRISPASR_MELOTTS_BERT` env. | No (per-speaker ID) | ~154 MB via `-m auto` |
+| **`melotts`** | Multilingual VITS2 (MeloTTS). 4 English speakers (US/BR/India/AU). 44.1 kHz output, ~102 MB GGUF. Neural G2P + CMU dict. BERT companion (Q4_K 52 MB) auto-downloads with `-m auto`; also via `--codec-model` or `STELNETTTS_MELOTTS_BERT` env. | No (per-speaker ID) | ~154 MB via `-m auto` |
 | **`piper`** | Tiniest footprint (30 MB). rhasspy/piper VITS; 250+ community voices across 30+ languages. Built-in G2P (CMUdict + LTS rules) for English — no espeak-ng needed. Optional espeak-ng for other langs (loaded via dlopen). 22 kHz output. Use `--g2p-dict` to select dictionary source. | No (per-voice GGUF) | Manual `wget` |
 | [`kokoro`](#kokoro--multilingual-smallest) | Smallest + fastest. 82 M-param StyleTTS2-derived model. Multilingual via built-in G2P or espeak-ng (dlopen/popen fallback). | No (preset voice packs) | Manual `wget` (no `-m auto`) |
-| [`qwen3-tts`](#qwen3-tts--voice-cloning-highest-fidelity) | Highest fidelity / strongest cloning. Speech-LLM (talker + code predictor + 12 Hz codec). Default voice auto-downloaded with `-m auto`; or supply your own WAV + ref-text. | Optional (auto default voice; or WAV + ref-text or baked voice GGUF) | ~1.3 GB via `-m auto` |
+| [`cielvox2-tts`](#cielvox2-tts--voice-cloning-highest-fidelity) | Highest fidelity / strongest cloning. Speech-LLM (talker + code predictor + 12 Hz codec). Default voice auto-downloaded with `-m auto`; or supply your own WAV + ref-text. | Optional (auto default voice; or WAV + ref-text or baked voice GGUF) | ~1.3 GB via `-m auto` |
 | **`miotts`** | MioTTS-0.6B (Qwen3 LLM + MioCodec-v2). EN/JA. Single GGUF, 44.1 kHz output. Codec-aware mixed quantization (LLM Q4_K + codec F16). | Yes — `--voice preset.emb.gguf` (preset speaker embeddings) | 502 MB Q4_K via `-m auto` |
 | **`moss-tts`** | MOSS-TTS-v1.5 (MossTTSDelay): Qwen3-8B backbone emitting 32 RVQ audio codebooks under a delay pattern, decoded by a 1.6B transformer codec. Needs the codec companion (`--codec-model`, or auto-downloaded/sibling). | Yes — `--voice ref.wav` (the codec encoder clones the reference speaker) | ~5 GB Q4_K backbone + ~3.5 GB F16 codec via `-m auto` |
 | **`moss-tts-local`** | MOSS-TTS-Local-Transformer-v1.5 (MossTTSLocal, 4B): Qwen3-4B backbone + a 1-layer local/depth transformer that autoregressively emits 12 RVQ codebooks per frame (RQ-Transformer; no delay pattern), decoded to 48 kHz stereo by MOSS-Audio-Tokenizer-v2 (downmixed to mono). Needs the codec companion (`--codec-model`, or auto-downloaded/sibling). | `--voice ref.wav --i-have-rights` (needs the encoder-carrying codec, `--codec-model moss-tts-local-v1.5-codec-enc.gguf`; the plain `-codec.gguf` is decode-only and falls back to the default voice) | ~9.1 GB F16 backbone + ~2.1 GB codec via `-m auto` (F16 is the reliable target; Q4_K long-form runs away) |
 | **`omnivoice`** | 600+ languages, selected with `-l` / `-tl` (or `"language"` on `/v1/audio/speech`) — see the language note below. Qwen3-0.6B backbone with masked iterative 8-codebook TTS (SoundStorm-style). Zero-shot voice cloning from reference audio. Supports finetunes (omnivoice-singing). | Yes (`--voice <wav> --ref-text "..."`) | ~1.2 GB F16 + ~400 MB tokenizer |
 | [`vibevoice-tts`](#vibevoice--realtime-streaming-tts) | Lowest-latency streaming TTS, designed for realtime. | Preset voice packs | ~636 MB via `-m auto` |
-| [`vibevoice-1.5b`](#vibevoice-15b--base-tts-with-wav-cloning) | Base VibeVoice TTS model with WAV cloning. | Yes (`CRISPASR_VIBEVOICE_VOICE_AUDIO=<wav>` or `--voice <wav>`) | ~1.6 GB via `-m auto` |
+| [`vibevoice-1.5b`](#vibevoice-15b--base-tts-with-wav-cloning) | Base VibeVoice TTS model with WAV cloning. | Yes (`STELNETTTS_VIBEVOICE_VOICE_AUDIO=<wav>` or `--voice <wav>`) | ~1.6 GB via `-m auto` |
 | [`orpheus`](#orpheus--llama-32-3b--snac-codec) | Llama-3.2-3B talker + SNAC 24 kHz codec. 8 baked English speakers; expressive output. Greedy loops — pass `--temperature 0.6`. | Preset names via `--voice tara/leah/...` | ~3.5 GB via `-m auto` (talker Q8 + 26 MB SNAC) |
 | [`chatterbox`](#chatterbox--flow-matching-tts-voice-cloning--multilingual) | T3 AR + S3Gen flow-matching + HiFTGenerator. Built-in voice baked into the T3 GGUF; clones via a baked voice GGUF (see workflow below). EN/AR/DE variants share runtime. | Yes (`--voice <voice.gguf>`, baked from a WAV with `models/bake-chatterbox-voice-from-wav.py`) | ~880 MB via `-m auto` (T3 Q8 + S3Gen Q8) |
 | **`outetts`** | OuteTTS-0.3-1B: OLMo-1B LLM + WavTokenizer single-codebook VQ-GAN. CC-BY-NC-SA-4.0 (non-commercial, ShareAlike). 24 kHz output. | Yes (`--voice <speaker.json>`, created with `tools/reference_backends/outetts_create_speaker.py`) | ~2.5 GB via `-m auto` (talker F16 + WavTokenizer decoder) |
@@ -59,7 +59,7 @@ trade-off:
 | [`cosyvoice3-tts`](#cosyvoice3--voice-cloning-from-a-wav) | Fun-CosyVoice3-0.5B-2512: Qwen2-0.5B AR speech-token LM + DiT-CFM (10-step Euler) + HiFT (NSF + iSTFT) @ 24 kHz. 9 languages + 18 Chinese dialects. Ships an 8-voice baked bank (`zero_shot` + `fleurs-{en,de,zh,ja,fr,es,ko}`). | Yes — baked-bank name via `--voice <name>`, **or** native arbitrary-WAV cloning via `--voice <ref.wav> --ref-text "..."` (ports speech_tokenizer_v3 + CAMPPlus + matcha mel to ggml; speech tokens byte-exact vs ONNX). | ~1.2 GB via `-m auto` (Q4_K LLM + Q8_0 flow + HiFT + s3tok + campplus + voices) |
 | **`csm`** | Sesame CSM-1B: Llama-3.2 1B backbone (first-codebook AR) + 100M depth decoder (codebooks 1–31) + Kyutai Mimi codec (32-codebook RVQ → SEANet) @ 24 kHz. Single GGUF. Apache-2.0. | No (single built-in voice) | ~1.4 GB via `-m auto` (single Q4_K GGUF) |
 | **`dia`** | Nari Labs Dia 1.6B: byte-level text encoder (12L) + AR audio decoder (18L GQA) + 9-codebook DAC codec @ 44.1 kHz. CFG-guided, dialogue-style with `[S1]`/`[S2]` speaker tags. Apache-2.0. | No (dialogue via speaker tags) | ~1.6 GB via `-m auto` |
-| **`zonos-tts`** | Zyphra Zonos-v0.1-transformer: 26-layer GQA AR transformer → 9-codebook DAC @ 44.1 kHz. Rich conditioning: speaker embedding + text + emotion + FWHM pitch/tempo. CFG guided. Voice cloning from any reference WAV (pass via `CRISPASR_ZONOS_SPEAKER_EMB_PATH` or `--voice <ref.wav>`). Apache-2.0. | Yes (`--voice <ref.wav>`) | ~1.6 GB Q8_0 (default) or ~931 MB selective-Q4_K (heads/embeddings kept F16, auto-retry guard) or ~3.0 GB F16, via `-m auto` + 104 MB DAC codec. |
+| **`zonos-tts`** | Zyphra Zonos-v0.1-transformer: 26-layer GQA AR transformer → 9-codebook DAC @ 44.1 kHz. Rich conditioning: speaker embedding + text + emotion + FWHM pitch/tempo. CFG guided. Voice cloning from any reference WAV (pass via `STELNETTTS_ZONOS_SPEAKER_EMB_PATH` or `--voice <ref.wav>`). Apache-2.0. | Yes (`--voice <ref.wav>`) | ~1.6 GB Q8_0 (default) or ~931 MB selective-Q4_K (heads/embeddings kept F16, auto-retry guard) or ~3.0 GB F16, via `-m auto` + 104 MB DAC codec. |
 | **`bark`** | Suno Bark: 3-stage GPT-2 (text→semantic→coarse→fine) + EnCodec 24 kHz decoder. All sub-models packed into one GGUF. Supports speaker conditioning via `.npz` prompts. MIT license. | Yes (`--voice <speaker.npz>`) | ~423 MB via `-m auto` (selective Q4_K) |
 | **`speecht5`** | Microsoft SpeechT5 80M: char-level encoder (12L) + AR mel decoder (6L) + 5-conv postnet + HiFi-GAN @ 16 kHz. MIT. Speaker via 512-d x-vector. | Yes (`--voice <xvector.bin>`, raw float32) | ~300 MB via `-m auto` (F16 GGUF) |
 | **`fastpitch`** | NVIDIA FastPitch 60M: non-autoregressive parallel TTS — 6L FFTransformer encoder + duration/pitch predictors + length regulator + 6L FFTransformer decoder + HiFi-GAN @ 22 kHz. Deterministic (no sampling). CC-BY-4.0. | No (single speaker) | ~230 MB via `-m auto` (Q8_0 GGUF) |
@@ -71,11 +71,11 @@ trade-off:
 | [`tada-1b`](#tada--multilingual-and-voice-cloning) | HumeAI TADA 1B: Llama-3.2-1B backbone + per-token flow-matching diffusion head + TADA codec → 24 kHz. **English-only.** `-m auto` downloads model + default `tada-ref.gguf`. | Yes (`--voice <tada-ref.gguf>`, English voice refs only) | ~1.7 GB Q4_K + ~1 GB codec |
 | [`tada` / `tada-3b-ml`](#tada--multilingual-and-voice-cloning) | HumeAI TADA 3B Multilingual: same architecture, 3B params. Supports **ar, ch, de, es, fr, it, ja, pl, pt** in addition to English. `-l <lang>` auto-downloads `tada-ref-<lang>.gguf`. | Yes (`--voice <tada-ref.gguf>`) | ~4 GB Q4_K + ~1 GB codec |
 | **`lfm2-audio`** | LiquidAI LFM2.5-Audio 1.5B: FastConformer encoder + LFM2 hybrid conv+attention backbone + 6L depthformer (8-codebook Mimi) + ISTFT detokenizer → 24 kHz. Interleaved text+audio generation. Also does ASR and speech-to-speech. LFM Open License v1.0 ($10M revenue cap). | No | ~1.5 GB Q4_K (JP) / ~1.6 GB Q5_K (EN) + ~157 MB detokenizer companion |
-| [`dots-tts`](#dotstts--voice-cloning-and-performance) | rednote-hilab dots.tts-soar: Qwen2.5-1.5B LLM + 24L VAESemanticEncoder + 18L DiT flow-matching head (16-step Euler CFG) + BigVGAN vocoder → 48 kHz. Continuous-latent AR (patch-by-patch). Apache-2.0. **The CFG flow-match needs an F16 DiT — a full-q8 core derails; use the mixed quant (`crispasr-quantize` keeps the DiT at F16, quantizes the LLM+PatchEncoder to Q8_0 or Q4_K).** CAM++ reference-WAV voice cloning is supported when the speaker companion is present. | Yes (`--voice ref.wav --i-have-rights`) | ~3.1 GB mixed-Q8 / ~2.2 GB mixed-Q4_K core + 330–345 MB vocoder companion |
+| [`dots-tts`](#dotstts--voice-cloning-and-performance) | rednote-hilab dots.tts-soar: Qwen2.5-1.5B LLM + 24L VAESemanticEncoder + 18L DiT flow-matching head (16-step Euler CFG) + BigVGAN vocoder → 48 kHz. Continuous-latent AR (patch-by-patch). Apache-2.0. **The CFG flow-match needs an F16 DiT — a full-q8 core derails; use the mixed quant (`stelnettts-quantize` keeps the DiT at F16, quantizes the LLM+PatchEncoder to Q8_0 or Q4_K).** CAM++ reference-WAV voice cloning is supported when the speaker companion is present. | Yes (`--voice ref.wav --i-have-rights`) | ~3.1 GB mixed-Q8 / ~2.2 GB mixed-Q4_K core + 330–345 MB vocoder companion |
 | **`mini-omni2`** | gpt-omni/mini-omni2: Whisper-small encoder + Qwen2-0.5B LLM with 8-stream architecture + SNAC 24 kHz decoder → 24 kHz. Also does ASR and speech-to-speech. MIT license. Requires `--codec-model snac-24khz.gguf` companion. | No | ~1.0 GB Q4_K + ~80 MB SNAC companion |
 | **`voxtral-tts`** | Mistral Voxtral-4B-TTS-2603: Ministral-3B AR backbone (26L GQA, NORMAL/adjacent-pair RoPE) + 3L bidirectional flow-matching acoustic transformer (8-step Euler ODE + CFG α=1.2, no positional encoding) + Voxtral codec decoder (ALiBi sliding-window attention + reflect-causal conv + ConvTranspose upsampling) → 24 kHz. 20 preset voices across 9 languages (en/fr/de/es/it/pt/nl/ar/hi); strong on French technical text. CC-BY-NC-4.0. | No (20 preset voices via `--voice <name>`, e.g. `fr_female`) | ~2.4 GB Q4_K / ~4.3 GB Q8_0 / ~8.2 GB F16 via `-m auto` |
 
-All backends write mono WAV via `--tts-output` (22 kHz for piper/fastpitch/bananamind-tts, 16 kHz for speecht5, 44.1 kHz for melotts/dia/parler-tts/zonos-tts, 48 kHz for voxcpm2-tts/dots-tts/irodori-tts/moss-tts-local/sidon, 24 kHz for most others). Programmatic callers don't need this table: `crispasr_session_output_sample_rate()` returns the active backend's output rate, with `crispasr_session_input_channels()` / `output_channels()` alongside (everything is mono today) — #332.
+All backends write mono WAV via `--tts-output` (22 kHz for piper/fastpitch/bananamind-tts, 16 kHz for speecht5, 44.1 kHz for melotts/dia/parler-tts/zonos-tts, 48 kHz for voxcpm2-tts/dots-tts/irodori-tts/moss-tts-local/sidon, 24 kHz for most others). Programmatic callers don't need this table: `stelnettts_session_output_sample_rate()` returns the active backend's output rate, with `stelnettts_session_input_channels()` / `output_channels()` alongside (everything is mono today) — #332.
 
 ## dots.tts — voice cloning and performance
 
@@ -84,11 +84,11 @@ CAM++ speaker companion (`dots-tts-soar-spk-f16.gguf`) beside the core model,
 then pass the reference recording with the consent attestation:
 
 ```bash
-crispasr --backend dots-tts \
+stelnettts --backend dots-tts \
   -m dots-tts-soar-q4_k.gguf \
   --codec-model dots-tts-soar-vocoder-q8_0.gguf \
   --voice reference.wav --i-have-rights \
-  --tts "Hello from CrispASR." --tts-output cloned.wav
+  --tts "Hello from StelnetTTS." --tts-output cloned.wav
 ```
 
 The speaker companion is loaded only when `--voice` is supplied. Without it,
@@ -105,16 +105,16 @@ The dominant cost is the DiT flow-match, not tokenization or the recurrent
 LLM step. A local Apple M1 measurement using the Q4_K core, Q8 vocoder, Metal,
 and an eight-patch cap took 24.2 s at 16 Euler steps: about 13.7 s in
 flow-match, 10.4 s in the BigVGAN vocoder, and under 0.5 s in the LLM and
-PatchEncoder. With the same seed and cap, `CRISPASR_DOTS_ODE_STEPS=8` took
+PatchEncoder. With the same seed and cap, `STELNETTTS_DOTS_ODE_STEPS=8` took
 16.2 s (1.49x faster); this is a speed/quality trade-off, not a parity-preserving
 optimization. Full utterances add patch-by-patch AR cost, so benchmark with a
 known patch/audio cap and inspect the generated WAV.
 
-For further experiments, `CRISPASR_DOTS_FUSED_STEP=0` restores the legacy DiT
+For further experiments, `STELNETTTS_DOTS_FUSED_STEP=0` restores the legacy DiT
 path for A/B testing; the persistent fused graph is the default on CPU/Metal.
-`CRISPASR_DOTS_CFG_INTERVAL=2` skips some unconditional CFG evaluations but is
+`STELNETTTS_DOTS_CFG_INTERVAL=2` skips some unconditional CFG evaluations but is
 approximate and should remain opt-in until the decoded output is checked.
-`CRISPASR_DOTS_TTS_BENCH=1` prints the stage timings used above.
+`STELNETTTS_DOTS_TTS_BENCH=1` prints the stage timings used above.
 
 ## TADA — multilingual and voice cloning
 
@@ -134,12 +134,12 @@ Community License. Managed model and auxiliary downloads therefore require
 follow its acceptable-use terms. The language reference packs are derived
 from CC-BY-4.0 FLEURS clips and retain that attribution requirement.
 
-Pass `-l <lang>` with the `tada-3b-ml` backend. CrispASR auto-downloads
-`tada-ref-<lang>.gguf` from `cstr/tada-tts-3b-ml-GGUF` on first use (<200 KB
+Pass `-l <lang>` with the `tada-3b-ml` backend. StelnetTTS auto-downloads
+`tada-ref-<lang>.gguf` from `Xenna/tada-tts-3b-ml-GGUF` on first use (<200 KB
 per language):
 
 ```bash
-crispasr --backend tada-3b-ml -m auto -l fr \
+stelnettts --backend tada-3b-ml -m auto -l fr \
     --tts "La justice sans force est impuissante." \
     --tts-output justice.wav
 ```
@@ -165,7 +165,7 @@ curl -s :8080/v1/audio/speech -d '{"input":"Guten Tag.","voice":"tada-ref-de.ggu
 
 The name resolves like any other model path (absolute path, or a cache/registry
 name that auto-downloads). Embedders going through the session C ABI get the
-same capability via `crispasr_session_set_voice(s, "tada-ref-de.gguf", NULL)`.
+same capability via `stelnettts_session_set_voice(s, "tada-ref-de.gguf", NULL)`.
 Generating a brand-new reference from raw audio+transcript at query time is not
 yet wired into the server (it needs the encoder+aligner GGUFs loaded) — bake the
 ref offline with the `--make-ref` pipeline below, then switch to it live.
@@ -178,7 +178,7 @@ speech. Two options — pure C++ (no Python) or the Python converter:
 #### Option 1: C++ `--make-ref` (no Python needed)
 
 Place `tada-encoder-f16.gguf` and `tada-aligner-en.gguf` (from
-[cstr/tada-encoder-GGUF](https://huggingface.co/cstr/tada-encoder-GGUF))
+[Xenna/tada-encoder-GGUF](https://huggingface.co/Xenna/tada-encoder-GGUF))
 next to your TADA model GGUF, then:
 
 ```bash
@@ -186,7 +186,7 @@ next to your TADA model GGUF, then:
 # --i-have-rights is required: baking IS the cloning step. The pack is
 # stamped as clone-derived so step 2 still gets the consent gate and the
 # spoken AI disclosure.
-crispasr --backend tada-3b-ml -m auto \
+stelnettts --backend tada-3b-ml -m auto \
     --make-ref \
     --voice speaker_10s.wav \
     --ref-text "Exact words spoken in the audio." \
@@ -194,7 +194,7 @@ crispasr --backend tada-3b-ml -m auto \
     --i-have-rights
 
 # Step 2 — synthesise with that voice:
-crispasr --backend tada-3b-ml -m auto \
+stelnettts --backend tada-3b-ml -m auto \
     --voice tada-ref-custom.gguf \
     --tts "Bonjour, comment allez-vous ?" \
     --tts-output result.wav \
@@ -224,7 +224,7 @@ the language of the text you will synthesise.
 
 The encoder pipeline (WAV+transcript → voice reference) is ported to C++/ggml.
 Pre-converted GGUFs are on HuggingFace at
-[cstr/tada-encoder-GGUF](https://huggingface.co/cstr/tada-encoder-GGUF):
+[Xenna/tada-encoder-GGUF](https://huggingface.co/Xenna/tada-encoder-GGUF):
 
 | File | Size | Description |
 |------|------|-------------|
@@ -245,25 +245,25 @@ If `--voice` is omitted, the runtime uses `tada-ref-<lang>.gguf` when `-l
 <lang>` is set, then falls back to `tada-ref.gguf` (the built-in English
 voice).
 
-### Timing quality (`CRISPASR_TADA_NUM_CANDIDATES`)
+### Timing quality (`STELNETTTS_TADA_NUM_CANDIDATES`)
 
 TADA predicts each token's duration with a per-token flow-matching head that
 is **noise-sensitive**: an unlucky noise draw can collapse durations into a
 rushed, unintelligible utterance (a known property of the model — the PyTorch
 reference behaves identically with the same noise). To make output robust,
-CrispASR generates several flow-matching candidates per token and keeps the
+StelnetTTS generates several flow-matching candidates per token and keeps the
 best one by reconstruction likelihood (the same `num_acoustic_candidates`
 ranking the reference implements).
 
-The CLI defaults to **4 candidates**. Override with `CRISPASR_TADA_NUM_CANDIDATES`:
+The CLI defaults to **4 candidates**. Override with `STELNETTTS_TADA_NUM_CANDIDATES`:
 
 ```bash
 # Fastest, single noise draw (may occasionally rush/garble timing):
-CRISPASR_TADA_NUM_CANDIDATES=1 crispasr --backend tada-3b-ml -m auto -l fr \
+STELNETTTS_TADA_NUM_CANDIDATES=1 stelnettts --backend tada-3b-ml -m auto -l fr \
     --tts "Bonjour, comment allez-vous ?" --tts-output out.wav
 
 # Higher quality / more robust timing (slower):
-CRISPASR_TADA_NUM_CANDIDATES=8 crispasr --backend tada-3b-ml -m auto -l de \
+STELNETTTS_TADA_NUM_CANDIDATES=8 stelnettts --backend tada-3b-ml -m auto -l de \
     --tts "Guten Tag, wie geht es Ihnen?" --tts-output out.wav
 ```
 
@@ -275,11 +275,11 @@ The same **default of 4** applies through the session C ABI, so the bindings
 and HTTP server get robust timing out of the box. Bindings can override it at
 runtime with `set_tts_num_candidates(n)` (Python/Go/Rust/Ruby),
 `SetTtsNumCandidates` (C#/Java), or `setTtsNumCandidates` (Dart/JS) — and the
-`CRISPASR_TADA_NUM_CANDIDATES` env var is honoured by every consumer, not just the CLI.
+`STELNETTTS_TADA_NUM_CANDIDATES` env var is honoured by every consumer, not just the CLI.
 
-### Talker text sampling (`CRISPASR_TADA_TEMPERATURE`, `CRISPASR_TADA_TOP_P`, …)
+### Talker text sampling (`STELNETTTS_TADA_TEMPERATURE`, `STELNETTTS_TADA_TOP_P`, …)
 
-`CRISPASR_TADA_NUM_CANDIDATES` tunes only the **duration** flow-matching head, not the
+`STELNETTTS_TADA_NUM_CANDIDATES` tunes only the **duration** flow-matching head, not the
 **content** (which words are spoken). The talker text decoder is a separate
 knob. It samples by default, matching upstream `InferenceOptions`
 (do_sample=True, temperature=0.6, top_k=0, top_p=0.9, repetition_penalty=1.1);
@@ -288,14 +288,14 @@ adds trailing noise — worst on harder or non-English text.
 
 | Env var | Default | Notes |
 |---|---|---|
-| `CRISPASR_TADA_DO_SAMPLE` | `1` | `0` = greedy argmax (the old behaviour); also `set_do_sample` |
-| `CRISPASR_TADA_TEMPERATURE` | `0.6` | also set by `--temperature` / `set_temperature` |
-| `CRISPASR_TADA_TOP_P` | `0.9` | nucleus; also `set_top_p` |
-| `CRISPASR_TADA_TOP_K` | `0` | `0` = disabled; also `set_top_k` |
-| `CRISPASR_TADA_REPETITION_PENALTY` | `1.1` | `1.0` = none; also `set_repetition_penalty` |
+| `STELNETTTS_TADA_DO_SAMPLE` | `1` | `0` = greedy argmax (the old behaviour); also `set_do_sample` |
+| `STELNETTTS_TADA_TEMPERATURE` | `0.6` | also set by `--temperature` / `set_temperature` |
+| `STELNETTTS_TADA_TOP_P` | `0.9` | nucleus; also `set_top_p` |
+| `STELNETTTS_TADA_TOP_K` | `0` | `0` = disabled; also `set_top_k` |
+| `STELNETTTS_TADA_REPETITION_PENALTY` | `1.1` | `1.0` = none; also `set_repetition_penalty` |
 
 Honoured by the CLI, C ABI, bindings and server. Raising
-`CRISPASR_TADA_REPETITION_PENALTY` measurably reduces repeats; with sampling on, `--seed`
+`STELNETTTS_TADA_REPETITION_PENALTY` measurably reduces repeats; with sampling on, `--seed`
 changes the wording.
 
 On the HTTP server these are **per-request** JSON fields on `POST
@@ -305,7 +305,7 @@ query time without a restart. A field that is omitted falls back to the value
 the server was started with (env / flags), so requests don't leak settings into
 each other.
 
-### Acoustic fidelity — quick vs accurate (`CRISPASR_TADA_NUM_FM_STEPS`, …)
+### Acoustic fidelity — quick vs accurate (`STELNETTTS_TADA_NUM_FM_STEPS`, …)
 
 The **acoustic** flow-matching head (which renders the predicted features into
 codec frames) has its own knobs, separate from the talker sampler and the
@@ -317,9 +317,9 @@ and intelligible; ~25 is noticeably slower and crisper).
 
 | Env var | Default | Notes |
 |---|---|---|
-| `CRISPASR_TADA_NUM_FM_STEPS` | `10` | Flow-matching ODE steps (Python `num_flow_matching_steps`); higher = slower/more accurate. Also `set_tts_steps` |
-| `CRISPASR_TADA_ACOUSTIC_CFG` | `1.6` | Acoustic classifier-free-guidance scale (Python `acoustic_cfg`). Also `set_cfg_weight` |
-| `CRISPASR_TADA_NOISE_TEMP` | `0.9` | FM noise temperature (Python `noise_temp`). Also `set_tts_noise_temp` |
+| `STELNETTTS_TADA_NUM_FM_STEPS` | `10` | Flow-matching ODE steps (Python `num_flow_matching_steps`); higher = slower/more accurate. Also `set_tts_steps` |
+| `STELNETTTS_TADA_ACOUSTIC_CFG` | `1.6` | Acoustic classifier-free-guidance scale (Python `acoustic_cfg`). Also `set_cfg_weight` |
+| `STELNETTTS_TADA_NOISE_TEMP` | `0.9` | FM noise temperature (Python `noise_temp`). Also `set_tts_noise_temp` |
 
 On the HTTP server these are also **per-request** JSON fields on `POST
 /v1/audio/speech`: `num_steps` (→ FM steps), `cfg_scale` (→ acoustic CFG), and
@@ -341,38 +341,38 @@ each run can produce a different prosody or phrasing.
 
 ```bash
 # Reproducible:
-./build/bin/crispasr --backend qwen3-tts -m auto \
+./build/bin/stelnettts --backend cielvox2-tts -m auto \
     --tts "Good morning." --seed 42 --tts-output out1.wav
-./build/bin/crispasr --backend qwen3-tts -m auto \
+./build/bin/stelnettts --backend cielvox2-tts -m auto \
     --tts "Good morning." --seed 42 --tts-output out2.wav
 # out1.wav == out2.wav (bit-identical)
 
 # Diverse — different seeds produce different renderings:
-./build/bin/crispasr --backend qwen3-tts -m auto \
+./build/bin/stelnettts --backend cielvox2-tts -m auto \
     --tts "Good morning." --seed 1 --tts-output variant1.wav
-./build/bin/crispasr --backend qwen3-tts -m auto \
+./build/bin/stelnettts --backend cielvox2-tts -m auto \
     --tts "Good morning." --seed 2 --tts-output variant2.wav
 ```
 
 The seed is wired through the sampling-capable TTS backends:
-qwen3-tts, chatterbox, vibevoice, orpheus, tada, indextts, f5-tts, voxcpm2, and parler-tts. It
+cielvox2-tts, chatterbox, vibevoice, orpheus, tada, indextts, f5-tts, voxcpm2, and parler-tts. It
 also works for ASR backends with temperature sampling (parakeet,
-canary, cohere, qwen3-asr, voxtral4b, granite, glm-asr, kyutai-stt,
+canary, cohere, cielvox2-asr, voxtral4b, granite, glm-asr, kyutai-stt,
 moonshine). The server API accepts `"seed"` in the `/v1/audio/speech`
 JSON body.
 
-Local live checks on `/Volumes/backups/ai/crispasr` confirmed the visible
-effect on `qwen3-tts-customvoice`, `chatterbox`, `vibevoice-tts`, and
+Local live checks on `/Volumes/backups/ai/stelnettts` confirmed the visible
+effect on `cielvox2-tts-customvoice`, `chatterbox`, `vibevoice-tts`, and
 `vibevoice-1.5b`: same seed = bit-identical WAV, different seed =
 different WAV hash. `IndexTTS` accepts the seed too, but on the tested
 prompt/reference pair the default beam-search path stayed identical
 across seeds, so treat it as a low-visibility knob unless you expose a
-stochastic decode path. `Kokoro` uses `CRISPASR_KOKORO_SEED` instead of
+stochastic decode path. `Kokoro` uses `STELNETTTS_KOKORO_SEED` instead of
 `--seed`.
 
 For HTTP usage, see [`docs/server.md`](server.md) — `POST
 /v1/audio/speech` is the OpenAI-compatible TTS endpoint, available on
-any `crispasr --server` instance whose loaded backend declares
+any `stelnettts --server` instance whose loaded backend declares
 `CAP_TTS`. Routes register on every backend; per-request `voice`,
 `speed`, and `instructions` pass through to the backend's
 `whisper_params`. Long-form input is auto-chunked on sentence
@@ -381,7 +381,7 @@ boundaries.
 ## CosyVoice3 — voice cloning from a WAV
 
 ```bash
-./build/bin/crispasr --backend cosyvoice3-tts -m auto \
+./build/bin/stelnettts --backend cosyvoice3-tts -m auto \
     --voice ref.wav --i-have-rights \
     --tts "Text to speak." --tts-output out.wav
 ```
@@ -433,14 +433,14 @@ talker differs — flow, HiFT, CAMPPlus, the speech tokenizer and the voice bank
 are shared, so the RL build swaps exactly one 384 MB file:
 
 ```bash
-./build/bin/crispasr --backend cosyvoice3-tts-rl -m auto \
+./build/bin/stelnettts --backend cosyvoice3-tts-rl -m auto \
     --voice fleurs-en --i-have-rights \
     --tts "The northern lights can be heard as well as seen." --tts-output out.wav
 ```
 
 `cosyvoice3-tts-rl` is the same engine; the alias exists so `-m auto` fetches
 `cosyvoice3-llm-rl-q4_k.gguf` instead of the base talker. Both live in
-[`cstr/cosyvoice3-0.5b-2512-GGUF`](https://huggingface.co/cstr/cosyvoice3-0.5b-2512-GGUF)
+[`Xenna/cosyvoice3-0.5b-2512-GGUF`](https://huggingface.co/Xenna/cosyvoice3-0.5b-2512-GGUF)
 (F16 and Q4_K), and pointing `-m` at either file directly works too — the
 companions are found by name.
 
@@ -465,11 +465,11 @@ over `-l` where both are given.
 
 ```bash
 # CLI — synthesize German
-./build/bin/crispasr --backend cosyvoice3-tts -m auto -tl de \
+./build/bin/stelnettts --backend cosyvoice3-tts -m auto -tl de \
     --tts "Guten Morgen, wie geht es Ihnen?" --tts-output out.wav
 
 # CLI — clone an ENGLISH reference clip, speaking GERMAN
-./build/bin/crispasr --backend cosyvoice3-tts -m auto \
+./build/bin/stelnettts --backend cosyvoice3-tts -m auto \
     -tl de -sl en \
     --voice ref_en.wav --ref-text "This is my reference recording." \
     --i-have-rights \
@@ -502,7 +502,7 @@ only cosyvoice3 acts on it today.
 | Backend | Effect |
 |---|---|
 | **`cosyvoice3-tts`** | When the target language differs from the reference voice's language, mirrors upstream `frontend_cross_lingual`: the reference **transcript** is dropped from the LM prompt (and the LM's reference speech tokens with it) while the flow keeps the reference speech + mel for **timbre**. That is what stops a German sentence coming out with the English reference's accent. Same language (or no target) = plain zero-shot, unchanged. |
-| **`qwen3-tts`** | Sets the talker's explicit `codec_language_id` in the prefill instead of the model's auto ("nothink") path. Applies to preset voices, cloned voices and VoiceDesign alike. Languages come from the model's own `codec_language_names` table; one outside it prints a warning and falls back to auto. |
+| **`cielvox2-tts`** | Sets the talker's explicit `codec_language_id` in the prefill instead of the model's auto ("nothink") path. Applies to preset voices, cloned voices and VoiceDesign alike. Languages come from the model's own `codec_language_names` table; one outside it prints a warning and falls back to auto. |
 | **`moss-tts` / `moss-tts-local`** | Fills the `- Language:` field of the generation prompt. |
 | **`kokoro`, `zonos`, `piper`** | Selects the eSpeak voice / G2P language. |
 | **`voxcpm2`, `f5-tts`, `vibevoice`, …** | Language-agnostic — they read the script of the input text itself, which is why they need no knob (and why voxcpm2 "just works" in #329). |
@@ -544,15 +544,15 @@ has to be one the model was trained on: an **ISO 639-3 id** from its own
 language-agnostic synthesis with a warning naming the nearest match:
 
 ```
-crispasr[omnivoice]: language 'de-DE' is not one of the model's 646 language IDs — did you mean 'de'?
-crispasr[omnivoice]: falling back to language-agnostic synthesis. Pass an ISO 639-3 id (e.g. 'en', 'de', 'arb') or an English name (e.g. 'German').
+stelnettts[omnivoice]: language 'de-DE' is not one of the model's 646 language IDs — did you mean 'de'?
+stelnettts[omnivoice]: falling back to language-agnostic synthesis. Pass an ISO 639-3 id (e.g. 'en', 'de', 'arb') or an English name (e.g. 'German').
 ```
 
 **If you request nothing, the language is guessed from the text.** An explicit
 `-l` / `-tl` / `"language"` always wins; the guess only fills the gap that used
 to be filled by "language-agnostic", and only when it is confident enough to
 land on an id the model knows (short lines usually are not, and stay agnostic).
-`CRISPASR_OMNIVOICE_AUTO_LANG=0` turns it off. This is why OmniVoice speaks
+`STELNETTTS_OMNIVOICE_AUTO_LANG=0` turns it off. This is why OmniVoice speaks
 German subtitles as German through a client that never sends a language field.
 
 Two things that surprise people:
@@ -580,7 +580,7 @@ spelling, and the string reaches the prompt literally — `Male, British Accent`
 and `male, british accent` share **no** token ids, so an unnormalised value is
 a different request as far as the model is concerned.
 
-CrispASR mirrors upstream's resolver: items are lowercased, half/full-width
+StelnetTTS mirrors upstream's resolver: items are lowercased, half/full-width
 commas are both accepted, and everything is unified into one language before it
 reaches the prompt. Anything outside the vocabulary is **rejected** — the CLI
 exits non-zero, the server returns `400 invalid_instructions` — rather than
@@ -588,7 +588,7 @@ being dropped, because a voice-design request that silently does nothing is the
 failure this replaced:
 
 ```
-crispasr[omnivoice]: unsupported instruct item 'britsh accent' — did you mean 'british accent'?
+stelnettts[omnivoice]: unsupported instruct item 'britsh accent' — did you mean 'british accent'?
 ```
 
 The categories, at most one item from each:
@@ -611,7 +611,7 @@ dialect with an accent is rejected — they belong to different speech.
 ## G2P Phonemization (`--g2p-dict`)
 
 TTS backends that use IPA phonemes (piper, kokoro) need a
-grapheme-to-phoneme (G2P) engine to convert text to IPA. CrispASR
+grapheme-to-phoneme (G2P) engine to convert text to IPA. StelnetTTS
 ships pre-generated IPA pronunciation dictionaries for 4 languages —
 **no espeak-ng required**:
 
@@ -623,8 +623,8 @@ ships pre-generated IPA pronunciation dictionaries for 4 languages —
 | Spanish | 600K words, 18 MB | OLaPh + LTS rules (seseo, lenition, yeísmo) | — |
 
 Dictionaries are auto-downloaded from
-[cstr/g2p-dicts](https://huggingface.co/datasets/cstr/g2p-dicts)
-on first use and cached at `~/.cache/crispasr/`.
+[Xenna/g2p-dicts](https://huggingface.co/datasets/Xenna/g2p-dicts)
+on first use and cached at `~/.cache/stelnettts/`.
 
 ### Numbers are spelled out first
 
@@ -663,18 +663,18 @@ forms neither errors nor drops anything — the model just receives tokens it wa
 never trained on and drifts, which is the "sounds British / old English" of #316
 (`ː` is the RP length mark).
 
-CrispASR converts per backend (`src/core/phoneme_dialect.h`):
+StelnetTTS converts per backend (`src/core/phoneme_dialect.h`):
 
 | Dialect | Spelling | Used by |
 |---|---|---|
 | `EspeakIpa` | `tʃ`, `oʊ`, `ɜː`, `ɾ`, `ɚ`, length marks | piper — and the G2P's own output |
 | `Misaki` | `ʧ`, `O`, `ɜɹ`, `T`, `əɹ`, no length marks | kokoro |
 
-`CRISPASR_KOKORO_MISAKI_IPA=0` restores the raw espeak spelling for A/B.
+`STELNETTTS_KOKORO_MISAKI_IPA=0` restores the raw espeak spelling for A/B.
 
 ### Phoneme parity with misaki
 
-Alphabet alone is not enough: CrispASR's CMUdict-based G2P and misaki disagree
+Alphabet alone is not enough: StelnetTTS's CMUdict-based G2P and misaki disagree
 about stress and unstressed vowels, so kokoro was fed pronunciations it was not
 trained on even after the spelling was fixed. Five further pieces close that gap,
 each measured against misaki 0.9.4:
@@ -709,7 +709,7 @@ the better single choice (68% vs 31%). Same for `used`, `read`, `desert`.
 ### Driving the phonemes directly (`--tts-phonemes`)
 
 ```bash
-crispasr --tts "unused" --tts-phonemes "həlˈO wˈɜɹld" --backend kokoro \
+stelnettts --tts "unused" --tts-phonemes "həlˈO wˈɜɹld" --backend kokoro \
          -m kokoro-82m-q8_0.gguf --voice kokoro-voice-af_heart.gguf -o out.wav
 ```
 
@@ -724,16 +724,16 @@ The `--g2p-dict` flag selects the dictionary source:
 
 ```bash
 # Default: pre-generated IPA dicts (piper-compatible, auto-download)
-crispasr --backend piper -m auto --tts "Hello world"
+stelnettts --backend piper -m auto --tts "Hello world"
 
 # Use CMUdict + ARPAbet→IPA conversion instead (76% piper match)
-crispasr --backend piper -m auto --g2p-dict cmudict --tts "Hello world"
+stelnettts --backend piper -m auto --g2p-dict cmudict --tts "Hello world"
 
 # Use OLaPh MIT dicts (British IPA conventions)
-crispasr --backend piper -m auto --g2p-dict olaph --tts "Hello world"
+stelnettts --backend piper -m auto --g2p-dict olaph --tts "Hello world"
 
 # Use your own dictionary file
-crispasr --backend piper -m auto --g2p-dict /path/to/my/dict.txt --tts "Hello world"
+stelnettts --backend piper -m auto --g2p-dict /path/to/my/dict.txt --tts "Hello world"
 ```
 
 The phonemization cascade tries in order:
@@ -744,13 +744,13 @@ The phonemization cascade tries in order:
 5. espeak-ng via popen (subprocess fallback)
 
 Override per-language dict paths with env vars:
-`CRISPASR_CMUDICT_PATH`, `CRISPASR_DE_DICT_PATH`,
-`CRISPASR_FR_DICT_PATH`, `CRISPASR_ES_DICT_PATH`.
+`STELNETTTS_CMUDICT_PATH`, `STELNETTTS_DE_DICT_PATH`,
+`STELNETTTS_FR_DICT_PATH`, `STELNETTTS_ES_DICT_PATH`.
 
-### Kokoro G2P strategy (`CRISPASR_KOKORO_G2P`)
+### Kokoro G2P strategy (`STELNETTTS_KOKORO_G2P`)
 
 Kokoro's phonemization order can be controlled via the
-`CRISPASR_KOKORO_G2P` environment variable:
+`STELNETTTS_KOKORO_G2P` environment variable:
 
 | Value | Behavior |
 |-------|----------|
@@ -762,9 +762,9 @@ Kokoro's phonemization order can be controlled via the
 The built-in G2P includes text normalization for common technical tokens
 (`C++` → "C plus plus", `C#` → "C sharp", `.NET` → "dot net", etc.).
 If you encounter mispronunciations with the built-in path, try
-`CRISPASR_KOKORO_G2P=espeak-first` to prefer espeak-ng when available.
+`STELNETTTS_KOKORO_G2P=espeak-first` to prefer espeak-ng when available.
 
-Dictionary sources at [cstr/g2p-dicts](https://huggingface.co/datasets/cstr/g2p-dicts):
+Dictionary sources at [Xenna/g2p-dicts](https://huggingface.co/datasets/Xenna/g2p-dicts):
 - **Pre-generated IPA** (primary): piper-compatible phonetic transcriptions for EN/DE/FR/ES
 - **CMUdict** (BSD): [cmusphinx/cmudict](https://github.com/cmusphinx/cmudict), English ARPAbet
 - **OLaPh** (MIT): [iisys-hof/olaph](https://github.com/iisys-hof/olaph), 13 languages
@@ -773,14 +773,14 @@ Dictionary sources at [cstr/g2p-dicts](https://huggingface.co/datasets/cstr/g2p-
 
 Kokoro is the 82 M-param StyleTTS2-derived model. It does not
 currently support `-m auto`; drop the GGUFs into a directory of your
-choice (`~/.cache/crispasr/` works) and pass explicit paths.
+choice (`~/.cache/stelnettts/` works) and pass explicit paths.
 
 ```bash
 # English — uses the official Kokoro-82M with the bundled af_heart voice.
-./build/bin/crispasr \
+./build/bin/stelnettts \
     --backend kokoro \
-    -m ~/.cache/crispasr/kokoro-82m-f16.gguf \
-    --voice ~/.cache/crispasr/kokoro-voice-af_heart.gguf \
+    -m ~/.cache/stelnettts/kokoro-82m-f16.gguf \
+    --voice ~/.cache/stelnettts/kokoro-voice-af_heart.gguf \
     --tts "Hello, how are you today?" -l en \
     --tts-output hello.wav
 
@@ -793,9 +793,9 @@ choice (`~/.cache/crispasr/` works) and pass explicit paths.
 #      from <model_dir>/kokoro-voice-<name>.gguf in the cascade
 #      df_victoria → df_eva → ff_siwis. Drop any of these into the
 #      model directory; the first that exists wins.
-./build/bin/crispasr \
+./build/bin/stelnettts \
     --backend kokoro \
-    -m ~/.cache/crispasr/kokoro-82m-f16.gguf \
+    -m ~/.cache/stelnettts/kokoro-82m-f16.gguf \
     --tts "Guten Tag, dies ist ein Test des deutschen Phonemizers." \
     -l de --tts-output guten_tag.wav
 ```
@@ -809,10 +809,10 @@ choice (`~/.cache/crispasr/` works) and pass explicit paths.
 
 All four voices clear the gate (peak ≥ 8000, RMS ≥ 1000) on the
 dida-80b backbone — see `PLAN.md` §56 Option 2b for the full
-methodology. The `crispasr_kokoro_resolve_*_abi` C ABI in
+methodology. The `stelnettts_kokoro_resolve_*_abi` C ABI in
 `src/kokoro.h` exposes the same routing logic to wrappers; from
 Python it surfaces as
-`crispasr.kokoro_resolve_for_lang(model_path, lang)` returning a
+`stelnettts.kokoro_resolve_for_lang(model_path, lang)` returning a
 `KokoroResolved(model_path, voice_path, voice_name, backbone_swapped)`
 record.
 
@@ -826,51 +826,51 @@ Kokoro supports runtime speaking-rate control via the session API:
 
 | Variable | Default | Effect when set |
 |---|---|---|
-| `CRISPASR_KOKORO_GEN_GPU` | unset | Route the iSTFTNet generator (the vocoder) onto the main GPU backend instead of the Metal-hang-workaround CPU pin. Use on CUDA / Vulkan where the stride-10 ConvTranspose1d M1 hang doesn't apply and CPU vocoder is the bottleneck. Mirrors `CRISPASR_QWEN3_TTS_CODEC_GPU`. |
-| `CRISPASR_KOKORO_GEN_FORCE_METAL` | unset | Same effect as `CRISPASR_KOKORO_GEN_GPU`, but the name carries the original "reproduce the M1 hang" debug intent. Kept for back-compat; new deployments should prefer `CRISPASR_KOKORO_GEN_GPU`. |
+| `STELNETTTS_KOKORO_GEN_GPU` | unset | Route the iSTFTNet generator (the vocoder) onto the main GPU backend instead of the Metal-hang-workaround CPU pin. Use on CUDA / Vulkan where the stride-10 ConvTranspose1d M1 hang doesn't apply and CPU vocoder is the bottleneck. Mirrors `STELNETTTS_CIELVOX2_TTS_CODEC_GPU`. |
+| `STELNETTTS_KOKORO_GEN_FORCE_METAL` | unset | Same effect as `STELNETTTS_KOKORO_GEN_GPU`, but the name carries the original "reproduce the M1 hang" debug intent. Kept for back-compat; new deployments should prefer `STELNETTTS_KOKORO_GEN_GPU`. |
 
 ## Qwen3-TTS — voice cloning, highest fidelity
 
 Speech-LLM (talker + code predictor + 12 Hz codec). Needs both a
 talker GGUF and a codec / tokenizer GGUF. With `-m auto` both are
-pulled into `~/.cache/crispasr/` on first run (Q8_0 talker + F16
+pulled into `~/.cache/stelnettts/` on first run (Q8_0 talker + F16
 codec by default).
 
 ```bash
 # Zero-setup: auto-downloads talker + codec + default voice pack (~1.3 GB):
-./build/bin/crispasr \
-    --backend qwen3-tts -m auto \
+./build/bin/stelnettts \
+    --backend cielvox2-tts -m auto \
     --tts "Hello there" \
     --tts-output hello.wav
 
 # Runtime WAV clone — supply your own reference:
-./build/bin/crispasr \
-    --backend qwen3-tts -m auto \
-    --voice samples/qwen3_tts/clone.wav \
+./build/bin/stelnettts \
+    --backend cielvox2-tts -m auto \
+    --voice samples/cielvox2_tts/clone.wav \
     --ref-text "Okay. Yeah. I resent you. I love you. I respect you. But you know what? You blew it! And thanks to you." \
     --tts "Hello there" \
     --tts-output hello.wav
 
 # F16 reference baseline (1.83 GB talker; strict-fidelity):
-./build/bin/crispasr \
-    --backend qwen3-tts \
-    -m ~/.cache/crispasr/qwen3-tts-12hz-0.6b-base.gguf \
-    --voice samples/qwen3_tts/clone.wav \
+./build/bin/stelnettts \
+    --backend cielvox2-tts \
+    -m ~/.cache/stelnettts/cielvox2-tts-12hz-0.6b-base.gguf \
+    --voice samples/cielvox2_tts/clone.wav \
     --ref-text "Okay, yeah. I resent you, I love you, I respect you. But you know what - You blew it, and thanks to you." \
     --tts "Hello there" \
     --tts-output hello.wav
 
 # Baked voice-pack GGUF (skips the WAV+ref-text step):
-./build/bin/crispasr \
-    --backend qwen3-tts -m auto \
+./build/bin/stelnettts \
+    --backend cielvox2-tts -m auto \
     --voice my-voice.gguf \
     --tts "Hello there" \
     --tts-output hello.wav
 
 # Larger 1.7B talker (~2.07 GB Q8_0 / ~3.86 GB F16; same ICL contract):
-./build/bin/crispasr \
-    --backend qwen3-tts-1.7b-base -m auto \
-    --voice samples/qwen3_tts/clone.wav \
+./build/bin/stelnettts \
+    --backend cielvox2-tts-1.7b-base -m auto \
+    --voice samples/cielvox2_tts/clone.wav \
     --ref-text "Okay, yeah. I resent you, I love you, I respect you. But you know what - You blew it, and thanks to you." \
     --tts "Hello there" \
     --tts-output hello.wav
@@ -880,8 +880,8 @@ codec by default).
 # --voice; the codec bridge omits the speaker frame and the description
 # is prepended to the prefill as a `<|im_start|>user\n…<|im_end|>\n`
 # block.
-./build/bin/crispasr \
-    --backend qwen3-tts-1.7b-voicedesign -m auto \
+./build/bin/stelnettts \
+    --backend cielvox2-tts-1.7b-voicedesign -m auto \
     --instruct "A young female voice with a slight British accent, energetic, slightly fast paced" \
     --tts "Hello, I'm an excited engineer." \
     --tts-output hello.wav
@@ -889,14 +889,14 @@ codec by default).
 
 Notes:
 - **No `--voice` needed**: `-m auto` downloads a baked default voice pack
-  (`qwen3-tts-voice-default.gguf`) alongside the talker and codec so the
+  (`cielvox2-tts-voice-default.gguf`) alongside the talker and codec so the
   Base model works out of the box. The default voice is auto-selected when
   no `--voice` flag is given and the GGUF sits next to the talker.
 - When `--voice` points to a `.wav`, `--ref-text` is required. When it
   points to a `.gguf`, it is treated as a baked voice pack and
   `--ref-text` is ignored.
 - With an explicit `-m`, the CLI auto-discovers the codec when
-  `qwen3-tts-tokenizer-12hz.gguf` sits next to the talker; otherwise
+  `cielvox2-tts-tokenizer-12hz.gguf` sits next to the talker; otherwise
   pass `--codec-model`.
 - Quantization is **not** quality-equivalent across variants. The
   reference baseline is `f16` talker + `f16` codec. The recommended
@@ -905,31 +905,31 @@ Notes:
   LEARNINGS.md. Lower-bit talker quants (`q6_k`, `q5_k`, `q4_k`)
   drift noticeably in strict tensor diffs. Quantizing the codec
   hurts earlier than quantizing the talker — keep
-  `qwen3-tts-tokenizer-12hz.gguf` at `f16`.
+  `cielvox2-tts-tokenizer-12hz.gguf` at `f16`.
 
-### qwen3-tts environment switches
+### cielvox2-tts environment switches
 
 Diagnostic / experimental knobs. Leave them unset for normal use — the
 defaults reproduce the validated, end-to-end-tested code path.
 
 | Variable | Default | Effect when set |
 |---|---|---|
-| `CRISPASR_QWEN3_TTS_SEED` | `42` | Override the AR sampling seed (superseded by `--seed N` on the CLI). |
-| `CRISPASR_QWEN3_TTS_MAX_FRAMES` | `1500` | Hard cap on AR decode steps. Short prompts that fail to sample `codec_eos` would otherwise run to the 1500-frame ceiling. |
-| `CRISPASR_QWEN3_TTS_O15` | unset | Pin code-predictor `Lk = cp_kv_max_ctx` and reuse one cached T=1 graph across AR steps 2..14 (saves ~14-19 ms/frame on Mac/Metal — alloc+build collapse from ~20 ms/frame to ~1.6 ms/frame). Default flipped back to OFF after [#56](https://github.com/CrispStrobe/CrispASR/issues/56): the cached-graph reuse asserts on the CUDA backend (`GGML_ASSERT` in `ggml_backend_tensor_set` on first `code_pred_generate_15` call, Jetson Orin AGX sm_87). M1 Metal users who want the speedup should set `CRISPASR_QWEN3_TTS_O15=1`. Default goes back to ON once the CUDA path is verified. Largely superseded by `CRISPASR_QWEN3_TTS_CP_DIRECT`, which gets the same graph-reuse win without touching the scheduler. |
-| `CRISPASR_QWEN3_TTS_CP_DIRECT` | auto (GPU on, CPU off) | §232/#245: dispatch the code predictor through two persistent sched-free graphs (one T=2 step-0 graph, one T=1 step graph with the O15 topology), gallocr-allocated once on the code-pred backend. Each of the 15 per-frame steps is then just input `tensor_set` + one `ggml_backend_graph_compute` — no scheduler reset/alloc, so the sched-reuse breakage behind #56 cannot occur. Validated md5-identical WAV vs. the sched path on M1 Metal and CUDA P100 (0.6B Q8_0, seed 42; ASR roundtrip verbatim). Default ON when the code predictor runs on a GPU backend: Metal is ~equal on an idle box but ~3x faster under load (the sched path degrades badly under contention), CUDA P100 is ~11% faster. Default OFF on CPU, where there is no dispatch cost to save and the per-step lm_head slot blit (~2.2 MB memcpy ×14/frame) makes it ~2x slower. Set `=1`/`=0` to override either way; falls back to the sched path automatically when an op is unsupported on the backend or the code predictor is CPU-pinned. |
-| `CRISPASR_QWEN3_TTS_LK_BUCKET` | unset | Bucketed fixed-`Lk` talker AR steps (256/512/1024/2048/4096), one persistent graph per bucket. Since §232 the bucket graphs are gallocr-allocated once and dispatched sched-free (the previous sched-plan reuse segfaulted on current ggml — nil-buffer inputs, same root cause as #56). Stays opt-in: on Metal the fixed-`Lk` attention costs ~10% at short outputs; on CUDA P100 it was the fastest config (~5% under CP_DIRECT alone) — CUDA users can enable both. |
-| `CRISPASR_QWEN3_TTS_FUSED_QKV` | unset | Fuse Q+K+V weights into one matmul per talker layer at load time (F16/F32 talker only; auto-skipped for Q8_0/Q4_K). Bit-identical to the unfused path on M1 Metal; speed effect is machine-dependent. |
-| `CRISPASR_QWEN3_TTS_BENCH` | unset | Print per-call build/alloc/compute/read timings for `talker_kv` and `code_pred_kv`. |
-| `CRISPASR_QWEN3_TTS_PROF` | unset | Per-op profiler (more granular than `BENCH`). |
-| `CRISPASR_QWEN3_TTS_CP_BACKEND` | unset | Pin the code predictor to a chosen backend. `cpu`, `cpu-f16`, `cpu-f32` keep its weights on the CPU backend — useful when isolating bugs to the talker vs. code-predictor or when comparing CPU and Metal end-to-end. |
-| `CRISPASR_QWEN3_TTS_DUMP_DIR` | unset | Write per-frame intermediate tensors into the named directory. Bulky; intended for diff-harness work (`tools/dump_reference.py --backend qwen3-tts`). |
-| `CRISPASR_QWEN3_TTS_CODEC_GPU` | auto | Force codec weights and decode through the GPU scheduler. GPU is now the default on all GPU backends including Metal — the `CONV_TRANSPOSE_1D` hang was fixed in `f8fc8b8e` and the op replaced by `mul_mat+col2im_1d` in `5f600f25`. Distinct from `CRISPASR_QWEN3_TTS_CODEC_FORCE_METAL`, which also enables a per-op trace callback for debugging. |
-| `CRISPASR_QWEN3_TTS_CODEC_CPU` | unset | Force codec weights and decode through the CPU-only `codec_sched`. Useful for A/B timing and regression bisection. |
-| `CRISPASR_QWEN3_TTS_CODEC_FASTCONV` | **on** (set `=0` to opt out) | §232: three codec conv rewrites — K=1 convs run as channel matmuls (the im2col of a 1×1 conv is a pure ~300 MB copy at 24 kHz T), K>1 causal convs pad inside im2col and crop (removes the CPU-placed asymmetric PAD nodes Metal can't run), and K>1 F16 conv kernels are baked to F32 once at load (removes a ~70 ms per-decode kernel cast). Validated 2026-07-11 on 0.6B Q8_0, seed 42: WAV **md5-identical** on M1 Metal; on CPU within 1 int16 LSB (PCM cos 1.00000000). Codec decode ~3× faster on Metal (3.9 s → 1.3 s for 4.6 s audio), ~2.1× on CPU. The `=0` path is the legacy graph, kept for regression bisection. |
-| `CRISPASR_QWEN3_TTS_CODEC_CHUNK` | `150` (`64` on CUDA) | Maximum generated codec frames per decode chunk. CUDA clamps values above `64` and treats `0` as `64` unless `CRISPASR_QWEN3_TTS_CODEC_ALLOW_FULL=1` is also set, avoiding oversized `mul_mat+col2im_1d` allocations on 10 GB cards. |
-| `CRISPASR_QWEN3_TTS_CODEC_CTX` | `128` (`96` on CUDA) | Left-context codec frames prepended to each chunk. Values below the codec sliding window are raised; CUDA clamps larger values unless `CRISPASR_QWEN3_TTS_CODEC_ALLOW_FULL=1` is set. |
-| `CRISPASR_QWEN3_TTS_SKIP_REF_DECODE` | **on** (set `=0` to opt out) | Skip the codec decode of the reference audio in `qwen3_tts_synthesize`. The default-on path emits `codec_decode_codes(gen)` directly; the opt-out path concatenates `ref_codes + gen_codes`, decodes both, then trims the ref portion. With a 26 s reference (~334 codec frames at 12 Hz), the ref half adds ~16 s of constant codec compute regardless of how much new audio is generated (Jetson Orin AGX, issue #64). End-to-end RTF on Orin drops from ~7-9 → ~1.5; the win compounds N× under `/v1/audio/speech` long-form chunking. Bit-identity verified 2026-05-05 on Apple Silicon Metal, qwen3-tts-customvoice 0.6B Q8_0: max\|diff\| = 0, cosine similarity = 1.0 — equivalence holds because the codec is a straight-line forward pass with no rolling state. Set `CRISPASR_QWEN3_TTS_SKIP_REF_DECODE=0` only for A/B verification or if a future codec graph variant grows rolling state. |
+| `STELNETTTS_CIELVOX2_TTS_SEED` | `42` | Override the AR sampling seed (superseded by `--seed N` on the CLI). |
+| `STELNETTTS_CIELVOX2_TTS_MAX_FRAMES` | `1500` | Hard cap on AR decode steps. Short prompts that fail to sample `codec_eos` would otherwise run to the 1500-frame ceiling. |
+| `STELNETTTS_CIELVOX2_TTS_O15` | unset | Pin code-predictor `Lk = cp_kv_max_ctx` and reuse one cached T=1 graph across AR steps 2..14 (saves ~14-19 ms/frame on Mac/Metal — alloc+build collapse from ~20 ms/frame to ~1.6 ms/frame). Default flipped back to OFF after [#56](https://github.com/Cyna/StelnetTTS/issues/56): the cached-graph reuse asserts on the CUDA backend (`GGML_ASSERT` in `ggml_backend_tensor_set` on first `code_pred_generate_15` call, Jetson Orin AGX sm_87). M1 Metal users who want the speedup should set `STELNETTTS_CIELVOX2_TTS_O15=1`. Default goes back to ON once the CUDA path is verified. Largely superseded by `STELNETTTS_CIELVOX2_TTS_CP_DIRECT`, which gets the same graph-reuse win without touching the scheduler. |
+| `STELNETTTS_CIELVOX2_TTS_CP_DIRECT` | auto (GPU on, CPU off) | §232/#245: dispatch the code predictor through two persistent sched-free graphs (one T=2 step-0 graph, one T=1 step graph with the O15 topology), gallocr-allocated once on the code-pred backend. Each of the 15 per-frame steps is then just input `tensor_set` + one `ggml_backend_graph_compute` — no scheduler reset/alloc, so the sched-reuse breakage behind #56 cannot occur. Validated md5-identical WAV vs. the sched path on M1 Metal and CUDA P100 (0.6B Q8_0, seed 42; ASR roundtrip verbatim). Default ON when the code predictor runs on a GPU backend: Metal is ~equal on an idle box but ~3x faster under load (the sched path degrades badly under contention), CUDA P100 is ~11% faster. Default OFF on CPU, where there is no dispatch cost to save and the per-step lm_head slot blit (~2.2 MB memcpy ×14/frame) makes it ~2x slower. Set `=1`/`=0` to override either way; falls back to the sched path automatically when an op is unsupported on the backend or the code predictor is CPU-pinned. |
+| `STELNETTTS_CIELVOX2_TTS_LK_BUCKET` | unset | Bucketed fixed-`Lk` talker AR steps (256/512/1024/2048/4096), one persistent graph per bucket. Since §232 the bucket graphs are gallocr-allocated once and dispatched sched-free (the previous sched-plan reuse segfaulted on current ggml — nil-buffer inputs, same root cause as #56). Stays opt-in: on Metal the fixed-`Lk` attention costs ~10% at short outputs; on CUDA P100 it was the fastest config (~5% under CP_DIRECT alone) — CUDA users can enable both. |
+| `STELNETTTS_CIELVOX2_TTS_FUSED_QKV` | unset | Fuse Q+K+V weights into one matmul per talker layer at load time (F16/F32 talker only; auto-skipped for Q8_0/Q4_K). Bit-identical to the unfused path on M1 Metal; speed effect is machine-dependent. |
+| `STELNETTTS_CIELVOX2_TTS_BENCH` | unset | Print per-call build/alloc/compute/read timings for `talker_kv` and `code_pred_kv`. |
+| `STELNETTTS_CIELVOX2_TTS_PROF` | unset | Per-op profiler (more granular than `BENCH`). |
+| `STELNETTTS_CIELVOX2_TTS_CP_BACKEND` | unset | Pin the code predictor to a chosen backend. `cpu`, `cpu-f16`, `cpu-f32` keep its weights on the CPU backend — useful when isolating bugs to the talker vs. code-predictor or when comparing CPU and Metal end-to-end. |
+| `STELNETTTS_CIELVOX2_TTS_DUMP_DIR` | unset | Write per-frame intermediate tensors into the named directory. Bulky; intended for diff-harness work (`tools/dump_reference.py --backend cielvox2-tts`). |
+| `STELNETTTS_CIELVOX2_TTS_CODEC_GPU` | auto | Force codec weights and decode through the GPU scheduler. GPU is now the default on all GPU backends including Metal — the `CONV_TRANSPOSE_1D` hang was fixed in `f8fc8b8e` and the op replaced by `mul_mat+col2im_1d` in `5f600f25`. Distinct from `STELNETTTS_CIELVOX2_TTS_CODEC_FORCE_METAL`, which also enables a per-op trace callback for debugging. |
+| `STELNETTTS_CIELVOX2_TTS_CODEC_CPU` | unset | Force codec weights and decode through the CPU-only `codec_sched`. Useful for A/B timing and regression bisection. |
+| `STELNETTTS_CIELVOX2_TTS_CODEC_FASTCONV` | **on** (set `=0` to opt out) | §232: three codec conv rewrites — K=1 convs run as channel matmuls (the im2col of a 1×1 conv is a pure ~300 MB copy at 24 kHz T), K>1 causal convs pad inside im2col and crop (removes the CPU-placed asymmetric PAD nodes Metal can't run), and K>1 F16 conv kernels are baked to F32 once at load (removes a ~70 ms per-decode kernel cast). Validated 2026-07-11 on 0.6B Q8_0, seed 42: WAV **md5-identical** on M1 Metal; on CPU within 1 int16 LSB (PCM cos 1.00000000). Codec decode ~3× faster on Metal (3.9 s → 1.3 s for 4.6 s audio), ~2.1× on CPU. The `=0` path is the legacy graph, kept for regression bisection. |
+| `STELNETTTS_CIELVOX2_TTS_CODEC_CHUNK` | `150` (`64` on CUDA) | Maximum generated codec frames per decode chunk. CUDA clamps values above `64` and treats `0` as `64` unless `STELNETTTS_CIELVOX2_TTS_CODEC_ALLOW_FULL=1` is also set, avoiding oversized `mul_mat+col2im_1d` allocations on 10 GB cards. |
+| `STELNETTTS_CIELVOX2_TTS_CODEC_CTX` | `128` (`96` on CUDA) | Left-context codec frames prepended to each chunk. Values below the codec sliding window are raised; CUDA clamps larger values unless `STELNETTTS_CIELVOX2_TTS_CODEC_ALLOW_FULL=1` is set. |
+| `STELNETTTS_CIELVOX2_TTS_SKIP_REF_DECODE` | **on** (set `=0` to opt out) | Skip the codec decode of the reference audio in `cielvox2_tts_synthesize`. The default-on path emits `codec_decode_codes(gen)` directly; the opt-out path concatenates `ref_codes + gen_codes`, decodes both, then trims the ref portion. With a 26 s reference (~334 codec frames at 12 Hz), the ref half adds ~16 s of constant codec compute regardless of how much new audio is generated (Jetson Orin AGX, issue #64). End-to-end RTF on Orin drops from ~7-9 → ~1.5; the win compounds N× under `/v1/audio/speech` long-form chunking. Bit-identity verified 2026-05-05 on Apple Silicon Metal, cielvox2-tts-customvoice 0.6B Q8_0: max\|diff\| = 0, cosine similarity = 1.0 — equivalence holds because the codec is a straight-line forward pass with no rolling state. Set `STELNETTTS_CIELVOX2_TTS_SKIP_REF_DECODE=0` only for A/B verification or if a future codec graph variant grows rolling state. |
 
 ### pocket-tts voices and environment switches
 
@@ -944,9 +944,9 @@ Voice cloning takes a reference WAV via `--voice`. Three forms are accepted:
 
 | Variable | Default | Effect when set |
 |---|---|---|
-| `CRISPASR_POCKET_MANUAL_MIMI` | unset | Force the CPU Mimi decoder path (bypass the ggml/GPU decode). |
-| `CRISPASR_POCKET_MANUAL_BACKBONE` | unset | Force the CPU FlowLM backbone path. |
-| `CRISPASR_POCKET_VULKAN_MIMI_MAX_FRAMES` | `120` | Vulkan-only guard (issue #256): fall back to the CPU Mimi decoder when a generation exceeds this many frames, avoiding the `maxComputeWorkGroupCount` abort on constrained iGPUs (e.g. AMD 780M / gfx1103). Set `<=0` to disable the guard and always attempt the GPU decode. No effect on non-Vulkan backends. |
+| `STELNETTTS_POCKET_MANUAL_MIMI` | unset | Force the CPU Mimi decoder path (bypass the ggml/GPU decode). |
+| `STELNETTTS_POCKET_MANUAL_BACKBONE` | unset | Force the CPU FlowLM backbone path. |
+| `STELNETTTS_POCKET_VULKAN_MIMI_MAX_FRAMES` | `120` | Vulkan-only guard (issue #256): fall back to the CPU Mimi decoder when a generation exceeds this many frames, avoiding the `maxComputeWorkGroupCount` abort on constrained iGPUs (e.g. AMD 780M / gfx1103). Set `<=0` to disable the guard and always attempt the GPU decode. No effect on non-Vulkan backends. |
 
 ## VibeVoice — realtime streaming TTS
 
@@ -954,9 +954,9 @@ Lowest-latency TTS engine. Uses `--voice` for its voice prompt or
 preset; the realtime `0.5B` flow is typically driven by a voice GGUF.
 
 ```bash
-# First run downloads ~636 MB to ~/.cache/crispasr/ (Q4_K talker + emma
-# voice from cstr/vibevoice-realtime-0.5b-GGUF), then runs from cache.
-./build/bin/crispasr \
+# First run downloads ~636 MB to ~/.cache/stelnettts/ (Q4_K talker + emma
+# voice from Xenna/vibevoice-realtime-0.5b-GGUF), then runs from cache.
+./build/bin/stelnettts \
     --backend vibevoice-tts -m auto \
     --tts "Hello, how are you today?" \
     --tts-output hello.wav
@@ -965,26 +965,26 @@ preset; the realtime `0.5B` flow is typically driven by a voice GGUF.
 The realtime backend preserves the beginning of the sigma-VAE decoder output.
 Older builds trimmed a fixed 100 ms warmup window, which could skip the clean
 first decoded chunk and create a click by starting on a later waveform peak.
-For parity debugging, `CRISPASR_VIBEVOICE_TTS_LATENTS=/path/to/latents.bin` can replay a
-raw float32 latent stack, `CRISPASR_VIBEVOICE_TTS_DUMP=/dir` writes `tts_scaled_latent`
-and `tts_raw_audio`, and `CRISPASR_VIBEVOICE_TTS_DUMP_DECODER=1` adds per-stage decoder
+For parity debugging, `STELNETTTS_VIBEVOICE_TTS_LATENTS=/path/to/latents.bin` can replay a
+raw float32 latent stack, `STELNETTTS_VIBEVOICE_TTS_DUMP=/dir` writes `tts_scaled_latent`
+and `tts_raw_audio`, and `STELNETTTS_VIBEVOICE_TTS_DUMP_DECODER=1` adds per-stage decoder
 dumps.
 
 ## VibeVoice 1.5B — base TTS with WAV cloning
 
 The 1.5B base model supports both a generic no-clone voice and WAV
-reference cloning through `CRISPASR_VIBEVOICE_VOICE_AUDIO`.
+reference cloning through `STELNETTTS_VIBEVOICE_VOICE_AUDIO`.
 
 ```bash
 # Generic output, no voice reference.
-./build/bin/crispasr \
+./build/bin/stelnettts \
     --backend vibevoice-1.5b -m auto \
     --tts "Hello, how are you today?" \
     --tts-output hello.wav
 
 # Clone from a 24 kHz mono WAV reference.
-CRISPASR_VIBEVOICE_VOICE_AUDIO=samples/qwen3_tts/clone.wav \
-./build/bin/crispasr \
+STELNETTTS_VIBEVOICE_VOICE_AUDIO=samples/cielvox2_tts/clone.wav \
+./build/bin/stelnettts \
     --backend vibevoice-1.5b -m auto \
     --tts "Hello, how are you today?" \
     --tts-output hello-clone.wav
@@ -1005,11 +1005,11 @@ is MIT-licensed.
 
 ```bash
 # First run pulls ~3.5 GB (Q8_0 talker) + 26 MB (SNAC codec) into
-# ~/.cache/crispasr/.  --temperature 0.6 is the upstream
+# ~/.cache/stelnettts/.  --temperature 0.6 is the upstream
 # engine_class.py default — DO NOT skip it. Greedy (--temperature 0)
 # enters a 7-slot loop after a few super-frames and produces unusable
 # audio.
-./build/bin/crispasr \
+./build/bin/stelnettts \
     --backend orpheus -m auto \
     --voice tara --temperature 0.6 \
     --tts "Hello, my name is Tara." \
@@ -1036,7 +1036,7 @@ LSTM + CAMPPlus x-vector.
 
 ```bash
 # English base — auto-download pulls T3 + S3Gen (~880 MB) on first run.
-./build/bin/crispasr \
+./build/bin/stelnettts \
     --backend chatterbox -m auto \
     --tts "Hello there, this is chatterbox speaking." \
     --tts-output out.wav
@@ -1048,14 +1048,14 @@ and the GPT-2-T3 path (turbo/kartoffelbox-turbo):
 
 ```bash
 # Distilled English (350 M, 2-step meanflow S3Gen — faster than base):
-./build/bin/crispasr --backend chatterbox-turbo -m auto --tts "..." -ow out.wav
+./build/bin/stelnettts --backend chatterbox-turbo -m auto --tts "..." -ow out.wav
 
 # German fine-tune of Turbo (SebastianBodza/Kartoffelbox_Turbo):
-./build/bin/crispasr --backend kartoffelbox-turbo -m auto -l de \
+./build/bin/stelnettts --backend kartoffelbox-turbo -m auto -l de \
     --tts "Hallo, das ist Kartoffelbox-Turbo." -ow out-de.wav
 
 # Arabic Llama-T3 fine-tune (oddadmix/lahgtna-chatterbox-v1):
-./build/bin/crispasr --backend lahgtna-chatterbox -m auto -l ar \
+./build/bin/stelnettts --backend lahgtna-chatterbox -m auto -l ar \
     --tts "مرحباً" -ow out-ar.wav
 ```
 
@@ -1071,7 +1071,7 @@ mistaken for this pair. Pass `-l <code>` / `--language <code>` to
 select the language token for multilingual synthesis:
 
 ```bash
-./build/bin/crispasr --backend chatterbox -m auto -l fr \
+./build/bin/stelnettts --backend chatterbox -m auto -l fr \
     --tts "bonjour tout le monde" \
     --tts-output out-fr.wav
 ```
@@ -1116,7 +1116,7 @@ ko jamo / ru stress) are not yet implemented.
 The compute-bound T3 AR decode is the slow stage. It runs on CPU by default on
 Metal (GPU has higher per-step kernel-launch overhead for the many T=1 steps).
 The CPU thread count defaults to `min(8, hardware_concurrency)`; override with
-`CRISPASR_CHATTERBOX_THREADS=<n>` (e.g. dial down on a heavily shared host).
+`STELNETTTS_CHATTERBOX_THREADS=<n>` (e.g. dial down on a heavily shared host).
 Output is bit-identical regardless of thread count.
 
 ### Voice cloning
@@ -1145,12 +1145,12 @@ python models/bake-chatterbox-voice-from-wav.py \
 
 `--i-have-rights` is required — baking is the cloning step, and everything
 downstream just replays the pack. The baker stamps
-`crispasr.voice.cloned_from_recording` into the output so the runtime's
+`stelnettts.voice.cloned_from_recording` into the output so the runtime's
 consent gate and Art. 50(4) spoken disclosure recognise the `.gguf` as a
 clone at synthesis time. Chatterbox has **no `.wav` cloning path**, so
 before that stamp existed a baked voice could never trip either gate; see
 [`eu-ai-act.md`](eu-ai-act.md#62-art-504--deepfake-disclosure). A pack baked
-by an older CrispASR carries no stamp and reads as a preset — re-bake it.
+by an older StelnetTTS carries no stamp and reads as a preset — re-bake it.
 
 The baker runs upstream `ChatterboxTTS.prepare_conditionals(wav)` and
 writes five tensors plus two scalar metadata keys, using the same
@@ -1163,7 +1163,7 @@ size is ~150-200 KB regardless of reference WAV length.
 **Step 2 — synthesise with the baked voice:**
 
 ```bash
-./build/bin/crispasr --backend chatterbox -m auto \
+./build/bin/stelnettts --backend chatterbox -m auto \
     --voice my_voice.gguf \
     --tts "Cloned voice synthesising arbitrary text." \
     --tts-output cloned.wav \
@@ -1211,21 +1211,21 @@ forks on the input sample rate:
   intermediate state, so the safer S3Gen-CPU default ships on every
   GPU backend.
 - **Env knobs to override the default:**
-  - `CRISPASR_CHATTERBOX_FULL_CPU=1` — force everything to CPU.
-  - `CRISPASR_CHATTERBOX_T3_GPU=1` — opt T3 back into GPU on Metal
+  - `STELNETTTS_CHATTERBOX_FULL_CPU=1` — force everything to CPU.
+  - `STELNETTTS_CHATTERBOX_T3_GPU=1` — opt T3 back into GPU on Metal
     (useful for benchmarking on M3+ where tensor cores may flip the
     balance, or to verify correctness on CUDA-without-S3Gen).
-  - `CRISPASR_CHATTERBOX_FORCE_GPU=1` — put T3 *and* S3Gen on the GPU
+  - `STELNETTTS_CHATTERBOX_FORCE_GPU=1` — put T3 *and* S3Gen on the GPU
     backend. Output is garbled on Metal (vocoder amplifies drifted /
     NaN mel into saturated audio). Kept as a diagnostic.
-  - `CRISPASR_S3GEN_UNET_CPU=1` / `CRISPASR_S3GEN_ENCODER_CPU=1` /
-    `CRISPASR_S3GEN_VOCODER_CPU=1` — pin individual S3Gen sub-graphs
+  - `STELNETTTS_S3GEN_UNET_CPU=1` / `STELNETTTS_S3GEN_ENCODER_CPU=1` /
+    `STELNETTTS_S3GEN_VOCODER_CPU=1` — pin individual S3Gen sub-graphs
     to CPU when the parent context uses GPU. Diagnostic: the
     documented Metal scheduler "upgrade to higher-priority backend"
     pass undoes user-set CPU assignments for host-mapped buffers, so
     these don't fully isolate sub-graphs on unified-memory devices.
-  - `CRISPASR_S3GEN_UNET_PIN_CPU_OP=<op>` /
-    `CRISPASR_S3GEN_UNET_KEEP_GPU_OP=<op>` — op-type bisect (handover
+  - `STELNETTTS_S3GEN_UNET_PIN_CPU_OP=<op>` /
+    `STELNETTTS_S3GEN_UNET_KEEP_GPU_OP=<op>` — op-type bisect (handover
     round 7). Pins the named op to CPU (or keeps only that op on GPU)
     inside `build_graph_unet1d`. Useful for localising the next
     suspect op in further drift work; doesn't fix end-to-end TTS
@@ -1233,7 +1233,7 @@ forks on the input sample rate:
     mel the UNet produces.
 - **F16 vs Q-mat weights:** F16 mul_mat is bit-identical CPU↔GPU on
   every quant. Quantised weights (Q4_K/Q5_K/Q6_K/Q8_0) need the
-  CrispASR ggml-metal patches (`kernel_mul_mv_q4_K_q8_K`,
+  StelnetTTS ggml-metal patches (`kernel_mul_mv_q4_K_q8_K`,
   `kernel_quantize_q8_K_f32`, `kernel_mul_mm_*_hp`) plus
   `GGML_PREC_F32` op tagging to reach the F32-precise path on Metal.
   T3 carries those tags (see `chatterbox.cpp:build_graph_t3_kv`);
@@ -1244,10 +1244,10 @@ forks on the input sample rate:
 - T3 sampling can produce unrelated text on long technical prompts
   (sampler drift). Short, common phrases work reliably; if a prompt
   produces gibberish, try a different seed via `--seed <n>` (or the
-  legacy env `CRISPASR_CHATTERBOX_T3_SEED=<n>`).
+  legacy env `STELNETTTS_CHATTERBOX_T3_SEED=<n>`).
 
 The parity-quality compute kernels are bit- or fp32-rounding-tight
-against PyTorch — verified via `crispasr-diff chatterbox` on the
+against PyTorch — verified via `stelnettts-diff chatterbox` on the
 `ve_*`, `s3tok_*`, `campplus_fbank`, `campplus_xvector`, and
 `prompt_feat_24k` stages. End-to-end output may drift from the
 python baker due to the resampler differing slightly from librosa's
@@ -1305,7 +1305,7 @@ Session-API knobs (runtime-settable via the session API, not CLI flags):
 | `set_tts_steps(n)` | (see CLI table) | Same as `--tts-steps`; settable without reloading the session |
 
 **Quantized variants** (Q8_0, Q4_K) are supported — the
-`crispasr-quantize` tool skips vocoder, F0-predictor, and embedding
+`stelnettts-quantize` tool skips vocoder, F0-predictor, and embedding
 tensors automatically (see [docs/quantize.md](quantize.md)). Turbo
 size table for the alternate quants:
 
@@ -1331,16 +1331,16 @@ the voice you want in text via `--instruct`.
 
 ```bash
 # Auto-download (~900 MB Q8_0 GGUF on first run):
-./build/bin/crispasr --backend parler-tts -m auto \
+./build/bin/stelnettts --backend parler-tts -m auto \
     --instruct "A female speaker with a warm voice in a quiet room." \
     --tts "Hello, this is a test of Parler TTS." \
     --tts-output output.wav --seed 42
 
 # Explicit model path:
-./build/bin/crispasr --backend parler-tts \
+./build/bin/stelnettts --backend parler-tts \
     -m parler-tts-mini-v1.1-q8_0.gguf \
     --instruct "A young male speaker with an energetic tone." \
-    --tts "Welcome to CrispASR text-to-speech." \
+    --tts "Welcome to StelnetTTS text-to-speech." \
     --tts-output welcome.wav
 ```
 
@@ -1350,26 +1350,26 @@ is used. Output is 44.1 kHz mono PCM. Temperature (default 1.0) and seed
 are supported for reproducible / diverse generation.
 
 **Model file:**
-[`cstr/parler-tts-mini-v1.1-GGUF`](https://huggingface.co/cstr/parler-tts-mini-v1.1-GGUF)
+[`Xenna/parler-tts-mini-v1.1-GGUF`](https://huggingface.co/Xenna/parler-tts-mini-v1.1-GGUF)
 
 ## TTS GGUF downloads
 
-[`cstr/vibevoice-realtime-0.5b-GGUF`](https://huggingface.co/cstr/vibevoice-realtime-0.5b-GGUF) ·
-[`cstr/vibevoice-1.5b-GGUF`](https://huggingface.co/cstr/vibevoice-1.5b-GGUF) ·
-[`cstr/qwen3-tts-0.6b-base-GGUF`](https://huggingface.co/cstr/qwen3-tts-0.6b-base-GGUF) ·
-[`cstr/qwen3-tts-1.7b-base-GGUF`](https://huggingface.co/cstr/qwen3-tts-1.7b-base-GGUF) ·
-[`cstr/qwen3-tts-1.7b-voicedesign-GGUF`](https://huggingface.co/cstr/qwen3-tts-1.7b-voicedesign-GGUF) ·
-[`cstr/qwen3-tts-tokenizer-12hz-GGUF`](https://huggingface.co/cstr/qwen3-tts-tokenizer-12hz-GGUF) ·
-[`cstr/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/cstr/orpheus-3b-0.1-ft-GGUF) ·
-[`cstr/kartoffel-orpheus-3b-german-natural-GGUF`](https://huggingface.co/cstr/kartoffel-orpheus-3b-german-natural-GGUF) ·
-[`cstr/kartoffel-orpheus-3b-german-synthetic-GGUF`](https://huggingface.co/cstr/kartoffel-orpheus-3b-german-synthetic-GGUF) ·
-[`cstr/snac-24khz-GGUF`](https://huggingface.co/cstr/snac-24khz-GGUF) ·
-[`cstr/chatterbox-GGUF`](https://huggingface.co/cstr/chatterbox-GGUF) ·
-[`cstr/chatterbox-turbo-GGUF`](https://huggingface.co/cstr/chatterbox-turbo-GGUF) ·
-[`cstr/kartoffelbox-turbo-GGUF`](https://huggingface.co/cstr/kartoffelbox-turbo-GGUF) ·
-[`cstr/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/cstr/lahgtna-chatterbox-v1-GGUF) ·
-[`cstr/indextts-1.5-GGUF`](https://huggingface.co/cstr/indextts-1.5-GGUF) ·
-[`cstr/parler-tts-mini-v1.1-GGUF`](https://huggingface.co/cstr/parler-tts-mini-v1.1-GGUF)
+[`Xenna/vibevoice-realtime-0.5b-GGUF`](https://huggingface.co/Xenna/vibevoice-realtime-0.5b-GGUF) ·
+[`Xenna/vibevoice-1.5b-GGUF`](https://huggingface.co/Xenna/vibevoice-1.5b-GGUF) ·
+[`Xenna/cielvox2-tts-0.6b-base-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-0.6b-base-GGUF) ·
+[`Xenna/cielvox2-tts-1.7b-base-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-1.7b-base-GGUF) ·
+[`Xenna/cielvox2-tts-1.7b-voicedesign-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-1.7b-voicedesign-GGUF) ·
+[`Xenna/cielvox2-tts-tokenizer-12hz-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-tokenizer-12hz-GGUF) ·
+[`Xenna/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/Xenna/orpheus-3b-0.1-ft-GGUF) ·
+[`Xenna/kartoffel-orpheus-3b-german-natural-GGUF`](https://huggingface.co/Xenna/kartoffel-orpheus-3b-german-natural-GGUF) ·
+[`Xenna/kartoffel-orpheus-3b-german-synthetic-GGUF`](https://huggingface.co/Xenna/kartoffel-orpheus-3b-german-synthetic-GGUF) ·
+[`Xenna/snac-24khz-GGUF`](https://huggingface.co/Xenna/snac-24khz-GGUF) ·
+[`Xenna/chatterbox-GGUF`](https://huggingface.co/Xenna/chatterbox-GGUF) ·
+[`Xenna/chatterbox-turbo-GGUF`](https://huggingface.co/Xenna/chatterbox-turbo-GGUF) ·
+[`Xenna/kartoffelbox-turbo-GGUF`](https://huggingface.co/Xenna/kartoffelbox-turbo-GGUF) ·
+[`Xenna/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/Xenna/lahgtna-chatterbox-v1-GGUF) ·
+[`Xenna/indextts-1.5-GGUF`](https://huggingface.co/Xenna/indextts-1.5-GGUF) ·
+[`Xenna/parler-tts-mini-v1.1-GGUF`](https://huggingface.co/Xenna/parler-tts-mini-v1.1-GGUF)
 
 ## F5-TTS — DiT flow-matching voice cloning
 
@@ -1381,7 +1381,7 @@ ConvNeXtV2 text encoder → 22-layer Diffusion Transformer with AdaLN-Zero
 
 ```bash
 # Basic synthesis with voice cloning
-./build/bin/crispasr --backend f5-tts -m auto \
+./build/bin/stelnettts --backend f5-tts -m auto \
     --voice samples/jfk.wav \
     --ref-text "Ask not what your country can do for you" \
     --tts "Hello, how are you today?" \
@@ -1411,12 +1411,12 @@ reference's speech rate (`ref_frames / ref_text_len`) × the generated text
 length. A slow or expressive reference must not be truncated: the rate guard is
 asymmetric (a generous upper bound, matching upstream which has none — an
 over-estimate is just trailing silence that gets trimmed), so long sentences are
-no longer cut off. `CRISPASR_F5_DURATION_CLAMP=0` restores the exact upstream
+no longer cut off. `STELNETTTS_F5_DURATION_CLAMP=0` restores the exact upstream
 formula. Give an accurate `--ref-text`; a wrong/short reference transcript
 distorts the rate.
 
 **Model file:**
-[`cstr/f5-tts-GGUF`](https://huggingface.co/cstr/f5-tts-GGUF)
+[`Xenna/f5-tts-GGUF`](https://huggingface.co/Xenna/f5-tts-GGUF)
 
 ### Performance (issue #294)
 
@@ -1430,18 +1430,18 @@ format; see the model README). All speed comes from *fewer / smaller passes*:
 |-------|---------|-----|---------|
 | **`--tts-steps 7`** | **~4.7×** | EPSS non-uniform step schedule (built in for n=5/6/7/10/12/16) | verified intact; drop to 10/12 (~3×) if a voice sounds rough |
 | `--tts-steps 16` | ~2.0× | fewer uniform-ish steps | intact |
-| `CRISPASR_F5_CFG_INTERVAL=2` | ~1.3× | reuse the unconditional CFG velocity between steps | intact at ≥16 steps |
+| `STELNETTTS_F5_CFG_INTERVAL=2` | ~1.3× | reuse the unconditional CFG velocity between steps | intact at ≥16 steps |
 | shorter reference clip (3–5 s) | scales with T | the DiT denoises ref+gen jointly, so a long ref inflates *every* pass (attention is O(T²)) | intact |
-| `CRISPASR_F5_BATCH_CFG=1` | GPU-dependent | one 2×-batch CFG forward (matches upstream) instead of two; try on CUDA | intact |
-| `CRISPASR_F5_EMBED_GPU=1` | ~1.3× (more on slow-CPU) | run the InputEmbedding (input_proj + conv-pos) on the GPU instead of the CPU; removes the per-step CPU stall | intact (byte-identical gate-off; roundtrip-identical gate-on). GPU builds only |
-| `CRISPASR_F5_DIT_SKIP=2` | ~1.9× | DiTReducio temporal skip — reuse the cached step velocity every other step | intact at 32 steps; ≈ using `--tts-steps 16`, so use one or the other |
+| `STELNETTTS_F5_BATCH_CFG=1` | GPU-dependent | one 2×-batch CFG forward (matches upstream) instead of two; try on CUDA | intact |
+| `STELNETTTS_F5_EMBED_GPU=1` | ~1.3× (more on slow-CPU) | run the InputEmbedding (input_proj + conv-pos) on the GPU instead of the CPU; removes the per-step CPU stall | intact (byte-identical gate-off; roundtrip-identical gate-on). GPU builds only |
+| `STELNETTTS_F5_DIT_SKIP=2` | ~1.9× | DiTReducio temporal skip — reuse the cached step velocity every other step | intact at 32 steps; ≈ using `--tts-steps 16`, so use one or the other |
 
-Stacking: `~4 s ref` + `--tts-steps 7` (+ `CRISPASR_F5_EMBED_GPU=1` on a GPU) compound.
+Stacking: `~4 s ref` + `--tts-steps 7` (+ `STELNETTTS_F5_EMBED_GPU=1` on a GPU) compound.
 **Do not** combine a low step count with `CFG_INTERVAL` or `DIT_SKIP` — too few
 non-uniform steps + a stale/reused velocity degrades to noise (the runtime warns
 below 16 steps). `EMBED_GPU` is orthogonal and stacks with any step setting.
 
-`CRISPASR_F5_BENCH=1` prints the per-stage split (host_embed / dit_graph / vocos).
+`STELNETTTS_F5_BENCH=1` prints the per-stage split (host_embed / dit_graph / vocos).
 `-nfa` has no effect on F5 — the DiT always uses flash attention.
 
 ## IndexTTS — Chinese/English voice cloning
@@ -1454,13 +1454,13 @@ BigVGAN vocoder (24 kHz).
 
 ```bash
 # Auto-download (~2.4 GB: GPT F16 + BigVGAN F16)
-./build/bin/crispasr --backend indextts -m auto \
+./build/bin/stelnettts --backend indextts -m auto \
     --tts "Hello world, this is a test." \
     --voice reference_speaker.wav \
     --tts-output cloned.wav
 
 # Explicit paths
-./build/bin/crispasr --backend indextts \
+./build/bin/stelnettts --backend indextts \
     --model indextts-gpt.gguf \
     --codec-model indextts-bigvgan.gguf \
     --tts "Hello world." \
@@ -1477,7 +1477,7 @@ emits harmonics above Nyquist that fold back as audible click/buzz). On
 M1 this adds ~5 % to the vocoder stage versus the aliased path. Two env
 knobs for power users:
 
-- `CRISPASR_INDEXTTS_VOCODER_RAW=1` — opt out of AA; fully GPU-graphable but
+- `STELNETTTS_INDEXTTS_VOCODER_RAW=1` — opt out of AA; fully GPU-graphable but
   produces ~2 k impossible inter-sample jumps on speech. Use only for
   reproducing the legacy / aliased benchmark.
 - `--no-gpu` — keeps the whole vocoder graph on CPU. Recommended for
@@ -1485,7 +1485,7 @@ knobs for power users:
   the AA custom op forces a GPU↔CPU sync per AMP block when mixed with
   Metal, leaving GPU + AA the slowest of the four combinations.
 
-Set `CRISPASR_INDEXTTS_DEBUG=1` for per-stage intermediate dumps (mel, conformer
+Set `STELNETTTS_INDEXTTS_DEBUG=1` for per-stage intermediate dumps (mel, conformer
 blocks, perceiver output) useful for diff-testing against Python.
 
 ### IndexTTS Chinese text normalization
@@ -1512,7 +1512,7 @@ the Python reference if output sounds wrong.
 
 **ASR-validate Chinese output with a real Chinese ASR.** `whisper-base`
 over-counts CER ~5× on Mandarin (we measured 21 % whisper-base vs
-3.8 % `qwen3-asr-0.6b` on the same audio); use Qwen3-ASR, the upstream
+3.8 % `cielvox2-asr-0.6b` on the same audio); use Qwen3-ASR, the upstream
 Cohere transcribe API, or `whisper-large-v3` for CER numbers you can
 trust.
 
@@ -1527,7 +1527,7 @@ elsewhere). We deliberately don't vendor that engine — OpenFST + the
 ~1 MB of compiled `.fst` rule data is a heavy dependency for a feature
 most TTS prompts don't need.
 
-**Optional hook: `CRISPASR_INDEXTTS_TEXT_NORMALIZER`** delegates normalization
+**Optional hook: `STELNETTTS_INDEXTTS_TEXT_NORMALIZER`** delegates normalization
 to any user-provided shell command that reads UTF-8 text on stdin and
 writes the normalized text to stdout. The output is then run through
 the default pipeline (CJK split + punct map + upper) before
@@ -1538,8 +1538,8 @@ Recommended setup with upstream wetext:
 ```bash
 pip install wetext
 # Then on every IndexTTS invocation:
-CRISPASR_INDEXTTS_TEXT_NORMALIZER="python $REPO/tools/wetext-normalize.py" \
-    ./build/bin/crispasr --backend indextts -m auto \
+STELNETTTS_INDEXTTS_TEXT_NORMALIZER="python $REPO/tools/wetext-normalize.py" \
+    ./build/bin/stelnettts --backend indextts -m auto \
         --tts "我有 3 个苹果，2025 年买的。" \
         --voice ref.wav --tts-output out.wav
 ```
@@ -1577,16 +1577,16 @@ model (auto-discovered) or via `--codec-model`.
 
 ```bash
 # Plain synthesis:
-crispasr --backend irodori-tts -m irodori-tts-500m-v3-q8_0.gguf \
+stelnettts --backend irodori-tts -m irodori-tts-500m-v3-q8_0.gguf \
     --codec-model dacvae-ja-32dim-f16.gguf --tts "こんにちは、世界。" -o out.wav
 
 # Zero-shot voice cloning from any reference WAV:
-crispasr --backend irodori-tts -m irodori-tts-500m-v3-q8_0.gguf \
+stelnettts --backend irodori-tts -m irodori-tts-500m-v3-q8_0.gguf \
     --codec-model dacvae-ja-32dim-f16.gguf \
     --voice reference.wav --i-have-rights --tts "テスト。" -o cloned.wav
 
 # VoiceDesign (600M-v3): style/emotion control via --instruct:
-crispasr --backend irodori-tts -m irodori-tts-600m-v3-voicedesign-q4_k.gguf \
+stelnettts --backend irodori-tts -m irodori-tts-600m-v3-voicedesign-q4_k.gguf \
     --codec-model dacvae-ja-32dim-f16.gguf \
     --instruct "落ち着いた大人の男性。深く響く声で丁寧に話している。" \
     --tts "こんにちは、世界。" -o voicedesign.wav
@@ -1606,16 +1606,16 @@ harmlessly ignored.
 **Output length** is set by the model's duration predictor (kanji unpack to a
 variable number of mora, so a fixed chars/sec heuristic truncates). Nudge it with
 `--duration-scale` (`>1` longer), or pin the exact frame count with
-`CRISPASR_IRODORI_T_LATENT=N`.
+`STELNETTTS_IRODORI_T_LATENT=N`.
 
 **Knobs (env):**
 
 | Variable | Effect |
 | --- | --- |
-| `CRISPASR_IRODORI_CFG_SPEAKER` | Speaker-CFG strength for cloning (default 5.0). |
-| `CRISPASR_IRODORI_T_LATENT` | Force the exact output latent-frame count. |
-| `CRISPASR_IRODORI_DECODE_CHUNK` / `_CTX` | Overlap-save codec-decode window / context (auto for long outputs; `CHUNK=0` disables). Bounds peak decode memory; exact (byte-identical) output. |
-| `CRISPASR_IRODORI_CODEC_GPU=1` | Run the DAC-VAE codec on the GPU under Vulkan (CPU by default there — validated clean on MoltenVK; confirm on your driver). `CRISPASR_IRODORI_CODEC_CPU=1` forces CPU. |
+| `STELNETTTS_IRODORI_CFG_SPEAKER` | Speaker-CFG strength for cloning (default 5.0). |
+| `STELNETTTS_IRODORI_T_LATENT` | Force the exact output latent-frame count. |
+| `STELNETTTS_IRODORI_DECODE_CHUNK` / `_CTX` | Overlap-save codec-decode window / context (auto for long outputs; `CHUNK=0` disables). Bounds peak decode memory; exact (byte-identical) output. |
+| `STELNETTTS_IRODORI_CODEC_GPU=1` | Run the DAC-VAE codec on the GPU under Vulkan (CPU by default there — validated clean on MoltenVK; confirm on your driver). `STELNETTTS_IRODORI_CODEC_CPU=1` forces CPU. |
 
 See also the shared [reference-conditioning cache](#reference-conditioning-cache)
 and [streaming TTS output](streaming.md#streaming-synthesized-audio-out).
@@ -1624,14 +1624,14 @@ and [streaming TTS output](streaming.md#streaming-synthesized-audio-out).
 
 Voice cloning encodes the reference into a small conditioning blob — a DAC-VAE
 latent (irodori) or Conformer/Perceiver + ECAPA conditioning (indextts) — which
-is slow for long references. CrispASR caches it **content-addressed on the
+is slow for long references. StelnetTTS caches it **content-addressed on the
 reference audio**, in the runtime, so **every entry point** (CLI, server, C ABI,
 language wrappers) skips the encode on a repeat reference automatically — output
 is byte-identical to a fresh encode.
 
-- Cache directory: `CRISPASR_TTS_REF_CACHE_DIR` (default: a `crispasr-tts-refcache`
+- Cache directory: `STELNETTTS_TTS_REF_CACHE_DIR` (default: a `stelnettts-tts-refcache`
   folder under the system temp dir).
-- Disable entirely with `CRISPASR_TTS_REF_CACHE=0`.
+- Disable entirely with `STELNETTTS_TTS_REF_CACHE=0`.
 
 No flag is needed to enable it — it's on by default. (f5-tts caches its
 auto-transcribed reference transcript separately, next to the voice file.)
@@ -1643,18 +1643,18 @@ auto-transcribed reference transcript separately, next to the voice file.)
 Pass `--tts-play` to play TTS output through the local speaker immediately
 after synthesis, in addition to (or instead of) writing a file. The
 spread-spectrum watermark is embedded before playback (unless disabled via
-`--no-watermark` / `CRISPASR_NO_WATERMARK`), so the audio leaving the speaker
+`--no-watermark` / `STELNETTTS_NO_WATERMARK`), so the audio leaving the speaker
 carries the provenance marker.
 
 ```bash
 # Synthesize and play through default speaker
-crispasr --tts --tts-play -m model.gguf "Hello world."
+stelnettts --tts --tts-play -m model.gguf "Hello world."
 
 # Write file AND play
-crispasr --tts --tts-play -m model.gguf -o output.wav "Hello world."
+stelnettts --tts --tts-play -m model.gguf -o output.wav "Hello world."
 
 # Select a non-default output device (index from --list-audio-devices)
-crispasr --tts --tts-play --tts-play-device 2 -m model.gguf "Hello world."
+stelnettts --tts --tts-play --tts-play-device 2 -m model.gguf "Hello world."
 ```
 
 Playback is synchronous — the CLI blocks until audio drains, then exits.
@@ -1684,7 +1684,7 @@ not become click impulses.
 
 ```bash
 # Detect watermark in any audio file (C API)
-crispasr_watermark_detect(pcm, n_samples)  # returns confidence 0..1
+stelnettts_watermark_detect(pcm, n_samples)  # returns confidence 0..1
 ```
 
 ### AudioSeal neural watermark (optional upgrade)
@@ -1697,9 +1697,9 @@ SEANet encoder-decoder. 100% cosine parity with the PyTorch reference.
 python3 models/convert-audioseal-to-gguf.py -o audioseal.gguf
 
 # Use with TTS
-crispasr --tts "hello" -m kokoro.gguf --watermark-model audioseal.gguf
+stelnettts --tts "hello" -m kokoro.gguf --watermark-model audioseal.gguf
 
-# Debug: CRISPASR_AUDIOSEAL_DEBUG=1 for shape traces, CRISPASR_AUDIOSEAL_DUMP_STAGES=1 for binary dumps
+# Debug: STELNETTTS_AUDIOSEAL_DEBUG=1 for shape traces, STELNETTTS_AUDIOSEAL_DUMP_STAGES=1 for binary dumps
 ```
 
 ### Disabling the watermark (operator opt-out)
@@ -1708,12 +1708,12 @@ The waveform watermark is on by default. It can be turned off two equivalent
 ways — neither is more "official" than the other:
 
 - **CLI flag**: `--no-watermark`
-- **Env var**: `CRISPASR_NO_WATERMARK=1`
+- **Env var**: `STELNETTTS_NO_WATERMARK=1`
 
 Either one disables watermark embedding for the whole process and logs, once:
 
 ```
-crispasr: warning: watermarking disabled. AI usage marking responsibility rests with the operator.
+stelnettts: warning: watermarking disabled. AI usage marking responsibility rests with the operator.
 ```
 
 **Rationale.** Disabling the mark does not remove any AI-disclosure obligation
@@ -1721,7 +1721,7 @@ that may apply to the generated audio — it transfers responsibility for meetin
 it to whoever runs the binary. The warning text is deliberately
 jurisdiction-neutral and names no statute at runtime, because the marking
 obligation is jurisdiction-specific (e.g. EU AI Act Art. 50, and analogous US
-state and other rules) and CrispASR is a tool/component, not the "provider" that
+state and other rules) and StelnetTTS is a tool/component, not the "provider" that
 those rules bind. A downstream operator that ships synthetic media is that
 provider. Keeping the mark on is the zero-config default so the compliant path
 is the path of least resistance; the opt-out exists for legitimate cases
@@ -1729,7 +1729,7 @@ is the path of least resistance; the opt-out exists for legitimate cases
 substitutes its own compliant marking scheme). See
 [`docs/issue-260/PLAN.md`](issue-260/PLAN.md) for the full background.
 
-> **Scope.** The flag/env opt-out applies to the `crispasr` CLI and the server
+> **Scope.** The flag/env opt-out applies to the `stelnettts` CLI and the server
 > (process-wide — there is no per-request toggle). It does **not** affect the
 > C-API/language bindings: `synthesize()` always watermarks. Binding consumers
 > that need unwatermarked PCM call `synthesize_raw()` and skip
@@ -1738,8 +1738,8 @@ substitutes its own compliant marking scheme). See
 
 ### File metadata (always active)
 
-- **WAV**: `LIST`/`INFO` chunk with `ISFT="CrispASR (AI-generated audio)"` and `ICMT` notice
-- **MP3**: ID3v2 `TXXX` frames: `AI_GENERATED=true`, `GENERATOR=CrispASR`
+- **WAV**: `LIST`/`INFO` chunk with `ISFT="StelnetTTS (AI-generated audio)"` and `ICMT` notice
+- **MP3**: ID3v2 `TXXX` frames: `AI_GENERATED=true`, `GENERATOR=StelnetTTS`
 
 ### C2PA Content Credentials
 
@@ -1749,10 +1749,10 @@ embedded directly in the output file. This is the "signed metadata" layer that
 complements the waveform watermark.
 
 **Build.** WAV signing needs **no build flags and no external library** — it is
-handled by the built-in native signer (`src/core/crispasr_c2pa_native.{h,cpp}`),
+handled by the built-in native signer (`src/core/stelnettts_c2pa_native.{h,cpp}`),
 a pure-C++ implementation of C2PA (hand-built CBOR / JUMBF / COSE_Sign1, ES256
 via the vendored BSD-2 micro-ecc + a header-only SHA-256). It compiles into
-`crispasr-lib` on every platform with zero dependencies. Its output validates
+`stelnettts-lib` on every platform with zero dependencies. Its output validates
 in the c2pa-rs reference reader. To additionally sign **MP3/M4A/FLAC**, fetch the
 optional c2pa-rs library:
 
@@ -1761,12 +1761,12 @@ optional c2pa-rs library:
 # then cmake reconfigure; look for "C2PA signing enabled" at configure time
 ```
 
-(Set `-DCRISPASR_NO_C2PA_NATIVE=ON` to drop the built-in signer, e.g. a build
+(Set `-DSTELNETTTS_NO_C2PA_NATIVE=ON` to drop the built-in signer, e.g. a build
 that wants only the c2pa-rs path.)
 
 **On by default (self-signed), on every platform.** Output is signed
 automatically — no flags needed. Signing uses a fixed self-signed certificate
-**baked into the binary** (`crispasr_c2pa_default_cert.h`), so it works
+**baked into the binary** (`stelnettts_c2pa_default_cert.h`), so it works
 identically on desktop, mobile, and in the **WASM browser sandbox** (no
 filesystem or openssl needed at runtime). Self-signed manifests are valid and
 machine-readable (EU AI Act Art. 50); C2PA verifiers show "unverified signer".
@@ -1775,8 +1775,8 @@ AI-generated, it is not a trust anchor. (Regenerate with
 `scripts/gen-default-cert-header.sh`.)
 
 ```bash
-crispasr --tts "hello" -m kokoro.gguf --tts-output out.wav   # signed automatically
-crispasr --detect-watermark out.wav                          # (or verify at contentcredentials.org)
+stelnettts --tts "hello" -m kokoro.gguf --tts-output out.wav   # signed automatically
+stelnettts --detect-watermark out.wav                          # (or verify at contentcredentials.org)
 ```
 
 **Bring your own cert** for a *trusted* signer identity (a CA-issued
@@ -1784,7 +1784,7 @@ code-signing cert; verifiers then show the named issuer):
 
 ```bash
 ./scripts/generate-c2pa-cert.sh   # or use your CA-issued cert + key
-crispasr --tts "hello" --c2pa-cert crispasr-c2pa.crt --c2pa-key crispasr-c2pa.key
+stelnettts --tts "hello" --c2pa-cert stelnettts-c2pa.crt --c2pa-key stelnettts-c2pa.key
 ```
 
 **Format support.** **WAV** (RIFF), **MP3** (ID3v2 GEOB), **M4A/MP4** (ISO BMFF,
@@ -1793,21 +1793,21 @@ built-in native signer (the `c2pa-audio` submodule) — **c2pa-rs is no longer
 needed for any audio container**; `fetch-c2pa.sh` is optional/legacy.
 
 **AAC and Opus** have no C2PA embedding path in their raw streaming containers
-(ADTS / Ogg) — and neither does c2pa-rs. So when C2PA is active, CrispASR
+(ADTS / Ogg) — and neither does c2pa-rs. So when C2PA is active, StelnetTTS
 **muxes AAC/Opus into an MP4 container** (`.aac` → `.m4a`, `.opus` → `.mp4`, via
-the in-tree glint encoder + `crispasr_mp4_writer.h`) and signs that natively.
+the in-tree glint encoder + `stelnettts_mp4_writer.h`) and signs that natively.
 Explicit `.m4a`/`.mp4` output is always AAC-in-MP4. Set
-`CRISPASR_NO_C2PA_REMUX=1` to keep the raw `.aac`/`.opus` container (watermark +
+`STELNETTTS_NO_C2PA_REMUX=1` to keep the raw `.aac`/`.opus` container (watermark +
 file-metadata tag only). The muxed MP4 output validates in the c2pa-rs reference
 reader and plays in standard players.
 
-**Bindings / mobile.** C2PA lives in the core C API (`crispasr_c2pa_sign` /
-`crispasr_c2pa_free`, and `c2paSign()` in the wasm/JS binding), so any consumer
-of `crispasr-lib` can sign — pass a WAV/MP3 container and get signed bytes back.
-Build the library for the target with `-DCRISPASR_C2PA_FETCH=ON`:
+**Bindings / mobile.** C2PA lives in the core C API (`stelnettts_c2pa_sign` /
+`stelnettts_c2pa_free`, and `c2paSign()` in the wasm/JS binding), so any consumer
+of `stelnettts-lib` can sign — pass a WAV/MP3 container and get signed bytes back.
+Build the library for the target with `-DSTELNETTTS_C2PA_FETCH=ON`:
 - **Android**: links `libc2pa_c.so`; bundle it in the APK `jniLibs/<abi>/` next to
   `libwhisper.so` (verified: the arm64 prebuilt links cleanly with the NDK).
-- **iOS**: links `libc2pa_c.a` statically; `crispasr_enable_c2pa` auto-links the
+- **iOS**: links `libc2pa_c.a` statically; `stelnettts_enable_c2pa` auto-links the
   required Apple frameworks (Security / CoreFoundation / SystemConfiguration)
   (verified: the arm64 prebuilt links cleanly with the iOS SDK).
 - **WASM** — WAV signing works out of the box (no `--c2pa`, no ~10 MB c2pa-rs).
@@ -1821,14 +1821,14 @@ Build the library for the target with `-DCRISPASR_C2PA_FETCH=ON`:
      in any browser, Node ≥16, Deno, or a Worker. Also on npm/pub.dev as
      `c2pa-audio` / `c2pa_audio`. Usage:
      ```js
-     import { c2paSignWav } from 'crispasr/c2pa';
+     import { c2paSignWav } from 'stelnettts/c2pa';
      const wav    = Module.pcmToWav(float32Pcm, 24000);          // interop WAV + AI tag
      const signed = await c2paSignWav(wav, certPem, keyPem);      // full C2PA manifest
      ```
      Covered by `npm test` in `bindings/javascript/` — 12 hermetic unit tests
      plus a live parity test through the c2pa-python reference reader.
   2. **Built-in native C++ signer via `c2paSign()`.** The native signer
-     (`crispasr_c2pa_native`) compiles into every wasm build, so
+     (`stelnettts_c2pa_native`) compiles into every wasm build, so
      `Module.c2paSign(wavBytes, "audio/wav")` works **without `--c2pa`** and adds
      no c2pa-rs weight — use this if you already hold a wasm `Module`. Both 1 and
      2 emit the same manifest and validate in the c2pa-rs reference reader (only
@@ -1848,7 +1848,7 @@ Voice cloning (`.wav` reference files) requires explicit consent:
 
 ```bash
 # CLI: --i-have-rights flag required
-crispasr --tts "hello" --voice speaker.wav --i-have-rights
+stelnettts --tts "hello" --voice speaker.wav --i-have-rights
 
 # Server: consent_attestation field required in JSON body
 curl -X POST http://localhost:8080/v1/audio/speech \
@@ -1859,7 +1859,7 @@ All consent attestations are logged with ISO 8601 timestamps.
 
 ### Post-embed watermark verification (automatic)
 
-After writing a watermarked WAV in TTS mode, CrispASR automatically
+After writing a watermarked WAV in TTS mode, StelnetTTS automatically
 reads back the in-memory PCM and runs watermark detection on it. If
 the detected confidence is below 0.6, a warning is emitted to stderr.
 This catches cases where the watermark was degraded during synthesis
@@ -1879,10 +1879,10 @@ score and a human-readable verdict, then exits.
 
 ```bash
 # Detect watermark using the built-in spread-spectrum detector
-crispasr --detect-watermark output.wav
+stelnettts --detect-watermark output.wav
 
 # Detect with AudioSeal neural watermark model
-crispasr --detect-watermark output.wav --watermark-model audioseal.gguf
+stelnettts --detect-watermark output.wav --watermark-model audioseal.gguf
 ```
 
 ### Spoken disclaimer (voice clones only)

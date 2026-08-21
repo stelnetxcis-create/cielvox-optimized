@@ -25,7 +25,7 @@
 #include "core/dac_decoder.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/sentencepiece.h"
 #include "core/tts_ref_cache.h"
 
@@ -54,7 +54,7 @@
 static bool irodori_debug_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_IRODORI_DEBUG");
+        const char* e = std::getenv("STELNETTTS_IRODORI_DEBUG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -279,7 +279,7 @@ struct irodori_tts_context {
     ggml_backend_buffer_t buf_weights = nullptr;
     ggml_context* w_ctx = nullptr; // weight tensor context (kept alive)
 
-    // §243: persistent cached DiT step graph (CRISPASR_IRODORI_PERSIST_GRAPH).
+    // §243: persistent cached DiT step graph (STELNETTTS_IRODORI_PERSIST_GRAPH).
     // The DiT graph shape is constant across every ODE/CFG run_dit_forward call of
     // one generation, so build + gallocr-alloc ONCE and reuse — stable tensor
     // addresses let the CUDA graph warm up once (Ampere+) instead of re-capturing
@@ -320,7 +320,7 @@ struct irodori_tts_context {
     // DAC decoder weights (reusing core_dac structure with DACVAE config)
     core_dac::DacWeights dac;
     // FASTCONV (docs/perf-sweep/PLAN.md): baked-F32 decode conv kernels so the
-    // per-graph F16→F32 cast becomes a no-op. Gated CRISPASR_IRODORI_FASTCONV.
+    // per-graph F16→F32 cast becomes a no-op. Gated STELNETTTS_IRODORI_FASTCONV.
     core_dac::fastconv_cache dac_fc;
     // DAC-VAE encoder weights (voice cloning: reference audio → latent)
     irodori_dacvae_encoder enc;
@@ -1015,7 +1015,7 @@ static ggml_tensor* build_dit_block_graph(ggml_context* ctx, const irodori_tts_c
 //   2. BPE: split into UTF-8 characters, iteratively merge lowest-rank pair
 //   3. byte_fallback: unknown chars → <0xHH> hex tokens per UTF-8 byte
 //
-// This matches CrispEmbed's BPETokenizer::bpe_merge() (spm_style path).
+// This matches StelnetEmbed's BPETokenizer::bpe_merge() (spm_style path).
 
 // BPE merge: split text into UTF-8 chars, iteratively merge by rank.
 // Uses linked-list + priority queue for O(N log N) merging.
@@ -1119,9 +1119,9 @@ static std::vector<int32_t> bpe_merge(const std::string& text,
 
 static std::vector<int32_t> tokenize_text(const irodori_tts_context* ctx, const char* text) {
     // Override token IDs from env var for parity testing:
-    //   CRISPASR_IRODORI_TOKEN_IDS="1,19144,52839,302,275"
-    //   CRISPASR_IRODORI_CAPTION_TOKEN_IDS="1,..." (VoiceDesign caption)
-    const char* override_ids = std::getenv("CRISPASR_IRODORI_TOKEN_IDS");
+    //   STELNETTTS_IRODORI_TOKEN_IDS="1,19144,52839,302,275"
+    //   STELNETTTS_IRODORI_CAPTION_TOKEN_IDS="1,..." (VoiceDesign caption)
+    const char* override_ids = std::getenv("STELNETTTS_IRODORI_TOKEN_IDS");
     if (override_ids && *override_ids) {
         std::vector<int32_t> tokens;
         std::string s(override_ids);
@@ -1192,7 +1192,7 @@ static std::vector<int32_t> tokenize_text(const irodori_tts_context* ctx, const 
         }
     }
 
-    if (const char* dbg = std::getenv("CRISPASR_IRODORI_DUMP_TOKENS")) {
+    if (const char* dbg = std::getenv("STELNETTTS_IRODORI_DUMP_TOKENS")) {
         if (*dbg && *dbg != '0') {
             std::fprintf(stderr, "[irodori] tokens (%d):", (int)tokens.size());
             for (int32_t t : tokens)
@@ -1239,7 +1239,7 @@ struct irodori_tts_context* irodori_tts_init_from_file(const char* path_model, s
 
     // Initialize backends. use_gpu picks the best GPU (Metal/CUDA/Vulkan);
     // graphs are single-backend gallocr, so weights load onto the compute
-    // backend directly. CRISPASR_IRODORI_CPU=1 forces CPU regardless.
+    // backend directly. STELNETTTS_IRODORI_CPU=1 forces CPU regardless.
     ctx->backend_cpu = core_cpu_backend::init();
     if (!ctx->backend_cpu) {
         std::fprintf(stderr, "[irodori] failed to init CPU backend\n");
@@ -1249,10 +1249,10 @@ struct irodori_tts_context* irodori_tts_init_from_file(const char* path_model, s
     core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
 
     const bool force_cpu = [] {
-        const char* e = std::getenv("CRISPASR_IRODORI_CPU");
+        const char* e = std::getenv("STELNETTTS_IRODORI_CPU");
         return e && *e && *e != '0';
     }();
-    ctx->backend = (params.use_gpu && !force_cpu) ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = (params.use_gpu && !force_cpu) ? stelnettts_init_gpu_backend() : nullptr;
     if (ctx->backend && core_cpu_backend::is_cpu(ctx->backend)) {
         ggml_backend_free(ctx->backend); // CPU-only build: keep the threaded instance
         ctx->backend = nullptr;
@@ -1266,15 +1266,15 @@ struct irodori_tts_context* irodori_tts_init_from_file(const char* path_model, s
     // (cos 0.99996 vs CPU) and decoder (cos 0.99999) run clean on Vulkan there
     // — so the CPU fallback is likely over-conservative on modern Vulkan. Kept
     // as the default pending confirmation on native AMD/RADV (the driver family
-    // that originally corrupted); CRISPASR_IRODORI_CODEC_GPU=1 opts into the
-    // (validated) GPU codec, CRISPASR_IRODORI_CODEC_CPU=1 forces CPU.
+    // that originally corrupted); STELNETTTS_IRODORI_CODEC_GPU=1 opts into the
+    // (validated) GPU codec, STELNETTTS_IRODORI_CODEC_CPU=1 forces CPU.
     ctx->codec_backend = ctx->backend;
     if (ctx->backend != ctx->backend_cpu) {
         ggml_backend_dev_t dev = ggml_backend_get_device(ctx->backend);
         ggml_backend_reg_t reg = dev ? ggml_backend_dev_backend_reg(dev) : nullptr;
         const bool is_vulkan = reg && std::strcmp(ggml_backend_reg_name(reg), "Vulkan") == 0;
-        const char* cg = std::getenv("CRISPASR_IRODORI_CODEC_GPU");
-        const char* cc = std::getenv("CRISPASR_IRODORI_CODEC_CPU");
+        const char* cg = std::getenv("STELNETTTS_IRODORI_CODEC_GPU");
+        const char* cc = std::getenv("STELNETTTS_IRODORI_CODEC_CPU");
         const bool codec_gpu = (cg && *cg && *cg != '0') || (!is_vulkan && !(cc && *cc && *cc != '0'));
         if (!codec_gpu)
             ctx->codec_backend = ctx->backend_cpu;
@@ -1669,11 +1669,11 @@ int irodori_tts_set_codec_path(struct irodori_tts_context* ctx, const char* code
 
     // FASTCONV (docs/perf-sweep/PLAN.md): bake F32 copies of the DECODE conv
     // kernels via the shared core_dac cache so the per-graph F16→F32 cast becomes
-    // a no-op + k=1 convs become matmuls. Gated CRISPASR_IRODORI_FASTCONV (default
+    // a no-op + k=1 convs become matmuls. Gated STELNETTTS_IRODORI_FASTCONV (default
     // on); =0 restores the legacy cast path (clean A/B). Encode/voice-clone convs
     // stay legacy (rare path).
     {
-        const char* e = std::getenv("CRISPASR_IRODORI_FASTCONV");
+        const char* e = std::getenv("STELNETTTS_IRODORI_FASTCONV");
         const bool on = !(e && e[0] == '0');
         std::vector<ggml_tensor*> convs = {dac.in_conv_w, dac.out_conv_w, ctx->codec_out_proj_w};
         for (auto& blk : dac.blocks) {
@@ -1874,18 +1874,18 @@ int irodori_tts_set_reference(struct irodori_tts_context* ctx, const float* ref_
 
     // Debug: feed an already-normalized waveform straight through (isolates
     // the encoder graph from resample/LUFS for parity testing).
-    const char* dbg = std::getenv("CRISPASR_IRODORI_ENC_PRENORM");
+    const char* dbg = std::getenv("STELNETTTS_IRODORI_ENC_PRENORM");
 
     // Content-addressed reference cache (runtime, so every caller benefits —
     // CLI, C ABI, server, wrappers). Key = hash of (ref_pcm, sample_rate); skip
     // resample + −16 LUFS + DAC-VAE encode on a hit. Skipped for the debug
     // pre-norm path (its latent is not the normal-pipeline latent).
-    const uint64_t cache_key = crispasr_ref_cache::fnv1a(ref_pcm, (size_t)n_samples * sizeof(float)) ^
-                               crispasr_ref_cache::fnv1a(&sample_rate, sizeof(sample_rate));
+    const uint64_t cache_key = stelnettts_ref_cache::fnv1a(ref_pcm, (size_t)n_samples * sizeof(float)) ^
+                               stelnettts_ref_cache::fnv1a(&sample_rate, sizeof(sample_rate));
     if (!dbg) {
         std::vector<uint32_t> shape;
         std::vector<float> lat;
-        if (crispasr_ref_cache::get_floats("irodori-latent", &cache_key, sizeof(cache_key), shape, lat) &&
+        if (stelnettts_ref_cache::get_floats("irodori-latent", &cache_key, sizeof(cache_key), shape, lat) &&
             shape.size() == 2 && shape[1] == (uint32_t)latent_pd && shape[0] > 0 &&
             lat.size() == (size_t)shape[0] * shape[1]) {
             ctx->ref_latent = std::move(lat);
@@ -1947,12 +1947,12 @@ int irodori_tts_set_reference(struct irodori_tts_context* ctx, const float* ref_
 
     // Save to the content-addressed cache for next time (any caller).
     if (!dbg)
-        crispasr_ref_cache::put_floats("irodori-latent", &cache_key, sizeof(cache_key),
+        stelnettts_ref_cache::put_floats("irodori-latent", &cache_key, sizeof(cache_key),
                                        {(uint32_t)frames, (uint32_t)latent_pd}, ctx->ref_latent.data(),
                                        ctx->ref_latent.size());
 
     // Optional: dump the latent for parity checks.
-    if (const char* out = std::getenv("CRISPASR_IRODORI_ENC_DUMP")) {
+    if (const char* out = std::getenv("STELNETTTS_IRODORI_ENC_DUMP")) {
         FILE* f = std::fopen(out, "wb");
         if (f) {
             std::fwrite(ctx->ref_latent.data(), sizeof(float), ctx->ref_latent.size(), f);
@@ -2328,9 +2328,9 @@ static std::vector<float> run_dit_forward(irodori_tts_context* ctx, const float*
 
     // §243 STEP-0: split per-DiT-call time into graph construct+alloc (what a
     // persistent cached graph eliminates), input-set, and compute. Gated
-    // CRISPASR_IRODORI_DIT_TIMING=1; cumulative, last line = the answer.
+    // STELNETTTS_IRODORI_DIT_TIMING=1; cumulative, last line = the answer.
     static const bool s_dit_timing = []() {
-        const char* e = std::getenv("CRISPASR_IRODORI_DIT_TIMING");
+        const char* e = std::getenv("STELNETTTS_IRODORI_DIT_TIMING");
         return e && e[0] && e[0] != '0';
     }();
     static int64_t s_construct_us = 0, s_setinput_us = 0, s_compute_us = 0;
@@ -2339,12 +2339,12 @@ static std::vector<float> run_dit_forward(irodori_tts_context* ctx, const float*
 
     // §243: reuse a persistent cached DiT graph when the shape signature matches
     // (it is constant across every ODE/CFG call of one generation). Env-gated
-    // CRISPASR_IRODORI_PERSIST_GRAPH, default OFF. On a cache hit we skip build +
+    // STELNETTTS_IRODORI_PERSIST_GRAPH, default OFF. On a cache hit we skip build +
     // gallocr entirely and only re-set inputs below; stable tensor addresses let
     // the CUDA graph warm up once and replay (Ampere+), instead of re-capturing
     // every step. Correctness is identical — only the graph's identity is reused.
     static const bool s_persist = []() {
-        const char* e = std::getenv("CRISPASR_IRODORI_PERSIST_GRAPH");
+        const char* e = std::getenv("STELNETTTS_IRODORI_PERSIST_GRAPH");
         return e && e[0] && e[0] != '0';
     }();
     const bool has_spk = spk_state_data && T_ref > 0;
@@ -2435,7 +2435,7 @@ static std::vector<float> run_dit_forward(irodori_tts_context* ctx, const float*
 
         // Build just the first layer for debugging, then add more once stable
         int n_build_layers = hp.num_layers;
-        const char* env_layers = std::getenv("CRISPASR_IRODORI_LAYERS");
+        const char* env_layers = std::getenv("STELNETTTS_IRODORI_LAYERS");
         if (env_layers)
             n_build_layers = std::min(std::atoi(env_layers), hp.num_layers);
         for (int i = 0; i < n_build_layers; i++) {
@@ -2686,8 +2686,8 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
     // Output length is determined after text + speaker encoding, from the
     // model's duration predictor (below) — the old ~6.3-frames/token heuristic
     // under-allocated kanji-heavy text (variable mora per token) and truncated
-    // clauses (#221). CRISPASR_IRODORI_T_LATENT still forces an exact count.
-    const char* t_lat_override = std::getenv("CRISPASR_IRODORI_T_LATENT");
+    // clauses (#221). STELNETTTS_IRODORI_T_LATENT still forces an exact count.
+    const char* t_lat_override = std::getenv("STELNETTTS_IRODORI_T_LATENT");
 
     // ── Step 1: Encode text ──
     IRODORI_DBG("[irodori] encoding text...\n");
@@ -2701,7 +2701,7 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
 
     // Dump text_state for parity comparison
     {
-        const char* dump_ts = std::getenv("CRISPASR_IRODORI_DUMP_TEXT_STATE");
+        const char* dump_ts = std::getenv("STELNETTTS_IRODORI_DUMP_TEXT_STATE");
         if (dump_ts && *dump_ts && *dump_ts != '0') {
             std::string path = dump_ts;
             if (path == "1")
@@ -2747,7 +2747,7 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
         // Caption uses the same tokenizer as text (same vocab in VoiceDesign).
         // Use a separate token override env var so diff harness can control both.
         std::vector<int32_t> cap_ids;
-        const char* cap_override = std::getenv("CRISPASR_IRODORI_CAPTION_TOKEN_IDS");
+        const char* cap_override = std::getenv("STELNETTTS_IRODORI_CAPTION_TOKEN_IDS");
         if (cap_override && *cap_override) {
             std::string s(cap_override);
             size_t pos = 0;
@@ -2828,7 +2828,7 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
     // Initial noise x_t ~ N(0, 1) or loaded from reference file
     std::vector<float> x_t(patched_steps * latent_d);
     {
-        const char* ref_noise = std::getenv("CRISPASR_IRODORI_REF_NOISE");
+        const char* ref_noise = std::getenv("STELNETTTS_IRODORI_REF_NOISE");
         if (ref_noise && *ref_noise) {
             FILE* f = std::fopen(ref_noise, "rb");
             if (f) {
@@ -2852,16 +2852,16 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
     // forward stays fresh every step; the first CFG-active step always recomputes.
     // This uses slightly stale uncond, so it CHANGES the output and stays gated OFF
     // by default (K=1 = exact). Only active when K>1, so the default recomputes every
-    // step and is byte-for-byte the legacy path. Gated CRISPASR_IRODORI_CFG_INTERVAL.
+    // step and is byte-for-byte the legacy path. Gated STELNETTTS_IRODORI_CFG_INTERVAL.
     const int cfg_interval = [] {
-        const char* e = std::getenv("CRISPASR_IRODORI_CFG_INTERVAL");
+        const char* e = std::getenv("STELNETTTS_IRODORI_CFG_INTERVAL");
         const int k = e ? std::atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
     const bool cfg_interval_on = cfg_interval > 1;
     std::vector<float> v_text_cache, v_spk_cache, v_cap_cache; // cached uncond velocities
     int cfg_active_idx = 0;                                    // counts CFG-active steps (for the every-K test)
-    if (cfg_interval_on && std::getenv("CRISPASR_IRODORI_CFG_INTERVAL_DEBUG"))
+    if (cfg_interval_on && std::getenv("STELNETTTS_IRODORI_CFG_INTERVAL_DEBUG"))
         std::fprintf(stderr,
                      "[irodori] interval-CFG K=%d (uncond recomputed every %d CFG-active steps; first always)\n",
                      cfg_interval, cfg_interval);
@@ -2893,7 +2893,7 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
 
         // Dump step-0 v_pred for parity comparison
         if (step == 0) {
-            const char* dump_v0 = std::getenv("CRISPASR_IRODORI_DUMP_V_PRED0");
+            const char* dump_v0 = std::getenv("STELNETTTS_IRODORI_DUMP_V_PRED0");
             if (dump_v0 && *dump_v0) {
                 FILE* f = std::fopen(dump_v0, "wb");
                 if (f) {
@@ -2910,15 +2910,15 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
         //                    + cfg_speaker * (v_cond - v_speaker_uncond)   [speaker masked]
         //                    + cfg_caption * (v_cond - v_caption_uncond)   [caption masked]
         float cfg_text = ctx->cfg_scale_text;
-        const char* cfg_env = std::getenv("CRISPASR_IRODORI_CFG_TEXT");
+        const char* cfg_env = std::getenv("STELNETTTS_IRODORI_CFG_TEXT");
         if (cfg_env)
             cfg_text = (float)std::atof(cfg_env);
         float cfg_speaker = ctx->cfg_scale_speaker;
-        const char* cfgsp_env = std::getenv("CRISPASR_IRODORI_CFG_SPEAKER");
+        const char* cfgsp_env = std::getenv("STELNETTTS_IRODORI_CFG_SPEAKER");
         if (cfgsp_env)
             cfg_speaker = (float)std::atof(cfgsp_env);
         float cfg_caption = ctx->cfg_scale_caption;
-        const char* cfgcap_env = std::getenv("CRISPASR_IRODORI_CFG_CAPTION");
+        const char* cfgcap_env = std::getenv("STELNETTTS_IRODORI_CFG_CAPTION");
         if (cfgcap_env)
             cfg_caption = (float)std::atof(cfgcap_env);
         const float cfg_min_t = 0.5f, cfg_max_t = 1.0f;
@@ -3001,7 +3001,7 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
 
     // Dump latent for external DACVAE decode (env-gated)
     {
-        const char* dump_env = std::getenv("CRISPASR_IRODORI_DUMP_LATENT");
+        const char* dump_env = std::getenv("STELNETTTS_IRODORI_DUMP_LATENT");
         if (dump_env && *dump_env && *dump_env != '0') {
             std::string lat_path = dump_env;
             if (lat_path == "1")
@@ -3047,9 +3047,9 @@ int irodori_tts_synthesize(struct irodori_tts_context* ctx, const char* text, fl
     const int T = patched_steps;
     int chunk = 400;     // ~16 s at 1920 hop / 48 kHz
     int ctx_frames = 32; // ≫ the decoder's latent-frame receptive field
-    if (const char* e = std::getenv("CRISPASR_IRODORI_DECODE_CHUNK"))
+    if (const char* e = std::getenv("STELNETTTS_IRODORI_DECODE_CHUNK"))
         chunk = std::atoi(e); // 0 → never chunk
-    if (const char* e = std::getenv("CRISPASR_IRODORI_DECODE_CTX"))
+    if (const char* e = std::getenv("STELNETTTS_IRODORI_DECODE_CTX"))
         ctx_frames = std::max(0, std::atoi(e));
     const bool chunked = chunk > 0 && T > chunk + 2 * ctx_frames;
 

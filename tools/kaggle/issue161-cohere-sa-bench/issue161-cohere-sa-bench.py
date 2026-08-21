@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""CrispASR — issue #161 cohere self-attention A/B bench.
+"""StelnetTTS — issue #161 cohere self-attention A/B bench.
 
 A) Default (flash_attn_ext SA)
-B) CRISPASR_COHERE_LEGACY_SA=1 (manual mul_mat SA, pre-v0.7 path)
+B) STELNETTTS_COHERE_LEGACY_SA=1 (manual mul_mat SA, pre-v0.7 path)
 """
 import json, os, re, subprocess, sys, time, traceback
 from pathlib import Path
@@ -16,10 +16,10 @@ WORK = Path("/kaggle/working")
 CRASH = WORK / "crash.txt"
 
 def main():
-    REPO = WORK / "CrispASR"
+    REPO = WORK / "StelnetTTS"
     BUILD = REPO / "build"
-    REF = os.environ.get("CRISPASR_REF", "main")
-    URL = "https://github.com/CrispStrobe/CrispASR.git"
+    REF = os.environ.get("STELNETTTS_REF", "main")
+    URL = "https://github.com/Cyna/StelnetTTS.git"
     N_RUNS = 5
     MODEL = "cohere-transcribe-q4_k.gguf"
 
@@ -54,16 +54,16 @@ def main():
     flags = kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
     with kh.build_heartbeat("cmake.configure"):
         kh.sh(f"cmake -S {REPO} -B {BUILD} -G Ninja -DCMAKE_BUILD_TYPE=Release "
-               f"-DCRISPASR_OPUS=OFF -DCRISPASR_AMR=OFF "
+               f"-DSTELNETTTS_OPUS=OFF -DSTELNETTTS_AMR=OFF "
                + " ".join(flags))
 
     kh.step("build")
     with kh.build_heartbeat("cmake.build"):
         kh.sh_with_progress(
-            f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+            f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
             f"-j{kh.safe_build_jobs(gpu=True)}")
 
-    CLI = BUILD / "bin" / "crispasr"
+    CLI = BUILD / "bin" / "stelnettts"
     assert CLI.exists(), f"CLI not at {CLI}"
     kh.step("build_done")
 
@@ -73,7 +73,7 @@ def main():
     MODEL_PATH = MODEL_DIR / MODEL
     if not MODEL_PATH.exists():
         subprocess.check_call(["wget","-q","--show-progress",
-            f"https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF/resolve/main/{MODEL}",
+            f"https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF/resolve/main/{MODEL}",
             "-O", str(MODEL_PATH)])
 
     AUDIO = REPO / "samples" / "jfk.wav"
@@ -106,7 +106,7 @@ def main():
 
     kh.step("bench_B")
     print("\n=== B) legacy mul_mat SA ===", flush=True)
-    tb, lb = bench("legacy_sa", {"CRISPASR_COHERE_LEGACY_SA": "1"})
+    tb, lb = bench("legacy_sa", {"STELNETTTS_COHERE_LEGACY_SA": "1"})
 
     # ── report ────────────────────────────────────────────────────────
     kh.step("report")

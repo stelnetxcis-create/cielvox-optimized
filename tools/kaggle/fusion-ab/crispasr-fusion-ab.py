@@ -1,21 +1,21 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — fusion A/B (pre- vs post-norm_affine+siglu) on Kaggle T4
+# # StelnetTTS — fusion A/B (pre- vs post-norm_affine+siglu) on Kaggle T4
 #
 # Reproduces the issue #81 reporter's setup (parakeet TDT 0.6B v3, ONNX vs
-# CrispASR on CUDA) on a Kaggle T4 / P100, and adds the A/B that the
-# reporter couldn't run: **CrispASR built before vs after `c2423313`** —
+# StelnetTTS on CUDA) on a Kaggle T4 / P100, and adds the A/B that the
+# reporter couldn't run: **StelnetTTS built before vs after `c2423313`** —
 # the norm_affine + siglu fusion (2026-05-13) that the committer reports gives ~1.2% on CPU; on CUDA they expect "structural" gains from fewer backend splits + more graph capture
 # but didnt measure (left for this notebook).
 #
 # What it does:
-# 1. Clone CrispASR.
-# 2. Build at `d758fe69~1` (PRE)  → save `libcrispasr-pre.so`.
-# 3. `git checkout c2423313` (POST) → incremental rebuild → save `libcrispasr-post.so`.
+# 1. Clone StelnetTTS.
+# 2. Build at `d758fe69~1` (PRE)  → save `libstelnettts-pre.so`.
+# 3. `git checkout c2423313` (POST) → incremental rebuild → save `libstelnettts-post.so`.
 # 4. Pre-download `parakeet-tdt-0.6b-v3` GGUF (q8_0) and ONNX (int8 + fp32).
 # 5. Run `tools/benchmark_asr_engines.py` three times, all with `--runs 10
 #    --warmups 1 --prewarm` on the 60 s tiled-JFK clip + 11 s real JFK:
-#      a) `--engine crispasr --crispasr-lib libcrispasr-pre.so`
-#      b) `--engine crispasr --crispasr-lib libcrispasr-post.so`
+#      a) `--engine stelnettts --stelnettts-lib libstelnettts-pre.so`
+#      b) `--engine stelnettts --stelnettts-lib libstelnettts-post.so`
 #      c) `--engine onnx --providers CUDAExecutionProvider`
 # 6. Aggregate the three JSON sidecars into one comparison table:
 #      - mean / p50 / p95 per cell
@@ -28,7 +28,7 @@
 # Requirements:
 # - Kaggle accelerator: GPU T4 ×1 or P100 (CPU works but defeats the point).
 # - Internet ON (model downloads).
-# - Disk: ~8 GB (CrispASR build ~1 GB + GGUF ~700 MB + ONNX ~3 GB + deps).
+# - Disk: ~8 GB (StelnetTTS build ~1 GB + GGUF ~700 MB + ONNX ~3 GB + deps).
 # - Optional secret: `GH_GIST_TOKEN` to push results to a gist.
 
 # ─────────────────────────── cell 1 (code) ───────────────────────────
@@ -48,7 +48,7 @@ from pathlib import Path
 # write a per-step JSONL to /kaggle/working/progress.jsonl so even
 # when the run hangs we can fetch progress.jsonl (tiny file) and see
 # the last completed step. Mirrors the helper in
-# tools/kaggle/crispasr-regression.py.
+# tools/kaggle/stelnettts-regression.py.
 os.environ["PYTHONUNBUFFERED"] = "1"
 try:
     sys.stdout.reconfigure(line_buffering=True)
@@ -60,12 +60,12 @@ _PROGRESS_PATH = Path("/kaggle/working/progress.jsonl")
 _T0 = time.time()
 
 # Live HF progress push — see the helper in
-# tools/kaggle/crispasr-regression.py for the full rationale.
-# Rolls the local progress.jsonl up to cstr/crispasr-kaggle-progress
+# tools/kaggle/stelnettts-regression.py for the full rationale.
+# Rolls the local progress.jsonl up to Xenna/stelnettts-kaggle-progress
 # (rate-limited to every 30s) so mid-run state is fetchable via
-# `huggingface.co/datasets/cstr/crispasr-kaggle-progress` even
+# `huggingface.co/datasets/Xenna/stelnettts-kaggle-progress` even
 # while the Kaggle kernel is mid-execution / hung / crashed.
-_HF_PROGRESS_REPO = "cstr/crispasr-kaggle-progress"
+_HF_PROGRESS_REPO = "Xenna/stelnettts-kaggle-progress"
 _HF_PROGRESS_PATH = (
     f"runs/{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     f"-{os.environ.get('KAGGLE_KERNEL_RUN_TYPE', 'local').lower()}"
@@ -120,10 +120,10 @@ def step(name: str, **extra) -> None:
 step("script.start")
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
-LIB_PRE = WORK / "libcrispasr-pre.so"
-LIB_POST = WORK / "libcrispasr-post.so"
+LIB_PRE = WORK / "libstelnettts-pre.so"
+LIB_POST = WORK / "libstelnettts-post.so"
 GGUF_DIR = WORK / "models-gguf"
 ONNX_DIR = WORK / "models-onnx"
 RESULTS_DIR = WORK / "results"
@@ -147,7 +147,7 @@ MODES = "chunked"              # streaming-relevant shape; matches reporter
 for d in (RESULTS_DIR, GGUF_DIR, ONNX_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-print(f"CrispASR issue #81 CUDA A/B — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+print(f"StelnetTTS issue #81 CUDA A/B — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 print(f"PRE  = {PRE_SHA}")
 print(f"POST = {POST_SHA}")
 print(f"runs={RUNS} warmups={WARMUPS} window={WINDOW_S}s quants={GGUF_QUANTS}")
@@ -205,7 +205,7 @@ if REPO.is_dir():
 else:
     # Note: NOT --depth 1 — we need the history to reach PRE_SHA.
     subprocess.run(
-        f"git clone https://github.com/CrispStrobe/CrispASR.git {REPO}",
+        f"git clone https://github.com/Cyna/StelnetTTS.git {REPO}",
         shell=True, check=True,
     )
     print("✓ repo cloned")
@@ -303,12 +303,12 @@ if HAS_GPU:
               "for the default fat-binary arch list (slow)")
 
 CMAKE_FLAGS = [
-    "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON",
-    # Skip everything we don't need for libcrispasr.so. The CI windows
+    "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
+    # Skip everything we don't need for libstelnettts.so. The CI windows
     # release job uses the same trio (release.yml:281-283).
-    "-DCRISPASR_BUILD_TESTS=OFF",
-    "-DCRISPASR_BUILD_EXAMPLES=OFF",
-    "-DCRISPASR_BUILD_SERVER=OFF",
+    "-DSTELNETTTS_BUILD_TESTS=OFF",
+    "-DSTELNETTTS_BUILD_EXAMPLES=OFF",
+    "-DSTELNETTTS_BUILD_SERVER=OFF",
     "-DCMAKE_C_FLAGS=-fopenmp",
     "-DCMAKE_CXX_FLAGS=-fopenmp",
 ]
@@ -345,14 +345,14 @@ print(f"  ninja={HAS_NINJA}  ccache={HAS_CCACHE}  mold={HAS_MOLD}  "
 
 
 def build_at(sha: str, out_lib: Path) -> None:
-    """Check out `sha`, (re)build libcrispasr, copy the .so to `out_lib`.
+    """Check out `sha`, (re)build libstelnettts, copy the .so to `out_lib`.
 
     Incremental: keeps BUILD/ across SHAs so only files that actually
     changed between PRE_SHA and POST_SHA are recompiled. The flash-attn
     fusion commit touches a handful of conformer/parakeet files, so the
     POST build after PRE typically completes in <30 s with ccache hot.
 
-    Build target is just the `crispasr` shared lib — examples/server/tests
+    Build target is just the `stelnettts` shared lib — examples/server/tests
     are off via CMAKE_FLAGS so cmake never even configures them.
     """
     print(f"\n=== build {sha} → {out_lib.name} ===")
@@ -380,11 +380,11 @@ def build_at(sha: str, out_lib: Path) -> None:
     # before the kill.
     with kh.build_heartbeat("cmake.build"):
         kh.sh_with_progress(
-            f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j$(nproc)")
+            f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j$(nproc)")
     el = time.time() - t0
     # Locate the .so. Layout differs between cmake/ninja generators slightly.
-    candidates = list(BUILD.rglob("libcrispasr.so"))
-    assert candidates, f"libcrispasr.so not found under {BUILD}"
+    candidates = list(BUILD.rglob("libstelnettts.so"))
+    assert candidates, f"libstelnettts.so not found under {BUILD}"
     src = candidates[0]
     shutil.copy2(src, out_lib)
     print(f"  built in {el:.0f}s, copied {src.name} → {out_lib} "
@@ -439,7 +439,7 @@ for q in GGUF_QUANTS.split(","):
     dst = GGUF_DIR / fname
     if not dst.is_file():
         print(f"  ↓ {fname}")
-        hf_hub_download("cstr/parakeet-tdt-0.6b-v3-GGUF", fname,
+        hf_hub_download("Xenna/parakeet-tdt-0.6b-v3-GGUF", fname,
                         local_dir=str(GGUF_DIR))
     else:
         print(f"  ✓ cached {fname}")
@@ -474,7 +474,7 @@ def run_bench(label: str, lib: Path | None, engine: str,
               extra: list[str]) -> Path:
     """Invoke the existing matrix bench with one engine selection.
 
-    We force `--engine {crispasr,onnx}` rather than `both` per call so each
+    We force `--engine {stelnettts,onnx}` rather than `both` per call so each
     JSON sidecar is unambiguous about which library it represents (PRE,
     POST, or onnx-CUDA), and so a CUDA-OOM in one cell doesn't poison
     the other two.
@@ -498,7 +498,7 @@ def run_bench(label: str, lib: Path | None, engine: str,
         *extra,
     ]
     if lib is not None:
-        cmd += ["--crispasr-lib", str(lib)]
+        cmd += ["--stelnettts-lib", str(lib)]
     print(f"\n=== {label} ===")
     print(" ".join(cmd))
     t0 = time.time()
@@ -515,8 +515,8 @@ def run_bench(label: str, lib: Path | None, engine: str,
 
 PROVIDERS_CUDA = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
-j_pre  = run_bench("crispasr-pre",  LIB_PRE,  "crispasr", [])
-j_post = run_bench("crispasr-post", LIB_POST, "crispasr", [])
+j_pre  = run_bench("stelnettts-pre",  LIB_PRE,  "stelnettts", [])
+j_post = run_bench("stelnettts-post", LIB_POST, "stelnettts", [])
 j_onnx = run_bench("onnx-cuda",     None,     "onnx",
                    ["--providers", ",".join(PROVIDERS_CUDA)])
 
@@ -565,8 +565,8 @@ def summarize(results: list[dict], engine_label: str) -> dict:
     return out
 
 
-pre  = summarize(pre_results,  "crispasr-PRE")
-post = summarize(post_results, "crispasr-POST")
+pre  = summarize(pre_results,  "stelnettts-PRE")
+post = summarize(post_results, "stelnettts-POST")
 onnx = summarize(onnx_results, "onnx-cuda")
 
 # Print headline table.
@@ -609,7 +609,7 @@ for (audio, mode, quant) in all_keys:
           f"{o['mean_run_s']:.3f}s | {gain:+.0f}% | {n_str} | {gap_str} |")
 
 # Rising-runs pattern check (the issue #81 reporter saw runs[2] > runs[0]).
-print("\n=== rising-runs check (CrispASR POST, all cells) ===\n")
+print("\n=== rising-runs check (StelnetTTS POST, all cells) ===\n")
 for (audio, mode, quant), r in post.items():
     runs = r["runs_s"]
     if len(runs) < 3:
@@ -636,8 +636,8 @@ combined = {
     "warmups": WARMUPS,
     "window_s": WINDOW_S,
     "results": {
-        "crispasr-pre":  load(j_pre),
-        "crispasr-post": load(j_post),
+        "stelnettts-pre":  load(j_pre),
+        "stelnettts-post": load(j_post),
         "onnx-cuda":     load(j_onnx),
     },
 }
@@ -649,7 +649,7 @@ print(f"\n✓ wrote {combined_path}")
 # GH_GIST_TOKEN was already pulled from Kaggle secrets in cell 1b.
 if GH_GIST_TOKEN:
     import requests
-    desc = (f"CrispASR issue #81 CUDA A/B — "
+    desc = (f"StelnetTTS issue #81 CUDA A/B — "
             f"pre={PRE_SHA} post={POST_SHA} runs={RUNS}")
     payload = {
         "description": desc,

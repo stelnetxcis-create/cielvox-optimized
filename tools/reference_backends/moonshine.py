@@ -2,7 +2,7 @@
 
 Loads `usefulsensors/moonshine-tiny` or `usefulsensors/moonshine-base`
 via HuggingFace transformers and captures the encoder output for
-crispasr-diff comparison against the C++ runtime.
+stelnettts-diff comparison against the C++ runtime.
 
 Stages:
 

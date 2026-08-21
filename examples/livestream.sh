@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Transcribe audio livestream by feeding ffmpeg output to crispasr at regular intervals
+# Transcribe audio livestream by feeding ffmpeg output to stelnettts at regular intervals
 # Idea by @semiformal-net
 # ref: https://github.com/ggml-org/whisper.cpp/issues/185
 #
@@ -14,8 +14,8 @@ model="base.en"
 
 check_requirements()
 {
-    if ! command -v ./build/bin/crispasr &>/dev/null; then
-        echo "crispasr main executable is required (make)"
+    if ! command -v ./build/bin/stelnettts &>/dev/null; then
+        echo "stelnettts main executable is required (make)"
         exit 1
     fi
 
@@ -74,7 +74,7 @@ trap "running=0" SIGINT SIGTERM
 printf "[+] Transcribing stream with model '$model', step_s $step_s (press Ctrl+C to stop):\n\n"
 
 # continuous stream in native fmt (this file will grow forever!)
-ffmpeg -loglevel quiet -y -re -probesize 32 -i $url -c copy /tmp/crispasr-live0.${fmt} &
+ffmpeg -loglevel quiet -y -re -probesize 32 -i $url -c copy /tmp/stelnettts-live0.${fmt} &
 if [ $? -ne 0 ]; then
     printf "Error: ffmpeg failed to capture audio stream\n"
     exit 1
@@ -93,14 +93,14 @@ while [ $running -eq 1 ]; do
     err=1
     while [ $err -ne 0 ]; do
         if [ $i -gt 0 ]; then
-            ffmpeg -loglevel quiet -v error -noaccurate_seek -i /tmp/crispasr-live0.${fmt} -y -ar 16000 -ac 1 -c:a pcm_s16le -ss $(($i*$step_s-1)).5 -t $step_s /tmp/crispasr-live.wav 2> /tmp/crispasr-live.err
+            ffmpeg -loglevel quiet -v error -noaccurate_seek -i /tmp/stelnettts-live0.${fmt} -y -ar 16000 -ac 1 -c:a pcm_s16le -ss $(($i*$step_s-1)).5 -t $step_s /tmp/stelnettts-live.wav 2> /tmp/stelnettts-live.err
         else
-            ffmpeg -loglevel quiet -v error -noaccurate_seek -i /tmp/crispasr-live0.${fmt} -y -ar 16000 -ac 1 -c:a pcm_s16le -ss $(($i*$step_s)) -t $step_s /tmp/crispasr-live.wav 2> /tmp/crispasr-live.err
+            ffmpeg -loglevel quiet -v error -noaccurate_seek -i /tmp/stelnettts-live0.${fmt} -y -ar 16000 -ac 1 -c:a pcm_s16le -ss $(($i*$step_s)) -t $step_s /tmp/stelnettts-live.wav 2> /tmp/stelnettts-live.err
         fi
-        err=$(cat /tmp/crispasr-live.err | wc -l)
+        err=$(cat /tmp/stelnettts-live.err | wc -l)
     done
 
-    ./build/bin/crispasr -t 8 -m ./models/ggml-${model}.bin -f /tmp/crispasr-live.wav --no-timestamps -otxt 2> /tmp/crispasr.err | tail -n 1
+    ./build/bin/stelnettts -t 8 -m ./models/ggml-${model}.bin -f /tmp/stelnettts-live.wav --no-timestamps -otxt 2> /tmp/stelnettts.err | tail -n 1
 
     while [ $SECONDS -lt $((($i+1)*$step_s)) ]; do
         sleep 1
@@ -109,4 +109,4 @@ while [ $running -eq 1 ]; do
 done
 
 killall -v ffmpeg
-killall -v crispasr
+killall -v stelnettts

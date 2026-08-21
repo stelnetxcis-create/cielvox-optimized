@@ -5,7 +5,7 @@
 # contains the expected words. Requires models on disk or --auto-download.
 #
 # Usage:
-#   bash tests/test-piper-roundtrip.sh <crispasr_binary> [piper_model]
+#   bash tests/test-piper-roundtrip.sh <stelnettts_binary> [piper_model]
 #
 # Exit codes:
 #   0 = all tests pass
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-CRISPASR="${1:-build/bin/crispasr}"
+CRISPASR="${1:-build/bin/stelnettts}"
 PIPER_MODEL="${2:-auto}"
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -22,8 +22,8 @@ trap 'rm -rf "$TMPDIR"' EXIT
 # Ensure CMUdict is available for quality phonemization.
 # Check common locations; download if missing.
 CMUDICT=""
-for p in "${CRISPASR_CMUDICT_PATH:-}" \
-         "$HOME/.cache/crispasr/cmudict.dict" \
+for p in "${STELNETTTS_CMUDICT_PATH:-}" \
+         "$HOME/.cache/stelnettts/cmudict.dict" \
          "/tmp/cmudict.dict" \
          "models/cmudict.dict"; do
     if [ -f "$p" ] 2>/dev/null; then
@@ -33,13 +33,13 @@ for p in "${CRISPASR_CMUDICT_PATH:-}" \
 done
 if [ -z "$CMUDICT" ]; then
     echo "Downloading CMUdict..."
-    mkdir -p "$HOME/.cache/crispasr"
+    mkdir -p "$HOME/.cache/stelnettts"
     curl -sL "https://raw.githubusercontent.com/cmusphinx/cmudict/refs/heads/master/cmudict.dict" \
-        -o "$HOME/.cache/crispasr/cmudict.dict" 2>/dev/null && \
-        CMUDICT="$HOME/.cache/crispasr/cmudict.dict"
+        -o "$HOME/.cache/stelnettts/cmudict.dict" 2>/dev/null && \
+        CMUDICT="$HOME/.cache/stelnettts/cmudict.dict"
 fi
 if [ -n "$CMUDICT" ]; then
-    export CRISPASR_CMUDICT_PATH="$CMUDICT"
+    export STELNETTTS_CMUDICT_PATH="$CMUDICT"
     echo "CMUdict: $CMUDICT"
 else
     echo "WARNING: CMUdict not available — quality may be degraded"

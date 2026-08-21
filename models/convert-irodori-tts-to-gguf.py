@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert Aratako/Irodori-TTS safetensors → GGUF for the CrispASR
+Convert Aratako/Irodori-TTS safetensors → GGUF for the StelnetTTS
 `irodori-tts` backend.
 
 Supports both base (v3) and VoiceDesign (v3-VoiceDesign) checkpoints.

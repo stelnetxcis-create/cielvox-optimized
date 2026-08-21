@@ -1,5 +1,5 @@
 """
-CrispASR — #309 independent CUDA verification: MiMo tokenizer GPU RVQ.
+StelnetTTS — #309 independent CUDA verification: MiMo tokenizer GPU RVQ.
 
 PR #309 (W1nge, merged as 2c21990e) moved MiMo's 8-stage Euclidean RVQ onto CUDA
 (mul_mat -> argmax -> get_rows -> residual per stage), gated to CUDA-resident
@@ -9,9 +9,9 @@ before the change ships in a release.
 
 Method:
   1. Build main (contains the merged RVQ) with CUDA — target mimo-tokenizer-smoke.
-  2. Download mimo-tokenizer-q4_k.gguf (cstr/mimo-tokenizer-GGUF).
-  3. Run the smoke with CRISPASR_MIMO_SMOKE_GPU=1 (weights on CUDA -> CUDA RVQ)
-     and CRISPASR_MIMO_TOK_VERIFY_RVQ=1 (runs GPU then forces the CPU path and
+  2. Download mimo-tokenizer-q4_k.gguf (Xenna/mimo-tokenizer-GGUF).
+  3. Run the smoke with STELNETTTS_MIMO_SMOKE_GPU=1 (weights on CUDA -> CUDA RVQ)
+     and STELNETTTS_MIMO_TOK_VERIFY_RVQ=1 (runs GPU then forces the CPU path and
      compares every code id).
   4. Assert: (a) "RVQ backend=CUDA" (proves the GPU path is actually active, not
      a silent CPU fallback), (b) "rvq_cpu_gpu_compare ... mismatches=0",
@@ -37,11 +37,11 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")   # keep tiny (progress only) — gotcha #22
 TMP = Path("/kaggle/temp")       # clone + build + model here
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-MODEL_REPO = "cstr/mimo-tokenizer-GGUF"
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+MODEL_REPO = "Xenna/mimo-tokenizer-GGUF"
 MODEL_FILE = "mimo-tokenizer-q4_k.gguf"
 
 _T0 = time.time()
@@ -63,11 +63,11 @@ def run(cmd, check=True, timeout=2400, cwd=None, env=None):
 
 
 # ── Clone + CUDA build ─────────────────────────────────────────────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "5", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "5", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 has_rvq = subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", "2c21990e", "HEAD"]).returncode == 0
 step("cloned", sha=sha, has_309_rvq=has_rvq)
@@ -125,8 +125,8 @@ if not AUDIO.exists():
 
 # ── Run smoke on the CUDA path with the CPU/CUDA RVQ compare ────────────────
 env = dict(os.environ)
-env["CRISPASR_MIMO_SMOKE_GPU"] = "1"       # load weights on CUDA -> CUDA RVQ active
-env["CRISPASR_MIMO_TOK_VERIFY_RVQ"] = "1"  # run GPU then CPU, compare every code id
+env["STELNETTTS_MIMO_SMOKE_GPU"] = "1"       # load weights on CUDA -> CUDA RVQ active
+env["STELNETTTS_MIMO_TOK_VERIFY_RVQ"] = "1"  # run GPU then CPU, compare every code id
 step("smoke_start", model=str(model_path))
 r = subprocess.run([str(SMOKE), str(model_path), str(AUDIO)], timeout=600,
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)

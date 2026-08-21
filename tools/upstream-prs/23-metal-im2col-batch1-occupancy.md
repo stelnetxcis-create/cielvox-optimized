@@ -18,7 +18,7 @@ conv_2d_dw shapes`
    threadgroups — a quarter of one simdgroup — across ~344k groups.
 2. **The `ggml_conv_2d_dw` lowering** (`IC==1`, `N=C*batch`): each thread's
    `N/ntg0` loop strides a full plane on both src and dst → ~0.4 GB/s on M1.
-   By per-op profile this was **70% of the CrispEmbed PP-OCRv6 medium
+   By per-op profile this was **70% of the StelnetEmbed PP-OCRv6 medium
    recognizer graph** (batch-8 width groups, ~160 ms per ~50 MB depthwise
    materialization).
 
@@ -35,7 +35,7 @@ threadgroup, dw reads 2D-local in one channel plane, index math reduced to
   indices + row-local 32-bit divmods only.
 - Selection is a shared predicate (`ggml_metal_im2col_use_flat`) used by both
   the pipeline getter and the encoder. **For upstream: drop the fork's
-  `CRISPASR_METAL_IM2COL_FLAT` env opt-out** (3 references in the patch) and
+  `STELNETTTS_METAL_IM2COL_FLAT` env opt-out** (3 references in the patch) and
   keep the pure shape predicate — auto-select, no env var.
 - Bit-exact by construction: im2col is a gather-copy; each dst element is
   written exactly once with the same value (no FP reorder).
@@ -47,7 +47,7 @@ threadgroup, dw reads 2D-local in one channel plane, index math reduced to
 | PP-OCRv6 medium recognize (38-crop page) | 13.4-14.0 s | 5.8-6.2 s | **2.3x** |
 | — its fused batch-8 width-group graphs | 2.6-3.1 s | 0.7-1.2 s | — |
 | layout_detect (RT-DETR, N==1 convs) | 1.56-1.62 s | 0.95-0.99 s | **1.6x** |
-| melotts HiFi-GAN decode (CrispASR, pin `89a2039d`) | 2.02 s | 1.10 s | **1.85x** |
+| melotts HiFi-GAN decode (StelnetTTS, pin `89a2039d`) | 2.02 s | 1.10 s | **1.85x** |
 | paraformer im2col nodes | 8.5-9.1 ms/node | 0.4-1.0 ms/node | 9-20x (wall-invisible) |
 
 moonshine transcript byte-identical, RTF neutral-to-slightly-better; melotts
@@ -56,7 +56,7 @@ cases under Metal (incl. `N>1`) pre-merge.
 
 ## History / provenance
 
-Successor to the pre-v0.17 `CRISPASR_METAL_IM2COL_OCC` OW-blocked variant
+Successor to the pre-v0.17 `STELNETTTS_METAL_IM2COL_OCC` OW-blocked variant
 (this file's earlier draft; the v0.17 sync dropped it — see
 `SYNC-v0.17-CONFLICTS.md`). The flat kernel covers that draft's batch-1 case
 via the `N*KH*KW < 128` predicate arm AND the conv_2d_dw class the old draft

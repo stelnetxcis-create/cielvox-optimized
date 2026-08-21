@@ -5,7 +5,7 @@ the decode cap actually track --max-new-tokens on real audio — never ran (the 
 box was out of memory). This kernel is that test, on CUDA, under the full harness.
 
 moss-diarize IS the reporter's exact backend and it IS published
-(cstr/MOSS-Transcribe-Diarize-GGUF, q4_k = 1.2 GB per the "doable with q4k" ask),
+(Xenna/MOSS-Transcribe-Diarize-GGUF, q4_k = 1.2 GB per the "doable with q4k" ask),
 so it is tested directly. The other 9 affected backends share this exact code
 path (CI-compiled all 10); their q4_k GGUFs are 3.6-4.5 GB, dropped to keep the
 run short. Downloads use hf_hub_download with HF_HUB_ENABLE_HF_TRANSFER=1 (the
@@ -53,13 +53,13 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = TEMP / "build"
 MODELS = TEMP / "models"
 FIX = TEMP / "fixtures"
 OUT = WORK / "outputs"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 for d in (MODELS, FIX, OUT):
     d.mkdir(parents=True, exist_ok=True)
 
@@ -90,11 +90,11 @@ def record(name, passed, **kw):
 
 
 # ── cell 1: clone + harness (FULL regime) ──────────────────────────────────
-print(json.dumps({"step": "start", "ref": CRISPASR_REF}), flush=True)
+print(json.dumps({"step": "start", "ref": STELNETTTS_REF}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)], capture=False)
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)], capture=False)
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive"],
     check=False, capture=False, timeout=1800)
 
@@ -107,7 +107,7 @@ kh.init_progress()
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 kh.step("cloned", sha=sha)
 RESULTS["env"]["sha"] = sha
-RESULTS["env"]["ref"] = CRISPASR_REF
+RESULTS["env"]["ref"] = STELNETTTS_REF
 run(["nvidia-smi", "-L"], check=False)
 gpu = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True).strip()
 kh.step("gpu", gpu=gpu)
@@ -122,21 +122,21 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = [
     "cmake", "-S", str(REPO), "-B", str(BUILD),
     "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-    "-DCRISPASR_NO_C2PA_NATIVE=ON",
+    "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
 ] + kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
 run(cmake_args, capture=False)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 kh.step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("cli", path=str(CLI))
@@ -183,10 +183,10 @@ M = {}
 # The other affected backends (canary-qwen q4_k 3.6 GB, mimo q4_k 4.5 GB) are the
 # SAME code pattern and were dropped to keep the run short — CI already compiled
 # all 10 and the fix is identical per-backend.
-M["moss_diarize"] = hf_get("cstr/MOSS-Transcribe-Diarize-GGUF",
+M["moss_diarize"] = hf_get("Xenna/MOSS-Transcribe-Diarize-GGUF",
                            "moss-transcribe-diarize-0.9b-q4_k.gguf",
                            MODELS / "moss-diarize-q4_k.gguf")
-M["tabcnn"] = hf_get("cstr/tabcnn-GGUF", "tabcnn-f16.gguf", MODELS / "tabcnn-f16.gguf")
+M["tabcnn"] = hf_get("Xenna/tabcnn-GGUF", "tabcnn-f16.gguf", MODELS / "tabcnn-f16.gguf")
 kh.step("downloads_done")
 
 # ── cell 4: fixtures ───────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ def transcribe(model, backend, wav, device, extra=None, timeout=1200):
     """Run the CLI; return (ok, text, wall_s, peak_kb).
 
     Device is selected by the flag, not an env var: CPU = --no-gpu, CUDA = default
-    (the only GPU backend built on Kaggle). There is no CRISPASR_DEVICE knob.
+    (the only GPU backend built on Kaggle). There is no STELNETTTS_DEVICE knob.
     """
     args = [str(CLI), "-m", str(model), "--backend", backend, "-f", str(wav), "--no-prints"]
     if device == "cpu":

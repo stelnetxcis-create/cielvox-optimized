@@ -16,7 +16,7 @@ base_model: fxtentacle/wav2vec2-xls-r-1b-tevr
 
 # Wav2Vec2 XLS-R 1B TEVR -- GGUF
 
-GGUF conversions and quantisations of [`fxtentacle/wav2vec2-xls-r-1b-tevr`](https://huggingface.co/fxtentacle/wav2vec2-xls-r-1b-tevr) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`fxtentacle/wav2vec2-xls-r-1b-tevr`](https://huggingface.co/fxtentacle/wav2vec2-xls-r-1b-tevr) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -34,11 +34,11 @@ GGUF conversions and quantisations of [`fxtentacle/wav2vec2-xls-r-1b-tevr`](http
 - **Source:** [`fxtentacle/wav2vec2-xls-r-1b-tevr`](https://huggingface.co/fxtentacle/wav2vec2-xls-r-1b-tevr)
 - Byte-level CTC (vocab=256). Handles any character without OOV. German ASR.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-./build/bin/crispasr --backend wav2vec2 -m wav2vec2-xls-r-1b-tevr-q4_k.gguf -f german_audio.wav -l de
+./build/bin/stelnettts --backend wav2vec2 -m wav2vec2-xls-r-1b-tevr-q4_k.gguf -f german_audio.wav -l de
 
 # Auto-download (default German model):
-./build/bin/crispasr --backend wav2vec2 -m auto --auto-download -l de -f audio.wav
+./build/bin/stelnettts --backend wav2vec2 -m auto --auto-download -l de -f audio.wav
 ```

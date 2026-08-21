@@ -26,7 +26,7 @@ Two failure modes the regression infra protects against:
 2. **Reference-dump drift.** Re-running `tools/dump_reference.py`
    on a newer NeMo / transformers / torch can produce slightly
    different numbers (FP order-of-summation, casting heuristics).
-   **Fix:** reference dumps live in `cstr/crispasr-regression-fixtures`,
+   **Fix:** reference dumps live in `Xenna/stelnettts-regression-fixtures`,
    pinned to a specific revision in `manifest.json`'s `fixtures`
    block.
 
@@ -39,7 +39,7 @@ change cascaded into user-visible regressions.
 ```
 tests/regression/
 ├── manifest.json    # per-backend pins: GGUF revision + fixture path + expected transcript + cos thresholds
-├── run_one.py       # driver: downloads pinned GGUF + ref, runs crispasr + crispasr-diff, asserts
+├── run_one.py       # driver: downloads pinned GGUF + ref, runs stelnettts + stelnettts-diff, asserts
 └── README.md
 ```
 
@@ -47,7 +47,7 @@ Sample WAVs live in `samples/` (already in-repo).
 
 The reference-dump archives (`ref.gguf` containing encoder_output +
 mel_spectrogram + per-layer captures) live in the HuggingFace repo
-[`cstr/crispasr-regression-fixtures`](https://huggingface.co/cstr/crispasr-regression-fixtures)
+[`Xenna/stelnettts-regression-fixtures`](https://huggingface.co/Xenna/stelnettts-regression-fixtures)
 under `<backend>/<sample-stem>/ref.gguf`.
 
 ## Running locally
@@ -57,8 +57,8 @@ Build first:
 ```bash
 cmake -S . -B build-ninja-compile \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCRISPASR_BUILD_EXAMPLES=ON
-cmake --build build-ninja-compile --target crispasr-lib crispasr-diff
+    -DSTELNETTTS_BUILD_EXAMPLES=ON
+cmake --build build-ninja-compile --target stelnettts-lib stelnettts-diff
 ```
 
 Run one backend:
@@ -81,7 +81,7 @@ Env knobs (see `run_one.py` docstring for the full list):
   tempdir, cleaned on exit. Set to a persistent path on
   `/Volumes/backups/...` to avoid re-downloading between runs.
 - `KEEP_WORK=1` — keep the staging dir for debugging.
-- `CRISPASR_BIN` / `DIFF_BIN` — override binary paths entirely.
+- `STELNETTTS_BIN` / `DIFF_BIN` — override binary paths entirely.
 
 ## CI
 
@@ -102,7 +102,7 @@ rebake hasn't run yet, add the backend with `"skip_diff": true`:
   "name": "my-backend",
   "backend_id": "my-backend",
   "skip_diff": true,
-  "gguf": { "repo": "cstr/my-backend-GGUF", "revision": "<sha>", "file": "model.gguf", "approx_size_mb": 400 },
+  "gguf": { "repo": "Xenna/my-backend-GGUF", "revision": "<sha>", "file": "model.gguf", "approx_size_mb": 400 },
   "fixture_sample_path": "my-backend/sample/audio.wav",
   "expected_transcript": "The quick brown fox."
 }
@@ -176,13 +176,13 @@ TTS→ASR roundtrip:
     "name": "kokoro-82m-en",
     "backend_id": "kokoro",
     "gguf": {
-      "repo": "cstr/kokoro-82m-GGUF",
+      "repo": "Xenna/kokoro-82m-GGUF",
       "revision": "<sha>",
       "file": "kokoro-82m-q8_0.gguf",
       "approx_size_mb": 90
     },
     "voice": {
-      "repo": "cstr/kokoro-voices-GGUF",
+      "repo": "Xenna/kokoro-voices-GGUF",
       "revision": "<sha>",
       "file": "kokoro-voice-af_heart.gguf"
     },
@@ -208,7 +208,7 @@ What `run_one.py` does for a TTS entry:
 `wer_max` recommendations (start tight, loosen if needed):
 
 * `0.05` — high-quality English TTS on a clean pangram (kokoro, orpheus
-  EN, qwen3-tts EN). Kokoro 82M Q8_0 routinely lands at WER 0.0.
+  EN, cielvox2-tts EN). Kokoro 82M Q8_0 routinely lands at WER 0.0.
 * `0.10` — default headroom for prosody artefacts + parakeet's
   ~0% baseline drift across runner-image upgrades.
 * `0.15-0.20` — heavier TTS backends, multilingual cases, or backends
@@ -236,7 +236,7 @@ enforces this.
      --backend <name> \
      --model-dir <hf-id-or-local-path> \
      --audio samples/<sample>.wav \
-     --output /Volumes/backups/ai/crispasr-regression/<backend>/<sample-stem>/ref.gguf
+     --output /Volumes/backups/ai/stelnettts-regression/<backend>/<sample-stem>/ref.gguf
    ```
 
    `--backend <name>` must match an entry in
@@ -244,17 +244,17 @@ enforces this.
    whatever stages the reference module declares (see
    `tools/reference_backends/<backend>.py`).
 
-2. **Run crispasr** on the same `(GGUF, sample)` pair, manually
+2. **Run stelnettts** on the same `(GGUF, sample)` pair, manually
    sanity-check the transcript, and lock that string as the
    expected.
 
-3. **Run crispasr-diff** and read the cos_min values for each
+3. **Run stelnettts-diff** and read the cos_min values for each
    stage. Set the per-stage threshold in `manifest.json` to the
    measured cos_min minus a small safety margin (`0.001` is
    reasonable for `cos_min ≥ 0.999`; looser for known-divergent
    stages like mel preprocessing).
 
-4. **Upload the ref.gguf** to `cstr/crispasr-regression-fixtures`
+4. **Upload the ref.gguf** to `Xenna/stelnettts-regression-fixtures`
    under `<backend>/<sample-stem>/ref.gguf`. Use
    `hf upload-large-folder` for resumable uploads (see
    `.claude/CLAUDE.md` for the playbook). Capture the resulting

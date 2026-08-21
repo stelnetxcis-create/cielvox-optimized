@@ -6,8 +6,8 @@
 #include "core/beam_decode.h"
 #include "core/gguf_loader.h"
 #include "core/repeat_break.h"     // fix/moonshine-repeat-break: decode-time loop break
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml.h"
 #include "gguf.h"
@@ -33,7 +33,7 @@
 static bool moonshine_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MOONSHINE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MOONSHINE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -209,7 +209,7 @@ struct moonshine_context* moonshine_init_with_params(struct moonshine_init_param
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
     ctx->use_gpu = (ctx->backend != ctx->backend_cpu);
@@ -227,7 +227,7 @@ struct moonshine_context* moonshine_init_with_params(struct moonshine_init_param
     // CPU-local, bit-identical output, and the encoder still runs on GPU.
     // Opt out with MOONSHINE_ALL_GPU=1 (restores the legacy all-GPU load for A/B).
     core_gguf::WeightLoad wl;
-    const char* all_gpu_env = crispasr_env::get("CRISPASR_MOONSHINE_ALL_GPU");
+    const char* all_gpu_env = stelnettts_env::get("STELNETTTS_MOONSHINE_ALL_GPU");
     const bool all_gpu = all_gpu_env && all_gpu_env[0] == '1';
     bool loaded;
     if (ctx->use_gpu && !all_gpu) {
@@ -599,7 +599,7 @@ static int moonshine_run_encoder(struct moonshine_context* ctx, const float* aud
     // cycles is only safe on CPU. On a GPU sched (Metal/CUDA/Vulkan) the reused
     // input tensors stay bound to the previous cycle's freed buffer, so the
     // ggml_backend_tensor_set below memmoves into freed memory and SIGSEGVs on
-    // the 2nd transcribe (reproduced on Metal via crispasr --server). Gate the
+    // the 2nd transcribe (reproduced on Metal via stelnettts --server). Gate the
     // reuse to CPU; on GPU rebuild the (tiny) encoder graph each call and free
     // it after compute. moonshine's GPU encoder is marginal anyway (§232), so
     // the per-call rebuild costs nothing measurable.
@@ -642,7 +642,7 @@ static int moonshine_run_encoder(struct moonshine_context* ctx, const float* aud
         // is opt-in (MOONSHINE_ENC_ATTN=manual) for A/B on other GPUs / larger
         // moonshine variants where the tradeoff may differ. See PLAN §232.
         bool manual_attn = false;
-        if (const char* e = crispasr_env::get("CRISPASR_MOONSHINE_ENC_ATTN")) {
+        if (const char* e = stelnettts_env::get("STELNETTTS_MOONSHINE_ENC_ATTN")) {
             if (std::strcmp(e, "manual") == 0)
                 manual_attn = true;
             else if (std::strcmp(e, "flash") == 0)
@@ -1258,7 +1258,7 @@ static int moonshine_transcribe_impl(struct moonshine_context* ctx, const float*
 
     // Decode-time repetition-loop break (on by default; see the loop body).
     const bool repeat_break = [] {
-        const char* e = std::getenv("CRISPASR_MOONSHINE_NO_REPEAT_BREAK");
+        const char* e = std::getenv("STELNETTTS_MOONSHINE_NO_REPEAT_BREAK");
         return !(e && e[0] && e[0] != '0');
     }();
 
@@ -1348,7 +1348,7 @@ static int moonshine_transcribe_impl(struct moonshine_context* ctx, const float*
         // slice) greedy decode can get stuck in a short token cycle and burn
         // every remaining step. Stop as soon as a period-<=8 block repeats 4x —
         // saves the wasted compute; core_ngram::fix_loops still cleans residue.
-        // Disable with CRISPASR_MOONSHINE_NO_REPEAT_BREAK=1.
+        // Disable with STELNETTTS_MOONSHINE_NO_REPEAT_BREAK=1.
         if (repeat_break && core_repeat::tail_is_repetition(out_tokens))
             break;
     }

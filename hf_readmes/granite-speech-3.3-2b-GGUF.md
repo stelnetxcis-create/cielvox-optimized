@@ -10,13 +10,13 @@ language:
 tags:
   - automatic-speech-recognition
   - gguf
-  - crispasr
+  - stelnettts
 pipeline_tag: automatic-speech-recognition
 ---
 
 # granite-speech-3.3-2b-GGUF
 
-GGUF quantisations of [ibm-granite/granite-speech-3.3-2b](https://huggingface.co/ibm-granite/granite-speech-3.3-2b) for [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF quantisations of [ibm-granite/granite-speech-3.3-2b](https://huggingface.co/ibm-granite/granite-speech-3.3-2b) for [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 | Quant | Description |
 |---|---|
@@ -28,5 +28,5 @@ GGUF quantisations of [ibm-granite/granite-speech-3.3-2b](https://huggingface.co
 ## Usage
 
 ```bash
-crispasr -m granite-speech-3.3-2b-q4_k.gguf -f audio.wav
+stelnettts -m granite-speech-3.3-2b-q4_k.gguf -f audio.wav
 ```

@@ -9,9 +9,9 @@
 // Header-only `inline` so it works across the CLI/library module boundary
 // (`examples/cli/` adapters and the `src/` C ABI both include it without a
 // link dependency). Previously copy-pasted into four places:
-//   examples/cli/crispasr_backend_utils.h   (crispasr_iso_to_english_lang)
-//   examples/cli/crispasr_backend_voxtral.cpp
-//   src/crispasr_c_api.cpp                   (ca_iso_to_english_lang)
+//   examples/cli/stelnettts_backend_utils.h   (stelnettts_iso_to_english_lang)
+//   examples/cli/stelnettts_backend_voxtral.cpp
+//   src/stelnettts_c_api.cpp                   (ca_iso_to_english_lang)
 //   src/gemma4_e2b.cpp                       (g4e_lang_name, with extra
 //                                             auto/allow_original handling)
 //

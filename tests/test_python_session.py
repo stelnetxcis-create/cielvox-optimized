@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration tests for the CrispASR Python Session API.
+"""Integration tests for the StelnetTTS Python Session API.
 
 Requires:
   - Built libwhisper.so/dylib (cmake --build build)
@@ -20,12 +20,12 @@ import wave
 
 import numpy as np
 
-# Add the python dir to path so we can import crispasr
+# Add the python dir to path so we can import stelnettts
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 JFK_WAV = os.path.join(REPO_ROOT, "samples", "jfk.wav")
-CRISPASR_TINY = os.path.join(REPO_ROOT, "models", "ggml-tiny.en.bin")
+STELNETTTS_TINY = os.path.join(REPO_ROOT, "models", "ggml-tiny.en.bin")
 PARAKEET_MODEL = os.environ.get(
     "PARAKEET_MODEL",
     os.path.join(os.path.dirname(__file__), "..", "..", "test_cohere", "parakeet-tdt-0.6b-v3.gguf"),
@@ -37,7 +37,7 @@ OMNI_CTC_MODEL = os.environ.get(
 )
 
 # Find the built shared library
-LIB_PATH = os.environ.get("CRISPASR_LIB")
+LIB_PATH = os.environ.get("STELNETTTS_LIB")
 if not LIB_PATH:
     for candidate in [
         "/tmp/build-shared/src/libwhisper.so",
@@ -67,11 +67,11 @@ class TestWhisperSession(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not os.path.exists(CRISPASR_TINY):
-            raise unittest.SkipTest(f"Model not found: {CRISPASR_TINY}")
-        from crispasr import Session
+        if not os.path.exists(STELNETTTS_TINY):
+            raise unittest.SkipTest(f"Model not found: {STELNETTTS_TINY}")
+        from stelnettts import Session
         # Whisper GGML files are auto-detected via magic bytes fallback
-        cls.session = Session(CRISPASR_TINY, lib_path=LIB_PATH, n_threads=2)
+        cls.session = Session(STELNETTTS_TINY, lib_path=LIB_PATH, n_threads=2)
 
     @classmethod
     def tearDownClass(cls):
@@ -118,7 +118,7 @@ class TestParakeetSession(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from crispasr import Session
+        from stelnettts import Session
         cls.session = Session(PARAKEET_MODEL, lib_path=LIB_PATH, n_threads=2)
 
     @classmethod
@@ -172,7 +172,7 @@ class TestOmniCtcLogits(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from crispasr import Session
+        from stelnettts import Session
         # Auto-detect doesn't recognise every Omni GGUF on this pinned release;
         # the generic "omniasr" backend routes all CTC/LLM variants.
         cls.session = Session(OMNI_CTC_MODEL, lib_path=LIB_PATH, n_threads=4, backend="omniasr")
@@ -250,7 +250,7 @@ class TestAvailableBackends(unittest.TestCase):
     """Test backend discovery."""
 
     def test_available_backends(self):
-        from crispasr import Session
+        from stelnettts import Session
         backends = Session.available_backends(lib_path=LIB_PATH)
         self.assertIsInstance(backends, list)
         self.assertIn("whisper", backends)
@@ -260,7 +260,7 @@ class TestAvailableBackends(unittest.TestCase):
         """Session should auto-detect backend from GGUF metadata."""
         if not os.path.exists(PARAKEET_MODEL):
             self.skipTest("Parakeet model not available")
-        from crispasr import Session
+        from stelnettts import Session
         with Session(PARAKEET_MODEL, lib_path=LIB_PATH) as s:
             self.assertEqual(s.backend, "parakeet")
 
@@ -270,13 +270,13 @@ class TestRegistryAndCache(unittest.TestCase):
     """Test model registry and cache helpers."""
 
     def test_cache_dir(self):
-        from crispasr import cache_dir
+        from stelnettts import cache_dir
         d = cache_dir(lib_path=LIB_PATH)
         self.assertIsInstance(d, str)
         self.assertGreater(len(d), 0)
 
     def test_registry_lookup(self):
-        from crispasr import registry_lookup
+        from stelnettts import registry_lookup
         entry = registry_lookup("parakeet", lib_path=LIB_PATH)
         # May return None if registry not compiled in, or a RegistryEntry
         if entry is not None:
@@ -284,7 +284,7 @@ class TestRegistryAndCache(unittest.TestCase):
             self.assertGreater(len(entry.filename), 0)
 
     def test_registry_default_bundle(self):
-        from crispasr import registry_default_bundle
+        from stelnettts import registry_default_bundle
         bundle = registry_default_bundle("omnivoice", lib_path=LIB_PATH)
         self.assertIsNotNone(bundle)
         self.assertEqual(bundle.backend, "omnivoice")
@@ -299,7 +299,7 @@ class TestRegistryAndCache(unittest.TestCase):
         )
 
     def test_registry_default_bundle_unknown(self):
-        from crispasr import registry_default_bundle
+        from stelnettts import registry_default_bundle
         self.assertIsNone(
             registry_default_bundle("nonexistent-backend-xyz", lib_path=LIB_PATH)
         )
@@ -316,12 +316,12 @@ class TestKokoroPhonemeCacheClear(unittest.TestCase):
     def test_symbol_exported(self):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
-        self.assertTrue(hasattr(lib, "crispasr_session_kokoro_clear_phoneme_cache"))
+        self.assertTrue(hasattr(lib, "stelnettts_session_kokoro_clear_phoneme_cache"))
 
     def test_null_handle_returns_neg_one(self):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
-        fn = lib.crispasr_session_kokoro_clear_phoneme_cache
+        fn = lib.stelnettts_session_kokoro_clear_phoneme_cache
         fn.argtypes = [ctypes.c_void_p]
         fn.restype = ctypes.c_int
         self.assertEqual(fn(ctypes.c_void_p(0)), -1)
@@ -335,16 +335,16 @@ class TestMicAPI(unittest.TestCase):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
         for name in (
-            "crispasr_mic_open",
-            "crispasr_mic_start",
-            "crispasr_mic_stop",
-            "crispasr_mic_close",
-            "crispasr_mic_default_device_name",
+            "stelnettts_mic_open",
+            "stelnettts_mic_start",
+            "stelnettts_mic_stop",
+            "stelnettts_mic_close",
+            "stelnettts_mic_default_device_name",
         ):
             self.assertTrue(hasattr(lib, name), f"missing symbol: {name}")
 
     def test_default_device_name_callable(self):
-        from crispasr import mic_default_device_name
+        from stelnettts import mic_default_device_name
         # On CI/headless the device list may be empty; not asserting non-empty.
         name = mic_default_device_name(lib_path=LIB_PATH)
         self.assertIsInstance(name, str)
@@ -359,18 +359,18 @@ class TestStreamingAPI(unittest.TestCase):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
         for name in (
-            "crispasr_session_stream_open",
-            "crispasr_stream_feed",
-            "crispasr_stream_get_text",
-            "crispasr_stream_flush",
-            "crispasr_stream_close",
+            "stelnettts_session_stream_open",
+            "stelnettts_stream_feed",
+            "stelnettts_stream_get_text",
+            "stelnettts_stream_flush",
+            "stelnettts_stream_close",
         ):
             self.assertTrue(hasattr(lib, name), f"missing symbol: {name}")
 
     def test_session_stream_open_null_handle_returns_null(self):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
-        fn = lib.crispasr_session_stream_open
+        fn = lib.stelnettts_session_stream_open
         fn.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
                        ctypes.c_char_p, ctypes.c_int]
         fn.restype = ctypes.c_void_p
@@ -383,7 +383,7 @@ class TestRegistryEnumeration(unittest.TestCase):
     list of backend names; each looks up to a full RegistryEntry."""
 
     def test_list_known_models(self):
-        from crispasr import list_known_models, registry_lookup
+        from stelnettts import list_known_models, registry_lookup
         backends = list_known_models(lib_path=LIB_PATH)
         self.assertIsInstance(backends, list)
         self.assertGreater(len(backends), 10, "registry should have >10 entries")
@@ -408,12 +408,12 @@ class TestSessionStateSetters(unittest.TestCase):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
         for name in (
-            "crispasr_session_set_source_language",
-            "crispasr_session_set_target_language",
-            "crispasr_session_set_punctuation",
-            "crispasr_session_set_translate",
-            "crispasr_session_set_temperature",
-            "crispasr_session_detect_language",
+            "stelnettts_session_set_source_language",
+            "stelnettts_session_set_target_language",
+            "stelnettts_session_set_punctuation",
+            "stelnettts_session_set_translate",
+            "stelnettts_session_set_temperature",
+            "stelnettts_session_detect_language",
         ):
             self.assertTrue(hasattr(lib, name), f"missing symbol: {name}")
 
@@ -421,11 +421,11 @@ class TestSessionStateSetters(unittest.TestCase):
         import ctypes
         lib = ctypes.CDLL(LIB_PATH)
         for name, argtypes, args in [
-            ("crispasr_session_set_source_language", [ctypes.c_void_p, ctypes.c_char_p], [None, b"en"]),
-            ("crispasr_session_set_target_language", [ctypes.c_void_p, ctypes.c_char_p], [None, b"de"]),
-            ("crispasr_session_set_punctuation", [ctypes.c_void_p, ctypes.c_int], [None, 1]),
-            ("crispasr_session_set_translate", [ctypes.c_void_p, ctypes.c_int], [None, 1]),
-            ("crispasr_session_set_temperature", [ctypes.c_void_p, ctypes.c_float, ctypes.c_uint64], [None, 0.5, 0]),
+            ("stelnettts_session_set_source_language", [ctypes.c_void_p, ctypes.c_char_p], [None, b"en"]),
+            ("stelnettts_session_set_target_language", [ctypes.c_void_p, ctypes.c_char_p], [None, b"de"]),
+            ("stelnettts_session_set_punctuation", [ctypes.c_void_p, ctypes.c_int], [None, 1]),
+            ("stelnettts_session_set_translate", [ctypes.c_void_p, ctypes.c_int], [None, 1]),
+            ("stelnettts_session_set_temperature", [ctypes.c_void_p, ctypes.c_float, ctypes.c_uint64], [None, 0.5, 0]),
         ]:
             fn = getattr(lib, name)
             fn.argtypes = argtypes
@@ -462,7 +462,7 @@ class TestKokoroPhonemizerParityHarness(unittest.TestCase):
 
 
 VOXTRAL4B_MODEL = os.environ.get(
-    "VOXTRAL4B_MODEL", "/Volumes/backups/ai/crispasr-models/voxtral-mini-4b-realtime-q4_k.gguf"
+    "VOXTRAL4B_MODEL", "/Volumes/backups/ai/stelnettts-models/voxtral-mini-4b-realtime-q4_k.gguf"
 )
 
 
@@ -516,10 +516,10 @@ class TestVoxtral4bStreamingBitExact(unittest.TestCase):
         # the audio in 80ms chunks, flushes, and reads the transcript.
         import ctypes
         # Set up the lib path so the python binding can find it.
-        os.environ.setdefault("CRISPASR_LIB_PATH", LIB_PATH)
+        os.environ.setdefault("STELNETTTS_LIB_PATH", LIB_PATH)
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
-        import crispasr  # noqa: F401 — import side-effect
-        sess = crispasr.Session(backend="voxtral4b", model_path=VOXTRAL4B_MODEL)
+        import stelnettts  # noqa: F401 — import side-effect
+        sess = stelnettts.Session(backend="voxtral4b", model_path=VOXTRAL4B_MODEL)
         try:
             stream = sess.stream_open(step_ms=80, length_ms=15000)
             try:

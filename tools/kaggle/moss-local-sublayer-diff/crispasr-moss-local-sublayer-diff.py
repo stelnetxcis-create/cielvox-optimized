@@ -13,18 +13,18 @@
 import json, os, subprocess, sys, gc, math
 from pathlib import Path
 
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 WORK = Path("/kaggle/working")
-REF = os.environ.get("CRISPASR_REF", "fix/249-moss")
+REF = os.environ.get("STELNETTTS_REF", "fix/249-moss")
 LAYERS = [0, 1, 2, 4, 6, 8, 9, 10]
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", "--branch", REF,
-                           "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
                            "--recursive", "--depth", "1"], timeout=1800)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("start", ref=REF, layers=LAYERS)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -36,17 +36,17 @@ from huggingface_hub import hf_hub_download  # noqa: E402
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=False)}")
-CLI = (BUILD / "bin" / "crispasr") if (BUILD / "bin" / "crispasr").exists() else next(iter(BUILD.rglob("crispasr")))
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=False)}")
+CLI = (BUILD / "bin" / "stelnettts") if (BUILD / "bin" / "stelnettts").exists() else next(iter(BUILD.rglob("stelnettts")))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done")
 
 MODELS = Path("/kaggle/temp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 with kh.build_heartbeat("download"):
-    F16 = hf_hub_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", local_dir=str(MODELS))
-    CODEC = hf_hub_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", local_dir=str(MODELS))
+    F16 = hf_hub_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", local_dir=str(MODELS))
+    CODEC = hf_hub_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", local_dir=str(MODELS))
 TEXT = "Hello world."
 
 
@@ -64,8 +64,8 @@ def read_dump(path):
 ours = {}
 for L in LAYERS:
     dump = WORK / f"ours_sub_{L}.txt"
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER": str(L),
-           "CRISPASR_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH": str(dump)}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER": str(L),
+           "STELNETTTS_MOSS_TTS_LOCAL_DUMP_SUBLAYER_PATH": str(dump)}
     with kh.build_heartbeat(f"ours.synth.{L}"):
         try:
             subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", F16, "--codec-model", CODEC,

@@ -3,14 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "crispasr"
+name = "stelnettts"
 version = "0.8.29"
-description = "Lightweight on-device speech recognition via ggml — Python bindings for CrispASR (Whisper, Qwen3-ASR, FastConformer, Canary, Parakeet, Cohere, Granite, Voxtral, wav2vec2, and more)."
+description = "Lightweight on-device speech recognition via ggml — Python bindings for StelnetTTS (Whisper, Qwen3-ASR, FastConformer, Canary, Parakeet, Cohere, Granite, Voxtral, wav2vec2, and more)."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
 authors = [
-    { name = "CrispASR contributors" },
+    { name = "StelnetTTS contributors" },
 ]
 keywords = ["asr", "speech-recognition", "whisper", "ggml", "speech-to-text", "transcription"]
 classifiers = [
@@ -38,20 +38,20 @@ dependencies = [
 test = ["pytest>=7"]
 
 [project.urls]
-Homepage = "https://github.com/CrispStrobe/CrispASR"
-Repository = "https://github.com/CrispStrobe/CrispASR"
-Issues = "https://github.com/CrispStrobe/CrispASR/issues"
-Changelog = "https://github.com/CrispStrobe/CrispASR/blob/main/HISTORY.md"
+Homepage = "https://github.com/Cyna/StelnetTTS"
+Repository = "https://github.com/Cyna/StelnetTTS"
+Issues = "https://github.com/Cyna/StelnetTTS/issues"
+Changelog = "https://github.com/Cyna/StelnetTTS/blob/main/HISTORY.md"
 
 [tool.setuptools]
-packages = ["crispasr"]
+packages = ["stelnettts"]
 
 [tool.setuptools.package-data]
 # `_helpers.c` ships as source (compiled at install/CI). The shared-library
 # globs are empty for the pure-Python sdist and populated by the wheel CI,
-# which stages libcrispasr + the ggml backends + the compiled helpers into
+# which stages libstelnettts + the ggml backends + the compiled helpers into
 # this package directory before building the platform wheel.
-crispasr = [
+stelnettts = [
     "_helpers.c",
     "*.so",
     "*.so.*",

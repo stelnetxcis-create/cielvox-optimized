@@ -175,7 +175,7 @@ def remap_encoder(nemo_name: str) -> str | None:
     return None
 
 
-# LLM layer sub-pattern mapping (Qwen3 naming → qwen3_asr-style GGUF names)
+# LLM layer sub-pattern mapping (Qwen3 naming → cielvox2_asr-style GGUF names)
 LLM_SUB = {
     "input_layernorm.weight": "attn_norm.weight",
     "self_attn.q_norm.weight": "attn_q_norm.weight",

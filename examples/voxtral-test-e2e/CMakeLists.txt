@@ -4,5 +4,5 @@ include(DefaultTargetOptions)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(${TARGET} PRIVATE
     voxtral
-    crispasr-diff-lib
+    stelnettts-diff-lib
     Threads::Threads)

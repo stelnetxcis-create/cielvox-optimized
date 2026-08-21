@@ -8,7 +8,7 @@
 #include "voxtral4b.h"
 
 #include "voxtral_tekken_vocab.h" // #338 active-vocabulary bound
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -16,7 +16,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "gguf.h"
 
@@ -52,7 +52,7 @@
 static bool voxtral4b_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_VOXTRAL4B_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_VOXTRAL4B_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -187,7 +187,7 @@ struct voxtral4b_model {
     ggml_context* ctx = nullptr;
     ggml_backend_buffer_t buf = nullptr;
     // PLAN #69a: optional second buffer for layers spilled to CPU.
-    // Non-null only when CRISPASR_N_GPU_LAYERS triggered a split load.
+    // Non-null only when STELNETTTS_N_GPU_LAYERS triggered a split load.
     ggml_backend_buffer_t buf_cpu = nullptr;
     std::map<std::string, ggml_tensor*> tensors;
 };
@@ -298,13 +298,13 @@ static bool voxtral4b_load_model(voxtral4b_model& model, voxtral4b_vocab& vocab,
     }
 
     // Pass 2: load tensors via shared helper.
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total layers,
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total layers,
     // route layers [N..total) onto the CPU backend so VRAM-tight users
     // can fit models larger than their GPU. -1 (default) or any value
     // >= n_layers preserves the legacy single-backend load.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)model.hparams.llm_n_layers;
@@ -316,7 +316,7 @@ static bool voxtral4b_load_model(voxtral4b_model& model, voxtral4b_vocab& vocab,
                                            "voxtral4b", wl)) {
             return false;
         }
-        fprintf(stderr, "voxtral4b: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "voxtral4b: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path, backend, "voxtral4b", wl)) {
@@ -459,7 +459,7 @@ static bool voxtral4b_load_model(voxtral4b_model& model, voxtral4b_vocab& vocab,
         fprintf(stderr,
                 "voxtral4b: ERROR: %d required tensors missing — GGUF file is corrupt or truncated.\n"
                 "           If the file is > 2 GB, this may be a Windows fseek overflow bug.\n"
-                "           Re-download the model or update CrispASR to the latest version.\n",
+                "           Re-download the model or update StelnetTTS to the latest version.\n",
                 n_missing);
         return false;
     }
@@ -517,7 +517,7 @@ static void voxtral4b_fft(float* in, int N, float* out) {
 #include "core/mel.h"
 #include "core/ffn.h"
 #include "core/attention.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -942,7 +942,7 @@ extern "C" struct voxtral4b_context* voxtral4b_init_from_file(const char* path,
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -964,7 +964,7 @@ extern "C" struct voxtral4b_context* voxtral4b_init_from_file(const char* path,
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
@@ -981,9 +981,9 @@ extern "C" struct voxtral4b_context* voxtral4b_init_from_file(const char* path,
     // contained quantized block group, so concatenation along the output
     // axis is a pure memcpy. Skipped if any layer is missing q/k/v or has
     // mismatched types/input-dims.
-    // Opt-out: set CRISPASR_VOXTRAL4B_FUSED_QKV=0.
+    // Opt-out: set STELNETTTS_VOXTRAL4B_FUSED_QKV=0.
     {
-        const char* fuse_env = getenv("CRISPASR_VOXTRAL4B_FUSED_QKV");
+        const char* fuse_env = getenv("STELNETTTS_VOXTRAL4B_FUSED_QKV");
         const bool fuse_enabled = (fuse_env == nullptr) || (atoi(fuse_env) != 0);
         auto& blocks = ctx->model.llm.blocks;
         bool can_fuse = fuse_enabled && !blocks.empty();
@@ -1359,7 +1359,7 @@ extern "C" float* voxtral4b_embed_tokens(voxtral4b_context* ctx, const int32_t* 
 extern "C" bool voxtral4b_kv_init(voxtral4b_context* ctx, int max_ctx) {
     if (!ctx || max_ctx <= 0)
         return false;
-    // Idempotent: callers (notably crispasr_backend_voxtral4b's
+    // Idempotent: callers (notably stelnettts_backend_voxtral4b's
     // per-chunk transcribe path) re-init on every audio chunk. Without
     // this guard, each call replaces ctx->kv_buf with a fresh backend
     // allocation while leaking the previous one — ~256-512 MiB of
@@ -1374,8 +1374,8 @@ extern "C" bool voxtral4b_kv_init(voxtral4b_context* ctx, int max_ctx) {
 
     ggml_init_params ip = {2 * ggml_tensor_overhead(), nullptr, true};
     ctx->kv_ctx = ggml_init(ip);
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("voxtral4b");
     ctx->kv_k = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.k, hd, max_ctx, n_kv, nl);
     ctx->kv_v = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.v, hd, max_ctx, n_kv, nl);
@@ -1723,7 +1723,7 @@ struct voxtral4b_stream {
     // feed() and tokens get appended to out_text / out_text_unread as they
     // commit; get_text() then returns progressive transcript.
     // Off by default (PTT semantics: decode happens at flush). Set
-    // CRISPASR_VOXTRAL4B_STREAM_LIVE=1 at stream_open to opt in.
+    // STELNETTTS_VOXTRAL4B_STREAM_LIVE=1 at stream_open to opt in.
     //
     // No stable-prefix heuristic needed: voxtral4b's audio-injection
     // pre_hook makes each decoded token a deterministic function of the
@@ -2001,7 +2001,7 @@ static int vox_stream_advance_projector(voxtral4b_stream* s) {
 } // namespace
 
 // Voxtral4B realtime model expects 32 "STREAMING_PAD" tokens worth of left-pad
-// silence at the start of the audio (matches `crispasr_backend_voxtral4b.cpp`
+// silence at the start of the audio (matches `stelnettts_backend_voxtral4b.cpp`
 // adapter at line 75). One token = hop * conv_stride * stack_4 = 160 * 2 * 4 =
 // 1280 samples.
 static constexpr int kSamplesPerToken = 1280;
@@ -2234,7 +2234,7 @@ extern "C" struct voxtral4b_stream* voxtral4b_stream_open(struct voxtral4b_conte
     // chunk pays ~170 ms on M1 Q4_K (2.1× realtime); at 240 ms it drops
     // to ~250 ms per 240 ms chunk (~1× realtime). Bit-exact-batch holds
     // for any valid size.
-    if (const char* env = getenv("CRISPASR_VOXTRAL4B_STREAM_CHUNK_MS")) {
+    if (const char* env = getenv("STELNETTTS_VOXTRAL4B_STREAM_CHUNK_MS")) {
         const int ms = atoi(env);
         const int frames = (ms / 10 / 8) * 8; // round to multiple of 8 mel frames
         s->chunk_mel_frames = frames > 0 ? frames : 8;
@@ -2253,7 +2253,7 @@ extern "C" struct voxtral4b_stream* voxtral4b_stream_open(struct voxtral4b_conte
     s->prefill_done = false;
     s->prefill_n_past = 0;
     s->prefill_out_vocab = 0;
-    s->live_decode_enabled = (getenv("CRISPASR_VOXTRAL4B_STREAM_LIVE") != nullptr);
+    s->live_decode_enabled = (getenv("STELNETTTS_VOXTRAL4B_STREAM_LIVE") != nullptr);
     s->decode_started = false;
     s->decode_finished = false;
     s->decode_logits_committed = false;
@@ -2262,7 +2262,7 @@ extern "C" struct voxtral4b_stream* voxtral4b_stream_open(struct voxtral4b_conte
     s->decode_out_vocab = 0;
     s->decode_last_argmax_id = 0;
     s->decode_steps_done = 0;
-    s->decoder_thread_enabled = (getenv("CRISPASR_VOXTRAL4B_STREAM_DECODER_THREAD") != nullptr);
+    s->decoder_thread_enabled = (getenv("STELNETTTS_VOXTRAL4B_STREAM_DECODER_THREAD") != nullptr);
     s->shutdown_requested = false;
     s->worker_idle = true;
     s->out_t0_s = 0.0;
@@ -2317,9 +2317,9 @@ extern "C" int voxtral4b_stream_feed(struct voxtral4b_stream* s, const float* pc
 
     // Default: incremental encoder runs during feed (audio embeds bit-exact
     // vs the batch encoder, validated on JFK). Set
-    // `CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER=1` to fall back to running the
+    // `STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER=1` to fall back to running the
     // whole encoder at flush time — useful when chasing a regression.
-    static const bool use_batch_encoder = (getenv("CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER") != nullptr);
+    static const bool use_batch_encoder = (getenv("STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER") != nullptr);
     if (use_batch_encoder)
         return 0;
 
@@ -2362,7 +2362,7 @@ extern "C" int voxtral4b_stream_flush(struct voxtral4b_stream* s) {
         return -1;
     const auto& hp = s->ctx->model.hparams;
     const int proj_out = (int)hp.proj_out_dim;
-    const bool timing = (getenv("CRISPASR_VOXTRAL4B_STREAM_TIMING") != nullptr);
+    const bool timing = (getenv("STELNETTTS_VOXTRAL4B_STREAM_TIMING") != nullptr);
     auto t0 = std::chrono::steady_clock::now();
     auto elapsed_ms = [&t0]() {
         return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
@@ -2371,10 +2371,10 @@ extern "C" int voxtral4b_stream_flush(struct voxtral4b_stream* s) {
     // PLAN #7 phase 1.5 default: incremental encoder ran during feed(), so
     // s->audio_embeds is already populated. Flush just drains any residual
     // mel/encoder/projector + runs the LLM decode. Set
-    // CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER=1 to ignore the streaming
+    // STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER=1 to ignore the streaming
     // encoder's output and re-run the batch encoder at flush — regression-
     // debug switch matching the same env var on the feed path.
-    const bool use_incremental = (getenv("CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER") == nullptr);
+    const bool use_incremental = (getenv("STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER") == nullptr);
 
     // Right-pad the user audio: align to a SAMPLES_PER_TOKEN boundary, then
     // append kRightPadTokens worth of trailing zeros. Internal padding —
@@ -2466,7 +2466,7 @@ extern "C" int voxtral4b_stream_flush(struct voxtral4b_stream* s) {
         N_audio = N_enc;
     }
     const float* audio_src = use_incremental ? s->audio_embeds.data() : batch_audio_embeds.data();
-    if (getenv("CRISPASR_VOXTRAL4B_STREAM_DEBUG")) {
+    if (getenv("STELNETTTS_VOXTRAL4B_STREAM_DEBUG")) {
         fprintf(stderr, "voxtral4b_stream: flush enc_T=%d N_audio=%d user_samples=%lld\n", s->enc_T_so_far, N_audio,
                 (long long)user_samples);
     }
@@ -2474,7 +2474,7 @@ extern "C" int voxtral4b_stream_flush(struct voxtral4b_stream* s) {
     // Side-by-side: run BOTH encoders and compare. Useful only in incremental
     // mode (else batch is the source of truth). Prints first divergent embed
     // index, cosine similarity per-embed, and the worst absolute element diff.
-    if (use_incremental && getenv("CRISPASR_VOXTRAL4B_STREAM_DIFF")) {
+    if (use_incremental && getenv("STELNETTTS_VOXTRAL4B_STREAM_DIFF")) {
         const int n_fft = 400;
         const float* full_pcm = s->pcm_with_pad.data() + (n_fft / 2);
         const int full_n = (int)s->pcm_with_pad.size() - (n_fft / 2);

@@ -19,7 +19,7 @@
 using core_lang::iso_to_english;
 
 TEST_CASE("core_lang: common 15 codes map identically", "[unit][core-lang]") {
-    // These are the codes the CLI (crispasr_backend_utils.h) and the C ABI
+    // These are the codes the CLI (stelnettts_backend_utils.h) and the C ABI
     // (ca_iso_to_english_lang) both mapped — the migration must reproduce
     // them byte-for-byte.
     CHECK(iso_to_english("en") == "English");

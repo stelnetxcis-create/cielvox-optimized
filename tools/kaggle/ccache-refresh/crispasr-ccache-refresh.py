@@ -1,6 +1,6 @@
-"""Rebuild the crispasr-ccache seed dataset as a SINGLE ccache.tar.
+"""Rebuild the stelnettts-ccache seed dataset as a SINGLE ccache.tar.
 
-Both account copies of crispasr-ccache were found broken on 2026-07-20: each
+Both account copies of stelnettts-ccache were found broken on 2026-07-20: each
 held a bare, truncated `.ccache/` tree instead of a `ccache.tar`, so every CUDA
 kernel warmed from ~500 stale objects and effectively built cold.
 
@@ -38,10 +38,10 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = TEMP / "build"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 _T0 = time.time()
 
 
@@ -60,11 +60,11 @@ def run(cmd, check=True, env=None, cwd=None, timeout=None, capture=False):
     return r
 
 
-print(json.dumps({"step": "start", "ref": CRISPASR_REF}), flush=True)
+print(json.dumps({"step": "start", "ref": STELNETTTS_REF}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive"],
     check=False, timeout=1800)
 
@@ -100,23 +100,23 @@ kh.step("cuda_arch", arch=arch)
 BUILD.mkdir(parents=True, exist_ok=True)
 run(["cmake", "-S", str(REPO), "-B", str(BUILD),
      "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-     "-DCRISPASR_NO_C2PA_NATIVE=ON"]
+     "-DSTELNETTTS_NO_C2PA_NATIVE=ON"]
     + kh.cuda_build_flags(arch) + kh.cache_and_link_flags())
 kh.step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 kh.step("build_done")
 
 # Proof of work: a real build must have produced the binary AND populated the
 # cache. Exporting an empty tar would silently re-break the dataset.
-cli = BUILD / "examples" / "cli" / "crispasr"
+cli = BUILD / "examples" / "cli" / "stelnettts"
 if not cli.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("build produced no crispasr binary — refusing to export a cache")
+        raise SystemExit("build produced no stelnettts binary — refusing to export a cache")
 run(["ccache", "-s"], check=False, capture=True)
 
 n_files = sum(1 for _ in Path(ccache_dir).rglob("*") if _.is_file()) if ccache_dir else 0

@@ -1,7 +1,7 @@
 {
-  "id": "chr1str/crispasr-issue126-cuda-verify",
-  "title": "CrispASR issue126 cuda verify",
-  "code_file": "crispasr-issue126-cuda-verify.py",
+  "id": "chr1str/stelnettts-issue126-cuda-verify",
+  "title": "StelnetTTS issue126 cuda verify",
+  "code_file": "stelnettts-issue126-cuda-verify.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",

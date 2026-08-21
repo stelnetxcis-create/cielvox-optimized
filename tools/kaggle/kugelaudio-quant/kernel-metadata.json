@@ -1,14 +1,14 @@
 {
-  "id": "chr1str/crispasr-kugelaudio-quant",
-  "title": "crispasr kugelaudio quant",
-  "code_file": "crispasr-kugelaudio-quant.py",
+  "id": "chr1str/stelnettts-kugelaudio-quant",
+  "title": "stelnettts kugelaudio quant",
+  "code_file": "stelnettts-kugelaudio-quant.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "competition_sources": [],
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "kernel_sources": [],
   "model_sources": []
 }

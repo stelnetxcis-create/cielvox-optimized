@@ -12,16 +12,16 @@
 // input recovered 1/3 (single-pass, streamed) or 1-2/3 (chunked).
 //
 // Requires:
-//   CRISPASR_MODEL_PARAKEET_JA    — parakeet-tdt-0.6b-ja GGUF
-//   CRISPASR_FIXTURE_PARAKEET_JA  — reazon_baseball_14s/audio.wav from
-//       cstr/crispasr-regression-fixtures (hf download
-//       cstr/crispasr-regression-fixtures
+//   STELNETTTS_MODEL_PARAKEET_JA    — parakeet-tdt-0.6b-ja GGUF
+//   STELNETTTS_FIXTURE_PARAKEET_JA  — reazon_baseball_14s/audio.wav from
+//       Xenna/stelnettts-regression-fixtures (hf download
+//       Xenna/stelnettts-regression-fixtures
 //       parakeet-tdt-0.6b-ja/reazon_baseball_14s/audio.wav)
 // SKIPs cleanly when either is missing.
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_session.h"
+#include "stelnettts_session.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -53,13 +53,13 @@ static int count_occurrences(const std::string& hay, const std::string& needle) 
 }
 
 TEST_CASE("parakeet-ja long-form keeps interior content (issue #89)", "[integration][parakeet-ja-longform]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_PARAKEET_JA");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_PARAKEET_JA");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_PARAKEET_JA not set");
+        SKIP("STELNETTTS_MODEL_PARAKEET_JA not set");
     }
-    const char* wav_path = std::getenv("CRISPASR_FIXTURE_PARAKEET_JA");
+    const char* wav_path = std::getenv("STELNETTTS_FIXTURE_PARAKEET_JA");
     if (!wav_path || !*wav_path) {
-        SKIP("CRISPASR_FIXTURE_PARAKEET_JA not set");
+        SKIP("STELNETTTS_FIXTURE_PARAKEET_JA not set");
     }
     {
         FILE* f = fopen(model_path, "rb");
@@ -80,20 +80,20 @@ TEST_CASE("parakeet-ja long-form keeps interior content (issue #89)", "[integrat
         pcm.insert(pcm.end(), one.begin(), one.end());
     const double dur_s = (double)pcm.size() / 16000.0;
 
-    crispasr_session* s = crispasr_session_open(model_path, 4);
+    stelnettts_session* s = stelnettts_session_open(model_path, 4);
     REQUIRE(s != nullptr);
 
-    crispasr_session_result* r = crispasr_session_transcribe(s, pcm.data(), (int)pcm.size());
+    stelnettts_session_result* r = stelnettts_session_transcribe(s, pcm.data(), (int)pcm.size());
     REQUIRE(r != nullptr);
 
     std::string text;
     int64_t last_t1_cs = 0;
-    const int n_segs = crispasr_session_result_n_segments(r);
+    const int n_segs = stelnettts_session_result_n_segments(r);
     for (int i = 0; i < n_segs; i++) {
-        const char* t = crispasr_session_result_segment_text(r, i);
+        const char* t = stelnettts_session_result_segment_text(r, i);
         if (t)
             text += t;
-        last_t1_cs = std::max(last_t1_cs, crispasr_session_result_segment_t1(r, i));
+        last_t1_cs = std::max(last_t1_cs, stelnettts_session_result_segment_t1(r, i));
     }
     INFO("duration=" << dur_s << "s  transcript(" << text.size() << " bytes): " << text);
 
@@ -106,6 +106,6 @@ TEST_CASE("parakeet-ja long-form keeps interior content (issue #89)", "[integrat
     // of a whole repetition fails the test.
     CHECK(text.size() >= 350);
 
-    crispasr_session_result_free(r);
-    crispasr_session_close(s);
+    stelnettts_session_result_free(r);
+    stelnettts_session_close(s);
 }

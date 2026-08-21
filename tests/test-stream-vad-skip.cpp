@@ -1,7 +1,7 @@
 // test-stream-vad-skip.cpp — unit tests for the pre-decode finalized-slice
 // skip added in PR #90 (stream JSON mode).
 //
-// The production logic lives in the slice loop inside crispasr_run.cpp
+// The production logic lives in the slice loop inside stelnettts_run.cpp
 // (if (params.stream_json && s_end_abs <= finalized_until_sample) continue).
 // Because it is a short inline expression, we mirror it here as a
 // `classify_stream_slice` helper and test all categories + boundary values.
@@ -31,7 +31,7 @@ static SliceClass classify_stream_slice(int64_t s_start_abs, int64_t s_end_abs, 
 }
 
 // Compute absolute sample positions from window_start + relative slice offsets,
-// mirroring the two lines in crispasr_run.cpp:
+// mirroring the two lines in stelnettts_run.cpp:
 //   const int64_t s_start_abs = window_start_sample_now + (int64_t)sl.start;
 //   const int64_t s_end_abs   = window_start_sample_now + (int64_t)sl.end;
 static SliceClass classify_from_window(int64_t window_start, int sl_start, int sl_end, int64_t finalized_until) {

@@ -2,8 +2,8 @@
 
 #include "tiron_link.h"
 
-#include "crispasr_speaker_cluster.h"
-#include "crispasr_speaker_embedder.h"
+#include "stelnettts_speaker_cluster.h"
+#include "stelnettts_speaker_embedder.h"
 
 #include <algorithm>
 #include <cctype>
@@ -44,7 +44,7 @@ struct Group {
 
 } // namespace
 
-TironLinkResult crispasr_tiron_link_speakers(const std::vector<TironTurn>& turns, const float* pcm_16k, int n_samples,
+TironLinkResult stelnettts_tiron_link_speakers(const std::vector<TironTurn>& turns, const float* pcm_16k, int n_samples,
                                              CrispasrSpeakerEmbedder* embedder, const TironLinkOptions& opts) {
     TironLinkResult res;
     if (turns.empty())
@@ -123,7 +123,7 @@ TironLinkResult crispasr_tiron_link_speakers(const std::vector<TironTurn>& turns
     int n_spine_clusters = 0;
     std::vector<float> centroids;
     if (!spine_groups.empty() && dim > 0) {
-        std::vector<int> labels = crispasr_agglomerative_cluster(spine_emb, (int)spine_groups.size(), dim,
+        std::vector<int> labels = stelnettts_agglomerative_cluster(spine_emb, (int)spine_groups.size(), dim,
                                                                  opts.merge_threshold, opts.max_speakers);
         for (size_t k = 0; k < spine_groups.size(); k++) {
             const int c = labels[k];
@@ -132,7 +132,7 @@ TironLinkResult crispasr_tiron_link_speakers(const std::vector<TironTurn>& turns
             groups[spine_groups[k]].global = c;
             n_spine_clusters = std::max(n_spine_clusters, c + 1);
         }
-        centroids = crispasr_cluster_centroids(spine_emb, labels, (int)spine_groups.size(), dim);
+        centroids = stelnettts_cluster_centroids(spine_emb, labels, (int)spine_groups.size(), dim);
     }
 
     // ── 4. assign the remaining (non-spine) groups ──
@@ -212,7 +212,7 @@ TironLinkResult crispasr_tiron_link_speakers(const std::vector<TironTurn>& turns
     return res;
 }
 
-int crispasr_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const float* pcm_16k, int n_samples,
+int stelnettts_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const float* pcm_16k, int n_samples,
                                    const char* embedder_spec, int n_threads, const char* cache_dir) {
     static const std::regex spk_re(R"(<\|speaker(\d+)\|>)");
 
@@ -231,7 +231,7 @@ int crispasr_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const 
     if (spec.empty() || !pcm_16k || n_samples <= 0)
         return 0;
 
-    auto embedder = crispasr_make_speaker_embedder(spec, n_threads, cache_dir ? cache_dir : "");
+    auto embedder = stelnettts_make_speaker_embedder(spec, n_threads, cache_dir ? cache_dir : "");
     if (!embedder)
         return 0;
 
@@ -255,7 +255,7 @@ int crispasr_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const 
     if (turns.empty())
         return 0;
 
-    TironLinkResult res = crispasr_tiron_link_speakers(turns, pcm_16k, n_samples, embedder.get());
+    TironLinkResult res = stelnettts_tiron_link_speakers(turns, pcm_16k, n_samples, embedder.get());
     for (int k = 0; k < (int)turns.size(); k++) {
         const int g = res.turn_speaker[k] < 0 ? 0 : res.turn_speaker[k];
         char lbl[24];

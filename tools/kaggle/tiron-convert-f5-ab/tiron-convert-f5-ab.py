@@ -1,5 +1,5 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — Tiron convert + validate  &  F5-TTS perf A/B  (clean CUDA GPU)
+# # StelnetTTS — Tiron convert + validate  &  F5-TTS perf A/B  (clean CUDA GPU)
 #
 # Two independent phases on one uncontended CUDA box (T4/P100). Each is guarded
 # so a failure in one does not waste the other.
@@ -8,19 +8,19 @@
 #   <|speakerN|> tokens, vocab 51904) to legacy GGML, quantize q8_0/q4_k, and
 #   VALIDATE the new "tiron" decode mode on the CUDA build:
 #     * multispeaker.wav must transcribe AND emit <|speakerN|> markers inline
-#     * CRISPASR_WHISPER_TIRON=0 (stock path) as an A/B negative control
+#     * STELNETTTS_WHISPER_TIRON=0 (stock path) as an A/B negative control
 #     * jfk.wav single-speaker sanity (text must be recognizable)
-#   Then upload f16/q8_0/q4_k + an apache-2.0 model card to cstr/tiron-GGML.
+#   Then upload f16/q8_0/q4_k + an apache-2.0 model card to Xenna/tiron-GGML.
 #
 # PHASE B — F5-TTS (#294): settle on CUDA whether the opt-in perf gates are
 #   wins (M1 Metal timing is dispatch-bound/noisy — needs a clean GPU verdict).
 #   F16 only (flow-matching: q8 error compounds). Matrix, seed 42, fixed jfk
 #   ref + fixed gen text, 1 warmup + 3 measured, median ode_solve ms + ASR
 #   roundtrip proof-of-work (a perf win is a lie without proof — kaggle_usage #24):
-#     A baseline (32 steps)          F CRISPASR_F5_BATCH_CFG=1
-#     B --tts-steps 7 (EPSS)         G CRISPASR_F5_F16_ACT=1  (CUDA-only question)
-#     C 7 + CFG_INTERVAL=2           H CRISPASR_F5_DIT_SKIP=2
-#     D CRISPASR_F5_EMBED_GPU=1      I recommended CUDA stack (EMBED_GPU+BATCH_CFG+7+int2)
+#     A baseline (32 steps)          F STELNETTTS_F5_BATCH_CFG=1
+#     B --tts-steps 7 (EPSS)         G STELNETTTS_F5_F16_ACT=1  (CUDA-only question)
+#     C 7 + CFG_INTERVAL=2           H STELNETTTS_F5_DIT_SKIP=2
+#     D STELNETTTS_F5_EMBED_GPU=1      I recommended CUDA stack (EMBED_GPU+BATCH_CFG+7+int2)
 #     E EMBED_GPU + 7 steps
 #
 # Regime (kaggle_usage.md): repo/build/models staged on the ~70 GB ephemeral
@@ -29,7 +29,7 @@
 # the harness onto /kaggle/temp; ccache.tar exported at the end for refresh.
 #
 # Requirements: Kaggle GPU, Internet ON. Datasets (chr1s4, same account as id):
-#   chr1s4/crispasr-hf-token, chr1s4/crispasr-ccache.
+#   chr1s4/stelnettts-hf-token, chr1s4/stelnettts-ccache.
 
 # ─────────────────────────── cell 1 (code) — config ──────────────────────
 import hashlib
@@ -47,7 +47,7 @@ from pathlib import Path
 # (it is the 20 GB output mount, page-capped at 500 files — kaggle_usage #22).
 SCRATCH = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
 WORK = Path("/kaggle/working")
-REPO = SCRATCH / "CrispASR"
+REPO = SCRATCH / "StelnetTTS"
 BUILD = SCRATCH / "build"
 MODELS = SCRATCH / "models"
 OUT = SCRATCH / "tiron-out"
@@ -56,12 +56,12 @@ RESULTS = WORK / "results"     # retained output: logs + summary JSON only
 for d in (MODELS, OUT, AUDIO, RESULTS):
     d.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/tiron-asr")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/tiron-asr")
 
 # Phase A
 TIRON_SRC = "Trelis/tiron"
-TIRON_HF_OUT = "cstr/tiron-GGML"
+TIRON_HF_OUT = "Xenna/tiron-GGML"
 TIRON_NAME = "tiron"
 TIRON_FILES = [
     "config.json", "generation_config.json", "preprocessor_config.json",
@@ -71,7 +71,7 @@ TIRON_FILES = [
 ]
 
 # Phase B
-F5_HF_REPO = "cstr/f5-tts-GGUF"
+F5_HF_REPO = "Xenna/f5-tts-GGUF"
 F5_HF_FILE = "f5-tts-v1-base-f16.gguf"
 F5_REF_TEXT = ("And so, my fellow Americans, ask not what your country can do for you, "
                "ask what you can do for your country.")
@@ -105,15 +105,15 @@ def run(cmd, check=True, env=None, cwd=None, timeout=None):
 
 
 # ─────────────────────────── cell 2 (code) — clone + build ───────────────
-step("start", ref=CRISPASR_REF, scratch=str(SCRATCH))
+step("start", ref=STELNETTTS_REF, scratch=str(SCRATCH))
 if REPO.exists():
     shutil.rmtree(REPO)
 
 # Robust clone + import (kaggle_usage "Auth via kaggle_harness"): prefer the
 # cloned repo's harness, fall back to the copy bundled beside this script.
 try:
-    run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-         CRISPASR_REPO, str(REPO)])
+    run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+         STELNETTTS_REPO, str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 except Exception as ex:  # noqa: BLE001
     print(f"clone failed: {ex}", flush=True)
@@ -124,7 +124,7 @@ import kaggle_harness as kh  # noqa: E402
 # Live progress mirror to a public HF dataset so the run is watchable while it
 # runs (kaggle_usage: never hallucinate progress). Resolve the token EARLY so
 # the mirror + heartbeat are active from the build onward, not just at upload.
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 kh._HF_PUSH_INTERVAL_S = 20.0
 if not REPO.exists():
     raise SystemExit("repo clone missing — cannot build (need internet + GPU worker)")
@@ -156,7 +156,7 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli crispasr-quantize "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli stelnettts-quantize "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 step("build_done")
 
@@ -171,8 +171,8 @@ def _find(name):
     return cands[0]
 
 
-CLI = _find("crispasr")
-QUANT = _find("crispasr-quantize")
+CLI = _find("stelnettts")
+QUANT = _find("stelnettts-quantize")
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 SAMPLES = REPO / "samples"
 step("bins", cli=str(CLI), quant=str(QUANT))
@@ -208,7 +208,7 @@ def asr_roundtrip(wav: Path, timeout=600) -> str:
         r = subprocess.run(cmd, timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
         body = " ".join(ln for ln in lines
-                        if not ln.startswith(("[", "whisper", "ggml", "load", "crispasr")))
+                        if not ln.startswith(("[", "whisper", "ggml", "load", "stelnettts")))
         return body[-300:]
     except Exception as ex:  # noqa: BLE001
         return f"<asr-error: {type(ex).__name__}>"
@@ -280,7 +280,7 @@ try:
     (RESULTS / "tiron_multispeaker_ON.log").write_text(out_on)
     n_speaker_markers = len(re.findall(r"<\|speaker\d\|>", out_on))
 
-    rc_off, out_off = tiron_transcribe(ms_wav, extra_env={"CRISPASR_WHISPER_TIRON": "0"})
+    rc_off, out_off = tiron_transcribe(ms_wav, extra_env={"STELNETTTS_WHISPER_TIRON": "0"})
     (RESULTS / "tiron_multispeaker_OFF.log").write_text(out_off)
     n_speaker_off = len(re.findall(r"<\|speaker\d\|>", out_off))
 
@@ -313,11 +313,11 @@ tags:
 - automatic-speech-recognition
 - whisper
 - speaker-diarization
-- crispasr
+- stelnettts
 - ggml
 ---
 
-# {TIRON_NAME} — GGML for CrispASR
+# {TIRON_NAME} — GGML for StelnetTTS
 
 Converted from [`{TIRON_SRC}`](https://huggingface.co/{TIRON_SRC}) (Apache-2.0).
 
@@ -325,7 +325,7 @@ Tiron is a Whisper large-v3 checkpoint that jointly transcribes and attributes
 speech to speakers in one decode pass, emitting inline `<|speakerN|>` turn markers
 (up to 8 speakers / 30 s window) and 20 ms timestamps.
 
-Requires a CrispASR build with the **tiron decode mode** (issue #295): the extended
+Requires a StelnetTTS build with the **tiron decode mode** (issue #295): the extended
 vocab (51904) is serialized into the GGML tokenizer table and the decoder passes the
 speaker tokens through inline instead of treating them as timestamps.
 
@@ -388,7 +388,7 @@ try:
                "--tts", F5_GEN_TEXT, "--tts-output", str(out_wav),
                "--seed", str(SEED)] + list(extra_args)
         t0 = time.time()
-        r = subprocess.run(cmd, env={**os.environ, "CRISPASR_F5_BENCH": "1", **env},
+        r = subprocess.run(cmd, env={**os.environ, "STELNETTTS_F5_BENCH": "1", **env},
                            timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         dt = round(time.time() - t0, 2)
         out = r.stdout or ""
@@ -406,14 +406,14 @@ try:
     F5_CONFIGS = [
         ("A_base", {}, []),
         ("B_steps7", {}, ["--tts-steps", "7"]),
-        ("C_s7_int2", {"CRISPASR_F5_CFG_INTERVAL": "2"}, ["--tts-steps", "7"]),
-        ("D_embedgpu", {"CRISPASR_F5_EMBED_GPU": "1"}, []),
-        ("E_embedgpu_s7", {"CRISPASR_F5_EMBED_GPU": "1"}, ["--tts-steps", "7"]),
-        ("F_batchcfg", {"CRISPASR_F5_BATCH_CFG": "1"}, []),
-        ("G_f16act", {"CRISPASR_F5_F16_ACT": "1"}, []),
-        ("H_ditskip2", {"CRISPASR_F5_DIT_SKIP": "2"}, []),
-        ("I_stack", {"CRISPASR_F5_EMBED_GPU": "1", "CRISPASR_F5_BATCH_CFG": "1",
-                     "CRISPASR_F5_CFG_INTERVAL": "2"}, ["--tts-steps", "7"]),
+        ("C_s7_int2", {"STELNETTTS_F5_CFG_INTERVAL": "2"}, ["--tts-steps", "7"]),
+        ("D_embedgpu", {"STELNETTTS_F5_EMBED_GPU": "1"}, []),
+        ("E_embedgpu_s7", {"STELNETTTS_F5_EMBED_GPU": "1"}, ["--tts-steps", "7"]),
+        ("F_batchcfg", {"STELNETTTS_F5_BATCH_CFG": "1"}, []),
+        ("G_f16act", {"STELNETTTS_F5_F16_ACT": "1"}, []),
+        ("H_ditskip2", {"STELNETTTS_F5_DIT_SKIP": "2"}, []),
+        ("I_stack", {"STELNETTTS_F5_EMBED_GPU": "1", "STELNETTTS_F5_BATCH_CFG": "1",
+                     "STELNETTTS_F5_CFG_INTERVAL": "2"}, ["--tts-steps", "7"]),
     ]
 
     for tag, env, args in F5_CONFIGS:

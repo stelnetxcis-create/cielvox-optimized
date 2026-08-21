@@ -8,7 +8,7 @@
 // 4. free_weights leaves no buffer handle behind and is idempotent.
 // 5. A partition above the chunk limit really does overflow into split_bufs,
 //    and releasing the partition releases those chunks with it.
-//    CRISPASR_GGUF_MAX_ALLOC_CHUNK lowers the limit so this needs no
+//    STELNETTTS_GGUF_MAX_ALLOC_CHUNK lowers the limit so this needs no
 //    multi-gigabyte allocation and no Vulkan hardware.
 
 #include <catch2/catch_test_macros.hpp>
@@ -87,7 +87,7 @@ bool test_is_gpu(const char* name, void* user) {
 } // namespace
 
 TEST_CASE("load_weights_split partitions tensors by predicate", "[unit][gguf-split]") {
-    const std::string path = "crispasr_test_split_alloc.gguf";
+    const std::string path = "stelnettts_test_split_alloc.gguf";
     const int n_tensors = 8;
     const int elems = 32; // small tensors, 128 bytes each
 
@@ -188,7 +188,7 @@ TEST_CASE("load_weights_split partitions tensors by predicate", "[unit][gguf-spl
 }
 
 TEST_CASE("load_weights_split rejects null backends/predicate", "[unit][gguf-split]") {
-    const std::string path = "crispasr_test_split_reject.gguf";
+    const std::string path = "stelnettts_test_split_reject.gguf";
     write_multi_tensor_gguf(path, 2, 16);
 
     ggml_backend_t be = ggml_backend_cpu_init();
@@ -214,7 +214,7 @@ TEST_CASE("load_weights_split rejects null backends/predicate", "[unit][gguf-spl
 TEST_CASE("a chunked partition's overflow buffers are released with it", "[unit][gguf-split]") {
     // The overflow chunks are owned by the loader and released with the first
     // buffer of their own partition. Reaching that branch normally needs a
-    // partition above 1.5 GiB, so CRISPASR_GGUF_MAX_ALLOC_CHUNK lowers the
+    // partition above 1.5 GiB, so STELNETTTS_GGUF_MAX_ALLOC_CHUNK lowers the
     // limit far enough for a synthetic model to chunk.
     //
     // What this proves: the chunked path runs, the overflow buffers are
@@ -222,14 +222,14 @@ TEST_CASE("a chunked partition's overflow buffers are released with it", "[unit]
     // double-frees nor leaves a stale handle. What it cannot prove is that
     // the memory came back, because ggml exposes no per-backend allocation
     // counter to assert against; that half is the code review's.
-    test_setenv("CRISPASR_GGUF_MAX_ALLOC_CHUNK", "1024");
+    test_setenv("STELNETTTS_GGUF_MAX_ALLOC_CHUNK", "1024");
 
     ggml_backend_t gpu_be = ggml_backend_cpu_init();
     ggml_backend_t cpu_be = ggml_backend_cpu_init();
     REQUIRE(gpu_be);
     REQUIRE(cpu_be);
 
-    const std::string path = "crispasr_test_split_chunked.gguf";
+    const std::string path = "stelnettts_test_split_chunked.gguf";
     // 8 tensors of 1 KiB each: several chunks per partition at a 1 KiB limit.
     write_multi_tensor_gguf(path, 8, 256);
 
@@ -251,7 +251,7 @@ TEST_CASE("a chunked partition's overflow buffers are released with it", "[unit]
     core_gguf::free_weights(wl);
     REQUIRE(wl.split_bufs.empty());
 
-    test_unsetenv("CRISPASR_GGUF_MAX_ALLOC_CHUNK");
+    test_unsetenv("STELNETTTS_GGUF_MAX_ALLOC_CHUNK");
     std::remove(path.c_str());
     ggml_backend_free(gpu_be);
     ggml_backend_free(cpu_be);

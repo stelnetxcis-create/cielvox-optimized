@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert an audio-capable Gemma 4 model to GGUF format for CrispASR.
+"""Convert an audio-capable Gemma 4 model to GGUF format for StelnetTTS.
 
 Supported inputs — the `gemma4` architecture (USM Conformer audio, 1024-dim):
     google/gemma-4-E2B-it   model_type=gemma4   35L×1536  audio 1024  (shipped)
@@ -15,7 +15,7 @@ NOT yet supported — `gemma4_unified` (a *different* architecture):
     audio path. E2B/E4B all feature native audio and work today.
 
 NOTE: the GGUF `general.architecture` string written here is `gemma4e2b`
-(CrispASR's internal name for the `gemma4` E2B/E4B family).
+(StelnetTTS's internal name for the `gemma4` E2B/E4B family).
 
 Conversion streams tensors one at a time (use_temp_file), so RAM stays
 bounded (~16 GB is plenty); the binding constraint is disk for the

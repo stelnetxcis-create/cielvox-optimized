@@ -39,7 +39,7 @@ jobs:
               print("HF_TOKEN is not set — skipping upload.")
               sys.exit(0)
 
-          repo_id = "cstr/CrispASR"
+          repo_id = "Xenna/StelnetTTS"
           files = [
               "app.py",
               "start.sh",

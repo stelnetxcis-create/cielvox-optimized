@@ -21,16 +21,16 @@ for arg in "$@"; do
 done
 
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
-[ -n "$CRISPASR" ] || { echo "SKIP: crispasr binary not found"; exit 0; }
+[ -n "$CRISPASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 # Locate a whisper GGUF.
-MODEL="${CRISPASR_MODEL_WHISPER:-}"
+MODEL="${STELNETTTS_MODEL_WHISPER:-}"
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     MODEL=""
-    for d in "${CRISPASR_MODELS_DIR:-}" /mnt/storage/gguf-models "$HOME/.cache/crispasr"; do
+    for d in "${STELNETTTS_MODELS_DIR:-}" /mnt/storage/gguf-models "$HOME/.cache/stelnettts"; do
         [ -n "$d" ] && [ -d "$d" ] || continue
         cand=$(ls "$d"/ggml-base*.bin "$d"/whisper-base*.gguf 2>/dev/null | head -1)
         if [ -n "$cand" ] && [ -f "$cand" ]; then MODEL="$cand"; break; fi
@@ -39,7 +39,7 @@ fi
 [ -n "$MODEL" ] && [ -f "$MODEL" ] || { echo "SKIP: no whisper GGUF found"; exit 0; }
 
 # Locate test audio.
-AUDIO="${CRISPASR_TEST_AUDIO:-}"
+AUDIO="${STELNETTTS_TEST_AUDIO:-}"
 if [ -z "$AUDIO" ] || [ ! -f "$AUDIO" ]; then
     AUDIO=""
     for cand in samples/jfk.wav /mnt/akademie_storage/whisper.cpp/samples/jfk.wav; do
@@ -50,7 +50,7 @@ fi
 
 echo "Model: $MODEL"
 echo "Audio: $AUDIO"
-LOG=$(mktemp /mnt/volume1/tmp-overflow/crispasr-diarized.XXXXXX)
+LOG=$(mktemp /mnt/volume1/tmp-overflow/stelnettts-diarized.XXXXXX)
 trap 'kill "$SV" 2>/dev/null; rm -f "$LOG"' EXIT
 "$CRISPASR" --server -m "$MODEL" --host 127.0.0.1 --port "$PORT" > "$LOG" 2>&1 &
 SV=$!

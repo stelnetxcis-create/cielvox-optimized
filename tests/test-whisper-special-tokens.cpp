@@ -53,7 +53,7 @@ TEST_CASE("HF-converted multilingual vocabs use the legacy layout", "[unit][whis
 }
 
 TEST_CASE("fully serialized vocabs use the serialized layout", "[unit][whisper]") {
-    // CrispASR-converted (#258, whisper-ja-760M): every special present. Real ids.
+    // StelnetTTS-converted (#258, whisper-ja-760M): every special present. Real ids.
     Serialized s;
     s.eot = 8631;
     s.sot = 8632;

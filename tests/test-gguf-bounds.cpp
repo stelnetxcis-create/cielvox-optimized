@@ -106,8 +106,8 @@ TEST_CASE("core_gguf::load_weights rejects a truncated GGUF without crashing", "
     ggml_backend_t backend = ggml_backend_cpu_init();
     REQUIRE(backend != nullptr);
 
-    const std::string good = "crispasr_test_gguf_bounds_ok.gguf";
-    const std::string bad = "crispasr_test_gguf_bounds_trunc.gguf";
+    const std::string good = "stelnettts_test_gguf_bounds_ok.gguf";
+    const std::string bad = "stelnettts_test_gguf_bounds_trunc.gguf";
 
     const int n = 64; // 64 f32 = 256 tensor bytes
     write_valid_gguf(good, n);
@@ -153,7 +153,7 @@ TEST_CASE("a rejected GGUF leaves no mapping behind on the zero-copy path", "[un
         SUCCEED("region enumeration unavailable on this platform");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     ggml_backend_t backend = init_host_ptr_gpu_backend();
     if (!backend) {
@@ -161,8 +161,8 @@ TEST_CASE("a rejected GGUF leaves no mapping behind on the zero-copy path", "[un
         return;
     }
 
-    const std::string good = "crispasr_test_gguf_reject_ok.gguf";
-    const std::string bad = "crispasr_test_gguf_reject_trunc.gguf";
+    const std::string good = "stelnettts_test_gguf_reject_ok.gguf";
+    const std::string bad = "stelnettts_test_gguf_reject_trunc.gguf";
     const int n = 65536; // 256 KiB of tensor data
     write_valid_gguf(good, n);
     const size_t data_off = read_data_offset(good);

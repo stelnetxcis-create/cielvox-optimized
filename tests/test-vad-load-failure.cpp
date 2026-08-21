@@ -1,17 +1,17 @@
 // test-vad-load-failure.cpp — a VAD model that fails to RESOLVE must be
 // distinguishable from "no VAD requested" (#311 follow-up).
 //
-// crispasr_resolve_vad_model() returns an empty string for BOTH cases:
+// stelnettts_resolve_vad_model() returns an empty string for BOTH cases:
 //   (a) the user asked for no VAD at all, and
 //   (b) the user explicitly asked for one and the download/resolve failed.
 //
-// crispasr_compute_audio_slices() only enters its VAD block when the path is
+// stelnettts_compute_audio_slices() only enters its VAD block when the path is
 // non-empty, so case (b) silently took the "no VAD requested" branch and left
-// `out_vad_load_failed` false. The #311 strict guard in crispasr_run.cpp keys
+// `out_vad_load_failed` false. The #311 strict guard in stelnettts_run.cpp keys
 // off exactly that flag, so --strict-pipeline / --require-vad could not fire
 // on a failed download: the run exited 0 having quietly not run VAD at all.
 //
-// Reproduced on a real machine, not theorised: with ~/.cache/crispasr dangling
+// Reproduced on a real machine, not theorised: with ~/.cache/stelnettts dangling
 // (its backing volume unmounted), `--strict-pipeline --vad -vm marblenet`
 // printed "download failed" and still exited 0 with a full-file chunk export.
 // A gate whose whole documented purpose is a non-zero exit, that cannot go red.
@@ -25,8 +25,8 @@
 #include <sstream>
 #include <string>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
@@ -40,9 +40,9 @@ std::string slurp(const std::string& p) {
 } // namespace
 
 TEST_CASE("an explicitly-requested VAD that fails to resolve reports load failure", "[vad-load-failure]") {
-    const std::string src = slurp(std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/crispasr_vad_cli.cpp");
+    const std::string src = slurp(std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/stelnettts_vad_cli.cpp");
 
-    const size_t fn = src.find("crispasr_compute_audio_slices(");
+    const size_t fn = src.find("stelnettts_compute_audio_slices(");
     REQUIRE(fn != std::string::npos);
     const std::string body = src.substr(fn);
 
@@ -62,7 +62,7 @@ TEST_CASE("an explicitly-requested VAD that fails to resolve reports load failur
     //
     // The flag being set to TRUE is the thing that only the fix introduces:
     // before it, the sole assignments were `= false` at entry and `= load_failed`
-    // from crispasr_compute_vad_slices.
+    // from stelnettts_compute_vad_slices.
     const bool raises_true = body.find("*out_vad_load_failed = true") != std::string::npos;
     REQUIRE(raises_true);
 
@@ -76,8 +76,8 @@ TEST_CASE("an explicitly-requested VAD that fails to resolve reports load failur
 
 TEST_CASE("the #311 strict guard still keys off the load-failed flag", "[vad-load-failure]") {
     // The other half of the join: the flag is only worth setting because
-    // crispasr_run.cpp turns it into a non-zero exit.
-    const std::string run = slurp(std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/crispasr_run.cpp");
+    // stelnettts_run.cpp turns it into a non-zero exit.
+    const std::string run = slurp(std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/stelnettts_run.cpp");
     REQUIRE(run.find("vad_load_failed") != std::string::npos);
-    REQUIRE(run.find("CRISPASR_STRICT_RC_VAD") != std::string::npos);
+    REQUIRE(run.find("STELNETTTS_STRICT_RC_VAD") != std::string::npos);
 }

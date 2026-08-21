@@ -1,7 +1,7 @@
 // Mini-Omni2 integration test — exercises ASR + TTS + S2S.
 //
-// Requires CRISPASR_MODEL_MINI_OMNI2 env var pointing to the GGUF.
-// SNAC tests additionally need CRISPASR_MODEL_SNAC (snac-24khz.gguf).
+// Requires STELNETTTS_MODEL_MINI_OMNI2 env var pointing to the GGUF.
+// SNAC tests additionally need STELNETTTS_MODEL_SNAC (snac-24khz.gguf).
 // SKIPs cleanly when not set.
 
 #include <catch2/catch_test_macros.hpp>
@@ -34,9 +34,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("mini-omni2 ASR", "[integration][mini-omni2]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MINI_OMNI2");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MINI_OMNI2");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MINI_OMNI2 not set");
+        SKIP("STELNETTTS_MODEL_MINI_OMNI2 not set");
     }
 
     auto params = mini_omni2_context_default_params();
@@ -62,13 +62,13 @@ TEST_CASE("mini-omni2 ASR", "[integration][mini-omni2]") {
 }
 
 TEST_CASE("mini-omni2 TTS", "[integration][mini-omni2]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MINI_OMNI2");
-    const char* snac_path = std::getenv("CRISPASR_MODEL_SNAC");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MINI_OMNI2");
+    const char* snac_path = std::getenv("STELNETTTS_MODEL_SNAC");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MINI_OMNI2 not set");
+        SKIP("STELNETTTS_MODEL_MINI_OMNI2 not set");
     }
     if (!snac_path || !*snac_path) {
-        SKIP("CRISPASR_MODEL_SNAC not set");
+        SKIP("STELNETTTS_MODEL_SNAC not set");
     }
 
     auto params = mini_omni2_context_default_params();
@@ -96,13 +96,13 @@ TEST_CASE("mini-omni2 TTS", "[integration][mini-omni2]") {
 }
 
 TEST_CASE("mini-omni2 S2S", "[integration][mini-omni2]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MINI_OMNI2");
-    const char* snac_path = std::getenv("CRISPASR_MODEL_SNAC");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MINI_OMNI2");
+    const char* snac_path = std::getenv("STELNETTTS_MODEL_SNAC");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MINI_OMNI2 not set");
+        SKIP("STELNETTTS_MODEL_MINI_OMNI2 not set");
     }
     if (!snac_path || !*snac_path) {
-        SKIP("CRISPASR_MODEL_SNAC not set");
+        SKIP("STELNETTTS_MODEL_SNAC not set");
     }
 
     auto params = mini_omni2_context_default_params();

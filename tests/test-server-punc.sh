@@ -12,9 +12,9 @@
 #   ./tests/test-server-punc.sh [--port N] [--keep-server]
 #
 # Requires (else SKIP, exit 0):
-#   - build/bin/crispasr
+#   - build/bin/stelnettts
 #   - a parakeet RNNT/CTC GGUF, found via $PARAKEET_MODEL, or a *parakeet*.gguf
-#     under $CRISPASR_MODELS / $CRISPASR_MODELS_DIR / common local dirs
+#     under $STELNETTTS_MODELS / $STELNETTTS_MODELS_DIR / common local dirs
 #   - samples/jfk.wav (shipped in the repo)
 
 set -uo pipefail
@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 
 PORT=${PORT:-11453}
 KEEP_SERVER=0
-CACHE_DIR="${CRISPASR_TEST_CACHE:-}"
+CACHE_DIR="${STELNETTTS_TEST_CACHE:-}"
 for arg in "$@"; do
     case "$arg" in
         --port=*) PORT="${arg#--port=}" ;;
@@ -36,11 +36,11 @@ CACHE_ARG=()
 
 # Locate the binary.
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
 if [ -z "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found (build first)"
+    echo "SKIP: stelnettts binary not found (build first)"
     exit 0
 fi
 
@@ -50,16 +50,16 @@ fi
 MODEL="${PARAKEET_MODEL:-}"
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     MODEL=""
-    for d in "${CRISPASR_MODELS:-}" "${CRISPASR_MODELS_DIR:-}" \
-             /Volumes/backups/ai/crispasr-models /Volumes/backups/ai/crispasr \
-             /mnt/storage/gguf-models "$HOME/.cache/crispasr"; do
+    for d in "${STELNETTTS_MODELS:-}" "${STELNETTTS_MODELS_DIR:-}" \
+             /Volumes/backups/ai/stelnettts-models /Volumes/backups/ai/stelnettts \
+             /mnt/storage/gguf-models "$HOME/.cache/stelnettts"; do
         [ -n "$d" ] && [ -d "$d" ] || continue
         cand=$(ls "$d"/*parakeet*.gguf 2>/dev/null | grep -viE "tokenizer|vocab" | head -1)
         if [ -n "$cand" ] && [ -f "$cand" ]; then MODEL="$cand"; break; fi
     done
 fi
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
-    echo "SKIP: no parakeet GGUF found (set PARAKEET_MODEL or CRISPASR_MODELS_DIR)"
+    echo "SKIP: no parakeet GGUF found (set PARAKEET_MODEL or STELNETTTS_MODELS_DIR)"
     exit 0
 fi
 
@@ -73,10 +73,10 @@ echo "Model:  $MODEL"
 echo "Sample: $SAMPLE"
 
 # Boot the server with FireRedPunc restoration enabled.
-SERVER_LOG=$(mktemp -t crispasr-punc-server.XXXXXX)
+SERVER_LOG=$(mktemp -t stelnettts-punc-server.XXXXXX)
 trap 'if [ "$KEEP_SERVER" -eq 0 ] && [ -n "${SERVER_PID:-}" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi; rm -f "$SERVER_LOG"' EXIT
 
-echo "Starting crispasr-server on :$PORT with --punc-model fullstop…"
+echo "Starting stelnettts-server on :$PORT with --punc-model fullstop…"
 "$CRISPASR" --server -m "$MODEL" --punc-model fullstop \
     --host 127.0.0.1 --port "$PORT" --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} \
     > "$SERVER_LOG" 2>&1 &

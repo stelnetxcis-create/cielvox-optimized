@@ -47,7 +47,7 @@ copy).
 
 ## Where it bites
 
-Discovered while porting CrispASR's branched beam-search KV-cache
+Discovered while porting StelnetTTS's branched beam-search KV-cache
 snapshot to on-device copies (our issue #161). The branched-beam decoder
 snapshots/restores the decoder KV cache once per beam per step via
 `ggml_backend_tensor_copy`. We expected device-to-device blits; on Metal
@@ -102,7 +102,7 @@ that the macOS/iOS/Asahi GPUs actually use.
 
 ## Provenance & verification
 
-Ours — found via the CrispASR #161 KV-snapshot work; the fix is a couple
+Ours — found via the StelnetTTS #161 KV-snapshot work; the fix is a couple
 lines mirroring the existing `get_tensor` access pattern. Validate with
 `test-backend-ops` on Metal (any op whose graph i/o triggers a
 same-backend copy) and a direct two-shared-tensor `ggml_backend_tensor_copy`

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Every chat C-ABI entry point must be bound by every chat binding.
 
-`include/crispasr_chat.h` is hand-mirrored into five languages. Nothing in CI
+`include/stelnettts_chat.h` is hand-mirrored into five languages. Nothing in CI
 compiles four of them: `bindings-go.yml` is the only binding workflow that
-touches the chat surface, and even it did not trigger on `crispasr_chat.h` or
+touches the chat surface, and even it did not trigger on `stelnettts_chat.h` or
 `src/chat.cpp` until this check landed beside it. `bindings/java` is built only
 by `build.yml`, whose PR filter is `ggml`/`.gitmodules`; there is no PR-time
 `cargo`, `dart test` or Java job at all. So a new entry point — or a renamed
@@ -17,7 +17,7 @@ each binding, the same way `tests/test-copies-in-sync.cpp` pins the duplicated
 module sources and `tools/check-backend-wiring.py` pins the backend surface.
 
 What it does NOT do: check signatures. A binding that declares
-`crispasr_chat_count_tokens` with the wrong argument types passes here. This
+`stelnettts_chat_count_tokens` with the wrong argument types passes here. This
 catches the omission, not the mistranslation — per-language tests are what
 catch the second, and those are the suites that need a model.
 
@@ -34,26 +34,26 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HEADER = os.path.join(REPO, "include", "crispasr_chat.h")
+HEADER = os.path.join(REPO, "include", "stelnettts_chat.h")
 
 # Each binding, and the file(s) that must name every entry point. A binding
 # split across files (Java: a JNA interface plus the session wrapper) may
 # satisfy a symbol from any of them.
 BINDINGS: dict[str, list[str]] = {
-    "python": ["python/crispasr/_binding.py"],
+    "python": ["python/stelnettts/_binding.py"],
     "go": ["bindings/go/chat.go"],
-    "rust": ["crispasr-sys/src/lib.rs"],
-    "dart": ["flutter/crispasr/lib/src/chat.dart"],
+    "rust": ["stelnettts-sys/src/lib.rs"],
+    "dart": ["flutter/stelnettts/lib/src/chat.dart"],
     "java": [
         "bindings/java/src/main/java/io/github/ggerganov/whispercpp/chat/ChatNative.java",
         "bindings/java/src/main/java/io/github/ggerganov/whispercpp/chat/ChatLib.java",
     ],
 }
 
-# `CRISPASR_CHAT_API <return type> <name>(` — the exported functions. The
+# `STELNETTTS_CHAT_API <return type> <name>(` — the exported functions. The
 # trailing `(` is what separates them from the typedefs and the handle type,
 # which are not entry points and are not expected in every binding.
-DECL = re.compile(r"CRISPASR_CHAT_API\s+[A-Za-z_][A-Za-z0-9_ *]*?\b(crispasr_chat_[a-z0-9_]+)\s*\(")
+DECL = re.compile(r"STELNETTTS_CHAT_API\s+[A-Za-z_][A-Za-z0-9_ *]*?\b(stelnettts_chat_[a-z0-9_]+)\s*\(")
 
 
 def header_symbols(path: str) -> list[str]:
@@ -80,7 +80,7 @@ def main() -> int:
     if not symbols:
         # A header that parses to nothing would make every binding vacuously
         # complete, which is the one way this check could pass while blind.
-        print("error: no CRISPASR_CHAT_API declarations found — has the header or the regex changed?",
+        print("error: no STELNETTTS_CHAT_API declarations found — has the header or the regex changed?",
               file=sys.stderr)
         return 2
 

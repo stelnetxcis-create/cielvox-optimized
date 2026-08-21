@@ -12,14 +12,14 @@ tags:
 - multilingual
 - encoder-decoder
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 arxiv: "2309.04662"
 ---
 
 # MADLAD-400 3B MT — GGUF (ggml)
 
-GGUF / ggml conversion of [`google/madlad400-3b-mt`](https://huggingface.co/google/madlad400-3b-mt) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`google/madlad400-3b-mt`](https://huggingface.co/google/madlad400-3b-mt) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 MADLAD-400 is a 3B-parameter T5-based multilingual machine translation model covering **450+ languages**, trained on 1 trillion tokens. It was developed by Google and achieves strong results across a wide range of languages, with special emphasis on low-resource and underrepresented languages. Distributed under **Apache 2.0 license**.
 
@@ -34,27 +34,27 @@ MADLAD-400 is a 3B-parameter T5-based multilingual machine translation model cov
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 cmake --build build -j
 
 # 2. Pull model
-huggingface-cli download cstr/madlad400-3b-mt-GGUF madlad400-3b-mt-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/madlad400-3b-mt-GGUF madlad400-3b-mt-q8_0.gguf --local-dir .
 
 # 3. Translate (uses <2xx> language tags)
-./build/bin/crispasr --backend madlad -m madlad400-3b-mt-q8_0.gguf \
+./build/bin/stelnettts --backend madlad -m madlad400-3b-mt-q8_0.gguf \
     --text "Hello world, how are you today?" \
     -sl en -tl de
 
 # English → Japanese
-./build/bin/crispasr --backend madlad -m madlad400-3b-mt-q8_0.gguf \
+./build/bin/stelnettts --backend madlad -m madlad400-3b-mt-q8_0.gguf \
     --text "Machine learning is changing the world." \
     -sl en -tl ja
 
 # French → Portuguese
-./build/bin/crispasr --backend madlad -m madlad400-3b-mt-q8_0.gguf \
+./build/bin/stelnettts --backend madlad -m madlad400-3b-mt-q8_0.gguf \
     --text "Bonjour le monde!" \
     -sl fr -tl pt
 ```
@@ -83,7 +83,7 @@ python models/convert-madlad-to-gguf.py \
 
 ## Related models
 
-- [`cstr/m2m100-418m-GGUF`](https://huggingface.co/cstr/m2m100-418m-GGUF) — M2M-100, 100 languages, any-to-any
-- [`cstr/wmt21-dense-24-wide-en-x-GGUF`](https://huggingface.co/cstr/wmt21-dense-24-wide-en-x-GGUF) — WMT21 English-to-many (7 langs, highest quality)
-- [`cstr/wmt21-dense-24-wide-x-en-GGUF`](https://huggingface.co/cstr/wmt21-dense-24-wide-x-en-GGUF) — WMT21 many-to-English (7 langs)
+- [`Xenna/m2m100-418m-GGUF`](https://huggingface.co/Xenna/m2m100-418m-GGUF) — M2M-100, 100 languages, any-to-any
+- [`Xenna/wmt21-dense-24-wide-en-x-GGUF`](https://huggingface.co/Xenna/wmt21-dense-24-wide-en-x-GGUF) — WMT21 English-to-many (7 langs, highest quality)
+- [`Xenna/wmt21-dense-24-wide-x-en-GGUF`](https://huggingface.co/Xenna/wmt21-dense-24-wide-x-en-GGUF) — WMT21 many-to-English (7 langs)
 - [`google/madlad400-3b-mt`](https://huggingface.co/google/madlad400-3b-mt) — original PyTorch model

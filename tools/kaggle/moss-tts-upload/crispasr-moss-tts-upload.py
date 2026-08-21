@@ -1,4 +1,4 @@
-# CrispASR — MOSS-TTS-v1.5 convert + quantize + VALIDATE + upload to HF (#249 ship)
+# StelnetTTS — MOSS-TTS-v1.5 convert + quantize + VALIDATE + upload to HF (#249 ship)
 #
 # The 8B model only converts on a big box, so this Kaggle kernel produces the
 # GGUFs and (gated on the Q4_K decoded round-trip passing) uploads them straight
@@ -7,7 +7,7 @@
 # Flow: clone feat/moss-tts-249 -> build CUDA -> download HF model+codec (/tmp)
 #   -> convert F16 backbone+codec -> quantize Q4_K -> validate Q4_K round-trip
 #   (SKIP F16 synth on <=16 GB VRAM: the 17 GB F16 backbone won't fit a P100)
-#   -> on PASS, create cstr/moss-tts-v1.5-GGUF, upload F16+Q4_K backbones, F16
+#   -> on PASS, create Xenna/moss-tts-v1.5-GGUF, upload F16+Q4_K backbones, F16
 #   codec, and an Apache-2.0 README, verifying each landed server-side.
 #
 # HF uploads run on daemon threads with a join timeout + server-side verify
@@ -33,17 +33,17 @@ except (AttributeError, ValueError):
     pass
 
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TMP / "moss-models"
 WORK = Path("/kaggle/working")
 MODELS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-249")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-249")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 HF_MODEL = os.environ.get("MOSS_TTS_MODEL", "OpenMOSS-Team/MOSS-TTS-v1.5")
 HF_CODEC = os.environ.get("MOSS_TTS_CODEC", "OpenMOSS-Team/MOSS-Audio-Tokenizer")
-HF_REPO = os.environ.get("MOSS_TTS_HF_REPO", "cstr/moss-tts-v1.5-GGUF")
+HF_REPO = os.environ.get("MOSS_TTS_HF_REPO", "Xenna/moss-tts-v1.5-GGUF")
 
 _T0 = time.time()
 PROGRESS = WORK / "progress.txt"
@@ -134,15 +134,15 @@ base_model:
 - OpenMOSS-Team/MOSS-Audio-Tokenizer
 library_name: gguf
 pipeline_tag: text-to-speech
-tags: [tts, gguf, crispasr, moss-tts]
+tags: [tts, gguf, stelnettts, moss-tts]
 ---
 
-# MOSS-TTS-v1.5 — GGUF (for CrispASR)
+# MOSS-TTS-v1.5 — GGUF (for StelnetTTS)
 
 GGUF conversion of [`OpenMOSS-Team/MOSS-TTS-v1.5`](https://huggingface.co/OpenMOSS-Team/MOSS-TTS-v1.5)
 (MossTTSDelay: a Qwen3-8B backbone emitting 32 RVQ audio codebooks under a delay
 pattern) + its [`MOSS-Audio-Tokenizer`](https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer)
-1.6B transformer codec, for the [CrispASR](https://github.com/CrispStrobe/CrispASR)
+1.6B transformer codec, for the [StelnetTTS](https://github.com/Cyna/StelnetTTS)
 `moss-tts` backend.
 
 ## Files
@@ -154,10 +154,10 @@ pattern) + its [`MOSS-Audio-Tokenizer`](https://huggingface.co/OpenMOSS-Team/MOS
 
 ## Use
 ```bash
-crispasr --backend moss-tts -m moss-tts-v1.5-q4_k.gguf \\
+stelnettts --backend moss-tts -m moss-tts-v1.5-q4_k.gguf \\
          --codec-model moss-tts-v1.5-codec.gguf \\
          --tts "Hello world." --tts-output out.wav
-# or: crispasr --backend moss-tts -m auto --auto-download --tts "..."
+# or: stelnettts --backend moss-tts -m auto --auto-download --tts "..."
 ```
 
 Validated on CUDA (P100) by decoded round-trip (synthesize → ASR): the Q4_K
@@ -175,10 +175,10 @@ LONG = ("The quick brown fox jumps over the lazy dog. Speech synthesis should "
 
 
 def main():
-    log(f"clone {CRISPASR_REF}")
+    log(f"clone {STELNETTTS_REF}")
     if not REPO.exists():
-        run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-             CRISPASR_REPO, str(REPO)])
+        run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+             STELNETTTS_REPO, str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()
@@ -199,9 +199,9 @@ def main():
         + list(kh.cache_and_link_flags()) + list(kh.cuda_build_flags(arch)), env=env, timeout=300)
     with kh.build_heartbeat("moss-tts build"):
         kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} "
-                            f"--target crispasr-cli crispasr-quantize -j{kh.safe_build_jobs(gpu=True)}")
-    cli = BUILD / "bin" / "crispasr"
-    quant = BUILD / "bin" / "crispasr-quantize"
+                            f"--target stelnettts-cli stelnettts-quantize -j{kh.safe_build_jobs(gpu=True)}")
+    cli = BUILD / "bin" / "stelnettts"
+    quant = BUILD / "bin" / "stelnettts-quantize"
     if not cli.exists() or not quant.exists():
         raise SystemExit("binaries missing after build")
     os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"

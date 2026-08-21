@@ -1,15 +1,15 @@
 """
-CrispASR — GPU validation sweep (2026-06-13)
+StelnetTTS — GPU validation sweep (2026-06-13)
 
 Single kernel covering multiple open PLAN items that need CUDA validation:
 
-1. #114 chunk-context audit: qwen3-asr / granite / omniasr-llm long-form
+1. #114 chunk-context audit: cielvox2-asr / granite / omniasr-llm long-form
    chunking quality on GPU (30s vs 60s clips).
 2. #72 gemma4/mimo GPU-residency: A/B timing CPU vs GPU weight residency.
 3. #58 MOSS-Audio GPU: basic dGPU smoke (encoder + LLM decode).
 4. #125 P0 mimo-asr CUDA: retest sched src-mutation fix (a5a518c8).
 
-Runs on chr1s4 account. Attaches crispasr-ccache for fast builds.
+Runs on chr1s4 account. Attaches stelnettts-ccache for fast builds.
 """
 
 import gc
@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
@@ -62,8 +62,8 @@ def download_model(repo, filename, token=None):
     return Path(hf_hub_download(repo, filename, cache_dir=str(MODELS), token=token))
 
 
-def run_crispasr(args, env_extra=None, timeout=300):
-    """Run crispasr CLI with -np, return (rc, transcript, elapsed_s).
+def run_stelnettts(args, env_extra=None, timeout=300):
+    """Run stelnettts CLI with -np, return (rc, transcript, elapsed_s).
 
     Always passes -np (no-prints) to suppress log output to stderr.
     Transcript is read from stdout only — clean, no log-line pollution.
@@ -106,7 +106,7 @@ Path("/kaggle/working/started.txt").write_text("started\n")
 if REPO.exists():
     shutil.rmtree(REPO)
 run(["git", "clone", "--depth", "1", "--recursive",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 # Bundled fallback if clone path doesn't have it
@@ -140,7 +140,7 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = (
     ["cmake", "-S", str(REPO), "-B", str(BUILD),
      "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-     "-DCRISPASR_BUILD_TESTS=OFF"]
+     "-DSTELNETTTS_BUILD_TESTS=OFF"]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
 )
@@ -148,15 +148,15 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr")
+    cands = [c for c in BUILD.rglob("stelnettts")
              if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found"
+    assert cands, "stelnettts binary not found"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -208,12 +208,12 @@ print("=" * 70, flush=True)
 kh.step("test1.start")
 
 try:
-    mimo_model = download_model("cstr/mimo-asr-GGUF", "mimo-asr-q4_k.gguf", token)
-    mimo_tok = download_model("cstr/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf", token)
+    mimo_model = download_model("Xenna/mimo-asr-GGUF", "mimo-asr-q4_k.gguf", token)
+    mimo_tok = download_model("Xenna/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf", token)
     kh.step("test1.model_downloaded")
 
     # Basic JFK transcribe — should not crash
-    rc, out, elapsed = run_crispasr([
+    rc, out, elapsed = run_stelnettts([
         "-m", str(mimo_model), "--codec-model", str(mimo_tok),
         "-f", str(jfk_wav), "-v",
     ], timeout=300)
@@ -233,7 +233,7 @@ try:
     # Also test with long audio to check for the segfault
     if long_wav.exists():
         kh.step("test1.long.start")
-        rc2, out2, elapsed2 = run_crispasr([
+        rc2, out2, elapsed2 = run_stelnettts([
             "-m", str(mimo_model), "--codec-model", str(mimo_tok),
             "-f", str(long_wav), "-v",
         ], timeout=600)
@@ -256,19 +256,19 @@ print("=" * 70, flush=True)
 kh.step("test2.start")
 
 try:
-    gemma_model = download_model("cstr/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf", token)
+    gemma_model = download_model("Xenna/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf", token)
     kh.step("test2.model_downloaded")
 
     # A: default (GPU residency)
-    rc_a, out_a, elapsed_a = run_crispasr([
+    rc_a, out_a, elapsed_a = run_stelnettts([
         "-m", str(gemma_model), "-f", str(jfk_wav), "-v",
     ], timeout=300)
     ta = out_a
 
     # B: force CPU residency
-    rc_b, out_b, elapsed_b = run_crispasr([
+    rc_b, out_b, elapsed_b = run_stelnettts([
         "-m", str(gemma_model), "-f", str(jfk_wav), "-v",
-    ], env_extra={"CRISPASR_N_GPU_LAYERS": "0"}, timeout=300)
+    ], env_extra={"STELNETTTS_N_GPU_LAYERS": "0"}, timeout=300)
     tb = out_b
 
     speedup = round(elapsed_b / elapsed_a, 2) if elapsed_a > 0 else 0
@@ -298,18 +298,18 @@ kh.step("test3.start")
 
 try:
     moss_model = download_model(
-        "cstr/MOSS-Audio-4B-Instruct-GGUF",
+        "Xenna/MOSS-Audio-4B-Instruct-GGUF",
         "moss-audio-4b-instruct-q4_k.gguf", token
     )
     kh.step("test3.model_downloaded")
 
-    rc, out, elapsed = run_crispasr([
+    rc, out, elapsed = run_stelnettts([
         "-m", str(moss_model), "-f", str(jfk_wav), "-v",
     ], timeout=300)
     transcript = out
 
     # Also test with --prompt for audio understanding mode
-    rc2, out2, elapsed2 = run_crispasr([
+    rc2, out2, elapsed2 = run_stelnettts([
         "-m", str(moss_model), "-f", str(jfk_wav),
         "--prompt", "What is the speaker talking about?",
         "-v",
@@ -334,7 +334,7 @@ except Exception as ex:
     kh.step("test3.error", error=str(ex))
 
 # =====================================================================
-# TEST 4: #114 — chunk-context audit (qwen3-asr, granite, omniasr-llm)
+# TEST 4: #114 — chunk-context audit (cielvox2-asr, granite, omniasr-llm)
 # =====================================================================
 print("\n" + "=" * 70, flush=True)
 print("TEST 4: #114 — chunk-context audit", flush=True)
@@ -345,9 +345,9 @@ chunk_results = {}
 
 # Models to test for chunk-context
 chunk_backends = [
-    ("qwen3-asr", "cstr/qwen3-asr-0.6b-GGUF", "qwen3-asr-0.6b-q4_k.gguf", None),
-    ("granite-speech", "cstr/granite-speech-4.0-1b-GGUF", "granite-speech-4.0-1b-q4_k.gguf", None),
-    ("omniasr-llm", "cstr/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf", None),
+    ("cielvox2-asr", "Xenna/cielvox2-asr-0.6b-GGUF", "cielvox2-asr-0.6b-q4_k.gguf", None),
+    ("granite-speech", "Xenna/granite-speech-4.0-1b-GGUF", "granite-speech-4.0-1b-q4_k.gguf", None),
+    ("omniasr-llm", "Xenna/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf", None),
 ]
 
 for backend_name, repo, fname, extra in chunk_backends:
@@ -357,14 +357,14 @@ for backend_name, repo, fname, extra in chunk_backends:
         model_path = download_model(repo, fname, token)
 
         # A: short audio (JFK 11s) — baseline, should always work
-        rc_short, out_short, el_short = run_crispasr([
+        rc_short, out_short, el_short = run_stelnettts([
             "-m", str(model_path), "-f", str(jfk_wav), "-v",
         ], timeout=300)
         t_short = out_short
 
         # B: long audio (60s concat) — tests chunking
         if long_wav.exists():
-            rc_long, out_long, el_long = run_crispasr([
+            rc_long, out_long, el_long = run_stelnettts([
                 "-m", str(model_path), "-f", str(long_wav), "-v",
             ], timeout=600)
         else:
@@ -373,7 +373,7 @@ for backend_name, repo, fname, extra in chunk_backends:
 
         # C: long audio with explicit chunk-seconds
         if long_wav.exists():
-            rc_chunk, out_chunk, el_chunk = run_crispasr([
+            rc_chunk, out_chunk, el_chunk = run_stelnettts([
                 "-m", str(model_path), "-f", str(long_wav),
                 "--chunk-seconds", "30", "-v",
             ], timeout=600)
@@ -406,7 +406,7 @@ for backend_name, repo, fname, extra in chunk_backends:
 summary["chunk_context_audit"] = chunk_results
 
 # =====================================================================
-# TEST 5: #125 — gemma4-e2b long-audio with CRISPASR_GEMMA4_AUTO_CHUNK=1
+# TEST 5: #125 — gemma4-e2b long-audio with STELNETTTS_GEMMA4_AUTO_CHUNK=1
 # =====================================================================
 print("\n" + "=" * 70, flush=True)
 print("TEST 5: #125 — gemma4-e2b auto-chunk long audio", flush=True)
@@ -416,19 +416,19 @@ kh.step("test5.start")
 try:
     # Reuse gemma_model from test 2 if available
     if "gemma_model" not in dir():
-        gemma_model = download_model("cstr/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf", token)
+        gemma_model = download_model("Xenna/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf", token)
 
     if long_wav.exists():
         # A: without auto-chunk (default — may degrade on long audio)
-        rc_a, out_a, el_a = run_crispasr([
+        rc_a, out_a, el_a = run_stelnettts([
             "-m", str(gemma_model), "-f", str(long_wav), "-v",
         ], timeout=600)
         ta = out_a
 
-        # B: with CRISPASR_GEMMA4_AUTO_CHUNK=1
-        rc_b, out_b, el_b = run_crispasr([
+        # B: with STELNETTTS_GEMMA4_AUTO_CHUNK=1
+        rc_b, out_b, el_b = run_stelnettts([
             "-m", str(gemma_model), "-f", str(long_wav), "-v",
-        ], env_extra={"CRISPASR_GEMMA4_AUTO_CHUNK": "1"}, timeout=600)
+        ], env_extra={"STELNETTTS_GEMMA4_AUTO_CHUNK": "1"}, timeout=600)
         tb = out_b
 
         summary["gemma4_auto_chunk"] = {
@@ -462,7 +462,7 @@ try:
     kh.step("test6.model_downloaded")
 
     # JFK EN (should still produce something — model is JA-tuned but EN is in the base)
-    rc_en, out_en, el_en = run_crispasr([
+    rc_en, out_en, el_en = run_stelnettts([
         "-m", str(cohere_ja_model), "-f", str(jfk_wav), "-v",
     ], timeout=300)
     t_en = out_en

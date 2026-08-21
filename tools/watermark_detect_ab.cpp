@@ -3,7 +3,7 @@
 // Produces the false-positive / true-positive table that decides which
 // statistic `--detect-watermark` should default to. Both detectors read the
 // SAME embed, so a clip is scored twice: once as it arrives (null) and once
-// after crispasr_watermark_embed_impl() marks it (positive).
+// after stelnettts_watermark_embed_impl() marks it (positive).
 //
 //   build/bin/watermark-detect-ab <wav>...
 //
@@ -24,7 +24,7 @@
 // The clip lengths mirror docs/eu-ai-act.md 6.7 so the new numbers drop into
 // the same table as the old ones.
 
-#include "core/crispasr_watermark.h"
+#include "core/stelnettts_watermark.h"
 #include "core/wav_reader.h"
 
 #include <algorithm>
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         std::vector<float> pcm;
         int sr = 0;
-        if (!crispasr::core::read_wav_mono_pcm16(argv[i], pcm, sr)) {
+        if (!stelnettts::core::read_wav_mono_pcm16(argv[i], pcm, sr)) {
             std::fprintf(stderr, "FAIL: cannot read %s\n", argv[i]);
             return 1;
         }
@@ -100,12 +100,12 @@ int main(int argc, char** argv) {
                     continue;
 
                 std::vector<float> marked = clean;
-                crispasr_watermark_embed_impl(marked.data(), clip_n);
+                stelnettts_watermark_embed_impl(marked.data(), clip_n);
 
-                const float s_null = crispasr_watermark_detect_impl(clean.data(), clip_n);
-                const float s_mark = crispasr_watermark_detect_impl(marked.data(), clip_n);
-                const float f_null = crispasr_watermark_detect_frames_impl(clean.data(), clip_n);
-                const float f_mark = crispasr_watermark_detect_frames_impl(marked.data(), clip_n);
+                const float s_null = stelnettts_watermark_detect_impl(clean.data(), clip_n);
+                const float s_mark = stelnettts_watermark_detect_impl(marked.data(), clip_n);
+                const float f_null = stelnettts_watermark_detect_frames_impl(clean.data(), clip_n);
+                const float f_mark = stelnettts_watermark_detect_frames_impl(marked.data(), clip_n);
 
                 sign.n++;
                 sign.fp065 += s_null > kThr065;

@@ -17,13 +17,13 @@ tags:
 - meanflow
 - hifi-gan
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Kartoffelbox-Turbo TTS — GGUF (ggml)
 
-GGUF / ggml conversion of [`SebastianBodza/Kartoffelbox_Turbo`](https://huggingface.co/SebastianBodza/Kartoffelbox_Turbo) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`SebastianBodza/Kartoffelbox_Turbo`](https://huggingface.co/SebastianBodza/Kartoffelbox_Turbo) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Kartoffelbox-Turbo is a **German fine-tune** of [chatterbox-turbo](https://huggingface.co/ResembleAI/chatterbox-turbo) by SebastianBodza. It shares the same GPT-2 T3 architecture and S3Gen vocoder as chatterbox-turbo — only the T3 AR weights differ. Distributed under **MIT license**.
 
@@ -38,23 +38,23 @@ Three GGUF files are needed: the **T3 model** (Kartoffelbox fine-tune), the **S3
 | `kartoffelbox-turbo-t3-q4_k.gguf` | 452 MB | Q4_K quantized |
 | `chatterbox-turbo-s3gen-f16.gguf` | 628 MB | S3Gen encoder + meanflow CFM + HiFT vocoder (shared with turbo) |
 
-The T3 file includes precomputed voice conditioning (`conds.*` tensors). The S3Gen file is identical to the one in [`cstr/chatterbox-turbo-GGUF`](https://huggingface.co/cstr/chatterbox-turbo-GGUF).
+The T3 file includes precomputed voice conditioning (`conds.*` tensors). The S3Gen file is identical to the one in [`Xenna/chatterbox-turbo-GGUF`](https://huggingface.co/Xenna/chatterbox-turbo-GGUF).
 
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 cmake --build build -j
 
 # 2. Pull model files
-huggingface-cli download cstr/kartoffelbox-turbo-GGUF kartoffelbox-turbo-t3-f16.gguf --local-dir .
-huggingface-cli download cstr/chatterbox-turbo-GGUF chatterbox-turbo-s3gen-f16.gguf --local-dir .
+huggingface-cli download Xenna/kartoffelbox-turbo-GGUF kartoffelbox-turbo-t3-f16.gguf --local-dir .
+huggingface-cli download Xenna/chatterbox-turbo-GGUF chatterbox-turbo-s3gen-f16.gguf --local-dir .
 
 # 3. Synthesise via CLI
-./build/bin/crispasr \
+./build/bin/stelnettts \
   -m kartoffelbox-turbo-t3-f16.gguf \
   --codec-model chatterbox-turbo-s3gen-f16.gguf \
   --tts "Hallo Welt, wie geht es Ihnen heute?" \
@@ -63,7 +63,7 @@ huggingface-cli download cstr/chatterbox-turbo-GGUF chatterbox-turbo-s3gen-f16.g
 
 ## Architecture
 
-Same as chatterbox-turbo — see [`cstr/chatterbox-turbo-GGUF`](https://huggingface.co/cstr/chatterbox-turbo-GGUF) for full architecture details.
+Same as chatterbox-turbo — see [`Xenna/chatterbox-turbo-GGUF`](https://huggingface.co/Xenna/chatterbox-turbo-GGUF) for full architecture details.
 
 ```
 Text -> GPT-2 BPE tokenizer (50257 tokens)
@@ -108,6 +108,6 @@ python models/convert-chatterbox-to-gguf.py \
 
 ## Related models
 
-- [`cstr/chatterbox-turbo-GGUF`](https://huggingface.co/cstr/chatterbox-turbo-GGUF) — base Chatterbox-Turbo (English)
-- [`cstr/chatterbox-GGUF`](https://huggingface.co/cstr/chatterbox-GGUF) — base Chatterbox (Llama T3, 10-step CFM)
+- [`Xenna/chatterbox-turbo-GGUF`](https://huggingface.co/Xenna/chatterbox-turbo-GGUF) — base Chatterbox-Turbo (English)
+- [`Xenna/chatterbox-GGUF`](https://huggingface.co/Xenna/chatterbox-GGUF) — base Chatterbox (Llama T3, 10-step CFM)
 - [`SebastianBodza/Kartoffelbox_Turbo`](https://huggingface.co/SebastianBodza/Kartoffelbox_Turbo) — original PyTorch model

@@ -1,14 +1,14 @@
-# crispasr/tests/librispeech
+# stelnettts/tests/librispeech
 
 [LibriSpeech](https://www.openslr.org/12) is a standard dataset for
 training and evaluating automatic speech recognition systems.
 
 This directory contains a set of tools to evaluate the recognition
-performance of crispasr on LibriSpeech corpus.
+performance of stelnettts on LibriSpeech corpus.
 
 ## Quick Start
 
-1. (Pre-requirement) Compile `crispasr` and prepare the Whisper
+1. (Pre-requirement) Compile `stelnettts` and prepare the Whisper
    model in `ggml` format.
 
    ```
@@ -18,7 +18,7 @@ performance of crispasr on LibriSpeech corpus.
    $ ./models/download-ggml-model.sh tiny
    ```
 
-   Consult [crispasr/README.md](../../README.md) for more details.
+   Consult [stelnettts/README.md](../../README.md) for more details.
 
 2. Download the audio files from LibriSpeech project.
 
@@ -53,8 +53,8 @@ performance of crispasr on LibriSpeech corpus.
 Create `eval.conf` and override variables.
 
 ```
-CRISPASR_MODEL = large-v3-turbo
-CRISPASR_FLAGS = --no-prints --threads 8 --language en --output-txt
+STELNETTTS_MODEL = large-v3-turbo
+STELNETTTS_FLAGS = --no-prints --threads 8 --language en --output-txt
 ```
 
 Check out `eval.mk` for more details.

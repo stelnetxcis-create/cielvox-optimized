@@ -2,13 +2,13 @@
 """Cohere Transcribe Arabic — end-to-end verification on Kaggle GPU.
 
 Answers, with the CORRECT (upstream) weights:
-  1. Does the C++ runtime (crispasr) transcribe real Arabic (not 🎵/music)?
+  1. Does the C++ runtime (stelnettts) transcribe real Arabic (not 🎵/music)?
   2. Does the Python HF reference agree (transcript-level parity)?
-  3. Numerical parity: crispasr-diff cos per encoder stage vs a Python ref dump.
+  3. Numerical parity: stelnettts-diff cos per encoder stage vs a Python ref dump.
   4. Short (4s) / medium (8s) / long (40s, chunking path) audio.
 
 C++ builds from GitHub main (the SHIPPED cohere.cpp — WIP masking is NOT on
-main). GGUF pulled from cstr/cohere-transcribe-arabic-07-2026-GGUF (the fixed,
+main). GGUF pulled from Xenna/cohere-transcribe-arabic-07-2026-GGUF (the fixed,
 published weights). Python model pulled from the gated upstream
 CohereLabs/cohere-transcribe-arabic-07-2026 (cstr HF token has access).
 """
@@ -17,16 +17,16 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TMP  = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"          # clone off /kaggle/working (gotcha #22)
+REPO = TMP / "StelnetTTS"          # clone off /kaggle/working (gotcha #22)
 BUILD = TMP / "build"
 MODELS = TMP / "models";   MODELS.mkdir(parents=True, exist_ok=True)
 REFMODEL = TMP / "refmodel"; REFMODEL.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "results"; RESULTS.mkdir(parents=True, exist_ok=True)
 
-GGUF_REPO = "cstr/cohere-transcribe-arabic-07-2026-GGUF"
+GGUF_REPO = "Xenna/cohere-transcribe-arabic-07-2026-GGUF"
 ORIG_REPO = "CohereLabs/cohere-transcribe-arabic-07-2026"
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF  = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF  = os.environ.get("STELNETTTS_REF", "main")
 HERE = Path(__file__).resolve().parent
 
 def jstep(name, **kv):
@@ -34,8 +34,8 @@ def jstep(name, **kv):
 
 # ───────────────────────── clone + harness + build ────────────────────────
 if REPO.exists(): shutil.rmtree(REPO)
-subprocess.check_call(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-                       "--recursive", CRISPASR_REPO, str(REPO)])
+subprocess.check_call(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+                       "--recursive", STELNETTTS_REPO, str(REPO)])
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh
 kh.init_progress()
@@ -47,11 +47,11 @@ subprocess.check_call(["cmake", "-S", str(REPO), "-B", str(BUILD),
                        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON"])
 with kh.build_heartbeat("build"):
     kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} "
-                        f"--target crispasr-cli crispasr-diff -j{kh.safe_build_jobs(gpu=True)}")
-CLI  = BUILD / "bin" / "crispasr"
-DIFF = BUILD / "bin" / "crispasr-diff"
+                        f"--target stelnettts-cli stelnettts-diff -j{kh.safe_build_jobs(gpu=True)}")
+CLI  = BUILD / "bin" / "stelnettts"
+DIFF = BUILD / "bin" / "stelnettts-diff"
 jstep("built", cli=CLI.exists(), diff=DIFF.exists())
-assert CLI.exists(), "crispasr binary missing"
+assert CLI.exists(), "stelnettts binary missing"
 
 # ───────────────────────── deps + downloads ───────────────────────────────
 for pkg in ("gguf", "soundfile"):
@@ -96,7 +96,7 @@ def cpp_transcribe(gguf, wav, timeout=1800, extra_env=None):
     r = subprocess.run([str(CLI), "-m", str(gguf), "-f", str(wav), "-l", "ar"],
                        capture_output=True, text=True, timeout=timeout, env=env)
     lines = [l for l in r.stdout.splitlines()
-             if l.strip() and not l.lstrip().startswith(("[", "whisper_", "crispasr_", "load", "main:"))]
+             if l.strip() and not l.lstrip().startswith(("[", "whisper_", "stelnettts_", "load", "main:"))]
     return norm(" ".join(lines)), r.returncode
 
 # ───────────────────────── Python HF reference (robust) ────────────────────
@@ -151,7 +151,7 @@ def load_python():
 def py_transcribe(model, proc, wav):
     return model.transcribe(proc, language="ar", audio_files=[str(wav)])[0]
 
-# ───────────────────────── numerical parity (hooks + crispasr-diff) ────────
+# ───────────────────────── numerical parity (hooks + stelnettts-diff) ────────
 def dump_reference(model, proc, wav, out_gguf):
     import torch, numpy as np, soundfile as sf, importlib.util
     a, _ = sf.read(str(wav))
@@ -222,7 +222,7 @@ if PY_OK:
         jstep("python_fail", err=str(e)[:150])
 
 # ───────────────────────── overhang-masking A/B ───────────────────────────
-# Does CRISPASR_COHERE_MASK_OVERHANG=1 change/improve the transcript? Test on
+# Does STELNETTTS_COHERE_MASK_OVERHANG=1 change/improve the transcript? Test on
 # 8s, a boundary-length ~11s single-pass clip (where overhang lands on a
 # subsampling boundary), and 40s (chunked). Keep the feature only if it helps.
 try:
@@ -234,7 +234,7 @@ try:
     mask_ab = {}
     for nm, wav in [("8s", CLIPS["med_8s"]), ("11s", clip11), ("40s", CLIPS["long_40s"])]:
         off, _ = cpp_transcribe(g, wav)
-        on, _ = cpp_transcribe(g, wav, extra_env={"CRISPASR_COHERE_MASK_OVERHANG": "1"})
+        on, _ = cpp_transcribe(g, wav, extra_env={"STELNETTTS_COHERE_MASK_OVERHANG": "1"})
         mask_ab[nm] = {"off": off, "on": on, "identical": norm(off) == norm(on)}
         jstep(f"mask_ab_{nm}", identical=mask_ab[nm]["identical"])
     results["mask_ab"] = mask_ab

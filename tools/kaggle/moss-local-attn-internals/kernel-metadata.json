@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-moss-local-attn-internals",
-  "title": "crispasr moss local attn internals",
-  "code_file": "crispasr-moss-local-attn-internals.py",
+  "id": "chr1str/stelnettts-moss-local-attn-internals",
+  "title": "stelnettts moss local attn internals",
+  "code_file": "stelnettts-moss-local-attn-internals.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

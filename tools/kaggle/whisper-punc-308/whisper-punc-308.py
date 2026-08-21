@@ -1,5 +1,5 @@
 """
-CrispASR — #308 verify: --backend whisper must not double-punctuate.
+StelnetTTS — #308 verify: --backend whisper must not double-punctuate.
 
 Bug (bilo1967): `--backend whisper --output-srt` produced subtitles with the
 first word double-capitalised ("Hello" -> "HEllo") and a spurious full stop
@@ -9,11 +9,11 @@ cased+punctuated text. Fix cfbc082e adds the flag + hardens the FireRedPunc
 capitaliser.
 
 Method (single build of current main, which contains the fix):
-  1. Build crispasr-cli from main.
+  1. Build stelnettts-cli from main.
   2. Download ggml-base.en.bin (whisper).
   3. Run jfk.wav two ways:
-       A) dispatch path:   crispasr --backend whisper ...
-       B) historical path: crispasr ...            (no --backend; never
+       A) dispatch path:   stelnettts --backend whisper ...
+       B) historical path: stelnettts ...            (no --backend; never
           post-punctuated — the reference for correct output)
   4. Assert: (a) both non-empty, (b) NEITHER has a word starting with two
      uppercase letters (the "HEllo" signature), (c) A's text == B's text
@@ -39,10 +39,10 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")   # keep tiny (only progress.jsonl) — gotcha #22
 TMP = Path("/kaggle/temp")       # repo clone + build + models live here
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 # whisper base.en is public (no token) and small; the #308 bug is model-independent.
 WHISPER_REPO = "ggerganov/whisper.cpp"
 WHISPER_FILE = "ggml-base.en.bin"
@@ -66,11 +66,11 @@ def run(cmd, check=True, timeout=1800, cwd=None, env=None):
 
 
 # ── Clone + build ──────────────────────────────────────────────────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "5", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "5", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 # cfbc082e is the #308 fix; confirm it is in the built tree.
 has_fix = subprocess.run(
@@ -100,22 +100,22 @@ BUILD.mkdir(parents=True, exist_ok=True)
 # (Kaggle CPU workers have none). Skipping CUDA cuts build time substantially.
 cmake_args = (
     ["cmake", "-S", str(REPO), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release",
-     "-DBUILD_SHARED_LIBS=ON", "-DGGML_CUDA=OFF", "-DCRISPASR_OPUS_FETCH=ON"]
+     "-DBUILD_SHARED_LIBS=ON", "-DGGML_CUDA=OFF", "-DSTELNETTTS_OPUS_FETCH=ON"]
     + kh.cache_and_link_flags()
 )
 run(cmake_args)
 step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}"
     )
 step("build_done")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 step("cli_found", path=str(CLI))

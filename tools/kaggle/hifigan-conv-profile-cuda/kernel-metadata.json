@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-hifigan-conv-profile-cuda",
-  "title": "crispasr-hifigan-conv-profile-cuda",
-  "code_file": "crispasr-hifigan-conv-profile-cuda.py",
+  "id": "chr1str/stelnettts-hifigan-conv-profile-cuda",
+  "title": "stelnettts-hifigan-conv-profile-cuda",
+  "code_file": "stelnettts-hifigan-conv-profile-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

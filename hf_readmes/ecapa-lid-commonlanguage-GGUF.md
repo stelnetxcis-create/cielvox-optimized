@@ -8,14 +8,14 @@ tags:
 - ecapa-tdnn
 - speechbrain
 - gguf
-- crispasr
+- stelnettts
 base_model: speechbrain/lang-id-commonlanguage_ecapa
 pipeline_tag: audio-classification
 ---
 
 # ECAPA-TDNN CommonLanguage LID (GGUF)
 
-GGUF conversion of [speechbrain/lang-id-commonlanguage_ecapa](https://huggingface.co/speechbrain/lang-id-commonlanguage_ecapa) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [speechbrain/lang-id-commonlanguage_ecapa](https://huggingface.co/speechbrain/lang-id-commonlanguage_ecapa) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model Details
 
@@ -33,11 +33,11 @@ GGUF conversion of [speechbrain/lang-id-commonlanguage_ecapa](https://huggingfac
 
 Arabic, Basque, Breton, Catalan, Chinese_China, Chinese_Hongkong, Chinese_Taiwan, Chuvash, Czech, Dhivehi, Dutch, English, Esperanto, Estonian, French, Frisian, Georgian, German, Greek, Hakha_Chin, Indonesian, Interlingua, Italian, Japanese, Kabyle, Kinyarwanda, Kyrgyz, Latvian, Maltese, Mongolian, Persian, Polish, Portuguese, Romanian, Romansh_Sursilvan, Russian, Sakha, Slovenian, Spanish, Swedish, Tamil, Tatar, Turkish, Ukranian, Welsh
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # As LID pre-step for any ASR backend
-crispasr -m model.gguf --lid-backend ecapa --lid-model ecapa-lid-commonlanguage-f16.gguf -l auto -f audio.wav
+stelnettts -m model.gguf --lid-backend ecapa --lid-model ecapa-lid-commonlanguage-f16.gguf -l auto -f audio.wav
 ```
 
 ## Accuracy
@@ -65,7 +65,7 @@ Note: Cosine similarity scores are naturally lower than softmax probabilities. T
 | File size | 43 MB | 40 MB |
 | Labels | ISO codes (en, de, ...) | Full names (English, German, ...) |
 
-**Recommendation**: Use VoxLingua107 (`cstr/ecapa-lid-107-GGUF`) for most use cases — wider language coverage and higher confidence scores. CommonLanguage is useful if you need the specific 45-language set or prefer full language names.
+**Recommendation**: Use VoxLingua107 (`Xenna/ecapa-lid-107-GGUF`) for most use cases — wider language coverage and higher confidence scores. CommonLanguage is useful if you need the specific 45-language set or prefer full language names.
 
 ## Files
 

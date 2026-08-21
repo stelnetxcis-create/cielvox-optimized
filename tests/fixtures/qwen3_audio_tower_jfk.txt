@@ -1,4 +1,4 @@
-# qwen3-asr audio tower regression baseline
+# cielvox2-asr audio tower regression baseline
 n_frames 143
 dim 1024
 sum 1.092970e+02

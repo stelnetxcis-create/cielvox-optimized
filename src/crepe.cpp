@@ -34,8 +34,8 @@
 #include "crepe.h"
 
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -75,7 +75,7 @@ constexpr int kNumLayers = 6;
 // discarded, so a single persistent graph covers every call.
 // Frames per graph dispatch. 64 was an initial GUESS, never swept; the sweep
 // lives in tools/crepe_batch_sweep.sh and the measured table is in
-// docs/music-transcription/PLAN.md. Override with CRISPASR_CREPE_BATCH to
+// docs/music-transcription/PLAN.md. Override with STELNETTTS_CREPE_BATCH to
 // re-measure without a rebuild. Clamped to [1, 512]: conv2's im2col is the
 // memory driver (batch * 128 * 64 * 128 floats), so an unbounded value would
 // balloon the compute buffer.
@@ -93,7 +93,7 @@ constexpr int kBigInFeatures = 1024;
 
 inline int crepe_batch(int in_features) {
     int b = (in_features >= kBigInFeatures) ? kBatchFull : kBatchTiny;
-    if (const char* e = crispasr_env::get("CRISPASR_CREPE_BATCH")) {
+    if (const char* e = stelnettts_env::get("STELNETTTS_CREPE_BATCH")) {
         const int v = std::atoi(e);
         if (v >= 1 && v <= 512)
             b = v;
@@ -327,7 +327,7 @@ extern "C" struct crepe_context* crepe_init(const char* model_path, int n_thread
 
     auto* ctx = new crepe_context();
     ctx->n_threads = n_threads > 0 ? n_threads : 4;
-    ctx->debug = crispasr_env::get("CRISPASR_CREPE_DEBUG") != nullptr;
+    ctx->debug = stelnettts_env::get("STELNETTTS_CREPE_DEBUG") != nullptr;
 
     gguf_context* gctx = core_gguf::open_metadata(model_path);
     if (!gctx) {
@@ -344,9 +344,9 @@ extern "C" struct crepe_context* crepe_init(const char* model_path, int n_thread
     ctx->cents_offset = core_gguf::kv_f32(gctx, "crepe.cents_offset", 1997.3794084376191f);
     core_gguf::free_metadata(gctx);
 
-    // CUDA > Metal > Vulkan > CPU. CRISPASR_CREPE_NO_GPU=1 forces CPU for A/B.
-    const bool no_gpu = crispasr_env::get("CRISPASR_CREPE_NO_GPU") != nullptr;
-    ctx->backend = no_gpu ? nullptr : crispasr_init_gpu_backend();
+    // CUDA > Metal > Vulkan > CPU. STELNETTTS_CREPE_NO_GPU=1 forces CPU for A/B.
+    const bool no_gpu = stelnettts_env::get("STELNETTTS_CREPE_NO_GPU") != nullptr;
+    ctx->backend = no_gpu ? nullptr : stelnettts_init_gpu_backend();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     if (!ctx->backend) {
@@ -387,9 +387,9 @@ extern "C" struct crepe_context* crepe_init(const char* model_path, int n_thread
     // activations are F32. In a persistent graph that cast node re-runs on
     // every compute — i.e. it re-casts the whole 44 MB weight set once per
     // 10 ms frame, which measured RTF 31 on M1. Converting once here makes the
-    // cast a no-op. (Same fix as qwen3-tts CODEC_FASTCONV.) Gate:
-    // CRISPASR_CREPE_NO_BAKE_F32=1 restores the in-graph cast for A/B.
-    if (crispasr_env::get("CRISPASR_CREPE_NO_BAKE_F32") == nullptr) {
+    // cast a no-op. (Same fix as cielvox2-tts CODEC_FASTCONV.) Gate:
+    // STELNETTTS_CREPE_NO_BAKE_F32=1 restores the in-graph cast for A/B.
+    if (stelnettts_env::get("STELNETTTS_CREPE_NO_BAKE_F32") == nullptr) {
         size_t n_f16 = 0;
         for (int i = 0; i < kNumLayers; i++)
             if (ctx->layers[i].w->type == GGML_TYPE_F16)

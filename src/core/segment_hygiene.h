@@ -1,7 +1,7 @@
 // core/segment_hygiene.h — post-decode segment cleanup (PLAN.md §W2, §W5, §W6).
 //
 // Three transforms that live downstream of the logits, in the zone the
-// crispasr-diff harness cannot see: a per-stage cosine of 1.000000 says nothing
+// stelnettts-diff harness cannot see: a per-stage cosine of 1.000000 says nothing
 // about whether a runaway line got truncated or a duplicate segment got merged.
 // They therefore get hermetic unit tests of their own
 // (`tests/test-segment-hygiene.cpp`), which is the only place this behaviour is
@@ -26,8 +26,8 @@
 
 namespace core_seg_hygiene {
 
-// Minimal view of a segment. Callers adapt from `crispasr_segment` (CLI) or
-// `crispasr_session_seg` (session ABI) — deliberately not coupled to either, so
+// Minimal view of a segment. Callers adapt from `stelnettts_segment` (CLI) or
+// `stelnettts_session_seg` (session ABI) — deliberately not coupled to either, so
 // one implementation serves both surfaces (the multi-surface trap: a cleanup
 // written against one struct silently misses the other).
 struct Seg {
@@ -425,36 +425,36 @@ inline double env_double(const char* k, double dflt) {
 // of these can delete or alter user-visible text, and a wrong deletion is worse
 // than a surviving artifact, so none of them may switch on by surprise.
 //
-//   CRISPASR_SEG_MAX_CHARS=N     §W2 truncate lines over N code points
-//   CRISPASR_SEG_DROP_NONVERBAL=1 §W6 drop [Music] / (laughs) / ♪ lines
-//   CRISPASR_SEG_LOGPROB_THOLD=F §W6 drop segments below F average logprob
-//   CRISPASR_SEG_LOGPROB_MARGIN=F §W6 tighten that by F for short segments
-//   CRISPASR_SEG_MERGE_REPEATS=1 §W5 collapse runs of near-identical segments
-//   CRISPASR_SEG_MERGE_SIMILARITY=F / _MERGE_GAP_CS=N / _MERGE_MIN_RUN=N
+//   STELNETTTS_SEG_MAX_CHARS=N     §W2 truncate lines over N code points
+//   STELNETTTS_SEG_DROP_NONVERBAL=1 §W6 drop [Music] / (laughs) / ♪ lines
+//   STELNETTTS_SEG_LOGPROB_THOLD=F §W6 drop segments below F average logprob
+//   STELNETTTS_SEG_LOGPROB_MARGIN=F §W6 tighten that by F for short segments
+//   STELNETTTS_SEG_MERGE_REPEATS=1 §W5 collapse runs of near-identical segments
+//   STELNETTTS_SEG_MERGE_SIMILARITY=F / _MERGE_GAP_CS=N / _MERGE_MIN_RUN=N
 inline Config config_from_env() {
     Config c;
 
-    const double max_chars = detail::env_double("CRISPASR_SEG_MAX_CHARS", 0.0);
+    const double max_chars = detail::env_double("STELNETTTS_SEG_MAX_CHARS", 0.0);
     if (max_chars > 0.0)
         c.cap.max_codepoints = (size_t)max_chars;
 
-    const bool nonverbal = detail::env_truthy("CRISPASR_SEG_DROP_NONVERBAL");
-    const char* lp = detail::env_or_null("CRISPASR_SEG_LOGPROB_THOLD");
+    const bool nonverbal = detail::env_truthy("STELNETTTS_SEG_DROP_NONVERBAL");
+    const char* lp = detail::env_or_null("STELNETTTS_SEG_LOGPROB_THOLD");
     if (nonverbal || lp) {
         c.filter.enabled = true;
         c.filter.drop_nonverbal = nonverbal;
         if (lp) {
             c.filter.use_logprob = true;
-            c.filter.logprob_threshold = (float)detail::env_double("CRISPASR_SEG_LOGPROB_THOLD", -1.0);
-            c.filter.short_segment_margin = (float)detail::env_double("CRISPASR_SEG_LOGPROB_MARGIN", 0.0);
+            c.filter.logprob_threshold = (float)detail::env_double("STELNETTTS_SEG_LOGPROB_THOLD", -1.0);
+            c.filter.short_segment_margin = (float)detail::env_double("STELNETTTS_SEG_LOGPROB_MARGIN", 0.0);
         }
     }
 
-    if (detail::env_truthy("CRISPASR_SEG_MERGE_REPEATS")) {
+    if (detail::env_truthy("STELNETTTS_SEG_MERGE_REPEATS")) {
         c.merge.enabled = true;
-        c.merge.similarity = detail::env_double("CRISPASR_SEG_MERGE_SIMILARITY", c.merge.similarity);
-        c.merge.max_gap_cs = (int64_t)detail::env_double("CRISPASR_SEG_MERGE_GAP_CS", (double)c.merge.max_gap_cs);
-        c.merge.min_run = (int)detail::env_double("CRISPASR_SEG_MERGE_MIN_RUN", (double)c.merge.min_run);
+        c.merge.similarity = detail::env_double("STELNETTTS_SEG_MERGE_SIMILARITY", c.merge.similarity);
+        c.merge.max_gap_cs = (int64_t)detail::env_double("STELNETTTS_SEG_MERGE_GAP_CS", (double)c.merge.max_gap_cs);
+        c.merge.min_run = (int)detail::env_double("STELNETTTS_SEG_MERGE_MIN_RUN", (double)c.merge.min_run);
     }
     return c;
 }

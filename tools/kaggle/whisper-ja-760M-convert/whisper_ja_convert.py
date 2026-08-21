@@ -1,9 +1,9 @@
 """Convert efwkjn/whisper-ja-760M (Whisper large-v3-turbo arch, custom 10 240-token
-Japanese vocab, #258 custom-vocab path) to CrispASR whisper GGML, quantise to q4_k,
+Japanese vocab, #258 custom-vocab path) to StelnetTTS whisper GGML, quantise to q4_k,
 validate by transcribing a Japanese clip, and upload to a PRIVATE HF repo.
 
-Full harness regime: clone CrispASR + import kaggle_harness from the clone, both
-datasets (crispasr-hf-token + crispasr-ccache), token via resolve_hf_token, every
+Full harness regime: clone StelnetTTS + import kaggle_harness from the clone, both
+datasets (stelnettts-hf-token + stelnettts-ccache), token via resolve_hf_token, every
 long op wrapped in build_heartbeat. Source model has NO license → PRIVATE repo only.
 """
 import json
@@ -20,14 +20,14 @@ _T0 = time.time()
 
 TEMP = Path("/kaggle/temp")
 OUT = Path("/kaggle/working")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TEMP / "models"
 for d in (TEMP, OUT, MODELS):
     d.mkdir(parents=True, exist_ok=True)
 
 SRC_REPO = "efwkjn/whisper-ja-760M"
-HF_REPO = "cstr/whisper-ja-760M-GGML"   # PRIVATE (source has no license)
+HF_REPO = "Xenna/whisper-ja-760M-GGML"   # PRIVATE (source has no license)
 NAME = "whisper-ja-760m"
 
 
@@ -53,7 +53,7 @@ print(json.dumps({"step": "start"}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
 run(["git", "clone", "--recursive", "--depth", "1",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)], capture_output=False)
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)], capture_output=False)
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive", "--depth", "1"],
     capture_output=False, timeout=1800)
 
@@ -71,15 +71,15 @@ kh.install_build_toolchain()
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
 from huggingface_hub import HfApi, snapshot_download  # noqa: E402
 
-# ── build (CPU): crispasr-cli + crispasr-legacy-quantize ────────────────────
+# ── build (CPU): stelnettts-cli + stelnettts-legacy-quantize ────────────────────
 kh.step("configure")
 cfg = ["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-       "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON"] + kh.cache_and_link_flags()
+       "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON"] + kh.cache_and_link_flags()
 r = run(cfg, capture_output=False)
 if r.returncode != 0:
     kh.step("configure.FAIL"); raise SystemExit(1)
 jobs = str(min(4, os.cpu_count() or 2))
-for tgt in ("crispasr-cli", "crispasr-legacy-quantize"):
+for tgt in ("stelnettts-cli", "stelnettts-legacy-quantize"):
     kh.step(f"build.{tgt}")
     with kh.build_heartbeat(f"build.{tgt}"):
         r = run(["cmake", "--build", str(BUILD), "--target", tgt, "-j", jobs], capture_output=False)
@@ -95,8 +95,8 @@ def find_bin(name):
     return cands[0] if cands else None
 
 
-CLI = find_bin("crispasr")
-QUANT = find_bin("crispasr-legacy-quantize")
+CLI = find_bin("stelnettts")
+QUANT = find_bin("stelnettts-legacy-quantize")
 if CLI is None or QUANT is None:
     kh.step("build.MISSING", cli=str(CLI), quant=str(QUANT)); raise SystemExit(1)
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -173,19 +173,19 @@ api = HfApi(token=TOKEN)
 if results.get("q4_k", {}).get("pass"):
     api.create_repo(repo_id=HF_REPO, repo_type="model", private=True, exist_ok=True)
     readme = (
-        f"# {SRC_REPO} — CrispASR whisper GGML (PRIVATE)\n\n"
-        f"CrispASR whisper GGML conversion of [{SRC_REPO}](https://huggingface.co/{SRC_REPO}) "
+        f"# {SRC_REPO} — StelnetTTS whisper GGML (PRIVATE)\n\n"
+        f"StelnetTTS whisper GGML conversion of [{SRC_REPO}](https://huggingface.co/{SRC_REPO}) "
         f"(Whisper large-v3-turbo arch, custom {cfg_json.get('vocab_size')}-token Japanese vocab).\n\n"
         f"**PRIVATE / evaluation only — the source model has no license.**\n\n"
         f"- `{NAME}-f16.bin` — f16 GGML\n- `{NAME}-q4_k.bin` — q4_k quant\n\n"
-        f"Run: `crispasr --backend whisper -m {NAME}-q4_k.bin -l ja -f audio.wav`\n"
+        f"Run: `stelnettts --backend whisper -m {NAME}-q4_k.bin -l ja -f audio.wav`\n"
     )
     (CONV_OUT / "README.md").write_text(readme)
     for fn in (f"{NAME}-f16.bin", f"{NAME}-q4_k.bin", "README.md"):
         with kh.build_heartbeat(f"upload.{fn}"):
             api.upload_file(path_or_fileobj=str(CONV_OUT / fn), path_in_repo=fn,
                             repo_id=HF_REPO, repo_type="model",
-                            commit_message=f"Add {fn} (CrispASR whisper GGML, ASR-validated JA)")
+                            commit_message=f"Add {fn} (StelnetTTS whisper GGML, ASR-validated JA)")
     kh.step("uploaded", repo=HF_REPO, private=True)
     uploaded = True
 else:

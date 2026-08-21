@@ -63,13 +63,13 @@ WORK = Path("/kaggle/working")
 # clone here would bury the results (gotcha #22). Everything bulky lives on the
 # ~70 GB ephemeral layer (gotcha #18).
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = TEMP / "build"
 MODELS = TEMP / "models"
 FIX = TEMP / "fixtures"
 OUT = WORK / "outputs"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 
 for d in (MODELS, FIX, OUT):
     d.mkdir(parents=True, exist_ok=True)
@@ -101,15 +101,15 @@ def record(name, passed, **kw):
 
 
 # ── cell 1: clone + harness (FULL regime) ──────────────────────────────────
-print(json.dumps({"step": "start", "ref": CRISPASR_REF}), flush=True)
+print(json.dumps({"step": "start", "ref": STELNETTTS_REF}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)], capture=False)
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)], capture=False)
 # Belt and braces: a --depth 1 --recursive clone can leave a submodule short.
 # main needs BOTH ggml and third_party/c2pa-audio present for cmake to generate
 # (a ggml-only init fails with "Cannot find c2pa_native.cpp"); this build passes
-# -DCRISPASR_NO_C2PA_NATIVE=ON but the checkout should still be complete.
+# -DSTELNETTTS_NO_C2PA_NATIVE=ON but the checkout should still be complete.
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive"],
     check=False, capture=False, timeout=1800)
 
@@ -122,7 +122,7 @@ kh.init_progress()
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 kh.step("cloned", sha=sha)
 RESULTS["env"]["sha"] = sha
-RESULTS["env"]["ref"] = CRISPASR_REF
+RESULTS["env"]["ref"] = STELNETTTS_REF
 
 run(["nvidia-smi", "-L"], check=False)
 gpu = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True).strip()
@@ -141,22 +141,22 @@ cmake_args = [
     "-DCMAKE_BUILD_TYPE=Release",
     "-DBUILD_SHARED_LIBS=ON",
     # Benchmark build: skip the c2pa native submodule (harness regime note).
-    "-DCRISPASR_NO_C2PA_NATIVE=ON",
+    "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
 ] + kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
 run(cmake_args, capture=False)
 kh.step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 kh.step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("cli", path=str(CLI))
@@ -184,11 +184,11 @@ def hf_get(repo, filename, dest, repo_type="model"):
 
 
 M = {}
-M["sidon"] = hf_get("cstr/Sidon-GGUF", "sidon-v0.1-q8_0.gguf", MODELS / "sidon-q8_0.gguf")
-M["voxcpm2"] = hf_get("cstr/voxcpm2-GGUF", "voxcpm2-q4_k.gguf", MODELS / "voxcpm2-q4_k.gguf")
-M["beat"] = hf_get("cstr/beat-this-GGUF", "beat-this-f16.gguf", MODELS / "beat-this-f16.gguf")
-M["btc"] = hf_get("cstr/btc-chords-GGUF", "btc-chords-large-f16.gguf", MODELS / "btc-chords-large-f16.gguf")
-M["sep"] = hf_get("cstr/mel-band-roformer-vocals-GGUF", "mel-band-roformer-vocals-f16.gguf",
+M["sidon"] = hf_get("Xenna/Sidon-GGUF", "sidon-v0.1-q8_0.gguf", MODELS / "sidon-q8_0.gguf")
+M["voxcpm2"] = hf_get("Xenna/voxcpm2-GGUF", "voxcpm2-q4_k.gguf", MODELS / "voxcpm2-q4_k.gguf")
+M["beat"] = hf_get("Xenna/beat-this-GGUF", "beat-this-f16.gguf", MODELS / "beat-this-f16.gguf")
+M["btc"] = hf_get("Xenna/btc-chords-GGUF", "btc-chords-large-f16.gguf", MODELS / "btc-chords-large-f16.gguf")
+M["sep"] = hf_get("Xenna/mel-band-roformer-vocals-GGUF", "mel-band-roformer-vocals-f16.gguf",
                   MODELS / "mel-band-roformer-vocals-f16.gguf")
 M["asr"] = hf_get("ggerganov/whisper.cpp", "ggml-base.en.bin", MODELS / "ggml-base.en.bin")
 # VAE-only source: config.json + audiovae.pth is all convert --vae-only reads.
@@ -324,7 +324,7 @@ def overlap(text, words=JFK_WORDS):
 # The bucket formulations feed get_rows an index that CUDA (unlike CPU/Metal)
 # requires to be contiguous. A miscompile here shows up as a crash or garbage,
 # so every mode is ASR'd, not just checked for exit 0.
-SID_ENVCOMMON = {"CRISPASR_SIDON_DEBUG": "1"}
+SID_ENVCOMMON = {"STELNETTTS_SIDON_DEBUG": "1"}
 
 
 def sidon_run(tag, out, extra_env, cpu=False, timeout=5400):
@@ -349,7 +349,7 @@ def sidon_run(tag, out, extra_env, cpu=False, timeout=5400):
 
 sid = {}
 for mode in ["expand", "bucket", "bucket-direct"]:
-    sid[mode] = sidon_run(mode, OUT / f"sidon_{mode}.wav", {"CRISPASR_SIDON_RPE": mode})
+    sid[mode] = sidon_run(mode, OUT / f"sidon_{mode}.wav", {"STELNETTTS_SIDON_RPE": mode})
 
 # every mode must run AND transcribe; identical transcripts is the parity gate
 sid_txt = {}
@@ -366,7 +366,7 @@ record("A2.sidon_rpe_modes_asr_identical",
 
 # chunked (default 512) vs whole-utterance (0): asserted BIT-EXACT on Metal
 sid["nochunk"] = sidon_run("nochunk", OUT / "sidon_nochunk.wav",
-                           {"CRISPASR_SIDON_DECODER_CHUNK_FRAMES": "0"})
+                           {"STELNETTTS_SIDON_DECODER_CHUNK_FRAMES": "0"})
 # Bit-exactness is the right invariant only where the kernels are deterministic
 # AND shape-independent. That holds on Metal/CPU; it does NOT hold on CUDA,
 # where cuDNN/cuBLAS pick different tiles and reduction orders for a 595-frame
@@ -405,7 +405,7 @@ record("A3.sidon_chunked_vs_whole_equivalent", ok_a3,
             "a tight numeric bound is assertable there")
 
 # lookahead: without it the final ~12 ms is a full-scale transient
-sid["nolook"] = sidon_run("nolook", OUT / "sidon_nolook.wav", {"CRISPASR_SIDON_LOOKAHEAD": "0"})
+sid["nolook"] = sidon_run("nolook", OUT / "sidon_nolook.wav", {"STELNETTTS_SIDON_LOOKAHEAD": "0"})
 
 
 def tail_peak(p):
@@ -470,11 +470,11 @@ def tts(tag, text, out, env, timeout=5400, cpu=False):
 
 vx = {}
 vx["long_graph1"] = tts("long_graph1", LONG_TEXT, OUT / "voxcpm2_long_graph1.wav",
-                        {"CRISPASR_VOXCPM2_USE_GRAPH": "1"})
+                        {"STELNETTTS_VOXCPM2_USE_GRAPH": "1"})
 vx["long_graph0"] = tts("long_graph0", LONG_TEXT, OUT / "voxcpm2_long_graph0.wav",
-                        {"CRISPASR_VOXCPM2_USE_GRAPH": "0"})
+                        {"STELNETTTS_VOXCPM2_USE_GRAPH": "0"})
 vx["short_graph1"] = tts("short_graph1", SHORT_TEXT, OUT / "voxcpm2_short_graph1.wav",
-                         {"CRISPASR_VOXCPM2_USE_GRAPH": "1"})
+                         {"STELNETTTS_VOXCPM2_USE_GRAPH": "1"})
 
 # The whole point: the long run must exceed 500000 samples, or the narrowed
 # guard was never reached and a green result would be meaningless.
@@ -564,7 +564,7 @@ def task_run(tag, model, flags, src, cpu=False, timeout=5400):
 
 # D1 beat-this — ground truth 120 BPM (0.5 s), downbeat every 4th.
 # Text format is "%.3f\t%s" (time, beat|downbeat) with a summary on stderr:
-# "crispasr: <file>: N beats (M downbeats), X BPM". stdout and stderr are
+# "stelnettts: <file>: N beats (M downbeats), X BPM". stdout and stderr are
 # merged here, so parse defensively rather than assuming clean output.
 def parse_beats(txt):
     times, downs = [], []

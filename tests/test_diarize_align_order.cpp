@@ -1,6 +1,6 @@
 // tests/test_diarize_align_order.cpp — unit tests for issue #267.
 //
-// Verifies that crispasr_apply_diarize correctly:
+// Verifies that stelnettts_apply_diarize correctly:
 //   - splits segments at speaker-turn boundaries when word timestamps
 //     are present (simulating post-alignment state);
 //   - falls back to segment-level dominant-speaker assignment when
@@ -15,8 +15,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_backend.h"
-#include "crispasr_diarize_cli.h"
+#include "stelnettts_backend.h"
+#include "stelnettts_diarize_cli.h"
 #include "whisper_params.h"
 
 #include <string>
@@ -24,9 +24,9 @@
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-static crispasr_segment make_seg(int64_t t0, int64_t t1, const std::string& text,
+static stelnettts_segment make_seg(int64_t t0, int64_t t1, const std::string& text,
                                  const std::vector<std::pair<int64_t, int64_t>>& word_times = {}) {
-    crispasr_segment s;
+    stelnettts_segment s;
     s.t0 = t0;
     s.t1 = t1;
     s.text = text;
@@ -46,7 +46,7 @@ static crispasr_segment make_seg(int64_t t0, int64_t t1, const std::string& text
             words_text.push_back(w);
     }
     for (size_t i = 0; i < words_text.size(); i++) {
-        crispasr_word w;
+        stelnettts_word w;
         w.text = words_text[i];
         if (i < word_times.size()) {
             w.t0 = word_times[i].first;
@@ -77,7 +77,7 @@ static whisper_params make_sherpa_params() {
 TEST_CASE("issue267: diarize with words splits at speaker turn", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 10.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 1000, "Hello everyone I will now present the project",
                             {
                                 {0, 100},
@@ -93,7 +93,7 @@ TEST_CASE("issue267: diarize with words splits at speaker turn", "[diarize][unit
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
 
     REQUIRE(segs.size() == 2);
@@ -112,8 +112,8 @@ TEST_CASE("issue267: diarize with words splits at speaker turn", "[diarize][unit
 TEST_CASE("issue267: diarize without words assigns dominant speaker", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 7.0, 0}, {7.0, 10.0, 1}});
 
-    std::vector<crispasr_segment> segs;
-    crispasr_segment seg;
+    std::vector<stelnettts_segment> segs;
+    stelnettts_segment seg;
     seg.t0 = 0;
     seg.t1 = 1000;
     seg.text = "Hello everyone I will now present the project";
@@ -122,7 +122,7 @@ TEST_CASE("issue267: diarize without words assigns dominant speaker", "[diarize]
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 1);
     REQUIRE(segs[0].speaker.find("speaker 0") != std::string::npos);
@@ -137,7 +137,7 @@ TEST_CASE("issue267: three speaker turns in one segment", "[diarize][unit][issue
         {6.0, 9.0, 0},
     });
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 900, "a b c d e f g h i",
                             {
                                 {0, 100},
@@ -154,7 +154,7 @@ TEST_CASE("issue267: three speaker turns in one segment", "[diarize][unit][issue
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 3);
     REQUIRE(segs[0].speaker.find("speaker 0") != std::string::npos);
@@ -167,7 +167,7 @@ TEST_CASE("issue267: three speaker turns in one segment", "[diarize][unit][issue
 TEST_CASE("issue267: word straddling speaker boundary", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 10.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 1000, "before straddling after",
                             {
                                 {0, 300},
@@ -178,7 +178,7 @@ TEST_CASE("issue267: word straddling speaker boundary", "[diarize][unit][issue26
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 2);
     REQUIRE(segs[0].speaker.find("speaker 0") != std::string::npos);
@@ -192,7 +192,7 @@ TEST_CASE("issue267: word straddling speaker boundary", "[diarize][unit][issue26
 TEST_CASE("issue267: single speaker does not split", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 10.0, 0}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 500, "hello world foo bar",
                             {
                                 {0, 100},
@@ -204,7 +204,7 @@ TEST_CASE("issue267: single speaker does not split", "[diarize][unit][issue267]"
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 1);
     REQUIRE(segs[0].speaker.find("speaker 0") != std::string::npos);
@@ -215,7 +215,7 @@ TEST_CASE("issue267: single speaker does not split", "[diarize][unit][issue267]"
 TEST_CASE("issue267: native word timestamps also split correctly", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 2.0, 0}, {2.0, 4.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 400, "one two three four",
                             {
                                 {0, 100},
@@ -227,7 +227,7 @@ TEST_CASE("issue267: native word timestamps also split correctly", "[diarize][un
     auto p = make_sherpa_params();
     std::vector<float> dummy(64000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 2);
     REQUIRE(segs[0].speaker.find("speaker 0") != std::string::npos);
@@ -238,12 +238,12 @@ TEST_CASE("issue267: native word timestamps also split correctly", "[diarize][un
 
 TEST_CASE("issue267: empty segment list is a no-op", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 10.0, 0}});
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
 
     auto p = make_sherpa_params();
     std::vector<float> dummy(16000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.empty());
 }
@@ -253,7 +253,7 @@ TEST_CASE("issue267: empty segment list is a no-op", "[diarize][unit][issue267]"
 TEST_CASE("issue267: split sub-segments carry correct word timestamps", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 10.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 1000, "a b c d",
                             {
                                 {0, 200},
@@ -265,7 +265,7 @@ TEST_CASE("issue267: split sub-segments carry correct word timestamps", "[diariz
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 2);
     REQUIRE(segs[0].words.size() == 2);
@@ -285,7 +285,7 @@ TEST_CASE("issue267: split sub-segments carry correct word timestamps", "[diariz
 TEST_CASE("issue267: split sub-segment timestamps match word boundaries", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 3.0, 0}, {3.0, 6.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 600, "hello world",
                             {
                                 {50, 250},
@@ -295,7 +295,7 @@ TEST_CASE("issue267: split sub-segment timestamps match word boundaries", "[diar
     auto p = make_sherpa_params();
     std::vector<float> dummy(96000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 2);
     REQUIRE(segs[0].t0 == 50);
@@ -309,17 +309,17 @@ TEST_CASE("issue267: split sub-segment timestamps match word boundaries", "[diar
 TEST_CASE("issue267: tied overlap picks first speaker deterministically", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 10.0, 1}});
 
-    crispasr_segment seg;
+    stelnettts_segment seg;
     seg.t0 = 0;
     seg.t1 = 1000;
     seg.text = "equal overlap segment";
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(seg);
 
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(segs.size() == 1);
     // Equal overlap → first speaker wins (strict > in assign_speakers_from_sherpa)
@@ -331,7 +331,7 @@ TEST_CASE("issue267: tied overlap picks first speaker deterministically", "[diar
 TEST_CASE("issue267: very short words near boundary", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 10.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 1000, "x y z",
                             {
                                 {490, 500},
@@ -342,7 +342,7 @@ TEST_CASE("issue267: very short words near boundary", "[diarize][unit][issue267]
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     REQUIRE(!segs.empty());
     for (const auto& s : segs)
@@ -354,7 +354,7 @@ TEST_CASE("issue267: very short words near boundary", "[diarize][unit][issue267]
 TEST_CASE("issue267: split segments produce consistent timing", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 10.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 1000, "hello world goodbye world",
                             {
                                 {0, 200},
@@ -366,7 +366,7 @@ TEST_CASE("issue267: split segments produce consistent timing", "[diarize][unit]
     auto p = make_sherpa_params();
     std::vector<float> dummy(160000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
 
     for (size_t i = 0; i < segs.size(); i++) {
@@ -388,7 +388,7 @@ TEST_CASE("issue267: split segments produce consistent timing", "[diarize][unit]
 TEST_CASE("issue267: mixed segments with and without words", "[diarize][unit][issue267]") {
     auto cache = make_sherpa_cache({{0.0, 5.0, 0}, {5.0, 15.0, 1}});
 
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     // Segment 1: has words spanning speaker boundary
     segs.push_back(make_seg(0, 800, "a b c d",
                             {
@@ -398,7 +398,7 @@ TEST_CASE("issue267: mixed segments with and without words", "[diarize][unit][is
                                 {650, 800},
                             }));
     // Segment 2: no words at all
-    crispasr_segment seg2;
+    stelnettts_segment seg2;
     seg2.t0 = 800;
     seg2.t1 = 1500;
     seg2.text = "no words here";
@@ -407,7 +407,7 @@ TEST_CASE("issue267: mixed segments with and without words", "[diarize][unit][is
     auto p = make_sherpa_params();
     std::vector<float> dummy(240000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
 
     // Seg1 should be split (has words across boundary).
@@ -426,18 +426,18 @@ TEST_CASE("issue267: alignment failure simulated — empty words treated as no-w
     // words.empty()==true. This is the fallback path.
     auto cache = make_sherpa_cache({{0.0, 3.0, 0}, {3.0, 6.0, 1}});
 
-    crispasr_segment seg;
+    stelnettts_segment seg;
     seg.t0 = 0;
     seg.t1 = 600;
     seg.text = "alignment failed here";
     // Words intentionally empty — simulates aligner failure.
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(seg);
 
     auto p = make_sherpa_params();
     std::vector<float> dummy(96000, 0.0f);
 
-    bool ok = crispasr_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
+    bool ok = stelnettts_apply_diarize(dummy, dummy, false, 0, segs, p, nullptr, &cache);
     REQUIRE(ok);
     // Should NOT split — no words
     REQUIRE(segs.size() == 1);

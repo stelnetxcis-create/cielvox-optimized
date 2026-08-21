@@ -25,7 +25,7 @@
 //     itself — passing it through is what silently poisons the prompt.
 //
 // One addition on top of the blueprint: "auto" clears, because that is
-// CrispASR's own sentinel for `-l` and the server forwards it verbatim.
+// StelnetTTS's own sentinel for `-l` and the server forwards it verbatim.
 // Upstream would reach the same None by the unrecognized path — this only
 // suppresses a warning that would be noise, never changes the prompt.
 //

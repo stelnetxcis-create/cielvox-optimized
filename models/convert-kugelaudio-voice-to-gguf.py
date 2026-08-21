@@ -90,7 +90,7 @@ def write_voice_gguf(output_path: str, acoustic_mean: np.ndarray,
     writer = gguf.GGUFWriter(output_path, "kugelaudio-voice")
     writer.add_name(f"kugelaudio-voice-{voice_name}")
 
-    # Voice-clone provenance — see examples/cli/crispasr_voice_clone_policy.h.
+    # Voice-clone provenance — see examples/cli/stelnettts_voice_clone_policy.h.
     #
     # Stamped per pack rather than declared for the whole `kugelaudio-voice`
     # architecture, because this script has two modes: --audio bakes a real
@@ -98,9 +98,9 @@ def write_voice_gguf(output_path: str, acoustic_mean: np.ndarray,
     # voice (a preset). Listing the architecture as recording-derived would gate
     # the presets too; the stamp is the only predicate that can tell them apart.
     if cloned_from_recording:
-        writer.add_bool("crispasr.voice.cloned_from_recording", True)
+        writer.add_bool("stelnettts.voice.cloned_from_recording", True)
         if consent_attestation:
-            writer.add_string("crispasr.voice.consent_attestation", consent_attestation)
+            writer.add_string("stelnettts.voice.consent_attestation", consent_attestation)
 
     # Voice metadata
     writer.add_string("kugelaudio.voice.name", voice_name)

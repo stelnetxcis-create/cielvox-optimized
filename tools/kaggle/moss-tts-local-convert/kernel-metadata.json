@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-moss-tts-local-convert",
-  "title": "CrispASR moss tts local convert",
-  "code_file": "crispasr-moss-tts-local-convert.py",
+  "id": "chr1str/stelnettts-moss-tts-local-convert",
+  "title": "StelnetTTS moss tts local convert",
+  "code_file": "stelnettts-moss-tts-local-convert.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

@@ -5,12 +5,12 @@
 ## STATUS: PORTED + WIRED IN (2026-07-19)
 
 Every forward stage validated cos=1.0 vs the pinned reference; reconstructed
-waveform bit-exact (2.4e-7). `crispasr --separate -m <mbr.gguf> -f mix.wav`
+waveform bit-exact (2.4e-7). `stelnettts --separate -m <mbr.gguf> -f mix.wav`
 writes `<input>_{vocals,other}.wav` (2ch@44.1k) — on a speech clip vocals
 rms=0.218 vs other rms=0.005 (41x). Go LDFLAGS drift clean.
 
 Done: C API + forward + separate(); `--separate` dispatcher (mel-band-roformer
-+ htdemucs) + flags + help + early-route; CMake link into crispasr-lib; Go
++ htdemucs) + flags + help + early-route; CMake link into stelnettts-lib; Go
 LDFLAGS; README; live test; reference dumper + converter.
 
 Deferred (non-blocking): HF upload of the GGUF + optional registry `-m auto`
@@ -34,7 +34,7 @@ docs/source-separation-surface.md for the maintainer to converge.
       multi-channel WAV writer, `tests/test-separation-io.cpp` 9/9) — maintainer
       chose "design the shared surface now"; htdemucs session to adopt it
 - [x] **`src/mel_band_roformer.{h,cpp}` — C API + CPU forward, diffed stage by
-      stage** (opt-in probe `mbr-diff-probe`, `CRISPASR_BUILD_MBR_PROBE=ON`).
+      stage** (opt-in probe `mbr-diff-probe`, `STELNETTTS_BUILD_MBR_PROBE=ON`).
       All input-aligned vs `ref_mbr.gguf`; PASS = cos ≥ 0.9995:
       ```
       freq_indices   cos=1.000000   stft_packed    cos=1.000000
@@ -55,13 +55,13 @@ docs/source-separation-surface.md for the maintainer to converge.
       - mask estimator (per-band Tanh MLP → GLU), scatter-add → average by
         num_bands_per_freq, complex mask multiply, iSTFT (reuse core_istft).
       - wire `mel_band_roformer_separate()` (currently a Phase-2 null stub).
-- [ ] Dispatcher `examples/cli/crispasr_separate_cli.{h,cpp}` + `--separate`
-      hook; wire htdemucs (C API ready) + MBR through `crispasr_separation_view`
+- [ ] Dispatcher `examples/cli/stelnettts_separate_cli.{h,cpp}` + `--separate`
+      hook; wire htdemucs (C API ready) + MBR through `stelnettts_separation_view`
 - [ ] Roundtrip acceptance (SDR / ASR on the vocal stem) — the ONLY gate that counts
 - [ ] 12-point checklist (CMake, registry, README, bindings docstrings, Go LDFLAGS)
 
 Fixtures (persisted off /tmp, survive reboot):
-`/Volumes/backups/ai/crispasr-models/melbandroformer/{MelBandRoformer.ckpt,
+`/Volumes/backups/ai/stelnettts-models/melbandroformer/{MelBandRoformer.ckpt,
 config.yaml, mel-band-roformer-vocals-f16.gguf, ref_mbr.gguf, clip2s.wav}`
 
 ## Licensing (verified 2026-07-19, do not re-derive)
@@ -188,7 +188,7 @@ The `torch.stft` "rectangular window" warning is benign — it comes from a
 one-time shape-probe in `__init__`, not the forward (which uses Hann).
 
 Fixture persisted at
-`/Volumes/backups/ai/crispasr-models/melbandroformer/{MelBandRoformer.ckpt,
+`/Volumes/backups/ai/stelnettts-models/melbandroformer/{MelBandRoformer.ckpt,
 config.yaml,ref_mbr.gguf,clip2s.wav}` (off /tmp, survives reboot).
 
 ## Checkpoint tensor map (684 tensors — for the converter)

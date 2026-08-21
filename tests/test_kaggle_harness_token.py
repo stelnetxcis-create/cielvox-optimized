@@ -11,7 +11,7 @@ depending on the worker environment --
     /kaggle/input/datasets/<owner>/<slug>/    (newer, "long")
 A resolver that only scans the short layout returns no token on a long-layout
 worker, and every HF upload 401s AFTER the compute finished (this burned a full
-21-minute imatrix run, CrispEmbed T19-E3 run 1). resolve_hf_token(require=True)
+21-minute imatrix run, StelnetEmbed T19-E3 run 1). resolve_hf_token(require=True)
 must therefore abort UP FRONT when no token can be found.
 
 Write-the-guard-first verification hooks (used to prove this suite detects the
@@ -87,13 +87,13 @@ def put_token(root: Path, rel: str, token: str) -> Path:
 
 def test_short_path_layout(kh, monkeypatch, tmp_path):
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "crispasr-hf-token/hf_token.txt", TOK_SHORT)
+    put_token(root, "stelnettts-hf-token/hf_token.txt", TOK_SHORT)
     assert kh.kaggle_token_from_dataset() == TOK_SHORT
 
 
 def test_short_path_layout_nonstandard_slug(kh, monkeypatch, tmp_path):
     # Behavior parity with the historical resolver: ANY mounted dataset dir is
-    # probed for the token file, not just the crispasr-hf-token slug.
+    # probed for the token file, not just the stelnettts-hf-token slug.
     root = fake_input_root(monkeypatch, tmp_path)
     put_token(root, "my-other-token-ds/hf_token.txt", TOK_SHORT)
     assert kh.kaggle_token_from_dataset() == TOK_SHORT
@@ -105,7 +105,7 @@ def test_short_path_layout_nonstandard_slug(kh, monkeypatch, tmp_path):
 
 def test_long_path_layout_chr1s4(kh, monkeypatch, tmp_path):
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "datasets/chr1s4/crispasr-hf-token/hf_token.txt", TOK_LONG)
+    put_token(root, "datasets/chr1s4/stelnettts-hf-token/hf_token.txt", TOK_LONG)
     assert kh.kaggle_token_from_dataset() == TOK_LONG
 
 
@@ -120,8 +120,8 @@ def test_long_path_layout_any_owner(kh, monkeypatch, tmp_path):
 
 def test_both_layouts_short_preferred(kh, monkeypatch, tmp_path):
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "crispasr-hf-token/hf_token.txt", TOK_SHORT)
-    put_token(root, "datasets/chr1s4/crispasr-hf-token/hf_token.txt", TOK_LONG)
+    put_token(root, "stelnettts-hf-token/hf_token.txt", TOK_SHORT)
+    put_token(root, "datasets/chr1s4/stelnettts-hf-token/hf_token.txt", TOK_LONG)
     assert kh.kaggle_token_from_dataset() == TOK_SHORT
 
 
@@ -151,7 +151,7 @@ def test_resolve_require_aborts_up_front(kh, monkeypatch, tmp_path):
 
 def test_resolve_require_passes_when_token_present(kh, monkeypatch, tmp_path):
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "datasets/chr1s4/crispasr-hf-token/hf_token.txt", TOK_LONG)
+    put_token(root, "datasets/chr1s4/stelnettts-hf-token/hf_token.txt", TOK_LONG)
     assert kh.resolve_hf_token(require=True) == TOK_LONG
 
 
@@ -159,7 +159,7 @@ def test_resolve_require_passes_when_token_present(kh, monkeypatch, tmp_path):
 
 def test_resolve_exports_env_on_success(kh, monkeypatch, tmp_path):
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "crispasr-hf-token/hf_token.txt", TOK_SHORT)
+    put_token(root, "stelnettts-hf-token/hf_token.txt", TOK_SHORT)
     assert kh.resolve_hf_token() == TOK_SHORT
     assert os.environ["HF_TOKEN"] == TOK_SHORT
     assert os.environ["HUGGING_FACE_HUB_TOKEN"] == TOK_SHORT
@@ -168,7 +168,7 @@ def test_resolve_exports_env_on_success(kh, monkeypatch, tmp_path):
 
 def test_resolve_env_var_wins_over_dataset(kh, monkeypatch, tmp_path):
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "crispasr-hf-token/hf_token.txt", TOK_SHORT)
+    put_token(root, "stelnettts-hf-token/hf_token.txt", TOK_SHORT)
     monkeypatch.setenv("HF_TOKEN", "hf_env_dummy_token_0123456789")
     assert kh.resolve_hf_token() == "hf_env_dummy_token_0123456789"
 
@@ -176,13 +176,13 @@ def test_resolve_env_var_wins_over_dataset(kh, monkeypatch, tmp_path):
 def test_alternate_token_filenames_still_probed(kh, monkeypatch, tmp_path):
     # Historical behavior: `token` / `access_token` filenames are accepted too.
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "crispasr-hf-token/token", TOK_SHORT)
+    put_token(root, "stelnettts-hf-token/token", TOK_SHORT)
     assert kh.kaggle_token_from_dataset() == TOK_SHORT
 
 
 def test_short_empty_token_falls_through_to_long(kh, monkeypatch, tmp_path):
     # An empty/short token file must not shadow a real one elsewhere.
     root = fake_input_root(monkeypatch, tmp_path)
-    put_token(root, "crispasr-hf-token/hf_token.txt", "")
-    put_token(root, "datasets/chr1s4/crispasr-hf-token/hf_token.txt", TOK_LONG)
+    put_token(root, "stelnettts-hf-token/hf_token.txt", "")
+    put_token(root, "datasets/chr1s4/stelnettts-hf-token/hf_token.txt", TOK_LONG)
     assert kh.kaggle_token_from_dataset() == TOK_LONG

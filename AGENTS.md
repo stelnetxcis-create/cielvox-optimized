@@ -5,8 +5,8 @@
 ## Read first, if you have it
 
 Maintainer checkouts keep a development guide **beside** this repository, at
-`../crispasr-crispembed-dev.md` — a sibling of the repo root, not a file inside
-it, and deliberately not tracked here (it spans CrispASR *and* CrispEmbed).
+`../stelnettts-crispembed-dev.md` — a sibling of the repo root, not a file inside
+it, and deliberately not tracked here (it spans StelnetTTS *and* StelnetEmbed).
 
 **If that file exists, read it in full before writing any code.** It is the
 method, and it is not summarised anywhere: the hard rules, the

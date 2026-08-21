@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert rhasspy/piper ONNX + JSON config → GGUF for the CrispASR
+Convert rhasspy/piper ONNX + JSON config → GGUF for the StelnetTTS
 `piper` backend.
 
 Piper uses VITS (Variational Inference TTS):

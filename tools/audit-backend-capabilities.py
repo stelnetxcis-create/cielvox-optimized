@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 audit-backend-capabilities.py — drift report for declared vs tracked
-capability bits across the CrispASR backend matrix.
+capability bits across the StelnetTTS backend matrix.
 
 Reads three sources:
   1. The compiled binary's declared capability bits via
-     `crispasr --list-backends-json` (the source of truth).
+     `stelnettts --list-backends-json` (the source of truth).
   2. The hand-maintained `Backend(... capabilities=(...))` tuples in
      `tools/test-all-backends.py` (what the regression script tests).
   3. (Optional) The README feature matrix table — left as a TODO; the
@@ -23,10 +23,10 @@ Reports two kinds of drift:
     the backend.
 
 Usage:
-  python3 tools/audit-backend-capabilities.py [--crispasr PATH]
+  python3 tools/audit-backend-capabilities.py [--stelnettts PATH]
 
-Default path: ./build/bin/crispasr (or build-ninja-compile/bin/crispasr,
-or build-test/bin/crispasr — first one found wins).
+Default path: ./build/bin/stelnettts (or build-ninja-compile/bin/stelnettts,
+or build-test/bin/stelnettts — first one found wins).
 
 Exit code: 0 on no drift, 1 if drift is detected.
 """
@@ -46,7 +46,7 @@ from pathlib import Path
 # Cap-slug → test-script-cap-name mapping
 # ---------------------------------------------------------------------------
 #
-# Slugs come from the C++ side (kCapSlugs in crispasr_backend.cpp).
+# Slugs come from the C++ side (kCapSlugs in stelnettts_backend.cpp).
 # Test script names come from the Python side (test_* functions in
 # test-all-backends.py + the capabilities=(...) tuples that cite them).
 # The mapping is one-to-one for most caps, with a few binary slugs that
@@ -75,29 +75,29 @@ CAP_SLUG_TO_TEST_NAME = {
 }
 
 # ---------------------------------------------------------------------------
-# Locate the crispasr binary
+# Locate the stelnettts binary
 # ---------------------------------------------------------------------------
 
 def locate_binary(override: str | None) -> Path:
     if override:
         p = Path(override)
         if not p.is_file():
-            sys.exit(f"crispasr binary not found at: {override}")
+            sys.exit(f"stelnettts binary not found at: {override}")
         return p
     candidates = [
-        Path("build/bin/crispasr"),
-        Path("build-ninja-compile/bin/crispasr"),
-        Path("build-test/bin/crispasr"),
-        Path("build-libs/bin/crispasr"),
+        Path("build/bin/stelnettts"),
+        Path("build-ninja-compile/bin/stelnettts"),
+        Path("build-test/bin/stelnettts"),
+        Path("build-libs/bin/stelnettts"),
     ]
     for p in candidates:
         if p.is_file():
             return p
-    on_path = shutil.which("crispasr")
+    on_path = shutil.which("stelnettts")
     if on_path:
         return Path(on_path)
     sys.exit(
-        "Could not locate crispasr binary. Pass --crispasr PATH or build first.\n"
+        "Could not locate stelnettts binary. Pass --stelnettts PATH or build first.\n"
         "Tried: " + ", ".join(str(c) for c in candidates)
     )
 
@@ -118,7 +118,7 @@ def read_declared(binary: Path) -> dict[str, set[str]]:
 # Backend("name", "label", "model.gguf", ..., capabilities=("a", "b", ...))
 # We only need name + capabilities tuple.
 BACKEND_RE = re.compile(
-    # Allow `.` in backend names so granite-4.1, qwen3-tts-1.7b, etc.
+    # Allow `.` in backend names so granite-4.1, cielvox2-tts-1.7b, etc.
     # are captured. Earlier version used [a-z0-9_-] which silently
     # skipped any dotted name.
     r'Backend\(\s*"(?P<name>[a-z0-9_.-]+)".*?capabilities\s*=\s*\((?P<caps>[^)]*)\)',
@@ -145,12 +145,12 @@ def read_tracked(test_script: Path) -> dict[str, set[str]]:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--crispasr", help="path to crispasr binary (default: auto-detect)")
+    p.add_argument("--stelnettts", help="path to stelnettts binary (default: auto-detect)")
     p.add_argument("--test-script", default="tools/test-all-backends.py",
                    help="path to test-all-backends.py (default: tools/test-all-backends.py)")
     args = p.parse_args()
 
-    binary = locate_binary(args.crispasr)
+    binary = locate_binary(args.stelnettts)
     print(f"# binary:      {binary}")
     print(f"# test-script: {args.test_script}")
     print()

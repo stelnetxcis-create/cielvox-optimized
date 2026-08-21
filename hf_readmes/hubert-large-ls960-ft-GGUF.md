@@ -16,7 +16,7 @@ pipeline_tag: automatic-speech-recognition
 
 # HuBERT Large (GGUF)
 
-GGUF conversion of [facebook/hubert-large-ls960-ft](https://huggingface.co/facebook/hubert-large-ls960-ft) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [facebook/hubert-large-ls960-ft](https://huggingface.co/facebook/hubert-large-ls960-ft) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model Details
 
@@ -29,7 +29,7 @@ GGUF conversion of [facebook/hubert-large-ls960-ft](https://huggingface.co/faceb
 ## Usage
 
 ```bash
-crispasr --backend wav2vec2 -m hubert-large-ls960-ft-q4_k.gguf -f audio.wav
+stelnettts --backend wav2vec2 -m hubert-large-ls960-ft-q4_k.gguf -f audio.wav
 ```
 
 ## Files

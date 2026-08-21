@@ -1,6 +1,6 @@
 #include "common.h"
 #include "common-sdl.h"
-#include "crispasr.h"
+#include "stelnettts.h"
 #include "json.hpp"
 
 #include <cassert>
@@ -148,25 +148,25 @@ static uint64_t wait_for_vad(audio_async& audio, json jparams, const whisper_par
         time_now = time_point_cast<milliseconds>(system_clock::now()).time_since_epoch().count();
     } else if (time_now - start_time > 1000) {
         audio.get(time_now - start_time, pcmf32);
-        size_t max_offset = pcmf32.size() - CRISPASR_SAMPLE_RATE;
-        for (size_t offset = 0; offset < max_offset; offset += CRISPASR_SAMPLE_RATE / 10) {
-            std::vector<float> audio_chunk(&pcmf32[offset], &pcmf32[offset + CRISPASR_SAMPLE_RATE]);
-            if (::vad_simple(audio_chunk, CRISPASR_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
+        size_t max_offset = pcmf32.size() - STELNETTTS_SAMPLE_RATE;
+        for (size_t offset = 0; offset < max_offset; offset += STELNETTTS_SAMPLE_RATE / 10) {
+            std::vector<float> audio_chunk(&pcmf32[offset], &pcmf32[offset + STELNETTTS_SAMPLE_RATE]);
+            if (::vad_simple(audio_chunk, STELNETTTS_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
                              params.print_energy)) {
-                pcmf32.resize(offset + CRISPASR_SAMPLE_RATE);
-                if (offset * 1000 / CRISPASR_SAMPLE_RATE + 1000 > maxlength_ms) {
+                pcmf32.resize(offset + STELNETTTS_SAMPLE_RATE);
+                if (offset * 1000 / STELNETTTS_SAMPLE_RATE + 1000 > maxlength_ms) {
                     //remove samples from the beginning
-                    pcmf32.erase(pcmf32.begin(), pcmf32.end() - (maxlength_ms * CRISPASR_SAMPLE_RATE / 1000));
+                    pcmf32.erase(pcmf32.begin(), pcmf32.end() - (maxlength_ms * STELNETTTS_SAMPLE_RATE / 1000));
                     fprintf(stderr, "Shortened samples");
                 }
-                return start_time + offset * 1000 / CRISPASR_SAMPLE_RATE + 1000;
+                return start_time + offset * 1000 / STELNETTTS_SAMPLE_RATE + 1000;
             }
         }
     }
     size_t window_duration = std::max((uint64_t)1000, time_now - start_time);
     audio.get(window_duration, pcmf32);
     while (
-        !::vad_simple(pcmf32, CRISPASR_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, params.print_energy)) {
+        !::vad_simple(pcmf32, STELNETTTS_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, params.print_energy)) {
         std::this_thread::sleep_for(milliseconds(100));
         time_now = time_point_cast<milliseconds>(system_clock::now()).time_since_epoch().count();
         window_duration = std::max((uint64_t)1000, time_now - start_time);
@@ -187,7 +187,7 @@ static json unguided_transcription(struct whisper_context* ctx, audio_async& aud
     std::vector<float> pcmf32;
     uint64_t unprocessed_audio_timestamp = wait_for_vad(audio, jparams, params, 10000U, pcmf32);
 
-    whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+    whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
     if (jparams.contains("prompt")) {
         // unlikely to see much use. Under normal circumstances, no_context would be set to false
         std::string prompt = jparams.at("prompt");
@@ -229,7 +229,7 @@ static json guided_transcription(struct whisper_context* ctx, audio_async& audio
     uint64_t unprocessed_audio_timestamp = wait_for_vad(audio, jparams, params, 2000U, pcmf32);
 
     fprintf(stderr, "%s: Speech detected! Processing ...\n", __func__);
-    whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+    whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
 
     wparams.print_progress = false;
     wparams.print_special = params.print_special;
@@ -458,7 +458,7 @@ int main(int argc, char** argv) {
     // init audio
 
     audio_async audio(30 * 1000);
-    if (!audio.init(params.capture_id, CRISPASR_SAMPLE_RATE)) {
+    if (!audio.init(params.capture_id, STELNETTTS_SAMPLE_RATE)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }

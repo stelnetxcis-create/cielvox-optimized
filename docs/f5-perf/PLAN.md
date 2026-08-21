@@ -13,13 +13,13 @@ the reporter hit two quality bugs; both fixed and TTS→ASR-roundtripped on M1 M
   each token to its vocab id directly. ZH roundtrip exact.
   ⚠ [[LEARNINGS: token-parity ≠ working audio]] — the g2p test was green while
   audio was garbled; only the roundtrip caught the downstream char-split.
-- **English truncation** (`9a2fd7dc`): removed the CrispASR-only rate clamp
+- **English truncation** (`9a2fd7dc`): removed the StelnetTTS-only rate clamp
   (`fixed_rate*2.5`, no upstream equivalent) that cut the tail of a slow ref;
-  now asymmetric (loose upper). `CRISPASR_F5_DURATION_CLAMP=0` = exact upstream.
+  now asymmetric (loose upper). `STELNETTTS_F5_DURATION_CLAMP=0` = exact upstream.
 
 ## Speed work (original #294)
 
-Branch `perf/f5-speedups` (worktree `CrispASR-f5perf`). Reporter: F5-TTS slow on
+Branch `perf/f5-speedups` (worktree `StelnetTTS-f5perf`). Reporter: F5-TTS slow on
 RTX 5060 Ti (sm_120) + Ryzen 5 2600, F16 model, 32 ODE steps.
 
 **Hard constraint:** F16 is the ONLY viable format for F5 (flow-matching:
@@ -48,7 +48,7 @@ CUDA A/B (reporter box or Kaggle)**, not M1.
 2. **host_embed 26%** (bigger on reporter's slow CPU) → move input-embed into the
    GPU graph (omnivoice-style). [TODO]
 3. **NFE reduction** (deterministic, box-independent): fewer steps (`--tts-steps`,
-   shipped), interval-CFG (`CRISPASR_F5_CFG_INTERVAL`, shipped), higher-order ODE
+   shipped), interval-CFG (`STELNETTTS_F5_CFG_INTERVAL`, shipped), higher-order ODE
    solver (new). [TODO]
 4. Shorter reference clip → smaller T on every forward (user-side, free). [TELL REPORTER]
 5. ~~Vocos GPU/FASTCONV~~ — DROPPED, vocos is <1%.
@@ -59,7 +59,7 @@ CUDA A/B (reporter box or Kaggle)**, not M1.
 |--------|-----------|---------|-----------|
 | baseline (32 steps) | 60.9 s | 1.0× | perfect |
 | `--tts-steps 16` | 30.3 s | **2.01×** | perfect ✅ |
-| `CRISPASR_F5_CFG_INTERVAL=2` | 46.6 s | **1.31×** | perfect ✅ |
+| `STELNETTTS_F5_CFG_INTERVAL=2` | 46.6 s | **1.31×** | perfect ✅ |
 | 16 steps + interval 2 | 23.5 s | **2.59×** | perfect ✅ |
 
 These use existing knobs — the win is validating + recommending them. Fewer/skipped
@@ -76,9 +76,9 @@ which need a CUDA verdict).
   `get_epss_timesteps` (n=5/6/7/10/12/16). So the headline win is already coded —
   just needs validation + recommendation, no new kernel.
 - **Guidance-free / interval CFG** halves per-step cost; interval form is portable and
-  we already have `CRISPASR_F5_CFG_INTERVAL`. Paper RTF 0.31→0.17 by dropping uncond.
+  we already have `STELNETTTS_F5_CFG_INTERVAL`. Paper RTF 0.31→0.17 by dropping uncond.
 - **Layer caching across steps** (DiTReducio 2509.09748) — implemented the temporal-skip
-  half (`CRISPASR_F5_DIT_SKIP=K`): reuse the cached full step-velocity, recompute every
+  half (`STELNETTTS_F5_DIT_SKIP=K`): reuse the cached full step-velocity, recompute every
   K steps + first/last. MEASURED @32 steps: K=2 → 1.9× perfect, K=3 → 2.7× minor artifact.
   BUT ≈ equivalent to just using fewer EPSS steps (K=2@32 ≈ `--tts-steps 16`): same
   forward-count reduction, so validated + gated but not strongly additive to EPSS. The
@@ -97,7 +97,7 @@ deltas kept as **persistent on-device tensors** shared between graphs (host roun
 22×[dim,T] ≈ 150 MB/step would exceed the compute saved), or (b) the cheap probe below.
 Ceiling per skipped branch ≈ 25–30% (vs temporal-skip's 50%).
 
-**Plan (chosen: prototype cheaply first):** gated `CRISPASR_F5_FFN_SKIP=K` probe that kept the
+**Plan (chosen: prototype cheaply first):** gated `STELNETTTS_F5_FFN_SKIP=K` probe that kept the
 FFN matmuls running (NO speed win) but blended a cached FFN delta on skip steps via graph I/O
 (fresh delta out, cached delta in, `use_cache` scalar), host round-trip. Purpose: measure the
 QUALITY of FFN-skip vs temporal-skip at aggressive K before committing to the on-device
@@ -125,13 +125,13 @@ shipped. Probe reverted (diagnostic only, no speedup; fast path stays byte-ident
 
 | # | Change | Gate | Status |
 |---|--------|------|--------|
-| 4 | F16 activations in DiT matmuls | `CRISPASR_F5_F16_ACT` | built + gated. **Metal: byte-identical + ~17% SLOWER** (ggml already casts RHS to F16 internally). Committed, default OFF, CUDA-A/B-only. |
-| 6 | stable-alloc (skip per-step re-alloc for CUDA-graph replay) | `CRISPASR_F5_STABLE_ALLOC` | **REVERTED — correctness bug**: pos_in clobbered after step 0 → garbage ("(wind blowing)"). Proper fix needs persistent input tensors on a dedicated buffer (omnivoice §245 pattern); CUDA-only value, unverifiable on Metal. Not worth it now. |
-| 2 | host-embed → GPU graph | `CRISPASR_F5_EMBED_GPU` | **DONE + WINS.** Cached embed graph (input_proj + 2× grouped conv-pos + Mish + residual) on ctx->backend, reusing the cosyvoice3 grouped-conv-pos pattern (symmetric pad=15). MEASURED M1: host_embed 15.6→3.9 s, **ode_solve 60.9→48.3 s (1.26×)**, roundtrip perfect, gate-off byte-identical (e249). Wins even on M1 (removes the serial CPU stall between GPU dispatches); bigger expected on fast-GPU/slow-CPU. Default OFF (CPU-only builds would run the graph on CPU); recommend with a GPU backend, flip default after CUDA confirm. |
-| batched CFG default (CUDA) | `CRISPASR_F5_BATCH_CFG` | exists; validating correctness. Matches upstream. Candidate CUDA default. |
+| 4 | F16 activations in DiT matmuls | `STELNETTTS_F5_F16_ACT` | built + gated. **Metal: byte-identical + ~17% SLOWER** (ggml already casts RHS to F16 internally). Committed, default OFF, CUDA-A/B-only. |
+| 6 | stable-alloc (skip per-step re-alloc for CUDA-graph replay) | `STELNETTTS_F5_STABLE_ALLOC` | **REVERTED — correctness bug**: pos_in clobbered after step 0 → garbage ("(wind blowing)"). Proper fix needs persistent input tensors on a dedicated buffer (omnivoice §245 pattern); CUDA-only value, unverifiable on Metal. Not worth it now. |
+| 2 | host-embed → GPU graph | `STELNETTTS_F5_EMBED_GPU` | **DONE + WINS.** Cached embed graph (input_proj + 2× grouped conv-pos + Mish + residual) on ctx->backend, reusing the cosyvoice3 grouped-conv-pos pattern (symmetric pad=15). MEASURED M1: host_embed 15.6→3.9 s, **ode_solve 60.9→48.3 s (1.26×)**, roundtrip perfect, gate-off byte-identical (e249). Wins even on M1 (removes the serial CPU stall between GPU dispatches); bigger expected on fast-GPU/slow-CPU. Default OFF (CPU-only builds would run the graph on CPU); recommend with a GPU backend, flip default after CUDA confirm. |
+| batched CFG default (CUDA) | `STELNETTTS_F5_BATCH_CFG` | exists; validating correctness. Matches upstream. Candidate CUDA default. |
 | EPSS low-NFE + interval | (knobs) | validating quality at n=7/10/12 (+interval). Primary recommendation. |
 
 ### Reporter comms
-- Posted knobs (`--tts-steps 16`, `CRISPASR_F5_CFG_INTERVAL=2`), `-nfa`-is-a-no-op,
-  and `CRISPASR_F5_BENCH=1` request. issue #294 comment.
+- Posted knobs (`--tts-steps 16`, `STELNETTTS_F5_CFG_INTERVAL=2`), `-nfa`-is-a-no-op,
+  and `STELNETTTS_F5_BENCH=1` request. issue #294 comment.
 - TODO: follow up with the validated 2.6× numbers + shorter-reference tip.

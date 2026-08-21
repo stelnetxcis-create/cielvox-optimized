@@ -1,6 +1,6 @@
-if (CRISPASR_SDL2)
+if (STELNETTTS_SDL2)
     # stream
-    set(TARGET crispasr-lsp)
+    set(TARGET stelnettts-lsp)
     add_executable(${TARGET} lsp.cpp)
 
     include(DefaultTargetOptions)

@@ -1,8 +1,8 @@
 {
-  "_comment": "Per-backend regression pins. Each entry pins (a) the GGUF under test to a specific HF revision SHA so an upstream re-quantise doesn't silently regress us, and (b) the reference-dump archive in cstr/crispasr-regression-fixtures (also pinned). See tests/regression/README.md. Entries with skip_diff=true run transcript-only checks (no ref dump needed yet); see README for the fast-track workflow.",
+  "_comment": "Per-backend regression pins. Each entry pins (a) the GGUF under test to a specific HF revision SHA so an upstream re-quantise doesn't silently regress us, and (b) the reference-dump archive in Xenna/stelnettts-regression-fixtures (also pinned). See tests/regression/README.md. Entries with skip_diff=true run transcript-only checks (no ref dump needed yet); see README for the fast-track workflow.",
   "version": 1,
   "fixtures": {
-    "repo": "cstr/crispasr-regression-fixtures",
+    "repo": "Xenna/stelnettts-regression-fixtures",
     "revision": "b61b03014bc99ecce18ac8f99988d5110c83f2d2",
     "_note": "Pinned. To re-bake, run `tools/kaggle-regression.py` with MODE=rebake UPLOAD=1; the new commit SHA gets pasted here as a reviewable diff. Previous: 99f005d59a0f7f4915dea5faea4d2e17b2120268 (2026-05-17). Bumped 2026-05-25 after Kaggle rebake v13 published 9 ref archives — adds parakeet-tdt-1.1b, parakeet-tdt_ctc-1.1b, parakeet-rnnt-0.6b, parakeet-rnnt-1.1b (all NEW from handover-prompts/extend-coverage-via-kaggle.md realistic goal); refreshes canary-1b-v2, moonshine-tiny/base, parakeet-tdt-0.6b-{en,ja}."
   },
@@ -13,7 +13,7 @@
       "source_model": "nvidia/parakeet-tdt_ctc-0.6b-ja",
       "source_model_note": "HF id passed to NeMo's ASRModel.from_pretrained() by tools/reference_backends/parakeet.py. Only needed for re-bake (Kaggle); the nightly validate path doesn't touch source weights.",
       "gguf": {
-        "repo": "cstr/parakeet-tdt-0.6b-ja-GGUF",
+        "repo": "Xenna/parakeet-tdt-0.6b-ja-GGUF",
         "revision": "fd1963a153f09c883662624a8ac2fbf57c97a98d",
         "file": "parakeet-tdt-0.6b-ja.gguf",
         "approx_size_mb": 530
@@ -21,7 +21,7 @@
       "fixture_sample_path": "parakeet-tdt-0.6b-ja/reazon_baseball_14s/audio.wav",
       "_sample_note": "Sample WAVs live in the fixtures HF repo rather than the source tree; samples/.gitignore excludes them by default to keep the repo small.",
       "expected_transcript": "ピッチャーの岡本は1回戦の鳥取城北戦は8回、6対33点リードの場面で3人目でマウンドに上がりました。 はきょう先発の石川。",
-      "expected_transcript_source": "RE-BAKED after the auto-VAD safe-window fix (crispasr_run.cpp, #89). HF revision fd1963a, M1 Metal CPU+BLAS, decode_temperature=0, deterministic across 4 runs. NOT the human ground-truth (ground_truth.srt reads 山本 / Yamamoto vs the model's 岡本 / Okamoto). Lock-in is for regression, not correctness. WHY RE-BAKED: the previous value was captured on commit 3a9b294c via a FULL 14.06 s single pass — i.e. past parakeet-ja's ~12 s safe window (#89), the degraded path the auto-VAD gate is meant to prevent. That capture missed the clip's second utterance. Post-fix the run is VAD-sliced: segment 1 (00:03.220-00:12.420) reproduces the old reference byte-for-byte and ends at exactly the ground-truth SRT's 00:12.420, and segment 2 (00:13.100-00:13.900, 'はきょう先発の石川。') is a distinct speech region silero VAD detects independently — real speech the single-subtitle SRT simply doesn't annotate, NOT the 'hallucinated trailing sentence' the pre-fix degraded path made it look like.",
+      "expected_transcript_source": "RE-BAKED after the auto-VAD safe-window fix (stelnettts_run.cpp, #89). HF revision fd1963a, M1 Metal CPU+BLAS, decode_temperature=0, deterministic across 4 runs. NOT the human ground-truth (ground_truth.srt reads 山本 / Yamamoto vs the model's 岡本 / Okamoto). Lock-in is for regression, not correctness. WHY RE-BAKED: the previous value was captured on commit 3a9b294c via a FULL 14.06 s single pass — i.e. past parakeet-ja's ~12 s safe window (#89), the degraded path the auto-VAD gate is meant to prevent. That capture missed the clip's second utterance. Post-fix the run is VAD-sliced: segment 1 (00:03.220-00:12.420) reproduces the old reference byte-for-byte and ends at exactly the ground-truth SRT's 00:12.420, and segment 2 (00:13.100-00:13.900, 'はきょう先発の石川。') is a distinct speech region silero VAD detects independently — real speech the single-subtitle SRT simply doesn't annotate, NOT the 'hallucinated trailing sentence' the pre-fix degraded path made it look like.",
       "fixture_ref_path": "parakeet-tdt-0.6b-ja/reazon_baseball_14s/ref.gguf",
       "diff_thresholds": {
         "encoder_output": 0.999,
@@ -32,7 +32,7 @@
       "transcript_tolerance": {
         "cer_max": 0.1,
         "wer_max": 1.0,
-        "transcript_tolerance_note": "CJK: WER is degenerate (no whitespace) so the gate is CER. cer_max=0.10 tolerates minor kanji/punct decode variance. KEEP IT TIGHT — 0.30 was a prior band-aid that masked a real defect, and 0.10 is what surfaced it. That defect is now FIXED, not tolerated: JA clips in the 12-30 s gap skipped the #89 auto-VAD safeguard (gated on the unrelated 30 s long-audio constant) and ran a degraded full single pass, which hallucinated a leading sentence and misread '6対3' as '0失点' (cer 0.68). crispasr_run.cpp now gates auto-VAD on the backend's own vad_slice_cap_seconds(); the fixture decodes at cer 0.00 against the re-baked reference."
+        "transcript_tolerance_note": "CJK: WER is degenerate (no whitespace) so the gate is CER. cer_max=0.10 tolerates minor kanji/punct decode variance. KEEP IT TIGHT — 0.30 was a prior band-aid that masked a real defect, and 0.10 is what surfaced it. That defect is now FIXED, not tolerated: JA clips in the 12-30 s gap skipped the #89 auto-VAD safeguard (gated on the unrelated 30 s long-audio constant) and ran a degraded full single pass, which hallucinated a leading sentence and misread '6対3' as '0失点' (cer 0.68). stelnettts_run.cpp now gates auto-VAD on the backend's own vad_slice_cap_seconds(); the fixture decodes at cer 0.00 against the re-baked reference."
       },
       "transcript_tolerance_note": "Wide tolerance — GH runner decode diverges significantly from Kaggle T4"
     },
@@ -42,7 +42,7 @@
       "source_model": "usefulsensors/moonshine-tiny",
       "source_model_note": "HF id for tools/reference_backends/moonshine.py. Only needed for re-bake.",
       "gguf": {
-        "repo": "cstr/moonshine-tiny-GGUF",
+        "repo": "Xenna/moonshine-tiny-GGUF",
         "revision": "28281de882bac021e9241e640f44a9a289607e03",
         "file": "moonshine-tiny.gguf",
         "approx_size_mb": 104,
@@ -66,7 +66,7 @@
       "source_model": "usefulsensors/moonshine-base",
       "source_model_note": "HF id for tools/reference_backends/moonshine.py. Only needed for re-bake.",
       "gguf": {
-        "repo": "cstr/moonshine-base-GGUF",
+        "repo": "Xenna/moonshine-base-GGUF",
         "revision": "bfb1ef9865b9f83f35f050ab03e5e9ddaf736b7b",
         "file": "moonshine-base.gguf",
         "approx_size_mb": 234,
@@ -88,7 +88,7 @@
       "name": "moonshine-streaming-tiny",
       "backend_id": "moonshine-streaming",
       "gguf": {
-        "repo": "cstr/moonshine-streaming-tiny-GGUF",
+        "repo": "Xenna/moonshine-streaming-tiny-GGUF",
         "revision": "56e0ac359fe5b44674cb4f6e8adee0b4f2baaec1",
         "file": "moonshine-streaming-tiny.gguf",
         "approx_size_mb": 169,
@@ -113,7 +113,7 @@
       "_skip_diff_note": "Q4K model diverges from F16/F32 NeMo reference (all encoder layers cos_min<0.9). The V3 reference needs an F16 GGUF; q4_k is too coarse for diff.",
       "source_model": "nvidia/parakeet-tdt-0.6b-v3",
       "gguf": {
-        "repo": "cstr/parakeet-tdt-0.6b-v3-GGUF",
+        "repo": "Xenna/parakeet-tdt-0.6b-v3-GGUF",
         "revision": "815cc1bcb5cfb92f9cd0bbd22c7bc2f6e2d4ec13",
         "file": "parakeet-tdt-0.6b-v3-q4_k.gguf",
         "approx_size_mb": 466
@@ -128,7 +128,7 @@
       "source_model": "nvidia/canary-1b-v2",
       "source_model_note": "HF id for tools/reference_backends/canary.py. Only needed for re-bake.",
       "gguf": {
-        "repo": "cstr/canary-1b-v2-GGUF",
+        "repo": "Xenna/canary-1b-v2-GGUF",
         "revision": "b3715a517928f8f68833142c90fc5810ad583210",
         "file": "canary-1b-v2.gguf",
         "approx_size_mb": 1900,
@@ -156,7 +156,7 @@
       "source_model": "FireRedTeam/FireRedASR2-AED",
       "source_model_note": "HF id for tools/reference_backends/firered_asr.py. Only needed for re-bake.",
       "gguf": {
-        "repo": "cstr/firered-asr2-aed-GGUF",
+        "repo": "Xenna/firered-asr2-aed-GGUF",
         "revision": "076633a711b3b0f1a5e04ee43b2a9748cde253bd",
         "file": "firered-asr2-aed.gguf",
         "approx_size_mb": 2300,
@@ -178,7 +178,7 @@
       "source_model": "THUDM/glm-4-voice-tokenizer",
       "source_model_note": "HF id for tools/reference_backends/glm_asr.py. Only needed for re-bake.",
       "gguf": {
-        "repo": "cstr/glm-asr-nano-GGUF",
+        "repo": "Xenna/glm-asr-nano-GGUF",
         "revision": "0eed3da3582c7cbabd7c7206ca7e7925a3ac49a5",
         "file": "glm-asr-nano.gguf",
         "approx_size_mb": 4300,
@@ -205,9 +205,9 @@
       "skip_diff": true,
       "_skip_diff_note": "mel passes (cos=0.999638) after transpose + drop_last_frame fix, but encoder_output fails (cos_min=-0.253) — 48-layer conformer diverges, needs investigation.",
       "skip_preflight": true,
-      "_skip_preflight_note": "cstr/cohere-transcribe-GGUF is private and HF account has hit private-repo storage limit (403). Remove skip_preflight once repo is made public or space freed.",
+      "_skip_preflight_note": "Xenna/cohere-transcribe-GGUF is private and HF account has hit private-repo storage limit (403). Remove skip_preflight once repo is made public or space freed.",
       "gguf": {
-        "repo": "cstr/cohere-transcribe-GGUF",
+        "repo": "Xenna/cohere-transcribe-GGUF",
         "revision": "b9bcdb1a4f54d4224c0b862a75683843f8e3cfab",
         "file": "cohere-transcribe-q4_k.gguf",
         "approx_size_mb": 1500
@@ -222,7 +222,7 @@
       "skip_diff": true,
       "_skip_diff_note": "mel passes (cos=0.999997) but encoder diverges (cos_min=-0.077, all 16 conformer layers fail). Needs per-layer investigation. Granite NLE outputs lowercase without punctuation.",
       "gguf": {
-        "repo": "cstr/granite-speech-4.1-2b-GGUF",
+        "repo": "Xenna/granite-speech-4.1-2b-GGUF",
         "revision": "7ee888f67b68fd6a25af5903ca5b3829ca32c215",
         "file": "granite-speech-4.1-2b-q4_k.gguf",
         "approx_size_mb": 2806
@@ -239,7 +239,7 @@
       "skip_preflight": true,
       "source_model": "nvidia/parakeet-tdt-1.1b",
       "gguf": {
-        "repo": "cstr/parakeet-tdt-1.1b-GGUF",
+        "repo": "Xenna/parakeet-tdt-1.1b-GGUF",
         "revision": "1d406d87367c4e537ce29bf2e85ad1bcc3e1c98e",
         "file": "parakeet-tdt-1.1b-q8_0.gguf",
         "approx_size_mb": 1213
@@ -256,7 +256,7 @@
       "skip_preflight": true,
       "source_model": "nvidia/parakeet-tdt_ctc-1.1b",
       "gguf": {
-        "repo": "cstr/parakeet-tdt_ctc-1.1b-GGUF",
+        "repo": "Xenna/parakeet-tdt_ctc-1.1b-GGUF",
         "revision": "6ced2ca0551a4e6ad2c0f6a6c8c70df4a52cf07b",
         "file": "parakeet-tdt_ctc-1.1b-q8_0.gguf",
         "approx_size_mb": 1215
@@ -272,7 +272,7 @@
       "_skip_diff_note": "Rebake-pending for diff; transcript captured 2026-06-15.",
       "source_model": "nvidia/parakeet-rnnt-0.6b",
       "gguf": {
-        "repo": "cstr/parakeet-rnnt-0.6b-GGUF",
+        "repo": "Xenna/parakeet-rnnt-0.6b-GGUF",
         "revision": "7a582b3f5ff014c7c9efe45b00685cff4c130ad6",
         "file": "parakeet-rnnt-0.6b-q4_k.gguf",
         "approx_size_mb": 447
@@ -289,7 +289,7 @@
       "skip_preflight": true,
       "source_model": "nvidia/parakeet-rnnt-1.1b",
       "gguf": {
-        "repo": "cstr/parakeet-rnnt-1.1b-GGUF",
+        "repo": "Xenna/parakeet-rnnt-1.1b-GGUF",
         "revision": "fb4ceb7e1187a4e2d6a8a3f4a0f4f4d34c5b7a78",
         "file": "parakeet-rnnt-1.1b-q4_k.gguf",
         "approx_size_mb": 770
@@ -302,20 +302,20 @@
       "name": "paraformer-zh",
       "backend_id": "paraformer",
       "skip_diff": true,
-      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. Chinese paraformer; needs a Chinese sample WAV — TODO confirm which sample to use (samples/zh/ may not exist; could store in cstr/crispasr-regression-fixtures and reference via fixture_sample_path).",
+      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. Chinese paraformer; needs a Chinese sample WAV — TODO confirm which sample to use (samples/zh/ may not exist; could store in Xenna/stelnettts-regression-fixtures and reference via fixture_sample_path).",
       "skip_preflight": true,
       "_skip_preflight_note": "Rebake-pending — GGUF revision is a TODO placeholder. Remove skip_preflight once the rebake fills in the real 40-char SHA and the file lands on HF.",
       "source_model": "funasr/paraformer-zh",
       "source_model_note": "HF id for tools/reference_backends/paraformer.py. Loaded via funasr's automodel.",
       "gguf": {
-        "repo": "cstr/paraformer-zh-GGUF",
+        "repo": "Xenna/paraformer-zh-GGUF",
         "revision": "86ea220d4110aac4be7c031ed2c8d8e2eeef6aa6",
         "file": "paraformer-zh-q8_0.gguf",
         "approx_size_mb": 226,
         "_revision_note": "pinned to repo main HEAD (verified via list_repo_files 2026-07-13)"
       },
       "sample": "samples/jfk.wav",
-      "_sample_note": "TODO: jfk.wav is English; paraformer-zh trained on Chinese. Replace with a Chinese WAV from cstr/crispasr-regression-fixtures or samples/zh/ (create if needed).",
+      "_sample_note": "TODO: jfk.wav is English; paraformer-zh trained on Chinese. Replace with a Chinese WAV from Xenna/stelnettts-regression-fixtures or samples/zh/ (create if needed).",
       "expected_transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
       "expected_transcript_source": "captured 2026-06-15 with paraformer-zh-q8_0.gguf on samples/jfk.wav (English; paraformer-zh handles English via BPE)",
       "transcript_tolerance": {
@@ -334,7 +334,7 @@
       "source_model": "mistralai/Voxtral-Mini-3B-2507",
       "source_model_note": "HF id for tools/reference_backends/voxtral.py.",
       "gguf": {
-        "repo": "cstr/voxtral-mini-3b-2507-GGUF",
+        "repo": "Xenna/voxtral-mini-3b-2507-GGUF",
         "revision": "7a6ffdc7ff9ed4e2f3a6b8c1d9e5f0a2b3c4d5e6",
         "_revision_note": "TODO: replace with full 40-char SHA.",
         "file": "voxtral-mini-3b-2507-q4_k.gguf",
@@ -348,13 +348,13 @@
       "name": "mimo-asr",
       "backend_id": "mimo-asr",
       "skip_diff": true,
-      "_skip_diff_note": "Added 2026-05-25 — local ref archive exists at /Volumes/backups/ai/mimo-asr-ref.gguf (mtime 2026-05-01) but cstr/crispasr-regression-fixtures doesn't have a frozen copy yet. Rebake will upload it; then bump fixtures.revision and flip skip_diff. NOTE: tests/regression/manifest.json _comment + plan(#115) flag mimo-asr baseline as broken (silent empty on short audio, segfault on long) — verify the runtime works on samples/jfk.wav before enabling the diff.",
+      "_skip_diff_note": "Added 2026-05-25 — local ref archive exists at /Volumes/backups/ai/mimo-asr-ref.gguf (mtime 2026-05-01) but Xenna/stelnettts-regression-fixtures doesn't have a frozen copy yet. Rebake will upload it; then bump fixtures.revision and flip skip_diff. NOTE: tests/regression/manifest.json _comment + plan(#115) flag mimo-asr baseline as broken (silent empty on short audio, segfault on long) — verify the runtime works on samples/jfk.wav before enabling the diff.",
       "skip_preflight": true,
       "_skip_preflight_note": "Rebake-pending — GGUF revision is a TODO placeholder. Remove skip_preflight once the rebake fills in the real 40-char SHA and the file lands on HF.",
       "source_model": "XiaomiMiMo/MiMo-V2.5-ASR",
       "source_model_note": "HF id for tools/reference_backends/mimo_asr.py. Needs MIMO_TOKENIZER_DIR env to point at the sibling tokenizer snapshot during rebake.",
       "gguf": {
-        "repo": "cstr/mimo-asr-GGUF",
+        "repo": "Xenna/mimo-asr-GGUF",
         "revision": "4c6a0ede08740b9e8c7e4f5a4b2a1d3a5c7b9e8c",
         "_revision_note": "TODO: replace with full 40-char SHA.",
         "file": "mimo-asr-q4_k.gguf",
@@ -368,11 +368,11 @@
       "name": "mimo-audio-tokenizer",
       "backend_id": "mimo-tokenizer",
       "skip_diff": true,
-      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. Encoder of the MiMo-Audio tokenizer (32-layer transformer + 8-stage RVQ). The C++ harness branch is wired at examples/cli/crispasr_diff_main.cpp:2161. See handover-prompts/extend-coverage-via-kaggle.md.",
+      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. Encoder of the MiMo-Audio tokenizer (32-layer transformer + 8-stage RVQ). The C++ harness branch is wired at examples/cli/stelnettts_diff_main.cpp:2161. See handover-prompts/extend-coverage-via-kaggle.md.",
       "source_model": "XiaomiMiMo/MiMo-Audio-Tokenizer",
       "source_model_note": "HF id for tools/reference_backends/mimo_tokenizer.py. Set MIMO_TOKENIZER_DIR to point at the local snapshot during rebake.",
       "gguf": {
-        "repo": "cstr/mimo-audio-tokenizer-GGUF",
+        "repo": "Xenna/mimo-audio-tokenizer-GGUF",
         "revision": "e2e4a8dec8fdc38c5b029971f1f983adf66c6ef5",
         "file": "mimo-tokenizer.gguf",
         "approx_size_mb": 1240
@@ -385,11 +385,11 @@
       "name": "lid-cld3-f16",
       "backend_id": "lid-cld3",
       "skip_diff": true,
-      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. CLD3 is a text language-ID backend; audio arg is unused (input rides in LID_TEXT env var). C++ harness wired at examples/cli/crispasr_diff_main.cpp:3189. See handover-prompts/extend-coverage-via-kaggle.md.",
+      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. CLD3 is a text language-ID backend; audio arg is unused (input rides in LID_TEXT env var). C++ harness wired at examples/cli/stelnettts_diff_main.cpp:3189. See handover-prompts/extend-coverage-via-kaggle.md.",
       "source_model": "(text-LID; no upstream source weights — GGUF generated from cld3 protobuf by models/convert-cld3-to-gguf.py)",
       "source_model_note": "tools/reference_backends/lid_cld3.py re-implements CLD3 feature extractors in Python and cross-checks against pycld3. Set LID_TEXT (or CLD3_TEXT) during rebake to control the input string.",
       "gguf": {
-        "repo": "cstr/cld3-GGUF",
+        "repo": "Xenna/cld3-GGUF",
         "revision": "ce295cc04e4796be10b7a45e82b1513b5d9cc225",
         "file": "cld3-f16.gguf",
         "approx_size_mb": 1
@@ -403,11 +403,11 @@
       "name": "titanet-large",
       "backend_id": "titanet",
       "skip_diff": true,
-      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. NVIDIA TitaNet-Large speaker verification (192-D speaker embedding). NOTE: no C++ harness branch yet (docs/diff-harness-coverage.md flags `titanet` as 'harness: no'); a future commit must add an `else if (backend_name == \"titanet\")` block in examples/cli/crispasr_diff_main.cpp before skip_diff can flip to false. Lower priority per handover (speaker verification, not ASR) but small enough (43 MB) to be cheap.",
+      "_skip_diff_note": "Added 2026-05-25 — rebake-pending. NVIDIA TitaNet-Large speaker verification (192-D speaker embedding). NOTE: no C++ harness branch yet (docs/diff-harness-coverage.md flags `titanet` as 'harness: no'); a future commit must add an `else if (backend_name == \"titanet\")` block in examples/cli/stelnettts_diff_main.cpp before skip_diff can flip to false. Lower priority per handover (speaker verification, not ASR) but small enough (43 MB) to be cheap.",
       "source_model": "nvidia/speakerverification_en_titanet_large",
       "source_model_note": "HF id for tools/reference_backends/titanet.py. Loaded via NeMo's EncDecSpeakerLabelModel.from_pretrained().",
       "gguf": {
-        "repo": "cstr/titanet-large-GGUF",
+        "repo": "Xenna/titanet-large-GGUF",
         "revision": "c27e6312bb176e73ee8363982be8d5d25d213d6d",
         "file": "titanet-large.gguf",
         "approx_size_mb": 43
@@ -423,7 +423,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/wav2vec2-large-xlsr-53-english-GGUF",
+        "repo": "Xenna/wav2vec2-large-xlsr-53-english-GGUF",
         "revision": "3de5f69700e163286eaae85952fba9bf4ab761f6",
         "file": "wav2vec2-xlsr-en-q4_k.gguf",
         "approx_size_mb": 200
@@ -443,7 +443,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/hubert-large-ls960-ft-GGUF",
+        "repo": "Xenna/hubert-large-ls960-ft-GGUF",
         "revision": "fa24754efea02b7b2f8616c3b149c74d3cb8491a",
         "file": "hubert-large-ls960-ft-q4_k.gguf",
         "approx_size_mb": 200
@@ -458,7 +458,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/data2vec-audio-960h-GGUF",
+        "repo": "Xenna/data2vec-audio-960h-GGUF",
         "revision": "97d798574af55a3b861d323c2222f3d6cbbf1048",
         "file": "data2vec-audio-base-960h-q4_k.gguf",
         "approx_size_mb": 60
@@ -473,7 +473,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/stt-en-fastconformer-ctc-large-GGUF",
+        "repo": "Xenna/stt-en-fastconformer-ctc-large-GGUF",
         "revision": "bc24257f571edd7ea58d807d408e0254d0c6bcab",
         "file": "stt-en-fastconformer-ctc-large-q4_k.gguf",
         "approx_size_mb": 80
@@ -493,7 +493,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/sensevoice-small-GGUF",
+        "repo": "Xenna/sensevoice-small-GGUF",
         "revision": "abbeaf54fdae72fc6034e23edc0efd8f8e1cc982",
         "file": "sensevoice-small-q4_k.gguf",
         "approx_size_mb": 470
@@ -508,14 +508,14 @@
       "transcript_tolerance_note": "Cross-platform decode drift"
     },
     {
-      "name": "qwen3-asr-0.6b",
+      "name": "cielvox2-asr-0.6b",
       "backend_id": "qwen3",
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/qwen3-asr-0.6b-GGUF",
+        "repo": "Xenna/cielvox2-asr-0.6b-GGUF",
         "revision": "ad086c22597ed47af05cc159dd61c98bd6e945f9",
-        "file": "qwen3-asr-0.6b-q4_k.gguf",
+        "file": "cielvox2-asr-0.6b-q4_k.gguf",
         "approx_size_mb": 400
       },
       "sample": "samples/jfk.wav",
@@ -533,7 +533,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/omniASR-CTC-1B-v2-GGUF",
+        "repo": "Xenna/omniASR-CTC-1B-v2-GGUF",
         "revision": "e05a1d261ca3f0dfe6932ee9d50794860d849ea0",
         "file": "omniasr-ctc-1b-v2-q4_k.gguf",
         "approx_size_mb": 660
@@ -553,7 +553,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/omniasr-llm-300m-v2-GGUF",
+        "repo": "Xenna/omniasr-llm-300m-v2-GGUF",
         "revision": "9c3d29db4175fa38bf48414b78a37938edfd7568",
         "file": "omniasr-llm-300m-v2-q4_k.gguf",
         "approx_size_mb": 1100
@@ -573,7 +573,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/kyutai-stt-1b-GGUF",
+        "repo": "Xenna/kyutai-stt-1b-GGUF",
         "revision": "e58ef4fec3fa53c359c4e0c73205dc46acf509b3",
         "file": "kyutai-stt-1b-q4_k.gguf",
         "approx_size_mb": 700
@@ -588,7 +588,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/gemma4-e2b-it-GGUF",
+        "repo": "Xenna/gemma4-e2b-it-GGUF",
         "revision": "0afc0beb5bff9f4352f0fb09ca02a6e2a08a7ada",
         "file": "gemma4-e2b-it-q4_k.gguf",
         "approx_size_mb": 2500
@@ -603,7 +603,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/funasr-nano-GGUF",
+        "repo": "Xenna/funasr-nano-GGUF",
         "revision": "5d4346e47c268ba91a332a148a1fd39b766408ac",
         "file": "funasr-nano-2512-q8_0.gguf",
         "approx_size_mb": 1060
@@ -618,7 +618,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/funasr-mlt-nano-GGUF",
+        "repo": "Xenna/funasr-mlt-nano-GGUF",
         "revision": "5ba2e21029b7d88eceb6e4214530eca8e00b9fc6",
         "file": "funasr-mlt-nano-2512-f16.gguf",
         "approx_size_mb": 1980
@@ -633,7 +633,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/granite-speech-4.1-2b-plus-GGUF",
+        "repo": "Xenna/granite-speech-4.1-2b-plus-GGUF",
         "revision": "6e815300427226d6c18708d696a4d276aa8aa0fe",
         "file": "granite-speech-4.1-2b-plus-q4_k.gguf",
         "approx_size_mb": 2960
@@ -648,7 +648,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/granite-speech-4.1-2b-nar-GGUF",
+        "repo": "Xenna/granite-speech-4.1-2b-nar-GGUF",
         "revision": "c9bc0d62852d150b0589ec0997bf5384ce4c2a26",
         "file": "granite-speech-4.1-2b-nar-q4_k.gguf",
         "approx_size_mb": 3200
@@ -663,7 +663,7 @@
       "skip_diff": true,
       "skip_preflight": true,
       "gguf": {
-        "repo": "cstr/voxtral-mini-4b-realtime-GGUF",
+        "repo": "Xenna/voxtral-mini-4b-realtime-GGUF",
         "revision": "38f0e025ff6091079acad38502f376dc03b6818e",
         "file": "voxtral-mini-4b-realtime-q4_k.gguf",
         "approx_size_mb": 2500
@@ -676,7 +676,7 @@
       "name": "vibevoice-asr",
       "backend_id": "vibevoice",
       "gguf": {
-        "repo": "cstr/vibevoice-asr-GGUF",
+        "repo": "Xenna/vibevoice-asr-GGUF",
         "revision": "7f09f5c112ff98251c8998946e033b6f3078247c",
         "file": "vibevoice-asr-q4_k.gguf",
         "approx_size_mb": 4588
@@ -690,7 +690,7 @@
       "name": "firered-lid",
       "backend_id": "firered-lid",
       "gguf": {
-        "repo": "cstr/firered-lid-GGUF",
+        "repo": "Xenna/firered-lid-GGUF",
         "revision": "f2861e9d0845889b7d7fd7c66d07c15a369577d3",
         "file": "firered-lid-q4_k.gguf",
         "approx_size_mb": 543
@@ -704,7 +704,7 @@
       "name": "silero-lid-lang95",
       "backend_id": "silero-lid",
       "gguf": {
-        "repo": "cstr/silero-lid-lang95-GGUF",
+        "repo": "Xenna/silero-lid-lang95-GGUF",
         "revision": "64cab0db25340ca04589e1efae7064bd0e4f8799",
         "file": "silero-lid-lang95-f32.gguf",
         "approx_size_mb": 16
@@ -718,7 +718,7 @@
       "name": "fasttext-lid176",
       "backend_id": "lid-fasttext",
       "gguf": {
-        "repo": "cstr/fasttext-lid176-GGUF",
+        "repo": "Xenna/fasttext-lid176-GGUF",
         "revision": "7d1a7353c2967d365db7f6a892f9cf9e5ef4b3f6",
         "file": "fasttext-lid176-f16.gguf",
         "approx_size_mb": 62
@@ -732,7 +732,7 @@
       "name": "ecapa-lid-107",
       "backend_id": "ecapa-lid",
       "gguf": {
-        "repo": "cstr/ecapa-lid-107-GGUF",
+        "repo": "Xenna/ecapa-lid-107-GGUF",
         "revision": "95fb0613bf78c6e48305fccd9ce023ac15f0b5a6",
         "file": "ecapa-lid-107-f16.gguf",
         "approx_size_mb": 40
@@ -746,7 +746,7 @@
       "name": "moss-audio-4b-instruct",
       "backend_id": "moss-audio",
       "gguf": {
-        "repo": "cstr/MOSS-Audio-4B-Instruct-GGUF",
+        "repo": "Xenna/MOSS-Audio-4B-Instruct-GGUF",
         "revision": "dbc2e72233d4a6653781dc3e556f123ba5f1f0c4",
         "file": "moss-audio-4b-instruct-q4_k.gguf",
         "approx_size_mb": 3920
@@ -760,7 +760,7 @@
       "name": "kugelaudio-0-open",
       "backend_id": "kugelaudio",
       "gguf": {
-        "repo": "cstr/kugelaudio-0-open-GGUF",
+        "repo": "Xenna/kugelaudio-0-open-GGUF",
         "revision": "f3796df6f2ab4c690f01da696a29aa7bd96a9739",
         "file": "kugelaudio-0-open-q4_k.gguf",
         "approx_size_mb": 5445
@@ -774,7 +774,7 @@
       "name": "mini-omni2",
       "backend_id": "mini-omni2",
       "gguf": {
-        "repo": "cstr/mini-omni2-GGUF",
+        "repo": "Xenna/mini-omni2-GGUF",
         "revision": "0b27fedc2a6c880f77b336bad2b524c24decbea5",
         "file": "mini-omni2-q4_k.gguf",
         "approx_size_mb": 1009
@@ -788,7 +788,7 @@
       "name": "lfm2-audio-1.5b",
       "backend_id": "lfm2-audio",
       "gguf": {
-        "repo": "cstr/lfm2-audio-1.5b-GGUF",
+        "repo": "Xenna/lfm2-audio-1.5b-GGUF",
         "revision": "53caad18ec951e54663fe851c71b3ffc78110cac",
         "file": "lfm2-audio-1.5b-q5_k.gguf",
         "approx_size_mb": 1600,
@@ -797,7 +797,7 @@
       "sample": "samples/jfk.wav",
       "expected_transcript": "ANd so my fellow Americans, ask not what your country can do for you, ask what you can do for your country..",
       "expected_transcript_source": "captured 2026-06-15 with lfm2-audio-1.5b-q5_k on samples/jfk.wav (F16 gives identical text)",
-      "_ref_note": "PyTorch reference dump (LiquidAI/LFM2.5-Audio-1.5B, audio-only backbone stages mel/encoder/adapter/lfm_ao_layer_0..15) built 2026-06-21 §206. CPU diff matches at cos_mean≈0.999 (cos_min≈0.93 is Q5_K-vs-F32 quant drift, below the 0.999 gate → keep skip_diff). Run the GPU diff with CRISPASR_DIFF_USE_GPU=1 to reproduce the open backbone-on-Metal divergence.",
+      "_ref_note": "PyTorch reference dump (LiquidAI/LFM2.5-Audio-1.5B, audio-only backbone stages mel/encoder/adapter/lfm_ao_layer_0..15) built 2026-06-21 §206. CPU diff matches at cos_mean≈0.999 (cos_min≈0.93 is Q5_K-vs-F32 quant drift, below the 0.999 gate → keep skip_diff). Run the GPU diff with STELNETTTS_DIFF_USE_GPU=1 to reproduce the open backbone-on-Metal divergence.",
       "skip_diff": true
     },
     {
@@ -806,7 +806,7 @@
       "skip_diff": true,
       "_skip_diff_note": "Added 2026-06-15. Transcript-only regression for now; diff harness needs NeMo ref dump integration.",
       "gguf": {
-        "repo": "cstr/nemotron-3.5-asr-streaming-GGUF",
+        "repo": "Xenna/nemotron-3.5-asr-streaming-GGUF",
         "revision": "bbd95a9ca5fa0dfca3312a122dfc45a2b578b9c2",
         "_revision_note": "TODO: replace with actual 40-char SHA from HF repo.",
         "file": "nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
@@ -828,13 +828,13 @@
       "name": "kokoro-82m-en",
       "backend_id": "kokoro",
       "gguf": {
-        "repo": "cstr/kokoro-82m-GGUF",
+        "repo": "Xenna/kokoro-82m-GGUF",
         "revision": "f20291b3a27d0900af358ea1c87d63c76183b223",
         "file": "kokoro-82m-q8_0.gguf",
         "approx_size_mb": 90
       },
       "voice": {
-        "repo": "cstr/kokoro-voices-GGUF",
+        "repo": "Xenna/kokoro-voices-GGUF",
         "revision": "d6435f2e72f28392c36051c832714815382d36bd",
         "file": "kokoro-voice-af_heart.gguf"
       },
@@ -844,22 +844,22 @@
       "wer_max_note": "Widened for cross-platform TTS output variation (GH runner vs local)"
     },
     {
-      "name": "qwen3-tts-0.6b-customvoice-eric",
-      "backend_id": "qwen3-tts",
+      "name": "cielvox2-tts-0.6b-customvoice-eric",
+      "backend_id": "cielvox2-tts",
       "gguf": {
-        "repo": "cstr/qwen3-tts-0.6b-customvoice-GGUF",
+        "repo": "Xenna/cielvox2-tts-0.6b-customvoice-GGUF",
         "revision": "bb17332887c5d7fa68c58ce1812ff609c7cb9a94",
-        "file": "qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf",
+        "file": "cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf",
         "approx_size_mb": 970
       },
       "codec": {
-        "repo": "cstr/qwen3-tts-tokenizer-12hz-GGUF",
+        "repo": "Xenna/cielvox2-tts-tokenizer-12hz-GGUF",
         "revision": "198f2d9c39eb366b2f98af977bcb63168fdad6ad",
-        "file": "qwen3-tts-tokenizer-12hz.gguf",
+        "file": "cielvox2-tts-tokenizer-12hz.gguf",
         "_size_mb": 360
       },
       "voice_preset": "eric",
-      "voice_preset_note": "qwen3-tts-CustomVoice has 9 baked speakers selectable by name (aiden, dylan, eric, ono_anna, ryan, serena, sohee, uncle_fu, vivian). `eric` is a clear male voice — best fit for the pangram phrase + parakeet transcription. No separate voice GGUF needed; the speaker embed lives inside the customvoice model.",
+      "voice_preset_note": "cielvox2-tts-CustomVoice has 9 baked speakers selectable by name (aiden, dylan, eric, ono_anna, ryan, serena, sohee, uncle_fu, vivian). `eric` is a clear male voice — best fit for the pangram phrase + parakeet transcription. No separate voice GGUF needed; the speaker embed lives inside the customvoice model.",
       "tts_phrase": "The quick brown fox jumps over the lazy dog",
       "roundtrip_asr_backend": "parakeet-tdt-0.6b-en",
       "wer_max": 0.1,
@@ -870,13 +870,13 @@
       "name": "bark-small",
       "backend_id": "bark",
       "gguf": {
-        "repo": "cstr/bark-small-GGUF",
+        "repo": "Xenna/bark-small-GGUF",
         "revision": "6afdd08822226a8a0c96e2235477af67c17d15aa",
         "file": "bark-small-q8_0.gguf",
         "approx_size_mb": 500
       },
       "voice": {
-        "repo": "cstr/crispasr-regression-fixtures",
+        "repo": "Xenna/stelnettts-regression-fixtures",
         "revision": "736366c8d4066dda5cb5efcf6ef76906084dfcc2",
         "file": "bark-small/en_speaker_3.npz"
       },
@@ -895,7 +895,7 @@
       "name": "csm-1b",
       "backend_id": "csm",
       "gguf": {
-        "repo": "cstr/csm-1b-GGUF",
+        "repo": "Xenna/csm-1b-GGUF",
         "revision": "5abf936b9d17a839fca69e09baf31e0ea5068f97",
         "file": "csm-1b-q4_k.gguf",
         "approx_size_mb": 1100
@@ -910,13 +910,13 @@
       "name": "speecht5-tts-en",
       "backend_id": "speecht5",
       "gguf": {
-        "repo": "cstr/speecht5-tts-GGUF",
+        "repo": "Xenna/speecht5-tts-GGUF",
         "revision": "1816c99e668528ea8286a8bc6b9d3f4591a4a07d",
         "file": "speecht5-tts-f16.gguf",
         "approx_size_mb": 301
       },
       "voice": {
-        "repo": "cstr/speecht5-tts-GGUF",
+        "repo": "Xenna/speecht5-tts-GGUF",
         "revision": "1816c99e668528ea8286a8bc6b9d3f4591a4a07d",
         "file": "speaker.bin"
       },
@@ -929,7 +929,7 @@
       "name": "piper-lessac-en",
       "backend_id": "piper",
       "gguf": {
-        "repo": "cstr/piper-en_US-lessac-medium-GGUF",
+        "repo": "Xenna/piper-en_US-lessac-medium-GGUF",
         "revision": "d1f0ee3fcb185ed88c9831bcb7a770ad36592aa0",
         "file": "piper-en_US-lessac-medium-f16.gguf",
         "approx_size_mb": 16
@@ -944,13 +944,13 @@
       "name": "pocket-tts-en",
       "backend_id": "pocket-tts",
       "gguf": {
-        "repo": "cstr/pocket-tts-GGUF",
+        "repo": "Xenna/pocket-tts-GGUF",
         "revision": "7fbc23706c2112acbc17d489a7cef328a74574c8",
         "file": "pocket-tts-english-q8_0.gguf",
         "approx_size_mb": 118
       },
       "voice": {
-        "repo": "cstr/crispasr-regression-fixtures",
+        "repo": "Xenna/stelnettts-regression-fixtures",
         "revision": "98ba026354b6c4e6aed93550208e9c6f95e83df7",
         "file": "pocket-tts/ref_voice_kokoro_af_heart.wav"
       },
@@ -962,7 +962,7 @@
         "--seed",
         "1234"
       ],
-      "tts_extra_args_note": "--i-have-rights is REQUIRED to clone from a .wav (voice-clone consent gate, examples/cli/crispasr_run.cpp:2483). --seed 1234 pins the AR sampling. Do NOT force a low --temperature: like bark, a sharpened distribution can early-stop and truncate; the default synthesizes the full phrase cleanly.",
+      "tts_extra_args_note": "--i-have-rights is REQUIRED to clone from a .wav (voice-clone consent gate, examples/cli/stelnettts_run.cpp:2483). --seed 1234 pins the AR sampling. Do NOT force a low --temperature: like bark, a sharpened distribution can early-stop and truncate; the default synthesizes the full phrase cleanly.",
       "wer_max": 0.15,
       "wer_max_note": "HARD GATE (was advisory while mis-configured). The pocket-tts PORT was always correct — LEARNINGS.md 'n TTS — 12 bugs from stub to cos=0.999997' (n-tts == pocket-tts) validated it, and a per-stage diff vs pocket_tts_reference.py shows token_ids byte-identical and text_embeddings cos=1.000000 (HARD RULE #2). The old red was pure MIS-CONFIG: the entry ran the '-novc' (NO-voice-clone) model unconditioned, which even the official kyutai reference garbles ('Hello world.'->'Mm.'). Fix: use the voice-clone q8_0 model + the pinned synthetic reference WAV above + --i-have-rights, and strip the mandatory spoken AI-disclosure prefix in the harness before WER (run_one.py strip_ai_disclaimer — a general fix for every voice-clone roundtrip). Verified locally: raw ASR 'This audio was generated by artificial intelligence. The quick brown fox jumps over the lazy dog.' → after disclosure-strip 'the quick brown fox jumps over the lazy dog' → WER 0.000. 0.15 leaves room for cross-platform AR sampling variation."
     },
@@ -970,7 +970,7 @@
       "name": "f5-tts-v1-base",
       "backend_id": "f5-tts",
       "gguf": {
-        "repo": "cstr/f5-tts-GGUF",
+        "repo": "Xenna/f5-tts-GGUF",
         "revision": "cccc0919c098975c79add6e18c6f0aed9a8c1fc3",
         "file": "f5-tts-v1-base-f16.gguf",
         "approx_size_mb": 953
@@ -985,7 +985,7 @@
       "name": "parler-tts-mini-v1.1",
       "backend_id": "parler-tts",
       "gguf": {
-        "repo": "cstr/parler-tts-mini-v1.1-GGUF",
+        "repo": "Xenna/parler-tts-mini-v1.1-GGUF",
         "revision": "28d560d8d3a9a0ac0e603322094d306bdd5b573e",
         "file": "parler-tts-mini-v1.1-q8_0.gguf",
         "approx_size_mb": 1000
@@ -1000,7 +1000,7 @@
       "name": "dia-1.6b",
       "backend_id": "dia",
       "gguf": {
-        "repo": "cstr/dia-1.6b-GGUF",
+        "repo": "Xenna/dia-1.6b-GGUF",
         "revision": "3233fbcb32be47761d2e736857b6d1a075b9ba7e",
         "file": "dia-1.6b-q8_0.gguf",
         "approx_size_mb": 1600
@@ -1016,7 +1016,7 @@
       "name": "cosyvoice3-0.5b",
       "backend_id": "cosyvoice3-tts",
       "gguf": {
-        "repo": "cstr/cosyvoice3-0.5b-2512-GGUF",
+        "repo": "Xenna/cosyvoice3-0.5b-2512-GGUF",
         "revision": "1c0a6465c78eed08eab0fa8568cebddd3027a4e5",
         "file": "cosyvoice3-llm-q4_k.gguf",
         "approx_size_mb": 366,
@@ -1038,7 +1038,7 @@
       "name": "fastpitch-en",
       "backend_id": "fastpitch",
       "gguf": {
-        "repo": "cstr/fastpitch-en-GGUF",
+        "repo": "Xenna/fastpitch-en-GGUF",
         "revision": "55934b51f1111a8bc41d5029d96cad547364f1cd",
         "file": "fastpitch-en-q4_k.gguf",
         "approx_size_mb": 226
@@ -1053,7 +1053,7 @@
       "name": "melotts-en-v3",
       "backend_id": "melotts",
       "gguf": {
-        "repo": "cstr/melotts-en-v3-GGUF",
+        "repo": "Xenna/melotts-en-v3-GGUF",
         "revision": "0d0100b0646c86e1576eaea4b14d0131311036f1",
         "file": "melotts-en-v3-f16.gguf",
         "approx_size_mb": 92
@@ -1068,7 +1068,7 @@
       "name": "orpheus-3b-0.1-ft",
       "backend_id": "orpheus",
       "gguf": {
-        "repo": "cstr/orpheus-3b-0.1-ft-GGUF",
+        "repo": "Xenna/orpheus-3b-0.1-ft-GGUF",
         "revision": "93847c5f3b3ec45d9fc39e94a19b4fb46b9def4c",
         "file": "orpheus-3b-0.1-ft-q8_0.gguf",
         "approx_size_mb": 3700
@@ -1083,7 +1083,7 @@
       "name": "outetts-0.3-1b",
       "backend_id": "outetts",
       "gguf": {
-        "repo": "cstr/outetts-0.3-1b-GGUF",
+        "repo": "Xenna/outetts-0.3-1b-GGUF",
         "revision": "fdd6560ab48bb197ad4a2b92d2a1fd93ac115f05",
         "file": "outetts-0.3-1b-q4_k.gguf",
         "approx_size_mb": 801,
@@ -1099,7 +1099,7 @@
       "name": "tada-tts-3b-ml",
       "backend_id": "tada-tts",
       "gguf": {
-        "repo": "cstr/tada-tts-3b-ml-GGUF",
+        "repo": "Xenna/tada-tts-3b-ml-GGUF",
         "revision": "b41c671e7fdcb69888b61273ea5ca840c88183b5",
         "file": "tada-tts-3b-ml-q4_k.gguf",
         "approx_size_mb": 2213
@@ -1114,7 +1114,7 @@
       "name": "tada-codec",
       "backend_id": "tada-codec",
       "gguf": {
-        "repo": "cstr/tada-tts-3b-ml-GGUF",
+        "repo": "Xenna/tada-tts-3b-ml-GGUF",
         "revision": "b41c671e7fdcb69888b61273ea5ca840c88183b5",
         "file": "tada-codec-f16.gguf",
         "approx_size_mb": 1006
@@ -1131,7 +1131,7 @@
       "name": "zonos-v0.1-transformer",
       "backend_id": "zonos-tts",
       "gguf": {
-        "repo": "cstr/zonos-v0.1-transformer-GGUF",
+        "repo": "Xenna/zonos-v0.1-transformer-GGUF",
         "revision": "42304d39d2a01b0d7a2a086ad2c1dfc6270c0b29",
         "file": "zonos-v0.1-transformer-q4_k.gguf",
         "approx_size_mb": 930
@@ -1146,7 +1146,7 @@
       "name": "voxcpm2-tts-2b",
       "backend_id": "voxcpm2-tts",
       "gguf": {
-        "repo": "cstr/voxcpm2-GGUF",
+        "repo": "Xenna/voxcpm2-GGUF",
         "revision": "11c5ad6b0a9b0b0f6876ec18b3c3b555d5b5cb44",
         "file": "voxcpm2-q4_k.gguf",
         "approx_size_mb": 1611
@@ -1161,7 +1161,7 @@
       "name": "indextts-1.5",
       "backend_id": "indextts",
       "gguf": {
-        "repo": "cstr/indextts-1.5-GGUF",
+        "repo": "Xenna/indextts-1.5-GGUF",
         "revision": "6e35d352cc95160054c662489fc7293341a1f0e4",
         "file": "indextts-gpt.gguf",
         "approx_size_mb": 2175,
@@ -1179,7 +1179,7 @@
       "name": "chatterbox-turbo-s3gen",
       "backend_id": "chatterbox-turbo",
       "gguf": {
-        "repo": "cstr/chatterbox-turbo-GGUF",
+        "repo": "Xenna/chatterbox-turbo-GGUF",
         "revision": "1c7e7f8886aed773fb12970edf4d4f65a67d4b85",
         "file": "chatterbox-turbo-s3gen-f16-regen.gguf",
         "approx_size_mb": 627,

@@ -1,9 +1,9 @@
 import os
 #!/usr/bin/env python3
-"""CrispASR — Japanese ASR NeMo reference comparison.
+"""StelnetTTS — Japanese ASR NeMo reference comparison.
 
 Runs ReazonSpeech NeMo v2 (RNNT) and parakeet-ctc-1.1b-ja (CTC) through
-the upstream NeMo pipeline, then builds CrispASR and compares transcripts.
+the upstream NeMo pipeline, then builds StelnetTTS and compares transcripts.
 """
 import json, os, re, subprocess, sys, time, traceback
 from pathlib import Path
@@ -17,10 +17,10 @@ WORK = Path("/kaggle/working")
 CRASH = WORK / "crash.txt"
 
 def main():
-    REPO = WORK / "CrispASR"
+    REPO = WORK / "StelnetTTS"
     BUILD = REPO / "build"
-    REF = os.environ.get("CRISPASR_REF", "main")
-    URL = "https://github.com/CrispStrobe/CrispASR.git"
+    REF = os.environ.get("STELNETTTS_REF", "main")
+    URL = "https://github.com/Cyna/StelnetTTS.git"
 
     progress = WORK / "progress.jsonl"
     t0 = time.time()
@@ -107,7 +107,7 @@ def main():
         traceback.print_exc()
         results["python_ctc"] = f"ERROR: {e}"
 
-    # ── Build CrispASR ────────────────────────────────────────────────
+    # ── Build StelnetTTS ────────────────────────────────────────────────
     kh.step("toolchain")
     kh.install_build_toolchain()
 
@@ -115,7 +115,7 @@ def main():
     flags = kh.cache_and_link_flags()
     with kh.build_heartbeat("cmake.configure"):
         kh.sh(f"cmake -S {REPO} -B {BUILD} -G Ninja -DCMAKE_BUILD_TYPE=Release "
-               f"-DCRISPASR_OPUS=OFF -DCRISPASR_AMR=OFF "
+               f"-DSTELNETTTS_OPUS=OFF -DSTELNETTTS_AMR=OFF "
                + " ".join(flags))
 
     kh.step("build")
@@ -126,17 +126,17 @@ def main():
     kh.step("download_gguf")
     gguf_dir = WORK / "gguf"
     gguf_dir.mkdir(exist_ok=True)
-    rnnt_gguf = hf_hub_download("cstr/reazonspeech-nemo-v2-GGUF",
+    rnnt_gguf = hf_hub_download("Xenna/reazonspeech-nemo-v2-GGUF",
                                  "reazonspeech-nemo-v2-q8_0.gguf",
                                  local_dir=str(gguf_dir))
-    ctc_gguf = hf_hub_download("cstr/parakeet-ctc-1.1b-ja-GGUF",
+    ctc_gguf = hf_hub_download("Xenna/parakeet-ctc-1.1b-ja-GGUF",
                                 "parakeet-ctc-1.1b-ja-q8_0.gguf",
                                 local_dir=str(gguf_dir))
 
-    # ── Run CrispASR on same audio ────────────────────────────────────
-    cli = str(BUILD / "bin" / "crispasr")
+    # ── Run StelnetTTS on same audio ────────────────────────────────────
+    cli = str(BUILD / "bin" / "stelnettts")
 
-    kh.step("crispasr_rnnt")
+    kh.step("stelnettts_rnnt")
     try:
         r = subprocess.run([cli, "--backend", "reazonspeech", "-m", rnnt_gguf,
                            wav_path, "--no-prints"],
@@ -147,7 +147,7 @@ def main():
     except Exception as e:
         results["cpp_rnnt"] = f"ERROR: {e}"
 
-    kh.step("crispasr_ctc")
+    kh.step("stelnettts_ctc")
     try:
         r = subprocess.run([cli, "--backend", "fastconformer-ctc", "-m", ctc_gguf,
                            wav_path, "--no-prints"],

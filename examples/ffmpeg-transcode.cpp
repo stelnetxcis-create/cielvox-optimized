@@ -11,11 +11,11 @@
 #include <vector>
 #include <string>
 
-// C++ header — MUST stay outside the extern "C" block below. crispasr_env.h
+// C++ header — MUST stay outside the extern "C" block below. stelnettts_env.h
 // pulls in <mutex>/<string> (→ <chrono>/<ratio>), whose templates are illegal
 // under C linkage; GCC 15 / libstdc++ 15 rejects it with "template with C
 // linkage" (#297). The FFmpeg headers below are C and do need extern "C".
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 // C
 #include <stdio.h>
@@ -48,7 +48,7 @@ typedef int8_t s8;
 #define WAVE_SAMPLE_RATE 16000
 #define AVIO_CTX_BUF_SZ 4096
 
-static const char* ffmpegLog = crispasr_env::get("CRISPASR_FFMPEG_LOG");
+static const char* ffmpegLog = stelnettts_env::get("STELNETTTS_FFMPEG_LOG");
 // Todo: add __FILE__ __LINE__
 #define LOG(...)                                                                                                       \
     do {                                                                                                               \

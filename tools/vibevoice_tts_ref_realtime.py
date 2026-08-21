@@ -3,7 +3,7 @@
 
 Uses Microsoft's own code via trust_remote_code=True — not our reimplementation.
 Hooks capture intermediate tensors for stage-by-stage comparison with the
-C++ ggml implementation (crispasr --tts).
+C++ ggml implementation (stelnettts --tts).
 
 Dumped stages (all little-endian float32 unless noted):
   text_token_ids.bin           int32  tokenized text

@@ -22,7 +22,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -36,7 +36,7 @@
 static bool marblenet_vad_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MARBLENET_VAD_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MARBLENET_VAD_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -105,11 +105,11 @@ struct marblenet_vad_context {
 
 // #305 audit: the ggml graph is multi-threaded (CPU backend), but the mel FFT
 // front-end was single-threaded — the recurring VAD bottleneck (see whisper-vad
-// / firered). Parallelize over frames. Opt out with CRISPASR_MARBLENET_VAD_SERIAL=1.
+// / firered). Parallelize over frames. Opt out with STELNETTTS_MARBLENET_VAD_SERIAL=1.
 static int marblenet_vad_nthreads() {
     static int v = -1;
     if (v < 0) {
-        if (crispasr_env::get("CRISPASR_MARBLENET_VAD_SERIAL") != nullptr) {
+        if (stelnettts_env::get("STELNETTTS_MARBLENET_VAD_SERIAL") != nullptr) {
             v = 1;
         } else {
             unsigned hw = std::thread::hardware_concurrency();

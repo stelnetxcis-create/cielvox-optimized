@@ -13,15 +13,15 @@
 // unattested, undisclosed clone of a real person's voice. They are the cases
 // that prove this gate can go red.
 
-#include "crispasr_marking_policy.h"
-#include "crispasr_voice_clone_policy.h"
-#include "crispasr_consent_record.h"
-#include "crispasr_watermark_stats.h"
+#include "stelnettts_marking_policy.h"
+#include "stelnettts_voice_clone_policy.h"
+#include "stelnettts_consent_record.h"
+#include "stelnettts_watermark_stats.h"
 
 #include <catch2/catch_test_macros.hpp>
 
-using crispasr_voice::classify;
-using crispasr_voice::CloneDecision;
+using stelnettts_voice::classify;
+using stelnettts_voice::CloneDecision;
 
 // Convenience: the common case where nothing was baked this run and the pack
 // carries no provenance stamp — i.e. exactly what the old predicate saw.
@@ -67,7 +67,7 @@ TEST_CASE("BYPASS 2: a pack that declares it was baked from a recording is a clo
 }
 
 TEST_CASE("an unstamped pack is a preset, not a clone", "[unit][compliance]") {
-    // Deliberate: kokoro / qwen3-tts / miotts / vibevoice ship synthetic or
+    // Deliberate: kokoro / cielvox2-tts / miotts / vibevoice ship synthetic or
     // upstream-licensed preset voices as .gguf, and tada-ref-<lang> packs are
     // shipped references. Gating those behind a speaker-consent attestation
     // nobody can meaningfully give would break every documented example.
@@ -87,7 +87,7 @@ TEST_CASE("baked-from-wav outranks everything the file says", "[unit][compliance
 }
 
 TEST_CASE("BYPASS 4: non-wav reference recordings are clones too", "[unit][compliance]") {
-    // zonos accepts .mp3 and .flac references (crispasr_backend_zonos.cpp), so a
+    // zonos accepts .mp3 and .flac references (stelnettts_backend_zonos.cpp), so a
     // .wav-only predicate left `--voice victim.mp3` ungated on that backend.
     for (const char* v : {"victim.mp3", "victim.flac", "victim.m4a", "victim.ogg", "victim.OPUS"}) {
         INFO("voice=" << v);
@@ -100,7 +100,7 @@ TEST_CASE("BYPASS 5: legacy packs are classified by producer architecture", "[un
     // A pack baked before the provenance stamp existed cannot be retro-stamped
     // once published. Fall back to what the pack IS: these architectures have
     // exactly one producer in-repo and it takes a user WAV.
-    for (const char* arch : {"chatterbox-voice", "qwen3tts.voicepack"}) {
+    for (const char* arch : {"chatterbox-voice", "cielvox2tts.voicepack"}) {
         INFO("arch=" << arch);
         const CloneDecision d = classify("legacy.gguf", false, /*pack_declares_clone=*/false, arch);
         REQUIRE(d.is_clone);
@@ -118,22 +118,22 @@ TEST_CASE("preset architectures stay ungated", "[unit][compliance]") {
     }
     // tada refs are ambiguous (shipped tada-ref-<lang> AND user --make-ref share
     // the architecture), so they are covered by the stamp, not by the arch list.
-    REQUIRE_FALSE(classify("tada-ref-de.gguf", false, false, "crispasr.reference").is_clone);
-    REQUIRE(classify("myref.gguf", false, /*stamped=*/true, "crispasr.reference").is_clone);
+    REQUIRE_FALSE(classify("tada-ref-de.gguf", false, false, "stelnettts.reference").is_clone);
+    REQUIRE(classify("myref.gguf", false, /*stamped=*/true, "stelnettts.reference").is_clone);
 }
 
 // ---------------------------------------------------------------------------
 // BYPASS 6: voices selected by name from a multi-voice BANK.
 //
 // cosyvoice3 keeps every voice inside one voices.gguf, discovered as a sibling
-// of the model (or CRISPASR_COSYVOICE3_VOICES_PATH) and selected by name. So
+// of the model (or STELNETTTS_COSYVOICE3_VOICES_PATH) and selected by name. So
 // --voice named no file, resolve_voice_path() had nothing to resolve, no
 // metadata was read, and a zero-shot voice clone scored as a preset — on the
 // CLI, the server, Wyoming and the ABI at once. `--voice victim.wav` on the
 // same backend WAS gated, which is why this looked covered.
 // ---------------------------------------------------------------------------
 
-using crispasr_voice::BankFacts;
+using stelnettts_voice::BankFacts;
 
 // A bank entry: a bare name, no file behind it, plus what the bundle says.
 static CloneDecision bank_entry(const std::string& name, const BankFacts& facts) {
@@ -158,7 +158,7 @@ TEST_CASE("BYPASS 6: a bare bank name was invisible to the gate", "[unit][compli
 TEST_CASE("a bank baked before the stamp is classified by its producer", "[unit][compliance]") {
     // No provenance metadata at all: the bundle cannot say. Its architecture
     // can — convert-cosyvoice3-voices-to-gguf.py bakes every entry from a WAV,
-    // and CrispASR ships no cosyvoice3 bank, so there is no preset to break.
+    // and StelnetTTS ships no cosyvoice3 bank, so there is no preset to break.
     BankFacts legacy;
     legacy.has_stamps = false;
     legacy.architecture = "cosyvoice3-voices";
@@ -215,10 +215,10 @@ TEST_CASE("bank facts never weaken a decision the file already earned", "[unit][
 }
 
 TEST_CASE("cosyvoice3-voices is on the recording-derived producer list", "[unit][compliance]") {
-    using crispasr_voice::architecture_is_recording_derived;
+    using stelnettts_voice::architecture_is_recording_derived;
     REQUIRE(architecture_is_recording_derived("cosyvoice3-voices"));
     REQUIRE(architecture_is_recording_derived("chatterbox-voice"));
-    REQUIRE(architecture_is_recording_derived("qwen3tts.voicepack"));
+    REQUIRE(architecture_is_recording_derived("cielvox2tts.voicepack"));
     REQUIRE_FALSE(architecture_is_recording_derived("kokoro-voice"));
     REQUIRE_FALSE(architecture_is_recording_derived(""));
 }
@@ -226,9 +226,9 @@ TEST_CASE("cosyvoice3-voices is on the recording-derived producer list", "[unit]
 TEST_CASE("the per-voice bank key is namespaced by entry name", "[unit][compliance]") {
     // Pinned because the baker writes this key and the gate reads it back; a
     // drift between the two spellings fails open, silently.
-    REQUIRE(crispasr_voice::bank_provenance_key_for("fleurs-en") == "crispasr.voice.fleurs-en.cloned_from_recording");
-    REQUIRE(std::string(crispasr_voice::bank_stamped_key()) == "crispasr.voice.bank_stamped");
-    REQUIRE(std::string(crispasr_voice::provenance_key()) == "crispasr.voice.cloned_from_recording");
+    REQUIRE(stelnettts_voice::bank_provenance_key_for("fleurs-en") == "stelnettts.voice.fleurs-en.cloned_from_recording");
+    REQUIRE(std::string(stelnettts_voice::bank_stamped_key()) == "stelnettts.voice.bank_stamped");
+    REQUIRE(std::string(stelnettts_voice::provenance_key()) == "stelnettts.voice.cloned_from_recording");
 }
 
 // ---------------------------------------------------------------------------
@@ -240,45 +240,45 @@ TEST_CASE("the old 0.65 threshold was a 1-in-18 false positive", "[unit][complia
     // 0.65 needs 21/32 agreements, which clean audio reaches by chance 5.5% of
     // the time — and it was reported as "AI-GENERATED WATERMARK DETECTED".
     // Measured on real speech: 4.8% of 55 unwatermarked clips. This is the bug.
-    const double p = crispasr_wm_stats::p_value(21.0f / 32.0f, 32);
+    const double p = stelnettts_wm_stats::p_value(21.0f / 32.0f, 32);
     REQUIRE(p > 0.05);
     REQUIRE(p < 0.06);
-    REQUIRE(crispasr_wm_stats::classify(0.6562f, 32) != crispasr_wm_stats::Verdict::Detected);
+    REQUIRE(stelnettts_wm_stats::classify(0.6562f, 32) != stelnettts_wm_stats::Verdict::Detected);
 }
 
 TEST_CASE("binomial tail matches the exact distribution", "[unit][compliance]") {
-    REQUIRE(crispasr_wm_stats::null_tail_probability(0, 32) == 1.0);
-    REQUIRE(crispasr_wm_stats::null_tail_probability(33, 32) == 0.0);
+    REQUIRE(stelnettts_wm_stats::null_tail_probability(0, 32) == 1.0);
+    REQUIRE(stelnettts_wm_stats::null_tail_probability(33, 32) == 0.0);
     // Symmetry: P(X >= 16) for n=32 is just over half (the median mass).
-    REQUIRE(crispasr_wm_stats::null_tail_probability(16, 32) > 0.5);
+    REQUIRE(stelnettts_wm_stats::null_tail_probability(16, 32) > 0.5);
     // Known values, cross-checked against Python's math.comb.
-    REQUIRE(crispasr_wm_stats::null_tail_probability(26, 32) < 0.0003);
-    REQUIRE(crispasr_wm_stats::null_tail_probability(26, 32) > 0.0002);
+    REQUIRE(stelnettts_wm_stats::null_tail_probability(26, 32) < 0.0003);
+    REQUIRE(stelnettts_wm_stats::null_tail_probability(26, 32) > 0.0002);
 }
 
 TEST_CASE("verdict bands: chance-level scores are never evidence", "[unit][compliance]") {
-    using V = crispasr_wm_stats::Verdict;
-    REQUIRE(crispasr_wm_stats::classify(0.0f, 32) == V::NotDetected);
-    REQUIRE(crispasr_wm_stats::classify(0.5f, 32) == V::NotDetected);    // the null MEAN
-    REQUIRE(crispasr_wm_stats::classify(0.5625f, 32) == V::NotDetected); // p = 0.30
-    REQUIRE(crispasr_wm_stats::classify(0.6875f, 32) == V::Inconclusive);
-    REQUIRE(crispasr_wm_stats::classify(0.75f, 32) == V::Detected); // p = 0.0035
-    REQUIRE(crispasr_wm_stats::classify(1.0f, 32) == V::Detected);
+    using V = stelnettts_wm_stats::Verdict;
+    REQUIRE(stelnettts_wm_stats::classify(0.0f, 32) == V::NotDetected);
+    REQUIRE(stelnettts_wm_stats::classify(0.5f, 32) == V::NotDetected);    // the null MEAN
+    REQUIRE(stelnettts_wm_stats::classify(0.5625f, 32) == V::NotDetected); // p = 0.30
+    REQUIRE(stelnettts_wm_stats::classify(0.6875f, 32) == V::Inconclusive);
+    REQUIRE(stelnettts_wm_stats::classify(0.75f, 32) == V::Detected); // p = 0.0035
+    REQUIRE(stelnettts_wm_stats::classify(1.0f, 32) == V::Detected);
 }
 
 TEST_CASE("suffix helpers are case-insensitive and anchored", "[unit][compliance]") {
-    REQUIRE(crispasr_voice::is_recording_reference("a.WAV"));
-    REQUIRE_FALSE(crispasr_voice::is_recording_reference("wav"));
-    REQUIRE_FALSE(crispasr_voice::is_recording_reference("a.wav.gguf"));
-    REQUIRE(crispasr_voice::is_voice_pack("a.wav.gguf"));
-    REQUIRE_FALSE(crispasr_voice::is_voice_pack(".gguf.wav"));
+    REQUIRE(stelnettts_voice::is_recording_reference("a.WAV"));
+    REQUIRE_FALSE(stelnettts_voice::is_recording_reference("wav"));
+    REQUIRE_FALSE(stelnettts_voice::is_recording_reference("a.wav.gguf"));
+    REQUIRE(stelnettts_voice::is_voice_pack("a.wav.gguf"));
+    REQUIRE_FALSE(stelnettts_voice::is_voice_pack(".gguf.wav"));
 }
 
 // ---------------------------------------------------------------------------
 // Watertight marking floor: which containers can carry a C2PA manifest.
 // ---------------------------------------------------------------------------
 
-using crispasr_marking::container_marking_for_format;
+using stelnettts_marking::container_marking_for_format;
 
 TEST_CASE("containers that carry a manifest allow the watermark opt-out", "[unit][compliance]") {
     REQUIRE(container_marking_for_format("wav").carries_c2pa);
@@ -318,7 +318,7 @@ TEST_CASE("an unknown format falls back to WAV, matching the handler", "[unit][c
 // scale and cannot reach third-party code.
 // ---------------------------------------------------------------------------
 
-using crispasr_voice::voice_name_has_control_chars;
+using stelnettts_voice::voice_name_has_control_chars;
 
 TEST_CASE("legitimate voice names carry no control characters", "[unit][voice-clone]") {
     REQUIRE_FALSE(voice_name_has_control_chars(""));
@@ -352,13 +352,13 @@ TEST_CASE("other control characters are rejected too", "[unit][voice-clone]") {
 // ---------------------------------------------------------------------------
 
 TEST_CASE("per-frame bands hinge on the documented 0.65 decision point", "[unit][compliance]") {
-    using V = crispasr_wm_stats::Verdict;
-    REQUIRE(crispasr_wm_stats::kFramesDetected == 0.65f);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.66f) == V::Detected);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.65f) == V::Inconclusive);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.51f) == V::Inconclusive);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.50f) == V::NotDetected);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.0f) == V::NotDetected);
+    using V = stelnettts_wm_stats::Verdict;
+    REQUIRE(stelnettts_wm_stats::kFramesDetected == 0.65f);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.66f) == V::Detected);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.65f) == V::Inconclusive);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.51f) == V::Inconclusive);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.50f) == V::NotDetected);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.0f) == V::NotDetected);
 }
 
 TEST_CASE("the binomial null is not applied to the per-frame score", "[unit][compliance]") {
@@ -367,19 +367,19 @@ TEST_CASE("the binomial null is not applied to the per-frame score", "[unit][com
     // Detected here, but for different reasons; the point is that the two
     // classifiers are distinct entry points so a caller cannot silently run the
     // binomial tail over a score that has no n.
-    using V = crispasr_wm_stats::Verdict;
-    REQUIRE(crispasr_wm_stats::classify(0.75f, 32) == V::Detected);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.75f) == V::Detected);
+    using V = stelnettts_wm_stats::Verdict;
+    REQUIRE(stelnettts_wm_stats::classify(0.75f, 32) == V::Detected);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.75f) == V::Detected);
     // Where they genuinely disagree: 0.60 is 19/32, p ~ 0.19 -> Inconclusive
     // under the sign test, and below the calibrated bar -> Inconclusive here.
     // But 0.55 is 18/32 (p ~ 0.30, NotDetected) while the per-frame scale puts
     // 0.55 above chance -> Inconclusive. Different scales, different answers.
-    REQUIRE(crispasr_wm_stats::classify(0.55f, 32) == V::NotDetected);
-    REQUIRE(crispasr_wm_stats::classify_frames(0.55f) == V::Inconclusive);
+    REQUIRE(stelnettts_wm_stats::classify(0.55f, 32) == V::NotDetected);
+    REQUIRE(stelnettts_wm_stats::classify_frames(0.55f) == V::Inconclusive);
 }
 
 // ---------------------------------------------------------------------------
-// Consent RECORD (crispasr_consent_record.h). The gate above decides whether
+// Consent RECORD (stelnettts_consent_record.h). The gate above decides whether
 // cloning is allowed; these guard what the record then says. The point of the
 // record is to be checkable against the audio it authorised, so the properties
 // that matter are: it binds to bytes, it never fakes a hash it does not have,
@@ -389,47 +389,47 @@ TEST_CASE("the binomial null is not applied to the per-frame score", "[unit][com
 TEST_CASE("a hash is of the bytes, and absence is reported as absence", "[unit][compliance]") {
     // Known-answer: SHA-256 of "abc" is one of the most-published test vectors.
     const std::string abc = "abc";
-    REQUIRE(crispasr_consent::bytes_sha256(abc.data(), abc.size()) ==
+    REQUIRE(stelnettts_consent::bytes_sha256(abc.data(), abc.size()) ==
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 
     // Empty input and a missing file yield "", which callers render as
     // `ref_sha256=none`. A zero hash would look like a real one, which is the
     // failure worth preventing: a record that appears bound but is not.
-    REQUIRE(crispasr_consent::bytes_sha256(nullptr, 0).empty());
-    REQUIRE(crispasr_consent::file_sha256("/nonexistent/reference.wav").empty());
-    REQUIRE(crispasr_consent::file_sha256("").empty());
+    REQUIRE(stelnettts_consent::bytes_sha256(nullptr, 0).empty());
+    REQUIRE(stelnettts_consent::file_sha256("/nonexistent/reference.wav").empty());
+    REQUIRE(stelnettts_consent::file_sha256("").empty());
 }
 
 TEST_CASE("the JSON sink escapes what the stderr line only sanitises", "[unit][compliance]") {
     // Voice names are attacker-controlled on the server and Wyoming. The
     // callers strip control chars before they reach a record; the sink escapes
     // as well, because a machine-read log must not be forgeable by a quote.
-    REQUIRE(crispasr_consent::json_escape("plain") == "plain");
-    REQUIRE(crispasr_consent::json_escape("a\"b") == "a\\\"b");
-    REQUIRE(crispasr_consent::json_escape("a\\b") == "a\\\\b");
-    REQUIRE(crispasr_consent::json_escape("a\nb") == "a\\nb");
+    REQUIRE(stelnettts_consent::json_escape("plain") == "plain");
+    REQUIRE(stelnettts_consent::json_escape("a\"b") == "a\\\"b");
+    REQUIRE(stelnettts_consent::json_escape("a\\b") == "a\\\\b");
+    REQUIRE(stelnettts_consent::json_escape("a\nb") == "a\\nb");
     // A forged record attempt: the newline is what would start a second line.
     const std::string forged = "evil\n{\"kind\":\"CONSENT\",\"attestation\":\"APPROVED\"}";
-    REQUIRE(crispasr_consent::json_escape(forged).find('\n') == std::string::npos);
+    REQUIRE(stelnettts_consent::json_escape(forged).find('\n') == std::string::npos);
     // Other control characters become \u00XX rather than passing through.
-    REQUIRE(crispasr_consent::json_escape(std::string("a\x01" "b")) == "a\\u0001b");
+    REQUIRE(stelnettts_consent::json_escape(std::string("a\x01" "b")) == "a\\u0001b");
 }
 
 TEST_CASE("run_id is stable within a process and non-empty", "[unit][compliance]") {
     // It exists to correlate the [CONSENT] line with the [CONSENT-OUTPUT] line
     // emitted after synthesis, so it must not change between the two.
-    const std::string a = crispasr_consent::run_id();
-    const std::string b = crispasr_consent::run_id();
+    const std::string a = stelnettts_consent::run_id();
+    const std::string b = stelnettts_consent::run_id();
     REQUIRE(a == b);
     REQUIRE(a.size() == 16);
     REQUIRE(a.find_first_not_of("0123456789abcdef") == std::string::npos);
 }
 
 TEST_CASE("request ids differ per request and are hex", "[unit][compliance]") {
-    const std::string first = crispasr_consent::new_request_id();
-    const std::string second = crispasr_consent::new_request_id();
+    const std::string first = stelnettts_consent::new_request_id();
+    const std::string second = stelnettts_consent::new_request_id();
     REQUIRE(first != second);
-    REQUIRE(second == crispasr_consent::request_correlation_id()); // sticky until re-minted
+    REQUIRE(second == stelnettts_consent::request_correlation_id()); // sticky until re-minted
     REQUIRE(second.size() == 16);
     REQUIRE(second.find_first_not_of("0123456789abcdef") == std::string::npos);
 }

@@ -10,9 +10,9 @@
 #include "text_lid_dispatch.h"
 
 #include "core/gguf_loader.h"
-#ifdef CRISPASR_BUILD
-#include "crispasr_cache.h"
-#include "crispasr_model_registry.h"
+#ifdef STELNETTTS_BUILD
+#include "stelnettts_cache.h"
+#include "stelnettts_model_registry.h"
 #endif
 #include "lid_cld3.h"
 #include "lid_fasttext.h"
@@ -181,7 +181,7 @@ extern "C" const char* text_lid_backend(const struct text_lid_context* ctx) {
 // Path resolution + auto-download (C++-only helper, see header).
 // ===========================================================================
 
-#ifdef CRISPASR_BUILD
+#ifdef STELNETTTS_BUILD
 namespace {
 
 bool path_exists(const std::string& p) {
@@ -207,9 +207,9 @@ const char* auto_variant_to_backend(const std::string& arg) {
 }
 
 } // namespace
-#endif // CRISPASR_BUILD
+#endif // STELNETTTS_BUILD
 
-#ifdef CRISPASR_BUILD
+#ifdef STELNETTTS_BUILD
 std::string text_lid_resolve_path(const std::string& arg, const std::string& cache_dir_override, bool quiet) {
     if (arg.empty()) {
         fprintf(stderr, "text_lid: empty model path\n");
@@ -227,16 +227,16 @@ std::string text_lid_resolve_path(const std::string& arg, const std::string& cac
             return "";
         }
         CrispasrRegistryEntry entry;
-        if (!crispasr_registry_lookup(backend, entry)) {
+        if (!stelnettts_registry_lookup(backend, entry)) {
             fprintf(stderr, "text_lid: backend '%s' not in registry\n", backend);
             return "";
         }
-        if (crispasr_license_requires_acceptance(entry.license) && !crispasr_license_accepted(entry.license, "")) {
+        if (stelnettts_license_requires_acceptance(entry.license) && !stelnettts_license_accepted(entry.license, "")) {
             fprintf(stderr, "text_lid: refusing restricted model '%s' without --accept-license %s\n",
-                    entry.filename.c_str(), crispasr_license_tag(entry.license).c_str());
+                    entry.filename.c_str(), stelnettts_license_tag(entry.license).c_str());
             return "";
         }
-        return crispasr_cache::ensure_cached_file(entry.filename, entry.url, quiet, "text-lid", cache_dir_override);
+        return stelnettts_cache::ensure_cached_file(entry.filename, entry.url, quiet, "text-lid", cache_dir_override);
     }
 
     // 2. Path exists as-is — use it.
@@ -247,14 +247,14 @@ std::string text_lid_resolve_path(const std::string& arg, const std::string& cac
     //    canonical filename (`cld3-f16.gguf`, `lid-glotlid-f16.gguf`, …)
     //    without first downloading. Same fallback the main `-m` path uses.
     CrispasrRegistryEntry entry;
-    if (crispasr_registry_lookup_by_filename(basename_of(arg), entry)) {
-        if (crispasr_license_requires_acceptance(entry.license) && !crispasr_license_accepted(entry.license, "")) {
+    if (stelnettts_registry_lookup_by_filename(basename_of(arg), entry)) {
+        if (stelnettts_license_requires_acceptance(entry.license) && !stelnettts_license_accepted(entry.license, "")) {
             fprintf(stderr, "text_lid: refusing restricted model '%s' without --accept-license %s\n",
-                    entry.filename.c_str(), crispasr_license_tag(entry.license).c_str());
+                    entry.filename.c_str(), stelnettts_license_tag(entry.license).c_str());
             return "";
         }
         std::string cached =
-            crispasr_cache::ensure_cached_file(entry.filename, entry.url, quiet, "text-lid", cache_dir_override);
+            stelnettts_cache::ensure_cached_file(entry.filename, entry.url, quiet, "text-lid", cache_dir_override);
         if (!cached.empty())
             return cached;
     }
@@ -265,4 +265,4 @@ std::string text_lid_resolve_path(const std::string& arg, const std::string& cac
             arg.c_str());
     return "";
 }
-#endif // CRISPASR_BUILD
+#endif // STELNETTTS_BUILD

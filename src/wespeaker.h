@@ -78,7 +78,7 @@ int wespeaker_embed(struct wespeaker_context* ctx, const float* samples, int n_s
 int wespeaker_embed_windows(struct wespeaker_context* ctx, const float* samples, int n_samples, const int* win_start,
                             const int* win_end, int n_win, float* out_embeddings);
 
-// ---- Stage-level entry points (for crispasr-diff) ----
+// ---- Stage-level entry points (for stelnettts-diff) ----
 
 // Kaldi fbank (80 mel, 25/10 ms, hamming) AFTER per-utterance CMN — i.e. the
 // exact tensor the network consumes. Returns a malloc'd (T_frames, n_mels)

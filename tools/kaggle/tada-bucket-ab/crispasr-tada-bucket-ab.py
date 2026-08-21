@@ -1,22 +1,22 @@
 """
-CrispASR — tada talker §176b bucket-floor timing A/B on CUDA (P100) (§215b follow-up)
+StelnetTTS — tada talker §176b bucket-floor timing A/B on CUDA (P100) (§215b follow-up)
 
 Question this kernel answers: the §215b measurement (M1 Metal, loadavg 31->137,
 timing untrustworthy) found that the tada talker's positive pass runs through the
 §176b decode bucket whose Lk floor is 512, wasting ~500 masked attention columns
 per step for short generations (n_past << 512). Bypassing it dropped the positive
-pass 266->49 ms/call. The new opt-in path (CRISPASR_TADA_BUCKET_MIN, default 512)
+pass 266->49 ms/call. The new opt-in path (STELNETTTS_TADA_BUCKET_MIN, default 512)
 adds smaller buckets {64,128,256}. This kernel measures — on a CLEAN CUDA box —
 whether a tighter floor actually wins, and guards the regression the bucket was
 built for (crossing more bucket boundaries = more one-time graph builds on long
 generations).
 
 Method: build the CUDA runtime from the feat branch; download tada-tts-1b q4_k +
-codec; run tada synthesis with CRISPASR_TADA_TALKER_TIMING=1 (per-pass + steady-
+codec; run tada synthesis with STELNETTTS_TADA_TALKER_TIMING=1 (per-pass + steady-
 state ms/step), --seed 42, for three configs on each of a SHORT and a LONG input:
   A default   — floor 512 (baseline, original §176b)
-  B floor64   — CRISPASR_TADA_BUCKET_MIN=64 (tight buckets)
-  C nobucket  — CRISPASR_TADA_NO_BUCKET=1 (exact-Lk, no cache; padding-win ceiling)
+  B floor64   — STELNETTTS_TADA_BUCKET_MIN=64 (tight buckets)
+  C nobucket  — STELNETTTS_TADA_NO_BUCKET=1 (exact-Lk, no cache; padding-win ceiling)
 REPS reps, median. Correctness gate = ASR keyword-recall of EVERY arm (HARD RULE
 #3): on a GPU the output is NOT byte-identical across a bucket-width change (the
 masked-softmax reduction order over Lk differs, flipping a borderline FP bit ->
@@ -40,14 +40,14 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/tada-talker-b2")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/tada-talker-b2")
 REPS = int(os.environ.get("REPS", "3"))
-MODEL_REPO = os.environ.get("TADA_REPO", "cstr/tada-tts-1b-GGUF")
+MODEL_REPO = os.environ.get("TADA_REPO", "Xenna/tada-tts-1b-GGUF")
 TIGHT_MIN = os.environ.get("TADA_BUCKET_MIN", "64")
 
 # SHORT: n_past stays well under 512 (worst case for the 512 floor). LONG: a big
@@ -73,11 +73,11 @@ def _sh_preclone(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF} for shared harness", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF} for shared harness", flush=True)
 if not REPO.exists():
     _sh_preclone(
-        f"git clone --depth 1 --branch {CRISPASR_REF} --recursive "
-        f"https://github.com/CrispStrobe/CrispASR {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive "
+        f"https://github.com/Cyna/StelnetTTS {REPO}"
     )
 
 import sys
@@ -88,10 +88,10 @@ import kaggle_harness as kh  # noqa: E402
 kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
-kh.step("script.start", ref=CRISPASR_REF)
+kh.step("script.start", ref=STELNETTTS_REF)
 
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("clone.done", sha=sha, ref=CRISPASR_REF)
+kh.step("clone.done", sha=sha, ref=STELNETTTS_REF)
 
 # ── Build (CUDA) ──────────────────────────────────────────────────────────
 kh.step("build.begin")
@@ -108,8 +108,8 @@ with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 kh.step("build.configured")
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}")
-assert CRISPASR.is_file(), "crispasr binary missing after build"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}")
+assert CRISPASR.is_file(), "stelnettts binary missing after build"
 kh.step("build.done", binary=str(CRISPASR))
 
 # ── Download tada-1b model + codec + whisper-tiny ─────────────────────────
@@ -177,7 +177,7 @@ def run_cfg(input_label, cfg_label, text, env_extra):
         "--codec-model", str(codec_path), "--tts", text,
         "--tts-output", str(out), "--seed", "42", "-np",
     ]
-    env = {**os.environ, "CRISPASR_TADA_TALKER_TIMING": "1", **env_extra}
+    env = {**os.environ, "STELNETTTS_TADA_TALKER_TIMING": "1", **env_extra}
     reps = []
     gpu_line = False
     log = ""
@@ -214,8 +214,8 @@ def run_cfg(input_label, cfg_label, text, env_extra):
 
 CONFIGS = [
     ("default", {}),
-    ("floor%s" % TIGHT_MIN, {"CRISPASR_TADA_BUCKET_MIN": TIGHT_MIN}),
-    ("nobucket", {"CRISPASR_TADA_NO_BUCKET": "1"}),
+    ("floor%s" % TIGHT_MIN, {"STELNETTTS_TADA_BUCKET_MIN": TIGHT_MIN}),
+    ("nobucket", {"STELNETTTS_TADA_NO_BUCKET": "1"}),
 ]
 INPUTS = [("short", SHORT_TEXT), ("long", LONG_TEXT)]
 

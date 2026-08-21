@@ -6,7 +6,7 @@ Two phases:
   1. MOVE every *.gguf under --src-dirs to --dest (skipping *-ref.gguf and
      files already in --dest). Symlinks are resolved; the real file is moved.
   2. PURGE: for each *.gguf in --dest, keep if filename contains '-q4_k';
-     otherwise check cstr/<basename>-GGUF on HuggingFace. Delete only if
+     otherwise check Xenna/<basename>-GGUF on HuggingFace. Delete only if
      filename matches AND size matches (within 1 KB).
 
 Defaults to dry-run. Pass --apply to execute.
@@ -26,7 +26,7 @@ DEFAULT_SRC_DIRS = [
     Path.home() / "code" / "parakeet-rnnt-hf-staging",
     Path.home() / "code" / "parakeet-rnnt-1.1b-hf-staging",
     Path.home() / "code" / "sensevoice-quant-stash",
-    Path("/Volumes/backups/ai/crispasr-staging"),
+    Path("/Volumes/backups/ai/stelnettts-staging"),
     Path("/Volumes/backups/ai"),  # root, non-recursive — see SCAN_NONRECURSIVE
 ]
 
@@ -34,7 +34,7 @@ DEFAULT_SRC_DIRS = [
 # but its subdirs are typically tool-specific caches we don't want to touch).
 SCAN_NONRECURSIVE = {Path("/Volumes/backups/ai")}
 
-DEFAULT_DEST = Path("/Volumes/backups/ai/crispasr")
+DEFAULT_DEST = Path("/Volumes/backups/ai/stelnettts")
 DEFAULT_HF_ORG = "cstr"
 SIZE_TOLERANCE = 1024  # bytes
 
@@ -43,7 +43,7 @@ SIZE_TOLERANCE = 1024  # bytes
 REF_PATTERN = re.compile(r"-ref([._-]|\.gguf$)")
 
 # Strip these suffixes from filename stem to get the model basename used in
-# the HuggingFace repo name (cstr/<basename>-GGUF).
+# the HuggingFace repo name (Xenna/<basename>-GGUF).
 QUANT_SUFFIXES = [
     "-q4_k", "-q4_0", "-q4_1",
     "-q5_k", "-q5_0", "-q5_1",

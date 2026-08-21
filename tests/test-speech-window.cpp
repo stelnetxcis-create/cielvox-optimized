@@ -12,13 +12,13 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_speech_window.h"
+#include "stelnettts_speech_window.h"
 
-using crispasr_speech_window::diagnose;
-using crispasr_speech_window::Window;
+using stelnettts_speech_window::diagnose;
+using stelnettts_speech_window::Window;
 
 namespace {
-Window w(int min_f, int max_f, int cap = crispasr_speech_window::kDefaultFrameCap) {
+Window w(int min_f, int max_f, int cap = stelnettts_speech_window::kDefaultFrameCap) {
     Window x;
     x.min_frames = min_f;
     x.max_frames = max_f;
@@ -41,16 +41,16 @@ TEST_CASE("min == max is an exact window and is deliverable by default", "[unit]
 }
 
 TEST_CASE("frames convert to the seconds callers actually reason in", "[unit][pr330]") {
-    REQUIRE(crispasr_speech_window::frames_to_seconds(250) == 20.0);
-    REQUIRE(crispasr_speech_window::frames_to_seconds(0) == 0.0);
-    REQUIRE(crispasr_speech_window::frames_to_seconds(-5) == 0.0);
+    REQUIRE(stelnettts_speech_window::frames_to_seconds(250) == 20.0);
+    REQUIRE(stelnettts_speech_window::frames_to_seconds(0) == 0.0);
+    REQUIRE(stelnettts_speech_window::frames_to_seconds(-5) == 0.0);
 }
 
 TEST_CASE("an unset window is unconstrained and warns about nothing", "[unit][pr330]") {
     const Window x = w(-1, -1);
     REQUIRE_FALSE(x.is_exact());
     REQUIRE_FALSE(x.floor_unreachable());
-    REQUIRE(x.effective_ceiling() == crispasr_speech_window::kDefaultFrameCap);
+    REQUIRE(x.effective_ceiling() == stelnettts_speech_window::kDefaultFrameCap);
     REQUIRE(diagnose(x).empty());
 }
 

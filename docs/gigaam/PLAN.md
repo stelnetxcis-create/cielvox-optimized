@@ -10,14 +10,14 @@ ASR, 16-layer rotary Conformer (220 M) + CTC or RNN-T head.
 - Runtime, converter, reference dumper, diff branch, CLI adapter, session C ABI,
   registry, quantizer rules, tests, docs — all on `feat/gigaam-v3`.
 - GGUFs published to
-  [`cstr/gigaam-v3-GGUF`](https://huggingface.co/cstr/gigaam-v3-GGUF)
+  [`Xenna/gigaam-v3-GGUF`](https://huggingface.co/Xenna/gigaam-v3-GGUF)
   (4 variants × f16 / q8_0 / q4_k).
-- Per-stage reference archives for `crispasr-diff` are in
-  `cstr/crispasr-regression-fixtures` under `gigaam-<variant>/gigaam_example/`.
+- Per-stage reference archives for `stelnettts-diff` are in
+  `Xenna/stelnettts-regression-fixtures` under `gigaam-<variant>/gigaam_example/`.
 
 ## Acceptance results
 
-`crispasr-diff gigaam <model> <ref> example.wav` on GigaAM's own 11.29 s
+`stelnettts-diff gigaam <model> <ref> example.wav` on GigaAM's own 11.29 s
 `example.wav`, against a PyTorch reference dumped from the upstream
 `modeling_gigaam.py` (`tools/reference_backends/gigaam.py`):
 
@@ -68,7 +68,7 @@ the diff harness (HARD RULE #3b — the harness ends at the logits):
 
 - **FireRedPunc was injecting full-width CJK punctuation into Russian.** The
   charwise `ctc` / `rnnt` revisions emit unpunctuated lowercase Cyrillic, so
-  `crispasr_should_auto_enable_punctuation` fired — and the auto-enabled
+  `stelnettts_should_auto_enable_punctuation` fired — and the auto-enabled
   restorer is a Chinese/English model. Output read
   `надеждой， сладкой ... зеленый。`. Fix: declare `CAP_PUNCTUATION_NATIVE` for
   every revision (for the `e2e_*` ones because they already punctuate, for the
@@ -86,7 +86,7 @@ the diff harness (HARD RULE #3b — the harness ends at the logits):
   (`tools/kaggle-regression.py` MODE=rebake) that re-pins every other backend.
   That is its own change, not a rider on the port. The ref archives are already
   uploaded, so the entry is a small follow-up once a re-bake happens anyway.
-- **Flash attention is opt-in** (`CRISPASR_GIGAAM_FLASH=1`). The manual
+- **Flash attention is opt-in** (`STELNETTTS_GIGAAM_FLASH=1`). The manual
   QK^T + `soft_max_ext` + V path is what the per-stage diff was validated on;
   flash accumulates differently, so it needs its own A/B (both arms
   back-to-back under identical load) before the default can flip.
@@ -106,25 +106,25 @@ the diff harness (HARD RULE #3b — the harness ends at the logits):
 
 | var | effect |
 |---|---|
-| `CRISPASR_GIGAAM_BENCH=1` | per-stage timings (mel / encoder / decode) |
-| `CRISPASR_GIGAAM_DEBUG=1` | encoder output min/max/mean |
-| `CRISPASR_GIGAAM_FLASH=1` | `ggml_flash_attn_ext` in the encoder (opt-in) |
-| `CRISPASR_GIGAAM_FORCE_SCALAR=1` | scalar LSTM/joint loops instead of cblas |
-| `CRISPASR_GIGAAM_QUANT_ALL=1` | let `crispasr-quantize` quantize the heads too |
+| `STELNETTTS_GIGAAM_BENCH=1` | per-stage timings (mel / encoder / decode) |
+| `STELNETTTS_GIGAAM_DEBUG=1` | encoder output min/max/mean |
+| `STELNETTTS_GIGAAM_FLASH=1` | `ggml_flash_attn_ext` in the encoder (opt-in) |
+| `STELNETTTS_GIGAAM_FORCE_SCALAR=1` | scalar LSTM/joint loops instead of cblas |
+| `STELNETTTS_GIGAAM_QUANT_ALL=1` | let `stelnettts-quantize` quantize the heads too |
 
 ## Reproducing
 
 ```bash
 python models/convert-gigaam-to-gguf.py --model ai-sage/GigaAM-v3 \
     --revision e2e_rnnt --output gigaam-v3-e2e-rnnt-f16.gguf
-./build/bin/crispasr-quantize gigaam-v3-e2e-rnnt-f16.gguf \
+./build/bin/stelnettts-quantize gigaam-v3-e2e-rnnt-f16.gguf \
     gigaam-v3-e2e-rnnt-q8_0.gguf q8_0
 
 python tools/dump_reference.py --backend gigaam \
     --model-dir <snapshot>/e2e_rnnt --audio example.wav \
     --output gigaam-v3-e2e-rnnt-ref.gguf
 
-./build/bin/crispasr-diff gigaam gigaam-v3-e2e-rnnt-q8_0.gguf \
+./build/bin/stelnettts-diff gigaam gigaam-v3-e2e-rnnt-q8_0.gguf \
     gigaam-v3-e2e-rnnt-ref.gguf example.wav
 ```
 

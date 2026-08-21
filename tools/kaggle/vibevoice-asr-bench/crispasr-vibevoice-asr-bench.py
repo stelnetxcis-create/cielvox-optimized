@@ -1,13 +1,13 @@
 # %% [markdown]
-# # CrispASR — vibevoice-asr F16 vs Q4_K test on Kaggle T4
+# # StelnetTTS — vibevoice-asr F16 vs Q4_K test on Kaggle T4
 #
 # Three users in HF discussion
-# https://huggingface.co/cstr/vibevoice-asr-GGUF/discussions/1
+# https://huggingface.co/Xenna/vibevoice-asr-GGUF/discussions/1
 # report Q4_K is bad. Sunknown specifically said "clear high quality
 # speech without background noise transcribes to just '[Music]'" on
 # CUDA. The F16 was just uploaded; this kernel:
 #
-#   1. Builds CrispASR-CLI CPU-only (fast; CUDA build takes 10+ h).
+#   1. Builds StelnetTTS-CLI CPU-only (fast; CUDA build takes 10+ h).
 #   2. Downloads Q4_K (4.5 GB) first and transcribes samples/jfk.wav.
 #   3. Downloads F16 (15.5 GB) if ≥60 min of wall-time remain.
 #   4. Prints both transcripts side-by-side vs gold.
@@ -36,7 +36,7 @@ WORK = Path("/kaggle/working")
 _PROGRESS = WORK / "progress.jsonl"
 _T0 = time.time()
 _HF_LAST_PUSH = 0.0
-_HF_REPO = "cstr/crispasr-kaggle-progress"
+_HF_REPO = "Xenna/stelnettts-kaggle-progress"
 _HF_PATH = (f"runs/{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
             f"-vibevoice-asr-bench.jsonl")
 
@@ -103,27 +103,27 @@ step("install-deps.done")
 # %% [code]
 # Download pre-built release binary — skips the 4-minute cmake/ninja build.
 RELEASE = "v0.6.6"
-TARBALL = f"crispasr-linux-x86_64.tar.gz"
-RELEASE_URL = f"https://github.com/CrispStrobe/CrispASR/releases/download/{RELEASE}/{TARBALL}"
+TARBALL = f"stelnettts-linux-x86_64.tar.gz"
+RELEASE_URL = f"https://github.com/Cyna/StelnetTTS/releases/download/{RELEASE}/{TARBALL}"
 BIN_DIR = WORK / "bin"
 BIN_DIR.mkdir(exist_ok=True)
-CRISPASR = BIN_DIR / "crispasr"
+CRISPASR = BIN_DIR / "stelnettts"
 
 step("binary-download.begin", release=RELEASE)
 subprocess.check_call(
-    f"wget -q {RELEASE_URL} -O /tmp/crispasr.tar.gz && "
-    f"tar -xzf /tmp/crispasr.tar.gz -C {BIN_DIR} --strip-components=1",
+    f"wget -q {RELEASE_URL} -O /tmp/stelnettts.tar.gz && "
+    f"tar -xzf /tmp/stelnettts.tar.gz -C {BIN_DIR} --strip-components=1",
     shell=True, stdout=_blog, stderr=_blog)
 CRISPASR.chmod(0o755)
 assert CRISPASR.is_file(), f"binary missing after download"
 step("binary-download.done", binary=str(CRISPASR))
 
 # Clone repo only for the jfk.wav sample (no build needed)
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
     subprocess.check_call(
         "git clone --depth 1 --filter=blob:none --no-checkout "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO} && "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO} && "
         f"git -C {REPO} checkout HEAD -- samples/",
         shell=True, stdout=_blog, stderr=_blog)
 step("samples.ready")
@@ -169,7 +169,7 @@ from huggingface_hub import hf_hub_download
 
 step("download-q4_k.begin")
 q4k_path = hf_hub_download(
-    repo_id="cstr/vibevoice-asr-GGUF",
+    repo_id="Xenna/vibevoice-asr-GGUF",
     filename="vibevoice-asr-q4_k.gguf",
     local_dir=str(MODELS_DIR),
 )
@@ -204,7 +204,7 @@ if remaining >= 60 * 60 and free_gb >= F16_SIZE_GB + 0.5:
     with _warnings.catch_warnings():
         _warnings.simplefilter("ignore")
         f16_path = hf_hub_download(
-            repo_id="cstr/vibevoice-asr-GGUF",
+            repo_id="Xenna/vibevoice-asr-GGUF",
             filename="vibevoice-asr-f16.gguf",
             local_dir=str(MODELS_DIR),
         )

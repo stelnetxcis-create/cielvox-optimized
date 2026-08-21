@@ -15,8 +15,8 @@
 #include "core/beam_decode.h"
 #include "core/repeat_break.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (§232 t5 GPU path)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (§232 t5 GPU path)
+#include "core/stelnettts_env.h"
 #if defined(GGML_USE_METAL)
 #include "ggml-metal.h" // core_cpu_backend::is_metal(§232 CUDA/Vulkan-default gate)
 #endif
@@ -46,7 +46,7 @@
 static bool t5_translate_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_T5_TRANSLATE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_T5_TRANSLATE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -618,13 +618,13 @@ static bool alloc_cross_kv(t5_translate_context* c, int T_enc) {
 
 // ── #333 diff-harness capture ────────────────────────────────────
 //
-// OFF unless CRISPASR_T5_DIFF=1 (crispasr-diff sets it before loading), so the
+// OFF unless STELNETTTS_T5_DIFF=1 (stelnettts-diff sets it before loading), so the
 // shipping graphs are byte-for-byte what they were: marking a tensor as an
 // output perturbs buffer elision, which is exactly the hazard LEARNINGS records
 // for the Metal scheduler.
 static bool t5_diff_capture() {
     static const bool on = [] {
-        const char* v = std::getenv("CRISPASR_T5_DIFF");
+        const char* v = std::getenv("STELNETTTS_T5_DIFF");
         return v && *v && std::strcmp(v, "0") != 0;
     }();
     return on;
@@ -1077,18 +1077,18 @@ extern "C" struct t5_translate_context* t5_translate_init_from_file(const char* 
     // Backend selection (§232). t5 loads weights + KV onto c->backend via
     // core_gguf::load_weights + ggml_backend_alloc_ctx_tensors, so picking a GPU
     // backend is the whole change.
-    //   * CRISPASR_T5_GPU=1 forces GPU on ANY backend; =0 forces CPU.
+    //   * STELNETTTS_T5_GPU=1 forces GPU on ANY backend; =0 forces CPU.
     //   * default: GPU on CUDA/Vulkan, CPU on Metal. Kaggle P100 A/B (madlad-3b):
     //     identical en->de output, 2.13x wall (slow OpenBLAS baseline). On M1
     //     (Accelerate) neutral — launch-bound (LEARNING 34) — so Metal stays CPU
     //     unless forced. Mirrors LEARNING 34's is_metal gate.
     c->backend_cpu = core_cpu_backend::init();
-    const char* gpu_env = std::getenv("CRISPASR_T5_GPU");
+    const char* gpu_env = std::getenv("STELNETTTS_T5_GPU");
     const bool force_gpu = gpu_env && std::atoi(gpu_env) != 0;
     const bool force_cpu = gpu_env && std::atoi(gpu_env) == 0;
     c->backend = c->backend_cpu;
     if (!force_cpu && (force_gpu || params.use_gpu)) {
-        ggml_backend_t gpu = crispasr_init_gpu_backend();
+        ggml_backend_t gpu = stelnettts_init_gpu_backend();
         if (gpu) {
             bool is_metal = false;
 #if defined(GGML_USE_METAL)
@@ -1102,7 +1102,7 @@ extern "C" struct t5_translate_context* t5_translate_init_from_file(const char* 
                 ggml_backend_free(gpu);
                 if (params.verbosity >= 1)
                     fprintf(stderr, "t5: GPU default limited to CUDA/Vulkan (Metal neutral); set "
-                                    "CRISPASR_T5_GPU=1 to force\n");
+                                    "STELNETTTS_T5_GPU=1 to force\n");
             }
         }
     }
@@ -1244,7 +1244,7 @@ extern "C" char* t5_translate(struct t5_translate_context* ctx, const char* text
         // the model genuinely does not stop and the fix belongs in the decode
         // policy instead.
         static const bool no_kv_reuse = [] {
-            const char* v = std::getenv("CRISPASR_T5_NO_KV_REUSE");
+            const char* v = std::getenv("STELNETTTS_T5_NO_KV_REUSE");
             return v && *v && std::strcmp(v, "0") != 0;
         }();
 
@@ -1278,17 +1278,17 @@ extern "C" char* t5_translate(struct t5_translate_context* ctx, const char* text
             // runs away identically (60 tokens, no EOS, byte-identical string),
             // so this is not a parity fix — the port already matches. It is a
             // product decision that a repeated 1-8 token cycle is never the
-            // wanted output. CRISPASR_T5_REPEAT_BREAK=0 restores exact
+            // wanted output. STELNETTTS_T5_REPEAT_BREAK=0 restores exact
             // blueprint behaviour for anyone diffing against HF.
             static const bool repeat_break = [] {
-                const char* v = std::getenv("CRISPASR_T5_REPEAT_BREAK");
+                const char* v = std::getenv("STELNETTTS_T5_REPEAT_BREAK");
                 return !(v && *v && std::strcmp(v, "0") == 0);
             }();
             if (repeat_break && (int)dec_ids.size() - prompt_len >= 8 && core_repeat::tail_is_repetition(dec_ids)) {
                 if (ctx->params.verbosity >= 1)
                     fprintf(stderr,
                             "t5: decode loop detected after %d tokens — stopping early "
-                            "(CRISPASR_T5_REPEAT_BREAK=0 to disable)\n",
+                            "(STELNETTTS_T5_REPEAT_BREAK=0 to disable)\n",
                             (int)dec_ids.size() - prompt_len);
                 // Drop the repeated tail so the caller gets the good prefix.
                 while ((int)dec_ids.size() > prompt_len + 1 && core_repeat::tail_is_repetition(dec_ids, 2, 8))
@@ -1333,9 +1333,9 @@ extern "C" char* t5_translate(struct t5_translate_context* ctx, const char* text
 extern "C" int t5_translate_diff(const char* model_gguf, const char* ref_gguf, int verbosity) {
     // Must be set before the graphs are built, or nothing is marked as output.
 #ifdef _WIN32
-    _putenv_s("CRISPASR_T5_DIFF", "1");
+    _putenv_s("STELNETTTS_T5_DIFF", "1");
 #else
-    setenv("CRISPASR_T5_DIFF", "1", 1);
+    setenv("STELNETTTS_T5_DIFF", "1", 1);
 #endif
 
     t5_translate_context_params p = t5_translate_context_default_params();

@@ -1,6 +1,6 @@
 // Piano transcription integration test.
 //
-// Requires CRISPASR_MODEL_PIANO_TRANSCRIPTION env var pointing to the GGUF.
+// Requires STELNETTTS_MODEL_PIANO_TRANSCRIPTION env var pointing to the GGUF.
 // SKIPs cleanly when not set.
 
 #include <catch2/catch_test_macros.hpp>
@@ -33,9 +33,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("piano-transcription init", "[integration][piano-transcription]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_PIANO_TRANSCRIPTION");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_PIANO_TRANSCRIPTION");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_PIANO_TRANSCRIPTION not set");
+        SKIP("STELNETTTS_MODEL_PIANO_TRANSCRIPTION not set");
     }
 
     auto params = piano_transcription_default_params();
@@ -47,9 +47,9 @@ TEST_CASE("piano-transcription init", "[integration][piano-transcription]") {
 }
 
 TEST_CASE("piano-transcription mel spectrogram", "[integration][piano-transcription]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_PIANO_TRANSCRIPTION");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_PIANO_TRANSCRIPTION");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_PIANO_TRANSCRIPTION not set");
+        SKIP("STELNETTTS_MODEL_PIANO_TRANSCRIPTION not set");
     }
 
     auto params = piano_transcription_default_params();
@@ -79,9 +79,9 @@ TEST_CASE("piano-transcription mel spectrogram", "[integration][piano-transcript
 }
 
 TEST_CASE("piano-transcription transcribe", "[integration][piano-transcription]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_PIANO_TRANSCRIPTION");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_PIANO_TRANSCRIPTION");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_PIANO_TRANSCRIPTION not set");
+        SKIP("STELNETTTS_MODEL_PIANO_TRANSCRIPTION not set");
     }
 
     auto params = piano_transcription_default_params();

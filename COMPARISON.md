@@ -1,13 +1,13 @@
 # ASR Ecosystem Comparison
 
-Comparison of CrispASR with other ggml-based ASR implementations.
+Comparison of StelnetTTS with other ggml-based ASR implementations.
 Last reviewed: 2026-07-11.
 
 ## Audio Model Support
 
-| Model | CrispASR | llama.cpp (MIT) | koboldcpp (AGPL3) |
+| Model | StelnetTTS | llama.cpp (MIT) | koboldcpp (AGPL3) |
 |---|---|---|---|
-| OpenAI Whisper (all sizes) | ✔ native | via mtmd | via crispasr |
+| OpenAI Whisper (all sizes) | ✔ native | via mtmd | via stelnettts |
 | Parakeet TDT v3 | ✔ native | — | — |
 | Canary (NeMo) | ✔ native | — | — |
 | Cohere Transcribe | ✔ native | — | — |
@@ -26,7 +26,7 @@ Last reviewed: 2026-07-11.
 | Qwen2.5/3 Omni | — | ✔ via mtmd | ✔ |
 | LFM2-Audio | ✔ native (ASR + TTS) | ✔ via mtmd | — |
 
-**CrispASR: 30+ ASR backend families** (all native, single GGUF per model;
+**StelnetTTS: 30+ ASR backend families** (all native, single GGUF per model;
 plus ~25 TTS backends, translation, punctuation, LID — see the README
 model table for the full list incl. canary-qwen, MOSS/Qwen3-Omni-based,
 SenseVoice, Paraformer, OmniASR, mega-asr, higgs-stt, mimo-asr)
@@ -35,7 +35,7 @@ SenseVoice, Paraformer, OmniASR, mega-asr, higgs-stt, mimo-asr)
 
 ## Auxiliary Models
 
-| Model | CrispASR | llama.cpp | koboldcpp |
+| Model | StelnetTTS | llama.cpp | koboldcpp |
 |---|---|---|---|
 | Silero VAD | ✔ | — | — |
 | FireRedVAD (DFSMN) | ✔ | — | — |
@@ -45,7 +45,7 @@ SenseVoice, Paraformer, OmniASR, mega-asr, higgs-stt, mimo-asr)
 
 ## Architecture Approaches
 
-### CrispASR
+### StelnetTTS
 - **Monolithic GGUF**: one file per model, includes all weights + vocab + CMVN
 - **Backend pattern**: each model has its own `src/<model>.{h,cpp}` + backend adapter
 - **Shared core**: `core/gguf_loader.h`, `core/attention.h`, `core/ffn.h`, `core/mel.h`
@@ -67,7 +67,7 @@ SenseVoice, Paraformer, OmniASR, mega-asr, higgs-stt, mimo-asr)
 ## Optimizations to Adopt from llama.cpp
 
 1. **`ggml_soft_max_ext` with baked scale** — saves one `ggml_scale` op per attention layer
-2. ~~**Chunked window attention**~~ — DONE for qwen3-asr (`CRISP_AUDIO_WINDOWED_ATTN=1`, opt-in; default-flip evaluated and rejected, see PERFORMANCE.md)
+2. ~~**Chunked window attention**~~ — DONE for cielvox2-asr (`CRISP_AUDIO_WINDOWED_ATTN=1`, opt-in; default-flip evaluated and rejected, see PERFORMANCE.md)
 3. ~~**Conv2d subsampling** via ggml ops~~ — DONE (crisp_audio qwen3 tower)
 4. **Frame stacking** in projector (Voxtral does 4x stacking before LLM)
 

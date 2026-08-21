@@ -16,7 +16,7 @@
 #include <algorithm> // std::fill_n
 #include <cmath>     // expf, INFINITY
 
-namespace crispasr {
+namespace stelnettts {
 namespace cpu_attn {
 
 // Dot product of two length-K float vectors using four independent accumulator
@@ -83,4 +83,4 @@ static inline void cpu_online_softmax_accumulate(int T, int hd, const float* __r
 }
 
 } // namespace cpu_attn
-} // namespace crispasr
+} // namespace stelnettts

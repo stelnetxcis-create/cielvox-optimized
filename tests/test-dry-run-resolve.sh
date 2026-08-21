@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-dry-run-resolve.sh — regression for --dry-run-resolve model-key matching.
 #
-# build_preview() must mirror crispasr_resolve_model's match priority, or the
+# build_preview() must mirror stelnettts_resolve_model's match priority, or the
 # preview lies about which model a `-m <alias>` selects. Specifically, a
 # sub-variant registry key (e.g. parakeet-tdt_ctc-110m) must resolve to its own
 # entry rather than being shadowed by the filename-inferred backend default.
@@ -13,11 +13,11 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
 if [ -z "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found (build first)"; exit 0
+    echo "SKIP: stelnettts binary not found (build first)"; exit 0
 fi
 
 PASS=0; FAIL=0

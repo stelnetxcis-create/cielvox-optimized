@@ -1,24 +1,24 @@
 #include "common.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 
-#include "crispasr.h"
+#include "stelnettts.h"
 #include "grammar-parser.h"
-#include "whisper_params.h"       // struct whisper_params (shared with crispasr_*)
-#include "crispasr_backend.h"     // crispasr_run_backend() dispatch entry point
-#include "crispasr_diagnostics.h" // --version / --diagnostics + verbose banner (#31)
-#include "crispasr_consent_record.h"
-#include "crispasr_diarize_cli.h"      // crispasr_apply_diarize / pyannote cache (#107)
-#include "crispasr_speaker_embedder.h" // pluggable speaker embedder (#107 P3)
-#include "crispasr_stream_punc.h"      // streaming punctuation mode helpers (#112)
-#include "crispasr_cache.h"            // crispasr_cache::ensure_cached_file (for --hf-repo, #128)
+#include "whisper_params.h"       // struct whisper_params (shared with stelnettts_*)
+#include "stelnettts_backend.h"     // stelnettts_run_backend() dispatch entry point
+#include "stelnettts_diagnostics.h" // --version / --diagnostics + verbose banner (#31)
+#include "stelnettts_consent_record.h"
+#include "stelnettts_diarize_cli.h"      // stelnettts_apply_diarize / pyannote cache (#107)
+#include "stelnettts_speaker_embedder.h" // pluggable speaker embedder (#107 P3)
+#include "stelnettts_stream_punc.h"      // streaming punctuation mode helpers (#112)
+#include "stelnettts_cache.h"            // stelnettts_cache::ensure_cached_file (for --hf-repo, #128)
 #include "core/asr_sensitivity.h"      // --sensitivity presets (PLAN.md §W7)
-#include "core/gpu_backend_pref.h"     // crispasr_set_gpu_backend_pref (#214)
+#include "core/gpu_backend_pref.h"     // stelnettts_set_gpu_backend_pref (#214)
 #include "core/win_compat.h"           // setenv/unsetenv shims for MSVC
-#include "crispasr_model_mgr_cli.h"
-#include "crispasr_model_registry.h"
-#include "crispasr_output.h"   // crispasr_make_disp_segments — split-on-punct (#29)
-#include "crispasr_server.h"   // crispasr_run_server()
-#include "crispasr_vad_cli.h"  // crispasr_resolve_vad_model — auto-DL silero (#33)
+#include "stelnettts_model_mgr_cli.h"
+#include "stelnettts_model_registry.h"
+#include "stelnettts_output.h"   // stelnettts_make_disp_segments — split-on-punct (#29)
+#include "stelnettts_server.h"   // stelnettts_run_server()
+#include "stelnettts_vad_cli.h"  // stelnettts_resolve_vad_model — auto-DL silero (#33)
 #include "text_lid_dispatch.h" // text LID dispatcher for --lid-on-transcript (fastText or CLD3)
 
 #include <cmath>
@@ -51,7 +51,7 @@ static void replace_all(std::string& s, const std::string& search, const std::st
     }
 }
 
-#if 0  // Moved to whisper_params.h for sharing with crispasr backend dispatch.
+#if 0  // Moved to whisper_params.h for sharing with stelnettts backend dispatch.
 // command-line parameters
 struct whisper_params {
     int32_t n_threads     = std::min(4, (int32_t) std::thread::hardware_concurrency());
@@ -63,8 +63,8 @@ struct whisper_params {
     int32_t max_context   = -1;
     int32_t max_len       = 0;
     bool    split_on_punct = false;
-    int32_t best_of       = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY).greedy.best_of;
-    int32_t beam_size     = whisper_full_default_params(CRISPASR_SAMPLING_BEAM_SEARCH).beam_search.beam_size;
+    int32_t best_of       = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY).greedy.best_of;
+    int32_t beam_size     = whisper_full_default_params(STELNETTTS_SAMPLING_BEAM_SEARCH).beam_search.beam_size;
     int32_t audio_ctx     = 0;
 
     float word_thold      =  0.01f;
@@ -429,14 +429,14 @@ static bool whisper_params_parse_arg_backend_vad(int argc, char** argv, int& i, 
     } else if (arg == "--lcs-dedup") {
         std::string v = ARGV_NEXT;
         if (v != "auto" && v != "on" && v != "off") {
-            fprintf(stderr, "crispasr: --lcs-dedup must be one of {auto|on|off} (got '%s')\n", v.c_str());
+            fprintf(stderr, "stelnettts: --lcs-dedup must be one of {auto|on|off} (got '%s')\n", v.c_str());
             return false;
         }
         params.lcs_dedup = std::move(v);
     } else if (arg == "--lcs-min-length") {
         const int v = std::stoi(ARGV_NEXT);
         if (v < 1) {
-            fprintf(stderr, "crispasr: --lcs-min-length must be >= 1 (got %d)\n", v);
+            fprintf(stderr, "stelnettts: --lcs-min-length must be >= 1 (got %d)\n", v);
             return false;
         }
         params.lcs_min_length = v;
@@ -486,7 +486,7 @@ static bool whisper_params_parse_arg_backend_vad(int argc, char** argv, int& i, 
             params.att_context_left = l;
             params.att_context_right = r;
         } else {
-            fprintf(stderr, "crispasr: --att-context expects \"L,R\" (e.g. 128,128 or -1,-1), got '%s'\n", v.c_str());
+            fprintf(stderr, "stelnettts: --att-context expects \"L,R\" (e.g. 128,128 or -1,-1), got '%s'\n", v.c_str());
         }
     } else if (arg == "--lid-backend") {
         params.lid_backend = ARGV_NEXT;
@@ -539,7 +539,7 @@ static bool whisper_params_parse_arg_backend_vad(int argc, char** argv, int& i, 
     } else if (arg == "--speaker-db-consent") {
         // Affirms a lawful basis + explicit consent for the biometric
         // named-profile path. Without it, --enroll-speaker / --speaker-db
-        // refuse to run (see crispasr_run.cpp). No-DB diarization
+        // refuse to run (see stelnettts_run.cpp). No-DB diarization
         // (--diarize-speakers / --diarize-embedder) never needs this.
         params.speaker_db_consent = true;
     } else if (arg == "--diarize-cluster-threshold") {
@@ -686,7 +686,7 @@ static bool whisper_params_parse_arg_streaming_tts(int argc, char** argv, int& i
         params.c2pa_key = ARGV_NEXT;
     } else if (arg == "--consent-log") {
         params.consent_log = ARGV_NEXT;
-        crispasr_consent::set_log_path(params.consent_log);
+        stelnettts_consent::set_log_path(params.consent_log);
     } else if (arg == "--i-have-rights") {
         // Voice-cloning consent attestation. Required when --voice points
         // to a .wav reference file (i.e. voice cloning). By passing this
@@ -746,11 +746,11 @@ static bool whisper_params_parse_arg_streaming_tts(int argc, char** argv, int& i
         }
         params.accept_license = argv[i];
         // Publish via the env var the library already consults rather than
-        // calling into crispasr-lib: cli.cpp links ahead of it (see the
+        // calling into stelnettts-lib: cli.cpp links ahead of it (see the
         // left-to-right static-link note in examples/cli/CMakeLists.txt), and
         // this reaches every resolve path — CLI, session C-ABI, server —
         // without threading a parameter through 46 call sites.
-        setenv("CRISPASR_ACCEPT_LICENSE", params.accept_license.c_str(), /*overwrite=*/1);
+        setenv("STELNETTTS_ACCEPT_LICENSE", params.accept_license.c_str(), /*overwrite=*/1);
     } else if (arg == "--auto-download") {
         params.auto_download = true;
     } else if (arg == "--hf-repo" || arg == "-hfr") {
@@ -800,26 +800,26 @@ static bool whisper_params_parse_arg_streaming_tts(int argc, char** argv, int& i
     } else if (arg == "--stream-vad-merge-gap-ms") {
         params.stream_vad_merge_gap_ms = std::stoi(ARGV_NEXT);
         if (params.stream_vad_merge_gap_ms < 0) {
-            fprintf(stderr, "crispasr: --stream-vad-merge-gap-ms must be >= 0\n");
+            fprintf(stderr, "stelnettts: --stream-vad-merge-gap-ms must be >= 0\n");
             exit(2);
         }
     } else if (arg == "--stream-partial-decode-ms") {
         params.stream_partial_decode_ms = std::stoi(ARGV_NEXT);
         if (params.stream_partial_decode_ms < 0) {
-            fprintf(stderr, "crispasr: --stream-partial-decode-ms must be >= 0\n");
+            fprintf(stderr, "stelnettts: --stream-partial-decode-ms must be >= 0\n");
             exit(2);
         }
     } else if (arg == "--stream-punc") {
         std::string mode = ARGV_NEXT;
-        if (!crispasr_stream_punc_mode_valid(mode)) {
-            fprintf(stderr, "crispasr: --stream-punc must be 'off', 'final', or 'partial' (got '%s')\n", mode.c_str());
+        if (!stelnettts_stream_punc_mode_valid(mode)) {
+            fprintf(stderr, "stelnettts: --stream-punc must be 'off', 'final', or 'partial' (got '%s')\n", mode.c_str());
             exit(2);
         }
         params.stream_punc = mode;
     } else if (arg == "--stream-final-mode") {
         std::string mode = ARGV_NEXT;
         if (mode != "redecode" && mode != "prefix") {
-            fprintf(stderr, "crispasr: --stream-final-mode must be 'redecode' or 'prefix' (got '%s')\n", mode.c_str());
+            fprintf(stderr, "stelnettts: --stream-final-mode must be 'redecode' or 'prefix' (got '%s')\n", mode.c_str());
             exit(2);
         }
         params.stream_final_mode = mode;
@@ -831,15 +831,15 @@ static bool whisper_params_parse_arg_streaming_tts(int argc, char** argv, int& i
         // whisper_params; firered_vad reads the env on each call.
         params.firered_vad_debug = true;
 #ifdef _WIN32
-        _putenv_s("CRISPASR_FIRERED_VAD_DEBUG", "1");
+        _putenv_s("STELNETTTS_FIRERED_VAD_DEBUG", "1");
 #else
-        setenv("CRISPASR_FIRERED_VAD_DEBUG", "1", 1);
+        setenv("STELNETTTS_FIRERED_VAD_DEBUG", "1", 1);
 #endif
     } else if (arg == "--list-backends") {
-        crispasr_print_backend_matrix();
+        stelnettts_print_backend_matrix();
         exit(0);
     } else if (arg == "--list-backends-json") {
-        crispasr_print_backend_matrix_json();
+        stelnettts_print_backend_matrix_json();
         exit(0);
     } else if (arg == "--vad") {
         params.vad = true;
@@ -918,7 +918,7 @@ static bool whisper_params_parse_arg_streaming_tts(int argc, char** argv, int& i
 }
 
 static bool whisper_params_parse(int argc, char** argv, whisper_params& params) {
-    if (const char* env_device = std::getenv("CRISPASR_ARG_DEVICE")) {
+    if (const char* env_device = std::getenv("STELNETTTS_ARG_DEVICE")) {
         params.gpu_device = std::stoi(env_device);
     }
 
@@ -941,12 +941,12 @@ static bool whisper_params_parse(int argc, char** argv, whisper_params& params) 
         }
 
         if (arg == "--version") {
-            crispasr_print_build_info(stdout);
+            stelnettts_print_build_info(stdout);
             exit(0);
         }
 
         if (arg == "--diagnostics" || arg == "--diag") {
-            crispasr_print_full_diagnostics(stderr);
+            stelnettts_print_full_diagnostics(stderr);
             exit(0);
         }
 
@@ -1109,8 +1109,8 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
             params.grammar_rule.c_str());
     fprintf(stderr, "  --grammar-penalty N               [%-7.1f] scales down logits of nongrammar tokens\n",
             params.grammar_penalty);
-    // crispasr backend dispatch
-    fprintf(stderr, "\ncrispasr backend options (select a non-whisper model):\n");
+    // stelnettts backend dispatch
+    fprintf(stderr, "\nstelnettts backend options (select a non-whisper model):\n");
     fprintf(stderr,
             "  --backend NAME                    [%-7s] backend: "
             "whisper|parakeet|canary|cohere|qwen3|qwen3-1.7b|mega-asr|voxtral|voxtral4b|granite\n",
@@ -1232,9 +1232,9 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
     fprintf(stderr, "  --auto-download                   [%-7s] auto-download missing models without prompting\n",
             params.auto_download ? "true" : "false");
     fprintf(stderr, "  -hfr REPO, --hf-repo OWNER/REPO[:FILE]    fetch model from arbitrary HuggingFace repo "
-                    "(llama-server-compatible). e.g. --hf-repo cstr/parakeet-tdt-0.6b-v3-GGUF -m "
+                    "(llama-server-compatible). e.g. --hf-repo Xenna/parakeet-tdt-0.6b-v3-GGUF -m "
                     "parakeet-tdt-0.6b-v3-q4_k.gguf, or the shorthand --hf-repo "
-                    "cstr/parakeet-tdt-0.6b-v3-GGUF:parakeet-tdt-0.6b-v3-q4_k.gguf. Implies --auto-download.\n");
+                    "Xenna/parakeet-tdt-0.6b-v3-GGUF:parakeet-tdt-0.6b-v3-q4_k.gguf. Implies --auto-download.\n");
     fprintf(stderr,
             "  -hff FNAME, --hf-file FNAME       %-7s   filename within --hf-repo (alternative to "
             "the OWNER/REPO:FILE shorthand)\n",
@@ -1321,7 +1321,7 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
     fprintf(stderr,
             "             --att-context L,R      [%-7s] parakeet/canary local-attention window in encoder "
             "frames (~80ms ea) — true windowed attn (O(T*window) mem, NeMo rel_pos_local_attn); "
-            "-1,-1 = full. CRISPASR_FC_WINDOWED_ATTN=0 forces legacy masked-full\n",
+            "-1,-1 = full. STELNETTTS_FC_WINDOWED_ATTN=0 forces legacy masked-full\n",
             "model");
     fprintf(stderr,
             "             --lcs-dedup VAL        [%-7s] sub-word LCS dedup across chunk boundaries: auto|on|off\n",
@@ -1330,7 +1330,7 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
             "             --lcs-min-length N     [%-7d] minimum LCS length to act on (raise on long-silence audio)\n",
             params.lcs_min_length);
     fprintf(stderr, "             -m auto                        download a default model for the chosen backend\n");
-    // Text-To-Speech (TTS) parameters — vibevoice and qwen3-tts backends
+    // Text-To-Speech (TTS) parameters — vibevoice and cielvox2-tts backends
     fprintf(stderr, "\nSpeech-to-speech (S2S) options:\n");
     fprintf(stderr, "             --s2s                   [%-7s] speech-to-speech mode: audio input → audio output\n",
             params.s2s ? "true" : "false");
@@ -1382,12 +1382,12 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
         "                                                 opt-out (--no-watermark / --no-spoken-disclaimer /\n"
         "                                                 --no-c2pa): you affirm AI-content marking/disclosure\n"
         "                                                 duty is yours.\n");
-    fprintf(stderr, "             --ref-text \"TEXT\"        reference transcription (qwen3-tts/f5-tts/cosyvoice3-tts; "
+    fprintf(stderr, "             --ref-text \"TEXT\"        reference transcription (cielvox2-tts/f5-tts/cosyvoice3-tts; "
                     "auto-transcribed if omitted)\n");
     fprintf(stderr, "             --ref-asr BACKEND       [%-7s] ASR backend for auto-transcribing ref audio\n",
             params.tts_ref_asr.empty() ? "whisper" : params.tts_ref_asr.c_str());
     fprintf(stderr, "             --instruct \"TEXT\"        natural-language voice/style description "
-                    "(qwen3-tts: VoiceDesign = voice description; CustomVoice = style control)\n");
+                    "(cielvox2-tts: VoiceDesign = voice description; CustomVoice = style control)\n");
     fprintf(stderr, "             --tts-phonemes \"IPA\"     synthesize these phonemes verbatim, skipping the "
                     "G2P (kokoro; use to A/B a pronunciation against another implementation)\n");
     fprintf(
@@ -1453,7 +1453,7 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
     fprintf(
         stderr,
         "             --tts-cfg-scale X        [%-7s] TTS CFG guidance scale (vibevoice/chatterbox/f5/tada/irodori; "
-        "irodori: text CFG (default 3.0); speaker CFG via CRISPASR_IRODORI_CFG_SPEAKER; "
+        "irodori: text CFG (default 3.0); speaker CFG via STELNETTTS_IRODORI_CFG_SPEAKER; "
         "vibevoice: 0 = model default, try 1.5 or a new --seed to re-roll BGM onsets)\n",
         "default");
     fprintf(stderr,
@@ -1481,7 +1481,7 @@ static void whisper_print_usage(int /*argc*/, char** argv, const whisper_params&
     fprintf(stderr, "             --vad                           [%-7s] enable Voice Activity Detection (VAD)\n",
             params.vad ? "true" : "false");
     fprintf(stderr, "  -vm FNAME, --vad-model FNAME               [%-7s] VAD model: a path, or one of %s\n",
-            params.vad_model.c_str(), crispasr_vad_model_keywords());
+            params.vad_model.c_str(), stelnettts_vad_model_keywords());
     fprintf(stderr, "  -vt N,     --vad-threshold N               [%-7.2f] VAD threshold for speech recognition\n",
             params.vad_threshold);
     fprintf(stderr, "  -vspd N,   --vad-min-speech-duration-ms  N [%-7d] VAD min speech duration (ms)\n",
@@ -1577,8 +1577,8 @@ static std::string estimate_diarization_speaker(const std::vector<std::vector<fl
     std::string speaker = "";
     const int64_t n_samples = pcmf32s[0].size();
 
-    const int64_t is0 = timestamp_to_sample(t0, n_samples, CRISPASR_SAMPLE_RATE);
-    const int64_t is1 = timestamp_to_sample(t1, n_samples, CRISPASR_SAMPLE_RATE);
+    const int64_t is0 = timestamp_to_sample(t0, n_samples, STELNETTTS_SAMPLE_RATE);
+    const int64_t is1 = timestamp_to_sample(t1, n_samples, STELNETTTS_SAMPLE_RATE);
 
     double energy0 = 0.0f;
     double energy1 = 0.0f;
@@ -1712,18 +1712,18 @@ static void whisper_print_segment_callback(struct whisper_context* ctx, struct w
     }
 }
 
-// Collect whisper segments + tokens into the unified crispasr_segment
+// Collect whisper segments + tokens into the unified stelnettts_segment
 // vector. Called once per transcription, before any writer runs.
 // Everything the output functions need lives on the vector afterwards so
 // the writers are whisper_context-free (except output_json which still
 // needs ctx for systeminfo/model metadata).
-static std::vector<crispasr_segment> cli_whisper_collect_segments(struct whisper_context* ctx) {
-    std::vector<crispasr_segment> out;
+static std::vector<stelnettts_segment> cli_whisper_collect_segments(struct whisper_context* ctx) {
+    std::vector<stelnettts_segment> out;
     const int n = whisper_full_n_segments(ctx);
     out.reserve(n);
     const whisper_token eot = whisper_token_eot(ctx);
     for (int i = 0; i < n; ++i) {
-        crispasr_segment s;
+        stelnettts_segment s;
         s.text = whisper_full_get_segment_text(ctx, i);
         s.t0 = whisper_full_get_segment_t0(ctx, i);
         s.t1 = whisper_full_get_segment_t1(ctx, i);
@@ -1733,7 +1733,7 @@ static std::vector<crispasr_segment> cli_whisper_collect_segments(struct whisper
         s.tokens.reserve(nt);
         for (int j = 0; j < nt; ++j) {
             const auto d = whisper_full_get_token_data(ctx, i, j);
-            crispasr_token t;
+            stelnettts_token t;
             t.id = d.id;
             t.text = whisper_token_to_str(ctx, d.id);
             t.confidence = d.p;
@@ -1748,7 +1748,7 @@ static std::vector<crispasr_segment> cli_whisper_collect_segments(struct whisper
     return out;
 }
 
-static void output_txt(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static void output_txt(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                        const std::vector<std::vector<float>>& pcmf32s) {
     const int n_segments = (int)segs.size();
     for (int i = 0; i < n_segments; ++i) {
@@ -1768,7 +1768,7 @@ static void output_txt(const std::vector<crispasr_segment>& segs, std::ofstream&
     }
 }
 
-static void output_vtt(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static void output_vtt(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                        const std::vector<std::vector<float>>& pcmf32s) {
     fout << "WEBVTT\n\n";
 
@@ -1805,7 +1805,7 @@ static void output_vtt(const std::vector<crispasr_segment>& segs, std::ofstream&
     }
 }
 
-static void output_srt(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static void output_srt(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                        const std::vector<std::vector<float>>& pcmf32s) {
     const int n_segments = (int)segs.size();
     for (int i = 0; i < n_segments; ++i) {
@@ -1886,7 +1886,7 @@ static char* escape_double_quotes_in_csv(const char* str) {
     return escaped;
 }
 
-static void output_csv(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static void output_csv(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                        const std::vector<std::vector<float>>& pcmf32s) {
     const int n_segments = (int)segs.size();
     fout << "start,end,";
@@ -1910,7 +1910,7 @@ static void output_csv(const std::vector<crispasr_segment>& segs, std::ofstream&
     }
 }
 
-static void output_score(const std::vector<crispasr_segment>& segs, std::ofstream& fout,
+static void output_score(const std::vector<stelnettts_segment>& segs, std::ofstream& fout,
                          const whisper_params& /*params*/, std::vector<std::vector<float>> /*pcmf32s*/) {
     const int n_segments = (int)segs.size();
     // fprintf(stderr,"segments: %d\n",n_segments);
@@ -1926,7 +1926,7 @@ static void output_score(const std::vector<crispasr_segment>& segs, std::ofstrea
     }
 }
 
-static void output_json(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static void output_json(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                         const std::vector<std::vector<float>>& pcmf32s, struct whisper_context* ctx) {
     const bool full = params.output_jsn_full;
     int indent = 0;
@@ -2048,7 +2048,7 @@ static void output_json(const std::vector<crispasr_segment>& segs, std::ofstream
         // Multi-task ASR metadata (SenseVoice and similar). Emit any
         // non-empty fields right after `text`. Each one is a flat string
         // sibling: language / audio_event / itn_flag. No `emotion` key —
-        // CrispASR does not surface voice-based emotion inference at all
+        // StelnetTTS does not surface voice-based emotion inference at all
         // (EU AI Act Art. 5(1)(f) / Annex III(1)(c); docs/eu-ai-act.md).
         const bool has_lang = !segs[i].lang_id.empty();
         const bool has_evt = !segs[i].audio_event.empty();
@@ -2136,7 +2136,7 @@ static void output_json(const std::vector<crispasr_segment>& segs, std::ofstream
 // karaoke video generation
 // outputs a bash script that uses ffmpeg to generate a video with the subtitles
 // TODO: font parameter adjustments
-static bool output_wts(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static bool output_wts(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                        const std::vector<std::vector<float>>& pcmf32s, const char* fname_inp, float t_sec,
                        const char* fname_out) {
     static const char* font = params.font_path.c_str();
@@ -2159,7 +2159,7 @@ static bool output_wts(const std::vector<crispasr_segment>& segs, std::ofstream&
 
         const int n = (int)segs[i].tokens.size();
 
-        const std::vector<crispasr_token>& tokens = segs[i].tokens;
+        const std::vector<stelnettts_token>& tokens = segs[i].tokens;
 
         if (i > 0) {
             fout << ",";
@@ -2263,9 +2263,9 @@ static bool output_wts(const std::vector<crispasr_segment>& segs, std::ofstream&
     return true;
 }
 
-static void output_lrc(const std::vector<crispasr_segment>& segs, std::ofstream& fout, const whisper_params& params,
+static void output_lrc(const std::vector<stelnettts_segment>& segs, std::ofstream& fout, const whisper_params& params,
                        const std::vector<std::vector<float>>& pcmf32s) {
-    fout << "[by:crispasr]\n";
+    fout << "[by:stelnettts]\n";
 
     const int n_segments = (int)segs.size();
     for (int i = 0; i < n_segments; ++i) {
@@ -2369,15 +2369,15 @@ int main(int argc, char** argv) {
     // any user log starts with the exact build identifier, so triage
     // doesn't have to ask "which tag did you pull?" (#31).
     if (!params.no_prints) {
-        crispasr_print_short_banner(stderr);
+        stelnettts_print_short_banner(stderr);
     }
 
     // --verbose: dump the full build info + env + device list before we
-    // touch the model. The CUDA enumeration in crispasr_print_devices()
+    // touch the model. The CUDA enumeration in stelnettts_print_devices()
     // logs through GGML_LOG_ERROR on driver/runtime mismatch, so users
     // hitting #31 get a complete capture in the same log block.
     if (params.verbose) {
-        crispasr_print_full_diagnostics(stderr);
+        stelnettts_print_full_diagnostics(stderr);
     }
 
     if (params.use_gpu) {
@@ -2387,12 +2387,12 @@ int main(int argc, char** argv) {
         // Issue #214 — propagate --gpu-backend preference so every
         // backend's init picks the right GPU device instead of the
         // highest-priority one (CUDA over Vulkan). "cpu" is propagated
-        // too: crispasr_init_gpu_backend() short-circuits on it, where it
+        // too: stelnettts_init_gpu_backend() short-circuits on it, where it
         // previously fell through to ggml_backend_init_best() — i.e. the
         // statically-linked Metal backend, which load_all-skipping alone
         // never prevented.
         if (!params.gpu_backend.empty()) {
-            crispasr_set_gpu_backend_pref(params.gpu_backend.c_str());
+            stelnettts_set_gpu_backend_pref(params.gpu_backend.c_str());
         }
     }
 
@@ -2424,7 +2424,7 @@ int main(int argc, char** argv) {
         const std::string url = "https://huggingface.co/" + params.hf_repo + "/resolve/main/" + file;
         const std::string label = "hf-repo[" + params.hf_repo + "]";
         const std::string cached =
-            crispasr_cache::ensure_cached_file(file, url, params.no_prints, label.c_str(), params.cache_dir);
+            stelnettts_cache::ensure_cached_file(file, url, params.no_prints, label.c_str(), params.cache_dir);
         if (cached.empty()) {
             fprintf(stderr, "error: --hf-repo fetch failed for %s/%s\n", params.hf_repo.c_str(), file.c_str());
             return 1;
@@ -2447,7 +2447,7 @@ int main(int argc, char** argv) {
 
     // Server mode: keep model loaded, accept HTTP requests
     if (params.server) {
-        return crispasr_run_server(params, params.server_host, params.server_port);
+        return stelnettts_run_server(params, params.server_host, params.server_port);
     }
 
     if (params.dry_run_resolve) {
@@ -2455,21 +2455,21 @@ int main(int argc, char** argv) {
         if (backend_name.empty() && is_auto_model_arg(params.model)) {
             backend_name = "whisper";
         } else if (backend_name.empty() && !is_auto_model_arg(params.model)) {
-            backend_name = crispasr_detect_backend_from_gguf(params.model);
+            backend_name = stelnettts_detect_backend_from_gguf(params.model);
         }
 
-        const CrispasrResolvePreview model_preview = crispasr_preview_model_cli(
+        const CrispasrResolvePreview model_preview = stelnettts_preview_model_cli(
             params.model, backend_name, params.cache_dir, params.model_quant, params.dry_run_ignore_cache);
         print_resolve_preview("model", model_preview);
 
         bool ok = !model_preview.unresolved;
         if (!backend_name.empty()) {
             CrispasrRegistryEntry entry;
-            if (crispasr_registry_lookup(backend_name, entry, params.tts_codec_quant) &&
+            if (stelnettts_registry_lookup(backend_name, entry, params.tts_codec_quant) &&
                 !entry.companion_filename.empty()) {
                 const std::string codec_arg =
                     params.tts_codec_model.empty() ? entry.companion_filename : params.tts_codec_model;
-                const CrispasrResolvePreview companion_preview = crispasr_preview_model_cli(
+                const CrispasrResolvePreview companion_preview = stelnettts_preview_model_cli(
                     codec_arg, backend_name, params.cache_dir, params.tts_codec_quant, params.dry_run_ignore_cache);
                 print_resolve_preview("companion", companion_preview);
                 ok = ok && !companion_preview.unresolved;
@@ -2482,34 +2482,34 @@ int main(int argc, char** argv) {
     // or input files — route directly to the backend (which handles it
     // and exits before any model resolution).
     if (!params.detect_watermark_file.empty()) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // --print-speaker-identity is the same shape: it inspects a FILE, not a
     // session, so it must be routed before the "no input files" guard below.
     // Missing this is why the verb returned 2 the first time it was run.
     if (!params.print_speaker_identity_file.empty()) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // Issue #217: --align-only is a standalone verb that needs only an aligner
     // model + audio + text — no ASR backend.
     if (params.align_only) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // §248: --separate is a standalone source-separation verb. Route straight to
-    // the dispatcher (crispasr_run_separate) before any ASR backend detection —
+    // the dispatcher (stelnettts_run_separate) before any ASR backend detection —
     // the separation model is not a transcribe backend and must not be loaded as
     // whisper.
     if (params.separate) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // --pitch is a standalone pitch-estimation verb, same shape as --separate:
     // audio in, pitch frames out. Route before any ASR backend detection.
     if (params.pitch) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // --chords is a standalone chord-recognition verb, same shape as --pitch:
@@ -2517,7 +2517,7 @@ int main(int argc, char** argv) {
     // otherwise the BTC GGUF is handed to whisper_model_load, which rejects it
     // as "invalid model data (bad magic)".
     if (params.chords) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // --piano is a standalone piano-transcription verb, same shape as --chords:
@@ -2525,7 +2525,7 @@ int main(int argc, char** argv) {
     // otherwise the piano GGUF is handed to whisper_model_load, which rejects
     // it as "invalid model data (bad magic)".
     if (params.piano) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     // --beats is a standalone beat-tracking verb, same shape as --chords:
@@ -2533,7 +2533,7 @@ int main(int argc, char** argv) {
     // detection — otherwise the beat-this GGUF is handed to
     // whisper_model_load, which rejects it as "invalid model data (bad magic)".
     if (params.beats) {
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
     if (params.fname_inp.empty() && !params.stream && params.tts_text.empty() && params.text_input.empty() &&
@@ -2550,21 +2550,21 @@ int main(int argc, char** argv) {
         // Route through the unified dispatch which has the enrollment code.
         if (params.backend.empty())
             params.backend = "whisper"; // any backend, enrollment exits before init
-        const int rc = crispasr_run_backend(params);
+        const int rc = stelnettts_run_backend(params);
         return rc;
     }
 
     // Issue #227: --vad-export is a standalone verb that only needs audio +
-    // Silero VAD — no ASR model required. Route to crispasr_run_backend()
+    // Silero VAD — no ASR model required. Route to stelnettts_run_backend()
     // which handles the short circuit before backend init.
     if (!params.vad_export_file.empty() && !params.fname_inp.empty()) {
         if (params.backend.empty())
             params.backend = "whisper"; // any backend name, export exits before init
-        return crispasr_run_backend(params);
+        return stelnettts_run_backend(params);
     }
 
-    // crispasr backend dispatch ---------------------------------------------
-    // Route through the unified dispatch layer (crispasr_run_backend) when:
+    // stelnettts backend dispatch ---------------------------------------------
+    // Route through the unified dispatch layer (stelnettts_run_backend) when:
     //   1. --backend is set explicitly (including --backend whisper, which
     //      opts into the reduced-feature unified whisper wrapper);
     //   2. -m auto / -m default requests an auto-download;
@@ -2580,10 +2580,10 @@ int main(int argc, char** argv) {
 
         bool auto_detected_non_whisper = false;
         if (!explicit_backend && !model_is_auto) {
-            const std::string detected = crispasr_detect_backend_from_gguf(params.model);
+            const std::string detected = stelnettts_detect_backend_from_gguf(params.model);
             if (!detected.empty() && detected != "whisper") {
                 if (!params.no_prints) {
-                    fprintf(stderr, "crispasr: auto-detected backend '%s' from '%s'\n", detected.c_str(),
+                    fprintf(stderr, "stelnettts: auto-detected backend '%s' from '%s'\n", detected.c_str(),
                             params.model.c_str());
                 }
                 params.backend = detected;
@@ -2591,21 +2591,21 @@ int main(int argc, char** argv) {
             }
         }
 
-        // --vad-import is implemented in crispasr_run.cpp's process_one_input,
+        // --vad-import is implemented in stelnettts_run.cpp's process_one_input,
         // which the LEGACY whisper path below never reaches. Without this the
         // flag was accepted and silently did nothing: `--vad-import
         // /nonexistent.json` returned 0 and transcribed normally, so the whole
         // point of #227 (pay VAD once, reuse across models) was a no-op in the
         // most ordinary invocation. Route those runs through the dispatch.
         // #311: any strict-pipeline requirement must route through the unified
-        // dispatch (crispasr_run.cpp), where the VAD/aligner/punc enforcement
+        // dispatch (stelnettts_run.cpp), where the VAD/aligner/punc enforcement
         // lives — the legacy whisper path below does not run it, so a strict
         // flag there would be a silent no-op (exactly the trap #311 fixes).
         const bool strict_requested = params.strict_pipeline || params.require_vad || params.require_word_timestamps ||
                                       params.require_punctuation;
         if (explicit_backend || model_is_auto || auto_detected_non_whisper || params.stream ||
             !params.tts_text.empty() || !params.vad_import_file.empty() || strict_requested) {
-            const int rc = crispasr_run_backend(params);
+            const int rc = stelnettts_run_backend(params);
 #if defined(_WIN32)
             // Bypass global C++ destructors (ggml Vulkan device teardown can
             // stall indefinitely on Windows when the GPU is idle post-inference).
@@ -2620,15 +2620,15 @@ int main(int argc, char** argv) {
     // -----------------------------------------------------------------------
 
     // The legacy whisper-native path below (issue #266) has never wired up
-    // named speaker identification: it predates crispasr_apply_global_speaker_stages()
+    // named speaker identification: it predates stelnettts_apply_global_speaker_stages()
     // and does not run the post-merge cluster-matching stage the unified
-    // dispatcher (crispasr_run_backend / crispasr_run.cpp) uses. Warn once so
+    // dispatcher (stelnettts_run_backend / stelnettts_run.cpp) uses. Warn once so
     // --speaker-db doesn't silently do nothing.
     if (!params.speaker_db.empty()) {
         static bool warned_legacy_speaker_db = false;
         if (!warned_legacy_speaker_db) {
             warned_legacy_speaker_db = true;
-            fprintf(stderr, "crispasr: warning: --speaker-db is ignored on the legacy whisper path "
+            fprintf(stderr, "stelnettts: warning: --speaker-db is ignored on the legacy whisper path "
                             "(no --backend given). Named speaker identification is only supported via "
                             "the unified backend dispatch — pass --backend whisper (or any other "
                             "backend) to use --speaker-db.\n");
@@ -2660,34 +2660,34 @@ int main(int argc, char** argv) {
 
     if (!params.dtw.empty()) {
         cparams.dtw_token_timestamps = true;
-        cparams.dtw_aheads_preset = CRISPASR_AHEADS_NONE;
+        cparams.dtw_aheads_preset = STELNETTTS_AHEADS_NONE;
 
         if (params.dtw == "tiny")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_TINY;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_TINY;
         if (params.dtw == "tiny.en")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_TINY_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_TINY_EN;
         if (params.dtw == "base")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_BASE;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_BASE;
         if (params.dtw == "base.en")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_BASE_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_BASE_EN;
         if (params.dtw == "small")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_SMALL;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_SMALL;
         if (params.dtw == "small.en")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_SMALL_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_SMALL_EN;
         if (params.dtw == "medium")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_MEDIUM;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_MEDIUM;
         if (params.dtw == "medium.en")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_MEDIUM_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_MEDIUM_EN;
         if (params.dtw == "large.v1")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V1;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V1;
         if (params.dtw == "large.v2")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V2;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V2;
         if (params.dtw == "large.v3")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V3;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V3;
         if (params.dtw == "large.v3.turbo")
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V3_TURBO;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V3_TURBO;
 
-        if (cparams.dtw_aheads_preset == CRISPASR_AHEADS_NONE) {
+        if (cparams.dtw_aheads_preset == STELNETTTS_AHEADS_NONE) {
             fprintf(stderr, "error: unknown DTW preset '%s'\n", params.dtw.c_str());
             return 3;
         }
@@ -2700,7 +2700,7 @@ int main(int argc, char** argv) {
         return 3;
     }
 
-    // initialize openvino encoder. this has no effect on crispasr builds that don't have OpenVINO configured
+    // initialize openvino encoder. this has no effect on stelnettts builds that don't have OpenVINO configured
     whisper_ctx_init_openvino_encoder(ctx, nullptr, params.openvino_encode_device.c_str(), nullptr);
 
     if (!params.grammar.empty()) {
@@ -2807,7 +2807,7 @@ int main(int argc, char** argv) {
             fprintf(stderr,
                     "%s: processing '%s' (%d samples, %.1f sec), %d threads, %d processors, %d beams + best of %d, "
                     "lang = %s, task = %s, %stimestamps = %d ...\n",
-                    __func__, fname_inp.c_str(), int(pcmf32.size()), float(pcmf32.size()) / CRISPASR_SAMPLE_RATE,
+                    __func__, fname_inp.c_str(), int(pcmf32.size()), float(pcmf32.size()) / STELNETTTS_SAMPLE_RATE,
                     params.n_threads, params.n_processors, std::max(1, params.beam_size), params.best_of,
                     params.language.c_str(), params.translate ? "translate" : "transcribe",
                     params.tinydiarize ? "tdrz = 1, " : "", params.no_timestamps ? 0 : 1);
@@ -2825,11 +2825,11 @@ int main(int argc, char** argv) {
 
         // run the inference
         {
-            whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+            whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
 
             const bool use_grammar = (!params.grammar_parsed.rules.empty() && !params.grammar_rule.empty());
             wparams.strategy =
-                (params.beam_size > 1 || use_grammar) ? CRISPASR_SAMPLING_BEAM_SEARCH : CRISPASR_SAMPLING_GREEDY;
+                (params.beam_size > 1 || use_grammar) ? STELNETTTS_SAMPLING_BEAM_SEARCH : STELNETTTS_SAMPLING_GREEDY;
 
             wparams.print_realtime = false;
             wparams.print_progress = params.print_progress;
@@ -2879,17 +2879,17 @@ int main(int argc, char** argv) {
             // this stack frame.
             // FireRedVAD (GGUF) is not compatible with whisper's internal
             // Silero-only VAD loader (#34). Detect and warn.
-            const bool firered_vad = crispasr_vad_is_firered(params);
-            const bool webrtc_vad = crispasr_vad_is_webrtc(params);
+            const bool firered_vad = stelnettts_vad_is_firered(params);
+            const bool webrtc_vad = stelnettts_vad_is_webrtc(params);
             const bool external_vad = firered_vad || webrtc_vad;
-            const std::string resolved_vad_path = external_vad ? "" : crispasr_resolve_vad_model(params);
+            const std::string resolved_vad_path = external_vad ? "" : stelnettts_resolve_vad_model(params);
             wparams.vad = external_vad ? false : params.vad;
             wparams.vad_model_path = resolved_vad_path.c_str();
             if (firered_vad) {
-                fprintf(stderr, "crispasr: warning: FireRedVAD is not supported in the legacy whisper path.\n"
+                fprintf(stderr, "stelnettts: warning: FireRedVAD is not supported in the legacy whisper path.\n"
                                 "  Use --backend whisper (unified dispatch) or a non-whisper backend:\n"
-                                "  crispasr --backend whisper --vad --vad-model firered-vad.gguf ...\n"
-                                "  crispasr -m parakeet.gguf --vad --vad-model firered-vad.gguf ...\n");
+                                "  stelnettts --backend whisper --vad --vad-model firered-vad.gguf ...\n"
+                                "  stelnettts -m parakeet.gguf --vad --vad-model firered-vad.gguf ...\n");
             }
 
             wparams.vad_params.threshold = params.vad_threshold;
@@ -2964,20 +2964,20 @@ int main(int argc, char** argv) {
             // Collect whisper segments + tokens into the unified vector once,
             // so every writer below is whisper_context-free (except JSON,
             // which still needs ctx for systeminfo/model metadata).
-            std::vector<crispasr_segment> segs = cli_whisper_collect_segments(ctx);
+            std::vector<stelnettts_segment> segs = cli_whisper_collect_segments(ctx);
 
             // Honor --split-on-punct in the legacy whisper output path (#29).
             // Without this the writers below emit whisper's raw segments,
             // which can run 30+ seconds in CJK and ignore --split-on-punct
             // entirely. Re-segment via the unified display-segment splitter,
-            // then convert back to crispasr_segment for the writers (which
+            // then convert back to stelnettts_segment for the writers (which
             // only read t0/t1/text/speaker for non-token formats).
             if (params.split_on_punct || params.max_len > 0) {
-                auto disp = crispasr_make_disp_segments(segs, params.max_len, params.split_on_punct);
-                std::vector<crispasr_segment> resplit;
+                auto disp = stelnettts_make_disp_segments(segs, params.max_len, params.split_on_punct);
+                std::vector<stelnettts_segment> resplit;
                 resplit.reserve(disp.size());
                 for (auto& d : disp) {
-                    crispasr_segment s;
+                    stelnettts_segment s;
                     s.t0 = d.t0;
                     s.t1 = d.t1;
                     s.text = std::move(d.text);
@@ -2989,17 +2989,17 @@ int main(int argc, char** argv) {
 
             // Diarization post-step (issue #107). The whisper backend
             // came through cli.cpp's legacy main path rather than the
-            // backend dispatcher in crispasr_run.cpp, so until now
+            // backend dispatcher in stelnettts_run.cpp, so until now
             // --diarize-method only delegated to whisper.cpp's built-in
             // stereo-only energy diarize. Wire it up to the shared
-            // crispasr_apply_diarize() shim so pyannote (and the other
+            // stelnettts_apply_diarize() shim so pyannote (and the other
             // methods) work here too. Only fires when the user passed
             // an explicit method — otherwise the existing whisper.cpp
             // (speaker N) string is left in place unchanged.
             if (params.diarize && !params.diarize_method.empty() && !segs.empty()) {
                 CrispasrPyannoteCache pyannote_cache;
                 if (params.diarize_method == "pyannote" && !pcmf32.empty()) {
-                    if (!crispasr_compute_pyannote_cache(pcmf32.data(), (int)pcmf32.size(), params, pyannote_cache)) {
+                    if (!stelnettts_compute_pyannote_cache(pcmf32.data(), (int)pcmf32.size(), params, pyannote_cache)) {
                         pyannote_cache = {};
                     }
                 }
@@ -3007,7 +3007,7 @@ int main(int argc, char** argv) {
                     pcmf32s.size() == 2 && !pcmf32s[0].empty() && pcmf32s[0].size() == pcmf32s[1].size();
                 const std::vector<float>& left = is_stereo ? pcmf32s[0] : pcmf32;
                 const std::vector<float>& right = is_stereo ? pcmf32s[1] : pcmf32;
-                crispasr_apply_diarize(left, right, is_stereo, /*slice_t0_cs=*/0, segs, params,
+                stelnettts_apply_diarize(left, right, is_stereo, /*slice_t0_cs=*/0, segs, params,
                                        pyannote_cache.valid() ? &pyannote_cache : nullptr);
 
                 // Optional embedding-based clustering (#107 P3). When
@@ -3018,9 +3018,9 @@ int main(int argc, char** argv) {
                 // an error — the pyannote-local labels above survive.
                 if (!params.diarize_embedder.empty() && !pcmf32.empty() && !params.diarize_embedder_is_foxnose()) {
                     auto embedder =
-                        crispasr_make_speaker_embedder(params.diarize_embedder, params.n_threads, params.cache_dir);
+                        stelnettts_make_speaker_embedder(params.diarize_embedder, params.n_threads, params.cache_dir);
                     if (embedder) {
-                        crispasr_remap_speakers_via_embeddings(segs, pcmf32.data(), (int)pcmf32.size(), embedder.get(),
+                        stelnettts_remap_speakers_via_embeddings(segs, pcmf32.data(), (int)pcmf32.size(), embedder.get(),
                                                                params);
                     }
                 }
@@ -3036,7 +3036,7 @@ int main(int argc, char** argv) {
             output_ext(txt, pcmf32s);
             output_ext(vtt, pcmf32s);
             output_ext(srt, pcmf32s);
-            output_ext(wts, pcmf32s, fname_inp.c_str(), float(pcmf32.size() + 1000) / CRISPASR_SAMPLE_RATE,
+            output_ext(wts, pcmf32s, fname_inp.c_str(), float(pcmf32.size() + 1000) / STELNETTTS_SAMPLE_RATE,
                        fout_factory.fname_out.c_str());
             output_ext(csv, pcmf32s);
             output_func(output_json, ".json", params.output_jsn, pcmf32s, ctx);
@@ -3059,7 +3059,7 @@ int main(int argc, char** argv) {
     // or CLD3 automatically. Errors are logged but never fail the
     // run — the transcript output stays the source of truth.
     if (!params.lid_on_transcript.empty()) {
-        std::vector<crispasr_segment> lid_segs = cli_whisper_collect_segments(ctx);
+        std::vector<stelnettts_segment> lid_segs = cli_whisper_collect_segments(ctx);
         std::string transcript;
         for (const auto& s : lid_segs) {
             if (!transcript.empty())
@@ -3068,22 +3068,22 @@ int main(int argc, char** argv) {
         }
         if (transcript.empty()) {
             if (!params.no_prints)
-                fprintf(stderr, "crispasr[lid-on-transcript]: empty transcript, skipping\n");
+                fprintf(stderr, "stelnettts[lid-on-transcript]: empty transcript, skipping\n");
         } else {
             // Resolve `auto[:variant]` + bare-filename inputs against the
-            // registry, downloading into ~/.cache/crispasr/ on first use.
+            // registry, downloading into ~/.cache/stelnettts/ on first use.
             const std::string resolved =
                 text_lid_resolve_path(params.lid_on_transcript, params.cache_dir, params.no_prints);
             text_lid_context* lid = resolved.empty() ? nullptr : text_lid_init_from_file(resolved.c_str(), 1);
             if (!lid) {
-                fprintf(stderr, "crispasr[lid-on-transcript]: failed to load '%s'\n", params.lid_on_transcript.c_str());
+                fprintf(stderr, "stelnettts[lid-on-transcript]: failed to load '%s'\n", params.lid_on_transcript.c_str());
             } else {
                 float conf = 0.f;
                 const char* lab = text_lid_predict(lid, transcript.c_str(), &conf);
                 if (lab)
                     fprintf(stderr, "lang=%s\tconf=%.6f\tbackend=%s\n", lab, conf, text_lid_backend(lid));
                 else
-                    fprintf(stderr, "crispasr[lid-on-transcript]: prediction failed\n");
+                    fprintf(stderr, "stelnettts[lid-on-transcript]: prediction failed\n");
                 text_lid_free(lid);
             }
         }

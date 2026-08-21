@@ -5,8 +5,8 @@
 // called `ggml_backend_init_best()` which unconditionally picks CUDA
 // over Vulkan when both are compiled in. This header provides:
 //
-//   crispasr_set_gpu_backend_pref("vulkan")  — set once at startup
-//   crispasr_init_gpu_backend()              — drop-in replacement for
+//   stelnettts_set_gpu_backend_pref("vulkan")  — set once at startup
+//   stelnettts_init_gpu_backend()              — drop-in replacement for
 //                                              ggml_backend_init_best()
 //
 // The preference is matched against ggml backend registry names
@@ -25,7 +25,7 @@
 #include <string>
 #include "core/ggml_cpu_backend.h"
 
-namespace crispasr_gpu_pref {
+namespace stelnettts_gpu_pref {
 
 // The preference is a simple global — set once at process start,
 // read many times. Thread-safe via the string copy in get().
@@ -39,18 +39,18 @@ inline std::mutex& pref_mutex() {
     return m;
 }
 
-} // namespace crispasr_gpu_pref
+} // namespace stelnettts_gpu_pref
 
 // Set the GPU backend preference. Call once at startup, before any
 // backend init_from_file. Empty string = auto.
-inline void crispasr_set_gpu_backend_pref(const char* name) {
-    std::lock_guard<std::mutex> lock(crispasr_gpu_pref::pref_mutex());
-    crispasr_gpu_pref::pref_storage() = name ? name : "";
+inline void stelnettts_set_gpu_backend_pref(const char* name) {
+    std::lock_guard<std::mutex> lock(stelnettts_gpu_pref::pref_mutex());
+    stelnettts_gpu_pref::pref_storage() = name ? name : "";
 }
 
-inline std::string crispasr_get_gpu_backend_pref() {
-    std::lock_guard<std::mutex> lock(crispasr_gpu_pref::pref_mutex());
-    return crispasr_gpu_pref::pref_storage();
+inline std::string stelnettts_get_gpu_backend_pref() {
+    std::lock_guard<std::mutex> lock(stelnettts_gpu_pref::pref_mutex());
+    return stelnettts_gpu_pref::pref_storage();
 }
 
 // Case-insensitive prefix check: does `haystack` start with `needle`?
@@ -70,34 +70,34 @@ inline bool ci_starts_with(const char* haystack, const char* needle) {
 // (e.g. "vulkan" matches "Vulkan0", "Vulkan1", …).
 // Falls back to ggml_backend_init_best() when no preference is set or
 // the preferred backend isn't found.
-inline ggml_backend_t crispasr_init_gpu_backend() {
-    std::string pref = crispasr_get_gpu_backend_pref();
+inline ggml_backend_t stelnettts_init_gpu_backend() {
+    std::string pref = stelnettts_get_gpu_backend_pref();
 
-    // PLAN #88 follow-up (logic synced from CrispEmbed's T18/G4 fixes): bound
+    // PLAN #88 follow-up (logic synced from StelnetEmbed's T18/G4 fixes): bound
     // the ggml-metal MTLBinaryArchive open cost for every lane that reaches a
     // GPU device through this helper. The archive open costs ~1 ms/MB (683 MB
     // observed on the shared dev box = ~680 ms of fixed init). Skipped when the
     // preference is "cpu", because then no GPU device is created and the
     // diagnostic would fire spuriously. apply() is idempotent.
-    // CRISPASR_METAL_PIPELINE_CACHE_MAX_MB=0 restores the uncapped behaviour.
+    // STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB=0 restores the uncapped behaviour.
     {
         const bool pref_is_cpu = !pref.empty() && pref.size() <= 3 && ci_starts_with("cpu", pref.c_str());
         if (!pref_is_cpu)
             core_metal_cache::apply();
     }
 
-    // T18 sync (CrispEmbed): `--gpu-backend cpu` used to fall THROUGH to the
+    // T18 sync (StelnetEmbed): `--gpu-backend cpu` used to fall THROUGH to the
     // GPU. The loops below only ever consider GPU/iGPU devices, so "cpu"
     // matched nothing and this returned ggml_backend_init_best() — i.e. Metal
     // on an M1, silently costing the device init the flag exists to avoid.
-    // CRISPASR_GPU_PREF_CPU_LEGACY=1 restores the old fall-through for A/B.
+    // STELNETTTS_GPU_PREF_CPU_LEGACY=1 restores the old fall-through for A/B.
     if (!pref.empty() && ci_starts_with("cpu", pref.c_str()) && pref.size() <= 3) {
-        const char* legacy = std::getenv("CRISPASR_GPU_PREF_CPU_LEGACY");
+        const char* legacy = std::getenv("STELNETTTS_GPU_PREF_CPU_LEGACY");
         if (!(legacy && legacy[0] && legacy[0] != '0')) {
             // core_cpu_backend::init(), NOT ggml_backend_dev_by_type(...CPU):
             // the registry lookup enumerates every registered device, which
             // constructs the Metal device as a side effect (measured on
-            // CrispEmbed: it still ran ggml_metal_device_init and cost
+            // StelnetEmbed: it still ran ggml_metal_device_init and cost
             // ~29 ms). The direct constructor touches no registry, so nothing
             // GPU is created.
             ggml_backend_t cpu = core_cpu_backend::init();

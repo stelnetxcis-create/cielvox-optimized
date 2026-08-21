@@ -12,43 +12,43 @@
 # MUST match today — so this guards Phase 1 from regressing the easy case, and
 # becomes the acceptance gate for the divergent (chunked) cases once unified.
 #
-# Skips (exit 2) unless it can find: the crispasr CLI, a parakeet model, a built
-# libcrispasr shared lib, and the python binding. Exit 0 pass / 1 fail / 2 skip.
+# Skips (exit 2) unless it can find: the stelnettts CLI, a parakeet model, a built
+# libstelnettts shared lib, and the python binding. Exit 0 pass / 1 fail / 2 skip.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR_BIN:-./build/bin/crispasr}"
-[ -x "$CRISPASR" ] || CRISPASR="./build-ninja-compile/bin/crispasr"
+CRISPASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
+[ -x "$CRISPASR" ] || CRISPASR="./build-ninja-compile/bin/stelnettts"
 if [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found (set CRISPASR_BIN)"; exit 2
+    echo "SKIP: stelnettts binary not found (set STELNETTTS_BIN)"; exit 2
 fi
 
 # Resolve a parakeet model (content-JA-safe: any parakeet-tdt works).
-MODEL="${CRISPASR_PARITY_MODEL:-}"
+MODEL="${STELNETTTS_PARITY_MODEL:-}"
 if [ -z "$MODEL" ]; then
     for c in \
-        "${CRISPASR_MODELS_DIR:-}/parakeet-tdt-0.6b-v3.gguf" \
-        "${CRISPASR_MODELS_DIR:-}/parakeet-tdt-1.1b-q4_k.gguf" \
-        /Volumes/backups/ai/crispasr-gguf/parakeet-tdt-1.1b-q4_k.gguf \
-        /Volumes/backups/ai/crispasr-gguf/parakeet-tdt-0.6b-v3-q4_k.gguf ; do
+        "${STELNETTTS_MODELS_DIR:-}/parakeet-tdt-0.6b-v3.gguf" \
+        "${STELNETTTS_MODELS_DIR:-}/parakeet-tdt-1.1b-q4_k.gguf" \
+        /Volumes/backups/ai/stelnettts-gguf/parakeet-tdt-1.1b-q4_k.gguf \
+        /Volumes/backups/ai/stelnettts-gguf/parakeet-tdt-0.6b-v3-q4_k.gguf ; do
         [ -f "$c" ] && { MODEL="$c"; break; }
     done
 fi
-[ -n "$MODEL" ] && [ -f "$MODEL" ] || { echo "SKIP: no parakeet model (set CRISPASR_PARITY_MODEL)"; exit 2; }
+[ -n "$MODEL" ] && [ -f "$MODEL" ] || { echo "SKIP: no parakeet model (set STELNETTTS_PARITY_MODEL)"; exit 2; }
 
 # Resolve the shared lib for the python session path.
-LIB="${CRISPASR_LIB_PATH:-}"
+LIB="${STELNETTTS_LIB_PATH:-}"
 if [ -z "$LIB" ]; then
-    LIB=$(ls ./build-shared/src/libcrispasr.dylib ./build-shared/src/libcrispasr.so \
-             ./build/src/libcrispasr.dylib ./build/src/libcrispasr.so 2>/dev/null | head -1 || true)
+    LIB=$(ls ./build-shared/src/libstelnettts.dylib ./build-shared/src/libstelnettts.so \
+             ./build/src/libstelnettts.dylib ./build/src/libstelnettts.so 2>/dev/null | head -1 || true)
 fi
-[ -n "$LIB" ] && [ -f "$LIB" ] || { echo "SKIP: libcrispasr shared lib not found (build -DBUILD_SHARED_LIBS=ON or set CRISPASR_LIB_PATH)"; exit 2; }
+[ -n "$LIB" ] && [ -f "$LIB" ] || { echo "SKIP: libstelnettts shared lib not found (build -DBUILD_SHARED_LIBS=ON or set STELNETTTS_LIB_PATH)"; exit 2; }
 
-PY="${CRISPASR_PYTHON:-python}"
+PY="${STELNETTTS_PYTHON:-python}"
 $PY -c "import numpy" 2>/dev/null || { echo "SKIP: python+numpy not available"; exit 2; }
 
-CLIP="${CRISPASR_PARITY_CLIP:-samples/jfk.wav}"   # ~11 s → single-pass on both surfaces
+CLIP="${STELNETTTS_PARITY_CLIP:-samples/jfk.wav}"   # ~11 s → single-pass on both surfaces
 [ -f "$CLIP" ] || { echo "SKIP: clip $CLIP missing"; exit 2; }
 
 TMP=$(mktemp -d)
@@ -78,7 +78,7 @@ fi
 echo "parity: model=$(basename "$MODEL") clip=$(basename "$CLIP")"
 
 # --- Surface A: CLI adapter ---
-BACKEND="${CRISPASR_PARITY_BACKEND:-parakeet}"
+BACKEND="${STELNETTTS_PARITY_BACKEND:-parakeet}"
 BFLAG=""
 [ -n "$BACKEND" ] && BFLAG="--backend $BACKEND"
 # shellcheck disable=SC2086
@@ -86,11 +86,11 @@ BFLAG=""
     -ojf -f "$CLIP" -of "$TMP/cli" >/dev/null 2>&1 || { echo "FAIL: CLI transcribe errored"; exit 1; }
 
 # --- Surface B: session C-ABI (python binding) + compare (canonical rule) ---
-CRISPASR_LIB_PATH="$LIB" USE_TF=0 "$PY" - "$MODEL" "$CLIP" "$TMP/cli.json" <<'PY'
+STELNETTTS_LIB_PATH="$LIB" USE_TF=0 "$PY" - "$MODEL" "$CLIP" "$TMP/cli.json" <<'PY'
 import sys, json, wave, os
 import numpy as np
 sys.path.insert(0, os.path.join(os.getcwd(), "python"))
-from crispasr import Session
+from stelnettts import Session
 
 model, clip, cli_json = sys.argv[1], sys.argv[2], sys.argv[3]
 
@@ -102,7 +102,7 @@ if sr != 16000:
     tgt = int(round(len(pcm) / sr * 16000))
     pcm = np.interp(np.linspace(0, len(pcm) - 1, tgt), np.arange(len(pcm)), pcm).astype(np.float32)
 
-s = Session(model, backend=os.environ.get("CRISPASR_PARITY_BACKEND", "parakeet"))
+s = Session(model, backend=os.environ.get("STELNETTTS_PARITY_BACKEND", "parakeet"))
 segs_b = s.transcribe_pcm(pcm, sample_rate=16000, language="en") if hasattr(s, "transcribe_pcm") \
     else s.transcribe(pcm, sample_rate=16000, language="en")
 

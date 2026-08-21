@@ -30,8 +30,8 @@ openai/whisper-tiny's vocab.json has 50258 entries with `<|endoftext|>` at 50257
 WHAT THIS KERNEL DOES — the local box could not build (load average 31), so the runtime
 half of the review runs here:
 
-  1. build crispasr at main            (BEFORE)
-  2. build crispasr at refs/pull/322/head (AFTER)   — same clone, warm ccache
+  1. build stelnettts at main            (BEFORE)
+  2. build stelnettts at refs/pull/322/head (AFTER)   — same clone, warm ccache
   3. control  = prebuilt ggml-tiny.bin        (unaffected: no serialized eot)
   4. affected = the same file with `<|endoftext|>` appended as id 50257 and the vocab
      count bumped, weights untouched — reproducing the converter's output shape. The
@@ -65,12 +65,12 @@ MODELS.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "pr322_results.json"
 
 HERE = Path(__file__).resolve().parent
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CLONE = Path("/kaggle/temp/CrispASR")  # NOT /kaggle/working — see gotcha #22
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+CLONE = Path("/kaggle/temp/StelnetTTS")  # NOT /kaggle/working — see gotcha #22
 
 if not CLONE.exists():
     try:
-        subprocess.run(["git", "clone", "--recurse-submodules", CRISPASR_URL, str(CLONE)],
+        subprocess.run(["git", "clone", "--recurse-submodules", STELNETTTS_URL, str(CLONE)],
                        check=True, timeout=1800)
     except Exception as e:  # noqa: BLE001
         print(f"clone failed: {e}", flush=True)
@@ -93,7 +93,7 @@ def die(stage, **extra):
 
 
 if not CLONE.exists():
-    die("clone", err="CrispASR clone missing; a script kernel cannot rely on bundled files")
+    die("clone", err="StelnetTTS clone missing; a script kernel cannot rely on bundled files")
 
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "hf_transfer", "huggingface_hub"],
                check=False)
@@ -111,12 +111,12 @@ PR_SHA = sh("git rev-parse pr322", cwd=str(CLONE)).stdout.strip()[:12]
 kh.step("revs", main=MAIN_SHA, pr=PR_SHA)
 
 # Show the diff being tested, so the log is self-contained.
-diff = sh("git diff HEAD pr322 -- src/crispasr.cpp", cwd=str(CLONE)).stdout
+diff = sh("git diff HEAD pr322 -- src/stelnettts.cpp", cwd=str(CLONE)).stdout
 print("=== PR #322 diff under test ===\n" + diff[:4000], flush=True)
 
 
 def build(rev_label, git_ref):
-    """Build the crispasr CLI at `git_ref`; return the binary path (copied aside)."""
+    """Build the stelnettts CLI at `git_ref`; return the binary path (copied aside)."""
     r = sh(f"git checkout --force {git_ref}", cwd=str(CLONE), timeout=600)
     if r.returncode != 0:
         die(f"checkout.{rev_label}", err=r.stderr[-2000:])
@@ -125,7 +125,7 @@ def build(rev_label, git_ref):
     # CPU-only: this is a vocab/decode-logic test, no GPU maths involved. The GPU is
     # enabled purely because Kaggle CPU workers get no internet (gotcha #3).
     flags = (["-DCMAKE_BUILD_TYPE=Release", "-DGGML_NATIVE=OFF", "-DGGML_AVX2=ON",
-              "-DGGML_FMA=ON", "-DGGML_F16C=ON", "-DCRISPASR_BUILD_TESTS=OFF"]
+              "-DGGML_FMA=ON", "-DGGML_F16C=ON", "-DSTELNETTTS_BUILD_TESTS=OFF"]
              + kh.cache_and_link_flags())
     kh.step(f"build.configure.{rev_label}")
     with kh.build_heartbeat(f"build.cmake.{rev_label}", 30):
@@ -136,12 +136,12 @@ def build(rev_label, git_ref):
     kh.step(f"build.compile.{rev_label}", jobs=jobs)
     with kh.build_heartbeat(f"build.ninja.{rev_label}", 30):
         try:
-            kh.sh_with_progress(f"cmake --build build -j{jobs} --target crispasr-cli", cwd=str(CLONE))
+            kh.sh_with_progress(f"cmake --build build -j{jobs} --target stelnettts-cli", cwd=str(CLONE))
         except Exception as e:  # noqa: BLE001
             die(f"build.compile.{rev_label}", err=str(e)[-3000:])
-    src_bin = CLONE / "build" / "bin" / "crispasr"
+    src_bin = CLONE / "build" / "bin" / "stelnettts"
     if not src_bin.exists():
-        die(f"build.artifact.{rev_label}", err="crispasr binary not produced")
+        die(f"build.artifact.{rev_label}", err="stelnettts binary not produced")
     # Copy the whole bin/ per revision, not just the executable: the SECOND build
     # overwrites build/bin, and if anything links a shared ggml the first binary
     # would silently start running the second revision's libraries.
@@ -149,7 +149,7 @@ def build(rev_label, git_ref):
     if dst_dir.exists():
         shutil.rmtree(dst_dir)
     shutil.copytree(CLONE / "build" / "bin", dst_dir)
-    dst = dst_dir / "crispasr"
+    dst = dst_dir / "stelnettts"
     os.chmod(dst, 0o755)
     kh.step(f"build.ready.{rev_label}", size_mb=round(dst.stat().st_size / 1e6, 1))
     return dst

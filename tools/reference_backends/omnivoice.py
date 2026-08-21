@@ -1,7 +1,7 @@
 """OmniVoice (k2-fsa/OmniVoice) reference dump backend.
 
 Captures stage-by-stage activations from the official `omnivoice` package
-so we can diff the CrispASR runtime against the PyTorch path.
+so we can diff the StelnetTTS runtime against the PyTorch path.
 
 Stages dumped:
   text_input_ids         — tokenised input text

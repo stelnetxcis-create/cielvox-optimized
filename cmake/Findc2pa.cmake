@@ -11,7 +11,7 @@
 # Usage in CMakeLists.txt:
 #   find_package(c2pa)
 #   if(c2pa_FOUND)
-#       target_compile_definitions(my_target PRIVATE CRISPASR_HAVE_C2PA)
+#       target_compile_definitions(my_target PRIVATE STELNETTTS_HAVE_C2PA)
 #       target_include_directories(my_target PRIVATE ${c2pa_INCLUDE_DIR})
 #       target_link_libraries(my_target PRIVATE ${c2pa_LIBRARY})
 #   endif()

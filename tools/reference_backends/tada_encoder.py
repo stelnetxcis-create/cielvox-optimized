@@ -1,4 +1,4 @@
-"""TADA encoder reference dump backend for crispasr-diff.
+"""TADA encoder reference dump backend for stelnettts-diff.
 
 Runs the TADA encoder pipeline (Aligner + WavEncoder + LocalAttentionEncoder)
 and captures intermediate activations for parity testing against the C++

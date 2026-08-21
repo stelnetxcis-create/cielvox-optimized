@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert k2-fsa/OmniVoice (or finetunes like ModelsLab/omnivoice-singing)
-from HuggingFace safetensors → GGUF F16 for the CrispASR `omnivoice` backend.
+from HuggingFace safetensors → GGUF F16 for the StelnetTTS `omnivoice` backend.
 
 Architecture (from config.json, confirmed against the safetensors tensor keys):
 

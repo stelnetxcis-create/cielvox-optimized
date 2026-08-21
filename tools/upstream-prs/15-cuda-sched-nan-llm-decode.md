@@ -100,15 +100,15 @@ NaN checker (128 nodes, 4 layers):   0 Inf, 0 NaN
 
 ## Repro
 
-Model: `cstr/funasr-nano-GGUF` → `funasr-nano-2512-q8_0.gguf` (HuggingFace).
+Model: `Xenna/funasr-nano-GGUF` → `funasr-nano-2512-q8_0.gguf` (HuggingFace).
 Audio: any 16 kHz WAV (11s JFK speech used for testing).
 
 ```bash
 # Build with CUDA
-cmake -B build -DGGML_CUDA=ON && cmake --build build --target crispasr-cli
+cmake -B build -DGGML_CUDA=ON && cmake --build build --target stelnettts-cli
 
 # Before fix: produces all-NaN → "!!!!!!!!!!!!!!!!!!!!"
-FUNASR_DUMP_STAGES=1 build/bin/crispasr --backend funasr -m auto \
+FUNASR_DUMP_STAGES=1 build/bin/stelnettts --backend funasr -m auto \
     --auto-download -f samples/jfk.wav --no-prints
 
 # After fix: correct transcript

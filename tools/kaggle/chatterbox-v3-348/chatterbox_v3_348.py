@@ -28,20 +28,20 @@ STAGE = Path("/kaggle/temp/chatterbox-v3-348")
 MODELS = STAGE / "models"
 SOURCE = STAGE / "official-model"
 GENERATED = STAGE / "generated"
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 UPSTREAM = Path("/kaggle/temp/resemble-chatterbox")
 RESULTS = WORK / "results"
 for directory in (STAGE, MODELS, SOURCE, GENERATED, RESULTS):
     directory.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_COMMIT = "ea3302edd763715cbf047bb5adae688ac0563a6a"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_COMMIT = "ea3302edd763715cbf047bb5adae688ac0563a6a"
 UPSTREAM_URL = "https://github.com/resemble-ai/chatterbox.git"
 UPSTREAM_COMMIT = "5de7a54aa4e5e2baadb0182dde554908b48b85c2"
 MODEL_REPO = "ResembleAI/chatterbox"
 MODEL_REVISION = "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
-GGUF_REPO = "cstr/chatterbox-GGUF"
-FIXTURE_REPO = "cstr/crispasr-regression-fixtures"
+GGUF_REPO = "Xenna/chatterbox-GGUF"
+FIXTURE_REPO = "Xenna/stelnettts-regression-fixtures"
 T3_SHA256 = "fb63d7c53c4f8bb07286d67709c4d4200fa63b4de3476a4558f37964ce8e5aa6"
 S3_SHA256 = "dce74d3df941abcd1bd19f4a96f8325b89d3b58391f4be5c01c216db56a9a725"
 
@@ -61,12 +61,12 @@ def clone_exact(url: str, dest: Path, commit: str, submodules: bool = False) -> 
 
 # The harness is imported from the exact checkout under test.  A clone failure
 # is fatal: silently using a stale bundled helper would invalidate provenance.
-clone_exact(CRISPASR_URL, REPO, CRISPASR_COMMIT, submodules=True)
+clone_exact(STELNETTTS_URL, REPO, STELNETTTS_COMMIT, submodules=True)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
 kh.init_progress()
-kh.step("provenance.crispasr", commit=CRISPASR_COMMIT)
+kh.step("provenance.stelnettts", commit=STELNETTTS_COMMIT)
 
 
 def run(argv, *, cwd=None, env=None, timeout=None, log: Path | None = None, check=True):
@@ -106,7 +106,7 @@ def gguf_string(reader, key: str) -> str:
 
 def compare_gguf_structure(generated: Path, published: Path, architecture: str,
                            checkpoint_key: str, checkpoint: str) -> dict:
-    """Compare cross-ISA quants structurally, leaving numerics to crispasr-diff.
+    """Compare cross-ISA quants structurally, leaving numerics to stelnettts-diff.
 
     ggml's SIMD quantizers are not promised byte-identical between ARM64 and
     x86_64, so a whole-file SHA is not a portable converter gate.  Tensor
@@ -154,15 +154,15 @@ def build() -> tuple[Path, Path]:
     os.environ["CCACHE_DIR"] = str(cache)
     arch = kh.detect_cuda_arch()
     flags = [
-        "-DCMAKE_BUILD_TYPE=Release", "-DGGML_NATIVE=OFF", "-DCRISPASR_BUILD_TESTS=ON",
-        "-DCRISPASR_OPUS_FETCH=ON",
+        "-DCMAKE_BUILD_TYPE=Release", "-DGGML_NATIVE=OFF", "-DSTELNETTTS_BUILD_TESTS=ON",
+        "-DSTELNETTTS_OPUS_FETCH=ON",
         *kh.cuda_build_flags(arch), *kh.cache_and_link_flags(),
     ]
     build_dir = REPO / "build-cuda"
     kh.step("build.configure", arch=arch)
     with heartbeat("build.configure"):
         run(["cmake", "-S", REPO, "-B", build_dir, "-G", "Ninja", *flags], timeout=1800)
-    targets = ["crispasr", "crispasr-diff", "crispasr-quantize", "test-registry",
+    targets = ["stelnettts", "stelnettts-diff", "stelnettts-quantize", "test-registry",
                "test-chatterbox-text-prep", "test-chatterbox-params", "test-parakeet-strategy",
                "test-titanet", "test-parakeet-longform", "test-parakeet-ja-longform"]
     jobs = kh.safe_build_jobs(gpu=True)
@@ -171,14 +171,14 @@ def build() -> tuple[Path, Path]:
         kh.sh_with_progress(
             "cmake --build build-cuda -j" + jobs + " --target " + " ".join(targets), cwd=str(REPO)
         )
-    lib_candidates = list(build_dir.glob("src/libcrispasr.so*"))
-    lib = next((p for p in lib_candidates if p.name == "libcrispasr.so"), None)
+    lib_candidates = list(build_dir.glob("src/libstelnettts.so*"))
+    lib = next((p for p in lib_candidates if p.name == "libstelnettts.so"), None)
     if lib is None:
         lib = next((p for p in lib_candidates if p.is_file()), None)
     if lib is None:
-        raise RuntimeError("CUDA build did not produce libcrispasr.so")
+        raise RuntimeError("CUDA build did not produce libstelnettts.so")
     os.environ["LD_LIBRARY_PATH"] = str(lib.parent) + ":" + os.environ.get("LD_LIBRARY_PATH", "")
-    run([build_dir / "bin/crispasr", "--version"], log=RESULTS / "build-version.log")
+    run([build_dir / "bin/stelnettts", "--version"], log=RESULTS / "build-version.log")
     return build_dir, lib
 
 
@@ -243,7 +243,7 @@ def convert_quantize(build_dir: Path, published_t3: Path, published_s3: Path) ->
              "--t3-checkpoint", "t3_mtl23ls_v3.safetensors",
              "--s3gen-checkpoint", "s3gen.safetensors", "--revision", MODEL_REVISION,
              "--output-prefix", "chatterbox-v3"], timeout=3600, log=RESULTS / "convert.log")
-    quant = build_dir / "bin/crispasr-quantize"
+    quant = build_dir / "bin/stelnettts-quantize"
     t3 = GENERATED / "chatterbox-v3-t3-q4_k.gguf"
     s3 = GENERATED / "chatterbox-v3-s3gen-q4_k.gguf"
     with heartbeat("quantize.t3"):
@@ -274,10 +274,10 @@ def convert_quantize(build_dir: Path, published_t3: Path, published_s3: Path) ->
 
 
 def run_diff(build_dir: Path, t3: Path, reference: Path, voice: Path, label: str) -> dict[str, int]:
-    env = {"CRISPASR_DIFF_USE_GPU": "1"}
+    env = {"STELNETTTS_DIFF_USE_GPU": "1"}
     log = RESULTS / f"diff-{label}.log"
     with heartbeat(f"diff.{label}"):
-        proc = run([build_dir / "bin/crispasr-diff", "chatterbox", t3, reference, voice],
+        proc = run([build_dir / "bin/stelnettts-diff", "chatterbox", t3, reference, voice],
                    cwd=REPO, env=env, timeout=3600, log=log)
     match = re.search(r"summary:\s+(\d+) pass,\s+(\d+) fail,\s+(\d+) skip", proc.stdout)
     if not match:
@@ -338,41 +338,41 @@ class ChatterboxABI:
     def __init__(self, library: Path, t3: Path, s3: Path, voice: Path | None):
         self.lib = ctypes.CDLL(str(library))
         L = self.lib
-        L.crispasr_set_gpu_backend.argtypes = [ctypes.c_char_p]
-        L.crispasr_session_open_explicit.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
-        L.crispasr_session_open_explicit.restype = ctypes.c_void_p
-        for name in ("crispasr_session_set_codec_path", "crispasr_session_set_voice",
-                     "crispasr_session_set_source_language", "crispasr_session_set_target_language",
-                     "crispasr_session_set_tts_reference_language"):
+        L.stelnettts_set_gpu_backend.argtypes = [ctypes.c_char_p]
+        L.stelnettts_session_open_explicit.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+        L.stelnettts_session_open_explicit.restype = ctypes.c_void_p
+        for name in ("stelnettts_session_set_codec_path", "stelnettts_session_set_voice",
+                     "stelnettts_session_set_source_language", "stelnettts_session_set_target_language",
+                     "stelnettts_session_set_tts_reference_language"):
             getattr(L, name).restype = ctypes.c_int
-        L.crispasr_session_set_codec_path.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.crispasr_session_set_voice.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
-        L.crispasr_session_set_source_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.crispasr_session_set_target_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.crispasr_session_set_tts_reference_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.crispasr_session_set_tts_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-        L.crispasr_session_set_tts_seed.restype = ctypes.c_int
-        L.crispasr_session_set_tts_steps.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        L.crispasr_session_set_tts_steps.restype = ctypes.c_int
-        L.crispasr_session_accept_marking_responsibility.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.crispasr_session_accept_marking_responsibility.restype = ctypes.c_int
-        L.crispasr_session_synthesize_raw.argtypes = [ctypes.c_void_p, ctypes.c_char_p,
+        L.stelnettts_session_set_codec_path.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        L.stelnettts_session_set_voice.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
+        L.stelnettts_session_set_source_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        L.stelnettts_session_set_target_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        L.stelnettts_session_set_tts_reference_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        L.stelnettts_session_set_tts_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        L.stelnettts_session_set_tts_seed.restype = ctypes.c_int
+        L.stelnettts_session_set_tts_steps.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        L.stelnettts_session_set_tts_steps.restype = ctypes.c_int
+        L.stelnettts_session_accept_marking_responsibility.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        L.stelnettts_session_accept_marking_responsibility.restype = ctypes.c_int
+        L.stelnettts_session_synthesize_raw.argtypes = [ctypes.c_void_p, ctypes.c_char_p,
                                                        ctypes.POINTER(ctypes.c_int)]
-        L.crispasr_session_synthesize_raw.restype = ctypes.POINTER(ctypes.c_float)
-        L.crispasr_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
-        L.crispasr_session_close.argtypes = [ctypes.c_void_p]
-        L.crispasr_set_gpu_backend(b"cuda")
-        self.session = L.crispasr_session_open_explicit(str(t3).encode(), b"chatterbox", 4)
+        L.stelnettts_session_synthesize_raw.restype = ctypes.POINTER(ctypes.c_float)
+        L.stelnettts_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        L.stelnettts_session_close.argtypes = [ctypes.c_void_p]
+        L.stelnettts_set_gpu_backend(b"cuda")
+        self.session = L.stelnettts_session_open_explicit(str(t3).encode(), b"chatterbox", 4)
         if not self.session:
             raise RuntimeError("C ABI could not open Chatterbox T3")
-        self._ok("codec", L.crispasr_session_set_codec_path(self.session, str(s3).encode()))
-        self._ok("marking", L.crispasr_session_accept_marking_responsibility(
+        self._ok("codec", L.stelnettts_session_set_codec_path(self.session, str(s3).encode()))
+        self._ok("marking", L.stelnettts_session_accept_marking_responsibility(
             self.session, b"private automated release validation; outputs retained as test evidence"))
-        self._ok("seed", L.crispasr_session_set_tts_seed(self.session, 42))
-        self._ok("steps", L.crispasr_session_set_tts_steps(self.session, 6))
+        self._ok("seed", L.stelnettts_session_set_tts_seed(self.session, 42))
+        self._ok("steps", L.stelnettts_session_set_tts_steps(self.session, 6))
         if voice:
-            self._ok("reference language", L.crispasr_session_set_tts_reference_language(self.session, b"en"))
-            self._ok("voice", L.crispasr_session_set_voice(self.session, str(voice).encode(), None))
+            self._ok("reference language", L.stelnettts_session_set_tts_reference_language(self.session, b"en"))
+            self._ok("voice", L.stelnettts_session_set_voice(self.session, str(voice).encode(), None))
 
     @staticmethod
     def _ok(label: str, rc: int) -> None:
@@ -380,16 +380,16 @@ class ChatterboxABI:
             raise RuntimeError(f"C ABI {label} setter failed: {rc}")
 
     def synth(self, language: str, text: str, out: Path) -> dict:
-        self._ok("target language", self.lib.crispasr_session_set_target_language(
+        self._ok("target language", self.lib.stelnettts_session_set_target_language(
             self.session, language.encode()))
         n = ctypes.c_int()
-        ptr = self.lib.crispasr_session_synthesize_raw(self.session, text.encode(), ctypes.byref(n))
+        ptr = self.lib.stelnettts_session_synthesize_raw(self.session, text.encode(), ctypes.byref(n))
         if not ptr or n.value <= 0:
             raise RuntimeError(f"C ABI synthesis failed for {language}")
         try:
             samples = [ptr[i] for i in range(n.value)]
         finally:
-            self.lib.crispasr_pcm_free(ptr)
+            self.lib.stelnettts_pcm_free(ptr)
         finite = all(math.isfinite(x) for x in samples)
         peak = max(abs(x) for x in samples)
         rms = math.sqrt(sum(x * x for x in samples) / len(samples))
@@ -410,7 +410,7 @@ class ChatterboxABI:
 
     def close(self) -> None:
         if self.session:
-            self.lib.crispasr_session_close(self.session)
+            self.lib.stelnettts_session_close(self.session)
             self.session = None
 
 
@@ -435,7 +435,7 @@ def generate_independent_reference(build_dir: Path, kokoro: Path, kokoro_voice: 
     out = RESULTS / "R-kokoro-en.wav"
     text = "The clear morning voice carries gently across the quiet valley."
     with heartbeat("roundtrip.reference-R"):
-        run([build_dir / "bin/crispasr", "--gpu-backend", "cuda", "--backend", "kokoro",
+        run([build_dir / "bin/stelnettts", "--gpu-backend", "cuda", "--backend", "kokoro",
              "-m", kokoro, "--voice", kokoro_voice, "--speaker-identity", "synthetic",
              "--tts", text, "--tts-output", out, "--seed", "42"], timeout=1800,
             log=RESULTS / "R-kokoro.log")
@@ -445,7 +445,7 @@ def generate_independent_reference(build_dir: Path, kokoro: Path, kokoro_voice: 
 
 
 def extract_cli_transcript(output: str) -> str:
-    diagnostics = ("crispasr ", "crispasr:", "parakeet:", "ggml", "main:", "system_info:")
+    diagnostics = ("stelnettts ", "stelnettts:", "parakeet:", "ggml", "main:", "system_info:")
     candidates = [line.strip() for line in output.splitlines()
                   if line.strip() and not line.strip().lower().startswith(diagnostics)]
     if not candidates:
@@ -471,7 +471,7 @@ def clone_baseline_roundtrips(build_dir: Path, library: Path, t3: Path, s3: Path
     for label, path in (("C", c_path), ("B", b_path)):
         log = RESULTS / f"asr-{label}.log"
         with heartbeat(f"roundtrip.asr-{label}"):
-            proc = run([build_dir / "bin/crispasr", "--gpu-backend", "cuda", "--backend", "parakeet",
+            proc = run([build_dir / "bin/stelnettts", "--gpu-backend", "cuda", "--backend", "parakeet",
                         "-m", parakeet, "-f", path, "-l", "de"], timeout=1200, log=log)
         transcript = extract_cli_transcript(proc.stdout)
         if (len(re.sub(r"\W", "", transcript, flags=re.UNICODE)) < 12
@@ -510,7 +510,7 @@ def asr_subset(build_dir: Path, parakeet: Path) -> dict:
     for language in supported:
         wav = RESULTS / f"live-{language}.wav"
         with heartbeat(f"asr-live.{language}"):
-            proc = run([build_dir / "bin/crispasr", "--gpu-backend", "cuda", "--backend", "parakeet",
+            proc = run([build_dir / "bin/stelnettts", "--gpu-backend", "cuda", "--backend", "parakeet",
                         "-m", parakeet, "-f", wav, "-l", language], timeout=1200,
                        log=RESULTS / f"asr-live-{language}.log")
         text = extract_cli_transcript(proc.stdout)
@@ -525,14 +525,14 @@ def asr_subset(build_dir: Path, parakeet: Path) -> dict:
 def parakeet_longform(build_dir: Path, parakeet: Path, token: str | None) -> dict:
     # JA TDT is known to loop at Q4_K (the runtime warns and recommends CTC);
     # the release-quality TDT regression artifact is Q8_0.
-    ja_model = download("cstr/parakeet-tdt-0.6b-ja-GGUF", "parakeet-tdt-0.6b-ja-q8_0.gguf", token)
+    ja_model = download("Xenna/parakeet-tdt-0.6b-ja-GGUF", "parakeet-tdt-0.6b-ja-q8_0.gguf", token)
     ja_fixture = download(FIXTURE_REPO, "parakeet-tdt-0.6b-ja/reazon_baseball_14s/audio.wav", token)
     cases = [
         ("v3", build_dir / "bin/test-parakeet-longform",
-         {"CRISPASR_MODEL_PARAKEET": str(parakeet)}),
+         {"STELNETTTS_MODEL_PARAKEET": str(parakeet)}),
         ("ja", build_dir / "bin/test-parakeet-ja-longform",
-         {"CRISPASR_MODEL_PARAKEET_JA": str(ja_model),
-          "CRISPASR_FIXTURE_PARAKEET_JA": str(ja_fixture)}),
+         {"STELNETTTS_MODEL_PARAKEET_JA": str(ja_model),
+          "STELNETTTS_FIXTURE_PARAKEET_JA": str(ja_fixture)}),
     ]
     result = {}
     for label, binary, env in cases:
@@ -562,10 +562,10 @@ def main() -> None:
     published_s3 = download(GGUF_REPO, "chatterbox-v3-s3gen-q4_k.gguf", token)
     cpu_ref = download(FIXTURE_REPO, "chatterbox-v3/de-jfk/ref.gguf", token)
     voice = REPO / "samples/jfk.wav"
-    parakeet = download("cstr/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf", token)
-    titanet = download("cstr/titanet-large-GGUF", "titanet-large.gguf", token)
-    kokoro = download("cstr/kokoro-82m-GGUF", "kokoro-82m-q8_0.gguf", token)
-    kokoro_voice = download("cstr/kokoro-voices-GGUF", "kokoro-voice-af_heart.gguf", token)
+    parakeet = download("Xenna/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf", token)
+    titanet = download("Xenna/titanet-large-GGUF", "titanet-large.gguf", token)
+    kokoro = download("Xenna/kokoro-82m-GGUF", "kokoro-82m-q8_0.gguf", token)
+    kokoro_voice = download("Xenna/kokoro-voices-GGUF", "kokoro-voice-af_heart.gguf", token)
 
     install_python_oracle()
     fetch_sources(token)
@@ -581,7 +581,7 @@ def main() -> None:
     longform = parakeet_longform(build_dir, parakeet, token)
 
     summary = {
-        "status": "pass", "crispasr_commit": CRISPASR_COMMIT,
+        "status": "pass", "stelnettts_commit": STELNETTTS_COMMIT,
         "upstream_commit": UPSTREAM_COMMIT, "model_revision": MODEL_REVISION,
         "artifact_sha256": {"t3": T3_SHA256, "s3": S3_SHA256},
         "diff_published_cpu_ref": diff_cpu, "diff_fresh_cuda_ref": diff_cuda,

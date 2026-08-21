@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Synchronize ggml changes to crispasr
+# Synchronize ggml changes to stelnettts
 #
 # Usage:
 #
-#   $ cd /path/to/crispasr
+#   $ cd /path/to/stelnettts
 #   $ ./scripts/sync-ggml-am.sh -skip hash0,hash1,hash2...
 #
 

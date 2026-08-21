@@ -51,7 +51,7 @@
 static bool tada_enc_debug() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_TADA_ENCODER_DEBUG");
+        const char* e = std::getenv("STELNETTTS_TADA_ENCODER_DEBUG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -935,11 +935,11 @@ int tada_encoder_encode(tada_encoder_context* ctx, const char* aligner_gguf, con
 
     // Diagnostic: free (text-less) greedy CTC decode of the aligner logits, to
     // probe whether this alignment model doubles as a CTC ASR / word-timestamp
-    // model. Gated by CRISPASR_TADA_CTC_ASR=1. The aligner is trained for FORCED
+    // model. Gated by STELNETTTS_TADA_CTC_ASR=1. The aligner is trained for FORCED
     // alignment, so this is exploratory — but the logits are a full distribution
     // over the Llama-3.2 BPE vocab per frame, so argmax+collapse gives a
     // transcript hypothesis (and per-token frame indices = timecodes).
-    if (const char* e = std::getenv("CRISPASR_TADA_CTC_ASR"); e && e[0] == '1') {
+    if (const char* e = std::getenv("STELNETTTS_TADA_CTC_ASR"); e && e[0] == '1') {
         // blank id: wav2vec2 CTC uses the pad token as blank.
         int blank = 0;
         {
@@ -1199,21 +1199,21 @@ int tada_encoder_write_ref_gguf(const char* path, const tada_encoder_result& res
         return -2;
 
     gguf_context* gw = gguf_init_empty();
-    gguf_set_val_str(gw, "general.architecture", "crispasr.reference");
+    gguf_set_val_str(gw, "general.architecture", "stelnettts.reference");
     gguf_set_val_str(gw, "general.name", "tada-ref-custom");
     if (transcript)
-        gguf_set_val_str(gw, "crispasr.ref.tada_tts_prompt_text", transcript);
+        gguf_set_val_str(gw, "stelnettts.ref.tada_tts_prompt_text", transcript);
     if (language && language[0])
-        gguf_set_val_str(gw, "crispasr.ref.tada_tts_language", language);
+        gguf_set_val_str(gw, "stelnettts.ref.tada_tts_language", language);
     // Voice-clone provenance. A pack baked from a person's recording is exactly
     // as much a deepfake as the recording; stamping it is what lets the consent
     // and Art. 50(4) disclosure gates see that, since they can no longer tell
     // from the .gguf suffix alone. Key names are mirrored in
-    // examples/cli/crispasr_voice_clone_policy.h — change both together.
+    // examples/cli/stelnettts_voice_clone_policy.h — change both together.
     if (cloned_from_recording) {
-        gguf_set_val_bool(gw, "crispasr.voice.cloned_from_recording", true);
+        gguf_set_val_bool(gw, "stelnettts.voice.cloned_from_recording", true);
         if (consent_attestation && consent_attestation[0])
-            gguf_set_val_str(gw, "crispasr.voice.consent_attestation", consent_attestation);
+            gguf_set_val_str(gw, "stelnettts.voice.consent_attestation", consent_attestation);
     }
 
     // prompt_token_values: (n_tokens, embed_dim) F32

@@ -17,7 +17,7 @@ base_model: fidoriel/moonshine-base-de
 
 # Moonshine Base (German, fidoriel) -- GGUF
 
-GGUF conversions and quantisations of [`fidoriel/moonshine-base-de`](https://huggingface.co/fidoriel/moonshine-base-de) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`fidoriel/moonshine-base-de`](https://huggingface.co/fidoriel/moonshine-base-de) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -38,14 +38,14 @@ GGUF conversions and quantisations of [`fidoriel/moonshine-base-de`](https://hug
 - **License:** [CC-BY-NC-SA-4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (inherited from upstream)
 - **Source:** [`fidoriel/moonshine-base-de`](https://huggingface.co/fidoriel/moonshine-base-de)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Explicit model path
-./build/bin/crispasr --backend moonshine -m moonshine-base-de-fidoriel-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend moonshine -m moonshine-base-de-fidoriel-q4_k.gguf -f audio.wav
 
 # Or via backend name (auto-download)
-./build/bin/crispasr --backend moonshine-de -m auto -f audio.wav
+./build/bin/stelnettts --backend moonshine-de -m auto -f audio.wav
 ```
 
 ## Notes

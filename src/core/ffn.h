@@ -7,7 +7,7 @@
 // one-line call instead of a 6-8 line block.
 //
 // SwiGLU consumers (all LLM-based):
-//   qwen3_asr  voxtral  voxtral4b  granite_speech
+//   cielvox2_asr  voxtral  voxtral4b  granite_speech
 //
 // Plain SiLU FFN (Linear -> SiLU -> Linear) is used by the FastConformer
 // family (parakeet / canary / canary_ctc / cohere). A helper for that is
@@ -28,7 +28,7 @@ namespace core_ffn {
 // SwiGLU without biases:
 //   out = W_down @ (silu(W_gate @ x) * W_up @ x)
 //
-// Matches the pattern in qwen3_asr, voxtral, and granite. Call this
+// Matches the pattern in cielvox2_asr, voxtral, and granite. Call this
 // between the pre-FFN RMSNorm and the residual add:
 //
 //   ggml_tensor * h   = pre_norm(cur);

@@ -12,13 +12,13 @@ tags:
 - mimi
 - conversational
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # CSM-1B — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`sesame/csm-1b`](https://huggingface.co/sesame/csm-1b) (Conversational Speech Model) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`sesame/csm-1b`](https://huggingface.co/sesame/csm-1b) (Conversational Speech Model) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 CSM-1B is a TTS model that generates speech from text using a two-stage transformer architecture:
 - **Backbone** (Llama-3.2 1B, 16 layers): generates first-codebook Mimi tokens autoregressively
@@ -38,24 +38,24 @@ Released under **Apache 2.0** license.
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Download model
-huggingface-cli download cstr/csm-1b-GGUF csm-1b-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/csm-1b-GGUF csm-1b-q8_0.gguf --local-dir .
 
 # 3. Synthesize
-./build/bin/crispasr --backend csm -m csm-1b-q8_0.gguf \
+./build/bin/stelnettts --backend csm -m csm-1b-q8_0.gguf \
     --tts "Hello, how are you today?" \
     --tts-output hello.wav --seed 42
 ```
 
 Or with auto-download:
 ```bash
-./build/bin/crispasr -m csm --auto-download \
+./build/bin/stelnettts -m csm --auto-download \
     --tts "The quick brown fox jumps over the lazy dog." \
     --tts-output fox.wav
 ```
@@ -84,8 +84,8 @@ python models/convert-csm-to-gguf.py \
     --output csm-1b-f16.gguf
 
 # Quantize
-./build/bin/crispasr-quantize csm-1b-f16.gguf csm-1b-q8_0.gguf q8_0
-./build/bin/crispasr-quantize csm-1b-f16.gguf csm-1b-q4_k.gguf q4_k
+./build/bin/stelnettts-quantize csm-1b-f16.gguf csm-1b-q8_0.gguf q8_0
+./build/bin/stelnettts-quantize csm-1b-f16.gguf csm-1b-q4_k.gguf q4_k
 ```
 
 ## Acknowledgements
@@ -97,8 +97,8 @@ python models/convert-csm-to-gguf.py \
 
 The upstream card states this is *"a base generation model ... capable of producing a variety of voices, but it has not been fine-tuned on any specific voice"*. There is no preset persona to disclose. CSM's cloning path takes a reference recording as `--voice`, and that is caught by the separate voice-clone gate, which does require `--i-have-rights`.
 
-CrispASR records this as `speaker_identity=synthetic`. No spoken AI disclosure is added, because no identifiable person's voice is being reproduced. Machine-readable marking (watermark + C2PA) still applies to every synthesis, as it does for all CrispASR TTS output.
+StelnetTTS records this as `speaker_identity=synthetic`. No spoken AI disclosure is added, because no identifiable person's voice is being reproduced. Machine-readable marking (watermark + C2PA) still applies to every synthesis, as it does for all StelnetTTS TTS output.
 
 Override per run with `--speaker-identity`, or stamp a file permanently with
 `models/stamp-speaker-identity.py`. See
-[`docs/eu-ai-act.md` §6.2a](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md).
+[`docs/eu-ai-act.md` §6.2a](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md).

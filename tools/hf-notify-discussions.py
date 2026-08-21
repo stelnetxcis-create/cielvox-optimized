@@ -15,7 +15,7 @@ Usage:
 
     # with a state file so we only see new/updated threads since last run
     python tools/hf-notify-discussions.py --user cstr \\
-        --state ~/.cache/crispasr/hf-notify-seen.json
+        --state ~/.cache/stelnettts/hf-notify-seen.json
 
     # only the last 7 days (no state file)
     python tools/hf-notify-discussions.py --user cstr --since-days 7
@@ -45,12 +45,12 @@ Sample launchd plist (drop in ~/Library/LaunchAgents/):
       <key>ProgramArguments</key>
       <array>
         <string>/Users/christianstrobele/miniconda3/bin/python</string>
-        <string>/Users/christianstrobele/code/CrispASR/tools/hf-notify-discussions.py</string>
+        <string>/Users/christianstrobele/code/StelnetTTS/tools/hf-notify-discussions.py</string>
         <string>--user</string><string>cstr</string>
         <string>--state</string>
-        <string>/Users/christianstrobele/.cache/crispasr/hf-notify-seen.json</string>
+        <string>/Users/christianstrobele/.cache/stelnettts/hf-notify-seen.json</string>
         <string>--out</string>
-        <string>/Users/christianstrobele/.cache/crispasr/hf-notify-latest.md</string>
+        <string>/Users/christianstrobele/.cache/stelnettts/hf-notify-latest.md</string>
       </array>
       <key>StartCalendarInterval</key>
       <dict>
@@ -58,9 +58,9 @@ Sample launchd plist (drop in ~/Library/LaunchAgents/):
         <key>Minute</key><integer>0</integer>
       </dict>
       <key>StandardOutPath</key>
-      <string>/Users/christianstrobele/.cache/crispasr/hf-notify.log</string>
+      <string>/Users/christianstrobele/.cache/stelnettts/hf-notify.log</string>
       <key>StandardErrorPath</key>
-      <string>/Users/christianstrobele/.cache/crispasr/hf-notify.err</string>
+      <string>/Users/christianstrobele/.cache/stelnettts/hf-notify.err</string>
     </dict>
     </plist>
 
@@ -113,7 +113,7 @@ def collect_repos(api, user: str) -> list[tuple[str, str]]:
     ]:
         try:
             for r in fn(author=user, full=False):
-                # The id attribute is `cstr/foo` for owned repos.
+                # The id attribute is `Xenna/foo` for owned repos.
                 repo_id = getattr(r, "id", None) or getattr(r, "modelId", None)
                 if repo_id:
                     repos.append((repo_id, kind))
@@ -268,7 +268,7 @@ def render_markdown(new_threads: list[Thread]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Poll HF Hub for new discussions across cstr/*")
+        description="Poll HF Hub for new discussions across Xenna/*")
     parser.add_argument("--user", default="cstr",
                         help="HF user/org whose repos to poll (default: cstr)")
     parser.add_argument("--state",

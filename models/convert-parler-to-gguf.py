@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert parler-tts/parler-tts-mini-v1.1 (or -large-v1) HuggingFace
-safetensors -> GGUF F16 for the CrispASR `parler-tts` backend.
+safetensors -> GGUF F16 for the StelnetTTS `parler-tts` backend.
 
 Parler TTS is a prompt-conditioned TTS: you describe the voice in natural
 language ("A female speaker with a warm voice in a quiet room") and the

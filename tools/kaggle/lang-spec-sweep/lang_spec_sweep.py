@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# lang_spec_sweep.py — language-specification sweep for CrispASR ASR backends (Kaggle)
+# lang_spec_sweep.py — language-specification sweep for StelnetTTS ASR backends (Kaggle)
 #
 # Tests each ASR backend with correct and incorrect language flags to verify:
 #   - rc=0 (no crash) with any valid language flag
@@ -11,7 +11,7 @@
 #
 # Resume:    LANG_SWEEP_START_FROM=backend_name  (skip everything before that name)
 # CUDA/CPU:  LANG_SWEEP_BUILD=cuda  (default: cuda if GPU present, else cpu)
-# HF upload: LANG_SWEEP_UPLOAD=1  (uploads results.json to cstr/crispasr-lang-sweep-results)
+# HF upload: LANG_SWEEP_UPLOAD=1  (uploads results.json to Xenna/stelnettts-lang-sweep-results)
 #
 # Disk budget: 20 GB Kaggle scratch. Largest model pair: mimo-asr (4.3 GB) +
 # tokenizer (1.2 GB) = 5.5 GB + 3 GB build = 8.5 GB peak. Safe.
@@ -41,7 +41,7 @@ except (AttributeError, ValueError):
 
 # ── Workspace ────────────────────────────────────────────────────────────────
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODEL_TMP = WORK / "model_tmp"
 RESULTS_PATH = WORK / "lang_results.json"
@@ -54,7 +54,7 @@ for d in (MODEL_TMP, AUDIO_DIR):
 # ── Config ───────────────────────────────────────────────────────────────────
 START_FROM = os.environ.get("LANG_SWEEP_START_FROM", "").strip()
 UPLOAD = os.environ.get("LANG_SWEEP_UPLOAD", "0") == "1"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 
 # Auto-detect GPU
 _gpu_present = bool(shutil.which("nvidia-smi") and
@@ -62,7 +62,7 @@ _gpu_present = bool(shutil.which("nvidia-smi") and
 BUILD_FLAVOUR = os.environ.get("LANG_SWEEP_BUILD", "cuda" if _gpu_present else "cpu")
 
 # ── Progress + HF live push ──────────────────────────────────────────────────
-_HF_PROGRESS_REPO = "cstr/crispasr-kaggle-progress"
+_HF_PROGRESS_REPO = "Xenna/stelnettts-kaggle-progress"
 _HF_PROGRESS_PATH = (
     f"runs/{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     f"-lang-sweep"
@@ -168,7 +168,7 @@ def heartbeat(label: str, interval_s: float = 30.0):
 
 # ── HF auth ──────────────────────────────────────────────────────────────────
 def _token_from_dataset() -> str | None:
-    candidates = [Path("/kaggle/input/crispasr-hf-token/hf_token.txt")]
+    candidates = [Path("/kaggle/input/stelnettts-hf-token/hf_token.txt")]
     # Scan multiple roots — newer Kaggle environments mount datasets at
     # /kaggle/input/datasets/<owner>/<slug>/ instead of /kaggle/input/<slug>/
     roots = [
@@ -210,12 +210,12 @@ if hf_token:
 else:
     print("HF auth: no token — downloads may fail for private repos", flush=True)
 
-# ── Clone CrispASR ──────────────────────────────────────────────────────────
+# ── Clone StelnetTTS ──────────────────────────────────────────────────────────
 step("clone")
 if not REPO.exists():
     subprocess.check_call(
-        ["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-         "https://github.com/CrispStrobe/CrispASR.git", str(REPO)]
+        ["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+         "https://github.com/Cyna/StelnetTTS.git", str(REPO)]
     )
 else:
     subprocess.run(["git", "-C", str(REPO), "pull", "--ff-only"], check=False)
@@ -239,8 +239,8 @@ BUILD.mkdir(exist_ok=True)
 _ccache_dir = WORK / ".ccache"
 _ccache_dir.mkdir(parents=True, exist_ok=True)
 for candidate in [
-    Path("/kaggle/input/crispasr-ccache/ccache.tar"),
-    Path("/kaggle/input/datasets/chr1s4/crispasr-ccache/ccache.tar"),
+    Path("/kaggle/input/stelnettts-ccache/ccache.tar"),
+    Path("/kaggle/input/datasets/chr1s4/stelnettts-ccache/ccache.tar"),
 ]:
     if candidate.exists():
         step("ccache.warm", source=str(candidate))
@@ -285,7 +285,7 @@ with heartbeat("build.configure"):
     sh_stream(
         f"cmake -G {'Ninja' if _HAS_NINJA else 'Unix Makefiles'} "
         f"-B {BUILD} -S {REPO} "
-        f"-DCMAKE_BUILD_TYPE=Release -DCRISPASR_NO_C2PA_NATIVE=ON "
+        f"-DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_NO_C2PA_NATIVE=ON "
         f"{_ccache_flags}"
         f"{cmake_extra}"
     )
@@ -297,12 +297,12 @@ _build_j = "2" if BUILD_FLAVOUR == "cuda" else str(_nproc)
 with heartbeat("build.compile", interval_s=30.0):
     sh_stream(f"cmake --build {BUILD} -j{_build_j}", cwd=BUILD)
 
-CRISPASR_BIN = BUILD / "bin" / "crispasr"
-assert CRISPASR_BIN.exists(), "crispasr binary not found after build"
+STELNETTTS_BIN = BUILD / "bin" / "stelnettts"
+assert STELNETTTS_BIN.exists(), "stelnettts binary not found after build"
 step("build.done")
 
 # ── Audio fixtures ───────────────────────────────────────────────────────────
-# jfk.wav is shipped with the CrispASR repo itself (samples/jfk.wav).
+# jfk.wav is shipped with the StelnetTTS repo itself (samples/jfk.wav).
 # The JA audio is in the fixtures HF model repo (pinned full SHA).
 step("fixtures.prepare")
 from huggingface_hub import hf_hub_download
@@ -310,7 +310,7 @@ from huggingface_hub import hf_hub_download
 JFK_WAV = REPO / "samples" / "jfk.wav"
 assert JFK_WAV.exists(), f"jfk.wav missing from cloned repo at {JFK_WAV}"
 
-FIXTURES_REPO = "cstr/crispasr-regression-fixtures"
+FIXTURES_REPO = "Xenna/stelnettts-regression-fixtures"
 FIXTURES_REV  = "b61b03014bc99ecce18ac8f99988d5110c83f2d2"  # full SHA, repo_type=model
 
 JA_WAV = Path(hf_hub_download(
@@ -343,7 +343,7 @@ LANG_TESTS = [
     {
         "name": "nemotron-3.5-asr-streaming-0.6b",
         "backend": "nemotron",
-        "gguf_repo": "cstr/nemotron-3.5-asr-streaming-GGUF",
+        "gguf_repo": "Xenna/nemotron-3.5-asr-streaming-GGUF",
         "gguf_file": "nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
         "gguf_rev":  "bbd95a9ca5fa",
         "size_mb": 458,
@@ -357,18 +357,18 @@ LANG_TESTS = [
         ],
     },
     {
-        "name": "qwen3-asr-0.6b",
+        "name": "cielvox2-asr-0.6b",
         "backend": "qwen3",
-        "gguf_repo": "cstr/qwen3-asr-0.6b-GGUF",
-        "gguf_file": "qwen3-asr-0.6b-q4_k.gguf",
+        "gguf_repo": "Xenna/cielvox2-asr-0.6b-GGUF",
+        "gguf_file": "cielvox2-asr-0.6b-q4_k.gguf",
         "gguf_rev":  "ad086c22597e",
         "size_mb": 400,
         "tests": [
             {"audio": "jfk", "lang_flags": ["-l", "en"],
-             "note": "qwen3-asr: -l en injects 'Transcribe in English.' → EN",
+             "note": "cielvox2-asr: -l en injects 'Transcribe in English.' → EN",
              "expect_nonempty": True},
             {"audio": "jfk", "lang_flags": ["-l", "de"],
-             "note": "qwen3-asr: -l de injects 'Transcribe in German.' — ASR fine-tune "
+             "note": "cielvox2-asr: -l de injects 'Transcribe in German.' — ASR fine-tune "
                      "tends to transcribe source language anyway (EN here); no crash",
              "expect_nonempty": True},
         ],
@@ -376,7 +376,7 @@ LANG_TESTS = [
     {
         "name": "sensevoice-small",
         "backend": "sensevoice",
-        "gguf_repo": "cstr/sensevoice-small-GGUF",
+        "gguf_repo": "Xenna/sensevoice-small-GGUF",
         "gguf_file": "sensevoice-small-q4_k.gguf",
         "gguf_rev":  "abbeaf54fdae",
         "size_mb": 470,
@@ -395,7 +395,7 @@ LANG_TESTS = [
     {
         "name": "parakeet-tdt-0.6b-en",
         "backend": "parakeet",
-        "gguf_repo": "cstr/parakeet-tdt-0.6b-v3-GGUF",
+        "gguf_repo": "Xenna/parakeet-tdt-0.6b-v3-GGUF",
         "gguf_file": "parakeet-tdt-0.6b-v3-q4_k.gguf",
         "gguf_rev":  "815cc1bcb5cf",
         "size_mb": 466,
@@ -411,7 +411,7 @@ LANG_TESTS = [
     {
         "name": "parakeet-tdt-0.6b-ja",
         "backend": "parakeet",
-        "gguf_repo": "cstr/parakeet-tdt-0.6b-ja-GGUF",
+        "gguf_repo": "Xenna/parakeet-tdt-0.6b-ja-GGUF",
         "gguf_file": "parakeet-tdt-0.6b-ja.gguf",
         "gguf_rev":  "fd1963a153f0",
         "size_mb": 530,
@@ -427,7 +427,7 @@ LANG_TESTS = [
     {
         "name": "paraformer-zh",
         "backend": "paraformer",
-        "gguf_repo": "cstr/paraformer-zh-GGUF",
+        "gguf_repo": "Xenna/paraformer-zh-GGUF",
         "gguf_file": "paraformer-zh-q8_0.gguf",
         "gguf_rev":  "86ea220d4110",
         "size_mb": 226,
@@ -443,7 +443,7 @@ LANG_TESTS = [
     {
         "name": "kyutai-stt-1b",
         "backend": "kyutai-stt",
-        "gguf_repo": "cstr/kyutai-stt-1b-GGUF",
+        "gguf_repo": "Xenna/kyutai-stt-1b-GGUF",
         "gguf_file": "kyutai-stt-1b-q4_k.gguf",
         "gguf_rev":  "e58ef4fec3fa",
         "size_mb": 700,
@@ -459,7 +459,7 @@ LANG_TESTS = [
     {
         "name": "omniasr-llm-300m",
         "backend": "omniasr-llm",
-        "gguf_repo": "cstr/omniasr-llm-300m-v2-GGUF",
+        "gguf_repo": "Xenna/omniasr-llm-300m-v2-GGUF",
         "gguf_file": "omniasr-llm-300m-v2-q4_k.gguf",
         "gguf_rev":  "9c3d29db4175",
         "size_mb": 1100,
@@ -475,7 +475,7 @@ LANG_TESTS = [
     {
         "name": "funasr-mlt-nano",
         "backend": "funasr",
-        "gguf_repo": "cstr/funasr-mlt-nano-GGUF",
+        "gguf_repo": "Xenna/funasr-mlt-nano-GGUF",
         "gguf_file": "funasr-mlt-nano-2512-f16.gguf",
         "gguf_rev":  "5ba2e21029b7",
         "size_mb": 1980,
@@ -494,7 +494,7 @@ LANG_TESTS = [
     {
         "name": "cohere-transcribe",
         "backend": "cohere",
-        "gguf_repo": "cstr/cohere-transcribe-03-2026-GGUF",
+        "gguf_repo": "Xenna/cohere-transcribe-03-2026-GGUF",
         "gguf_file": "cohere-transcribe-q4_k.gguf",
         "gguf_rev":  "2242638d5dfecc6f1dbe6c3a8713b97deb2e150f",
         "size_mb": 1500,
@@ -510,7 +510,7 @@ LANG_TESTS = [
     {
         "name": "canary-1b-v2",
         "backend": "canary",
-        "gguf_repo": "cstr/canary-1b-v2-GGUF",
+        "gguf_repo": "Xenna/canary-1b-v2-GGUF",
         "gguf_file": "canary-1b-v2.gguf",
         "gguf_rev":  "b3715a517928",
         "size_mb": 1900,
@@ -529,7 +529,7 @@ LANG_TESTS = [
     {
         "name": "gemma4-e2b-it",
         "backend": "gemma4-e2b",
-        "gguf_repo": "cstr/gemma4-e2b-it-GGUF",
+        "gguf_repo": "Xenna/gemma4-e2b-it-GGUF",
         "gguf_file": "gemma4-e2b-it-q4_k.gguf",
         "gguf_rev":  "0afc0beb5bff",
         "size_mb": 2500,
@@ -548,7 +548,7 @@ LANG_TESTS = [
     {
         "name": "voxtral-mini-3b-2507",
         "backend": "voxtral",
-        "gguf_repo": "cstr/voxtral-mini-3b-2507-GGUF",
+        "gguf_repo": "Xenna/voxtral-mini-3b-2507-GGUF",
         "gguf_file": "voxtral-mini-3b-2507-q4_k.gguf",
         "gguf_rev":  "7a6ffdc7ff9e",
         "size_mb": 2529,
@@ -564,7 +564,7 @@ LANG_TESTS = [
     {
         "name": "granite-speech-4.1-2b",
         "backend": "granite",
-        "gguf_repo": "cstr/granite-speech-4.1-2b-GGUF",
+        "gguf_repo": "Xenna/granite-speech-4.1-2b-GGUF",
         "gguf_file": "granite-speech-4.1-2b-q4_k.gguf",
         "gguf_rev":  "7ee888f67b68",
         "size_mb": 2806,
@@ -584,7 +584,7 @@ LANG_TESTS = [
     {
         "name": "glm-asr-nano",
         "backend": "glm-asr",
-        "gguf_repo": "cstr/glm-asr-nano-GGUF",
+        "gguf_repo": "Xenna/glm-asr-nano-GGUF",
         "gguf_file": "glm-asr-nano.gguf",
         "gguf_rev":  "0eed3da3582c",
         "size_mb": 4300,
@@ -604,7 +604,7 @@ LANG_TESTS = [
     {
         "name": "moss-audio-4b-instruct",
         "backend": "moss-audio",
-        "gguf_repo": "cstr/MOSS-Audio-4B-Instruct-GGUF",
+        "gguf_repo": "Xenna/MOSS-Audio-4B-Instruct-GGUF",
         "gguf_file": "moss-audio-4b-instruct-q4_k.gguf",
         "gguf_rev":  "dbc2e72233d4",
         "size_mb": 3920,
@@ -621,12 +621,12 @@ LANG_TESTS = [
     {
         "name": "mimo-asr",
         "backend": "mimo-asr",
-        "gguf_repo": "cstr/mimo-asr-GGUF",
+        "gguf_repo": "Xenna/mimo-asr-GGUF",
         "gguf_file": "mimo-asr-q4_k.gguf",
         "gguf_rev":  "4c6a0ede0874",
         "size_mb": 4308,
         "extra_dl": {
-            "repo": "cstr/mimo-audio-tokenizer-GGUF",
+            "repo": "Xenna/mimo-audio-tokenizer-GGUF",
             "file": "mimo-tokenizer.gguf",
             "rev":  "e2e4a8dec8fd",
             "cli_flag": "--codec-model",
@@ -707,7 +707,7 @@ def run_one_backend(entry: dict) -> dict:
         tag = f"{name}.test{ti}"
         step(f"{tag}.run", lang=" ".join(lang_flags) or "(none)", audio=audio_key)
 
-        cmd = [str(CRISPASR_BIN), "-f", str(audio_path), "-m", str(model_path),
+        cmd = [str(STELNETTTS_BIN), "-f", str(audio_path), "-m", str(model_path),
                "--backend", entry["backend"], "--no-prints"]
         if extra_path and extra_flag:
             cmd += [extra_flag, str(extra_path)]
@@ -799,7 +799,7 @@ for entry in LANG_TESTS:
     RESULTS_PATH.write_text(json.dumps({
         "sweep": "lang-spec-sweep",
         "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "crispasr_ref": CRISPASR_REF,
+        "stelnettts_ref": STELNETTTS_REF,
         "build_flavour": BUILD_FLAVOUR,
         "results": all_results,
     }, indent=2))
@@ -831,12 +831,12 @@ if UPLOAD and hf_token:
         api.upload_file(
             path_or_fileobj=str(RESULTS_PATH),
             path_in_repo=f"runs/{slug}-lang-spec-sweep.json",
-            repo_id="cstr/crispasr-lang-sweep-results",
+            repo_id="Xenna/stelnettts-lang-sweep-results",
             repo_type="dataset",
             commit_message=f"lang-spec-sweep {slug}",
         )
         step("upload.done")
-        print(f"\nResults uploaded to cstr/crispasr-lang-sweep-results/runs/{slug}-lang-spec-sweep.json",
+        print(f"\nResults uploaded to Xenna/stelnettts-lang-sweep-results/runs/{slug}-lang-spec-sweep.json",
               flush=True)
     except Exception as exc:
         step("upload.fail", error=str(exc))

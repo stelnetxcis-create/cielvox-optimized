@@ -15,7 +15,7 @@ Workflow:
   # 2. C++ run with the SAME init noise (and dump dir)
   VIBEVOICE_TTS_DUMP=/tmp/vv_cpp_dump \\
   VIBEVOICE_TTS_NOISE=/tmp/vv_rt_ref/noise.bin \\
-      build/bin/crispasr --tts "Hello, how are you today?" \\
+      build/bin/stelnettts --tts "Hello, how are you today?" \\
           -m vibevoice-realtime-0.5b-tts-f16.gguf \\
           --voice vibevoice-voice-emma.gguf \\
           --tts-output /tmp/cpp.wav -ng

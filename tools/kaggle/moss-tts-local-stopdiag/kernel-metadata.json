@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-mtl-stopcpu",
-  "title": "CrispASR mtl stopcpu",
-  "code_file": "crispasr-moss-tts-local-stopdiag.py",
+  "id": "chr1str/stelnettts-mtl-stopcpu",
+  "title": "StelnetTTS mtl stopcpu",
+  "code_file": "stelnettts-moss-tts-local-stopdiag.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

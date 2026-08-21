@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-gpu-pin-ab",
-  "title": "crispasr-gpu-pin-ab",
-  "code_file": "crispasr-gpu-pin-ab.py",
+  "id": "chr1str/stelnettts-gpu-pin-ab",
+  "title": "stelnettts-gpu-pin-ab",
+  "code_file": "stelnettts-gpu-pin-ab.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

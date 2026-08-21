@@ -12,7 +12,7 @@
 #include "m2m100.h"
 #include "core/beam_decode.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (§232 m2m100 GPU path)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (§232 m2m100 GPU path)
 #if defined(GGML_USE_METAL)
 #include "ggml-metal.h" // core_cpu_backend::is_metal(§232 CUDA/Vulkan-default gate)
 #endif
@@ -26,7 +26,7 @@
 #include <cassert>
 #include <chrono>
 #include "core/sentencepiece.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include <cmath>
 #include <limits>
@@ -46,7 +46,7 @@
 static bool m2m100_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_M2M100_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_M2M100_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -966,18 +966,18 @@ extern "C" struct m2m100_context* m2m100_init_from_file(const char* path_model, 
     // Backend selection (§232). m2m100 loads weights + KV onto c->backend via
     // core_gguf::load_weights + ggml_backend_alloc_ctx_tensors, so picking a GPU
     // backend is the whole change.
-    //   * CRISPASR_M2M100_GPU=1 forces GPU on ANY backend; =0 forces CPU.
+    //   * STELNETTTS_M2M100_GPU=1 forces GPU on ANY backend; =0 forces CPU.
     //   * default: GPU on CUDA/Vulkan, CPU on Metal. Kaggle P100 A/B: identical
     //     en->de output, 1.24x wall (slow OpenBLAS baseline). On M1 (Accelerate)
     //     neutral — small encoder-decoder AR, launch-bound (LEARNING 34) — so
     //     Metal stays CPU unless forced. Mirrors LEARNING 34's is_metal gate.
     c->backend_cpu = core_cpu_backend::init();
-    const char* gpu_env = std::getenv("CRISPASR_M2M100_GPU");
+    const char* gpu_env = std::getenv("STELNETTTS_M2M100_GPU");
     const bool force_gpu = gpu_env && std::atoi(gpu_env) != 0;
     const bool force_cpu = gpu_env && std::atoi(gpu_env) == 0;
     c->backend = c->backend_cpu;
     if (!force_cpu && (force_gpu || params.use_gpu)) {
-        ggml_backend_t gpu = crispasr_init_gpu_backend();
+        ggml_backend_t gpu = stelnettts_init_gpu_backend();
         if (gpu) {
             bool is_metal = false;
 #if defined(GGML_USE_METAL)
@@ -991,7 +991,7 @@ extern "C" struct m2m100_context* m2m100_init_from_file(const char* path_model, 
                 ggml_backend_free(gpu);
                 if (params.verbosity >= 1)
                     fprintf(stderr, "m2m100: GPU default limited to CUDA/Vulkan (Metal neutral); set "
-                                    "CRISPASR_M2M100_GPU=1 to force\n");
+                                    "STELNETTTS_M2M100_GPU=1 to force\n");
             }
         }
     }

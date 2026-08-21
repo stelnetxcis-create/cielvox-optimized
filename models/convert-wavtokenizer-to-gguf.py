@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert the WavTokenizer decoder (OuteAI/wavtokenizer-large-75token-interface)
-PyTorch checkpoint -> GGUF for the CrispASR `outetts` backend.
+PyTorch checkpoint -> GGUF for the StelnetTTS `outetts` backend.
 
 Architecture:
   - Codebook: (1, 4096, 512) embedding table (single VQ codebook)

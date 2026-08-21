@@ -1,10 +1,10 @@
 # Performance — KV Cache & State Cache Survey
 
-Comprehensive survey of caching strategies across all CrispASR and CrispEmbed backends.
+Comprehensive survey of caching strategies across all StelnetTTS and StelnetEmbed backends.
 
 ## KV Cache Implementations
 
-### CrispASR — Autoregressive ASR/LLM Decoders
+### StelnetTTS — Autoregressive ASR/LLM Decoders
 
 All autoregressive decoders use `core_attn::kv_self_attn` with persistent F16 KV tensors
 allocated via `ggml_backend_alloc_ctx_tensors`. The cache is a 4D tensor
@@ -14,7 +14,7 @@ allocated via `ggml_backend_alloc_ctx_tensors`. The cache is a 4D tensor
 |---------|----------|-----------------|------------|-------|
 | voxtral | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Mistral-based GQA 32/8 |
 | voxtral4b | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Fused QKV |
-| qwen3_asr | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | GQA expansion, RoPE NEOX |
+| cielvox2_asr | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | GQA expansion, RoPE NEOX |
 | granite_speech | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | µP residual_multiplier |
 | granite_nle | `core_attn::kv_self_attn` | Conv1d cache | `ggml_backend_sched` | NAR with conv streaming |
 | cohere | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Encoder-decoder cross-attn KV |
@@ -26,12 +26,12 @@ allocated via `ggml_backend_alloc_ctx_tensors`. The cache is a 4D tensor
 | mini_omni2 | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | 8-stream multimodal |
 | moss_audio | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Whisper enc + Qwen3 LM |
 
-### CrispASR — TTS/Speech Generation
+### StelnetTTS — TTS/Speech Generation
 
 | Backend | KV Cache | Conv/Other State | Allocation | Notes |
 |---------|----------|-----------------|------------|-------|
 | csm_tts | Dual (backbone+depth) | — | `ggml_backend_sched` | 2 separate KV caches |
-| qwen3_tts | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Post-proj Q/K norm |
+| cielvox2_tts | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Post-proj Q/K norm |
 | cosyvoice3_tts | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | AR speech-token LM |
 | pocket_tts | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Llama-1B backbone |
 | tada_tts | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | Per-token flow matching |
@@ -44,7 +44,7 @@ allocated via `ggml_backend_alloc_ctx_tensors`. The cache is a 4D tensor
 | bark_tts | None (3× non-cached forward) | — | `ggml_backend_sched` | Could benefit from KV cache |
 | chatterbox | `core_attn::kv_self_attn` | — | `ggml_backend_sched` | T3 AR + S3Gen flow |
 
-### CrispASR — Non-Autoregressive (no KV cache needed)
+### StelnetTTS — Non-Autoregressive (no KV cache needed)
 
 | Backend | Reason no cache needed |
 |---------|----------------------|
@@ -62,7 +62,7 @@ allocated via `ggml_backend_alloc_ctx_tensors`. The cache is a 4D tensor
 | dia_tts | Single-forward with CFG |
 | parler_tts | T5 encoder + MusicGen — greedy but short |
 
-### CrispEmbed — Encoders Only
+### StelnetEmbed — Encoders Only
 
 No KV caches needed. All models are encoder-only (BERT, ViT, CNN).
 Three models compute position biases per-forward: `bttr_ocr`, `ppformulanet_ocr`, `posformer_ocr`.
@@ -108,7 +108,7 @@ The LFM2 backbone uses two distinct cache types:
 | Q4_K gallocr+256MB | ~1m8s | — | Best CPU perf |
 | GPU (M1 Metal, §206) | ~15s | — | Correct now (gallocr direct compute); AR decode is dispatch-bound so currently ~slower than threaded CPU. GPU-decode graph caching is the perf follow-up. |
 
-## CrispASR vs transcribe.cpp — Head-to-Head Benchmark
+## StelnetTTS vs transcribe.cpp — Head-to-Head Benchmark
 
 Systematic evaluation against [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp)
 (ASR-only, ggml-based, 16 model families, 60+ variants) on Kaggle P100 (sm_60, CUDA 12.8).
@@ -148,30 +148,30 @@ RTF = real-time factor (lower = faster; < 1.0 means faster than real-time).
 | Cohere Transcribe | 0.909 | **0.803** | 0% | 0% |
 | Whisper Large v3 Turbo | 5.000 | **2.294** | 0% | 0% |
 
-### transcribe.cpp-only models (CrispASR coverage gaps)
+### transcribe.cpp-only models (StelnetTTS coverage gaps)
 
 | Family | TC RTF | TC WER | Notes |
 |--------|--------|--------|-------|
-| GigaAM v3 E2E-CTC | 0.074 | 27.3% | Russian-focused + EN; no CrispASR equivalent |
+| GigaAM v3 E2E-CTC | 0.074 | 27.3% | Russian-focused + EN; no StelnetTTS equivalent |
 
 ### Key findings
 
-- **GPU**: CrispASR wins 6/11, ties 1, loses 4. Wins on SenseVoice, Whisper,
+- **GPU**: StelnetTTS wins 6/11, ties 1, loses 4. Wins on SenseVoice, Whisper,
   Canary, FunASR, Cohere, Qwen3. Loses on Parakeet (CPU cblas decoder), Nemotron
   (CPU cblas RNNT), Moonshine (encoder im2col), Moonshine Streaming (architectural).
   Both require `-DGGML_CUDA_NO_VMM=ON` on Kaggle for `CUDA::cuda_driver` resolution.
 - **CPU**: transcribe.cpp 1.3-3x faster across the board — leaner runtime with
-  less dispatch overhead. CrispASR's unified backend path includes VAD, segment
+  less dispatch overhead. StelnetTTS's unified backend path includes VAD, segment
   merging, and post-processing that transcribe.cpp skips.
 - **WER**: Both engines produce identical transcripts (0% WER) on 7/9 models.
   Moonshine Tiny shows a minor Q4_K vs Q8_0 quant difference.
   FunASR Nano has a transcribe.cpp GPU inference bug (100% WER on GPU, 0% on CPU).
-- **Feature gap**: transcribe.cpp is ASR-only; CrispASR adds TTS, S2S, diarization,
+- **Feature gap**: transcribe.cpp is ASR-only; StelnetTTS adds TTS, S2S, diarization,
   LID, forced alignment, translation, and streaming — with GPU acceleration.
 - **Architecture**: transcribe.cpp optimises for per-model performance with
-  architecture-specific dispatch; CrispASR trades some per-model speed for a
+  architecture-specific dispatch; StelnetTTS trades some per-model speed for a
   unified backend that supports 40+ model families across ASR/TTS/S2S/LID/MT.
 
 Benchmark script: `tools/kaggle/transcribe-cpp-bench/transcribe_cpp_bench.py`
-Kernel: `chr1s4/crispasr-vs-transcribe-cpp-bench`
-Results: `cstr/crispasr-kaggle-progress` dataset, prefix `transcribe-cpp-bench/`
+Kernel: `chr1s4/stelnettts-vs-transcribe-cpp-bench`
+Results: `Xenna/stelnettts-kaggle-progress` dataset, prefix `transcribe-cpp-bench/`

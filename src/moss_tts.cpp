@@ -1,6 +1,6 @@
 // moss_tts.cpp — MOSS-TTS-v1.5 (MossTTSDelay) ggml runtime.
 //
-// Backbone: Qwen3-8B KV-cached decoder (cloned from qwen3_asr's Qwen3 path)
+// Backbone: Qwen3-8B KV-cached decoder (cloned from cielvox2_asr's Qwen3 path)
 // that takes precomputed input embeddings and exposes BOTH the text logits and
 // the per-token last hidden state (fed to the 32 audio LM heads). The audio
 // extension (32 embed tables + 32 heads), the delay-pattern state machine, and
@@ -23,7 +23,7 @@
 #include "core/gguf_loader.h"
 #include "core/gpu_backend_pref.h"
 #include "core/wav_reader.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include "ggml.h"
 #include "ggml-alloc.h"
@@ -54,7 +54,7 @@
 static bool moss_tts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MOSS_TTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MOSS_TTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -1417,7 +1417,7 @@ extern "C" moss_tts_context* moss_tts_init_from_file(const char* path, moss_tts_
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -1495,7 +1495,7 @@ extern "C" bool moss_tts_set_reference_wav_file(moss_tts_context* ctx, const cha
         return moss_tts_set_reference_wav(ctx, nullptr, 0); // clear
     std::vector<float> ref;
     int sr = 0;
-    if (!crispasr::core::read_wav_mono_pcm16(path, ref, sr) || ref.empty()) {
+    if (!stelnettts::core::read_wav_mono_pcm16(path, ref, sr) || ref.empty()) {
         fprintf(stderr, "moss_tts: failed to read reference WAV '%s'\n", path);
         return false;
     }

@@ -73,7 +73,7 @@ TEST_CASE("core_utf8: empty and null", "[unit][core-utf8]") {
 }
 
 TEST_CASE("core_utf8: agrees with the copies it replaces", "[unit][core-utf8]") {
-    // core_lid_probe::utf8_length, crispasr.cpp's static utf8_len and kokoro's
+    // core_lid_probe::utf8_length, stelnettts.cpp's static utf8_len and kokoro's
     // lambda are all the same non-continuation-byte loop. Reproduce it here and
     // assert agreement, so consolidating onto this header is provably a no-op
     // for existing callers rather than assumed to be.

@@ -25,7 +25,7 @@
 //
 // Env vars:
 //   DOTS_TTS_BENCH=1           — per-stage wall-clock timings
-//   CRISPASR_DOTS_TTS_DEBUG=1  — verbose debug prints
+//   STELNETTTS_DOTS_TTS_DEBUG=1  — verbose debug prints
 
 #include "dots_tts.h"
 
@@ -47,8 +47,8 @@
 #include "core/gguf_loader.h"
 #include "core/lstm.h"
 #include "core/wav_reader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include <algorithm>
 #include <cassert>
@@ -73,7 +73,7 @@
 static bool dots_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_DOTS_TTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_DOTS_TTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -82,7 +82,7 @@ static bool dots_bench_enabled() {
 static bool dots_debug_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_DOTS_TTS_DEBUG");
+        const char* e = std::getenv("STELNETTTS_DOTS_TTS_DEBUG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -926,7 +926,7 @@ static ggml_tensor* dots_build_dit_body(dots_tts_context* ctx, ggml_context* ctx
     if (g_cond_in)
         c = ggml_add(ctx0, t_emb, g_cond_in);
 
-    const bool dit_dbg = std::getenv("CRISPASR_DOTS_DIT_DEBUG") != nullptr;
+    const bool dit_dbg = std::getenv("STELNETTTS_DOTS_DIT_DEBUG") != nullptr;
 
     // Input projection
     ggml_tensor* cur = ggml_mul_mat(ctx0, dit.in_proj_w, x);
@@ -1127,7 +1127,7 @@ static void dots_dit_forward(dots_tts_context* ctx, const float* fm_seq, int fm_
     int out_dim = (int)out->ne[0];
     ggml_backend_tensor_get(out, out_velocity, 0, out_dim * T * sizeof(float));
 
-    const bool dit_dbg = std::getenv("CRISPASR_DOTS_DIT_DEBUG") != nullptr;
+    const bool dit_dbg = std::getenv("STELNETTTS_DOTS_DIT_DEBUG") != nullptr;
     if (dit_dbg) {
         for (const char* nm : {"dbg_temb", "dbg_c", "dbg_x0", "dbg_b0"}) {
             ggml_tensor* dt = ggml_graph_get_tensor(gf, nm);
@@ -1672,16 +1672,16 @@ static void dots_flow_match_core(dots_tts_context* ctx, const float* input_seq, 
     // forwards are already two separate B=1 dots_dit_forward()s, so K>1 simply skips
     // the uncond forward. Only active when K>1, so at the default both forwards run
     // every step and the result is byte-for-byte the legacy path. Gated
-    // CRISPASR_DOTS_CFG_INTERVAL.
+    // STELNETTTS_DOTS_CFG_INTERVAL.
     const int cfg_interval = cfg_interval_override > 0 ? cfg_interval_override : [] {
-        const char* e = std::getenv("CRISPASR_DOTS_CFG_INTERVAL");
+        const char* e = std::getenv("STELNETTTS_DOTS_CFG_INTERVAL");
         const int k = e ? atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
     const bool interval_on = cfg_interval > 1;
     std::vector<float> vel_u_cache; // last computed uncond velocity; reused between recomputes
     static bool dbg_printed = false;
-    if (interval_on && !dbg_printed && std::getenv("CRISPASR_DOTS_CFG_INTERVAL_DEBUG")) {
+    if (interval_on && !dbg_printed && std::getenv("STELNETTTS_DOTS_CFG_INTERVAL_DEBUG")) {
         fprintf(stderr, "dots_tts: interval-CFG K=%d (uncond recomputed every %d ODE steps; first+last always)\n",
                 cfg_interval, cfg_interval);
         dbg_printed = true;
@@ -1693,7 +1693,7 @@ static void dots_flow_match_core(dots_tts_context* ctx, const float* input_seq, 
     // re-uploads, and the full-T velocity readback. coordinate_proj runs
     // in-graph with the same ops as dots_linear, so the result is
     // byte-identical to the legacy path (A/B: fixed seed + WAV data-chunk cmp).
-    // CRISPASR_DOTS_FUSED_STEP=0 restores the legacy loop; default ON for
+    // STELNETTTS_DOTS_FUSED_STEP=0 restores the legacy loop; default ON for
     // CPU/Metal, OFF on CUDA pending the TODO-7 capture audit (never flip a
     // GPU default blind — dev-guide LEARNING 35).
     const bool fused_step = [&] {
@@ -1701,7 +1701,7 @@ static void dots_flow_match_core(dots_tts_context* ctx, const float* input_seq, 
             return false; // legacy path carries the null-tensor diagnostics
         if (g_dots_fused_override >= 0)
             return g_dots_fused_override != 0; // in-process A/B hook (portable, no setenv)
-        const char* e = std::getenv("CRISPASR_DOTS_FUSED_STEP");
+        const char* e = std::getenv("STELNETTTS_DOTS_FUSED_STEP");
         if (e && *e)
             return *e != '0';
         if (ctx->backend && std::strstr(ggml_backend_name(ctx->backend), "CUDA") != nullptr)
@@ -2136,14 +2136,14 @@ struct dots_tts_context* dots_tts_init_from_file(const char* path_model, struct 
     // Initialize backend. Every dots.tts graph runs on a single backend via raw
     // ggml_gallocr (no ggml_backend_sched), so there are no cross-backend copy
     // hazards — GPU is just init_best() with all weights + KV caches resident on
-    // it. Opt out with CRISPASR_DOTS_TTS_CPU=1.
+    // it. Opt out with STELNETTTS_DOTS_TTS_CPU=1.
     ctx->backend_cpu = core_cpu_backend::init();
     core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
-    const char* cpu_env = std::getenv("CRISPASR_DOTS_TTS_CPU");
+    const char* cpu_env = std::getenv("STELNETTTS_DOTS_TTS_CPU");
     const bool force_cpu = cpu_env && *cpu_env && *cpu_env != '0';
     if (params.use_gpu && !force_cpu) {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
         if (!ctx->backend)
             ctx->backend = ctx->backend_cpu;
     } else {
@@ -2549,7 +2549,7 @@ int dots_tts_set_voice_prompt(struct dots_tts_context* ctx, const char* wav_path
     }
     std::vector<float> pcm;
     int sr = 0;
-    if (!crispasr::core::read_wav_mono_pcm16(wav_path, pcm, sr) || pcm.empty()) {
+    if (!stelnettts::core::read_wav_mono_pcm16(wav_path, pcm, sr) || pcm.empty()) {
         std::fprintf(stderr, "dots_tts: failed to read reference WAV %s\n", wav_path);
         return -1;
     }
@@ -2624,7 +2624,7 @@ float* dots_tts_synthesize(struct dots_tts_context* ctx, const char* text, int* 
     //    and l_i = latent_proj(NORMALIZED latent). The penc + vocoder consume the
     //    DENORMALIZED latents. EOS via eos_proj stops generation.
     int max_patches = ctx->params.max_patches > 0 ? ctx->params.max_patches : 256;
-    if (const char* e = std::getenv("CRISPASR_DOTS_MAX_PATCHES")) {
+    if (const char* e = std::getenv("STELNETTTS_DOTS_MAX_PATCHES")) {
         int m = std::atoi(e);
         if (m > 0)
             max_patches = m;
@@ -2635,18 +2635,18 @@ float* dots_tts_synthesize(struct dots_tts_context* ctx, const char* text, int* 
     int ode_steps = ctx->params.ode_steps > 0 ? ctx->params.ode_steps : 16;
     // Explicit low-latency profile for constrained local inference. Keep the
     // quality-oriented 16-step default unchanged; callers can still override
-    // this profile with CRISPASR_DOTS_ODE_STEPS.
-    const bool fast_profile = std::getenv("CRISPASR_DOTS_FAST") != nullptr;
+    // this profile with STELNETTTS_DOTS_ODE_STEPS.
+    const bool fast_profile = std::getenv("STELNETTTS_DOTS_FAST") != nullptr;
     if (fast_profile && ctx->params.ode_steps <= 0)
         ode_steps = 8;
-    if (const char* e = std::getenv("CRISPASR_DOTS_ODE_STEPS")) {
+    if (const char* e = std::getenv("STELNETTTS_DOTS_ODE_STEPS")) {
         int s = std::atoi(e);
         if (s > 0)
             ode_steps = s;
     }
     float cfg_scale = ctx->params.cfg_scale > 0.0f ? ctx->params.cfg_scale : 3.0f;
     float eos_threshold = ctx->params.eos_threshold > 0.0f ? ctx->params.eos_threshold : 0.8f;
-    if (const char* e = std::getenv("CRISPASR_DOTS_EOS_THRESHOLD"))
+    if (const char* e = std::getenv("STELNETTTS_DOTS_EOS_THRESHOLD"))
         eos_threshold = std::atof(e);
     auto& proj = ctx->proj;
 
@@ -2689,7 +2689,7 @@ float* dots_tts_synthesize(struct dots_tts_context* ctx, const char* text, int* 
     append_hidden(cur_hidden.data()); // h0
 
     dots_penc_reset(ctx); // start the incremental PatchEncoder stream
-    const char* penc_verify_env = std::getenv("CRISPASR_DOTS_PENC_VERIFY");
+    const char* penc_verify_env = std::getenv("STELNETTTS_DOTS_PENC_VERIFY");
     const bool penc_verify = penc_verify_env && *penc_verify_env && *penc_verify_env != '0';
 
     int n_patches_done = 0;
@@ -2764,7 +2764,7 @@ float* dots_tts_synthesize(struct dots_tts_context* ctx, const char* text, int* 
 
         // Incremental PatchEncoder: stream this patch's denorm latents → its one
         // LLM embedding via the persistent KV cache (O(N) per patch). Identical
-        // to the full recompute but linear; CRISPASR_DOTS_PENC_VERIFY=1 runs both
+        // to the full recompute but linear; STELNETTTS_DOTS_PENC_VERIFY=1 runs both
         // and prints the cosine so the streaming path can be audited.
         std::vector<float> emb_step((size_t)llm_dim);
         {
@@ -2889,13 +2889,13 @@ void dots_tts_set_seed(struct dots_tts_context* ctx, uint64_t seed) {
 }
 
 // Diff-harness backend selector. The stages default to CPU (deterministic,
-// reference-matching). Set CRISPASR_DOTS_DIFF_GPU=1 to run the GPU-resident
+// reference-matching). Set STELNETTTS_DOTS_DIFF_GPU=1 to run the GPU-resident
 // stages (penc/llm/dit/flowmatch/vocoder) on init_best() instead, to confirm
 // each stage matches the reference on the GPU backend — not just end-to-end.
 // (CAM++ x-vector and the isolated Activation1d are CPU-by-design, so their
 // diffs ignore this gate.)
 static bool dots_diff_use_gpu() {
-    const char* e = std::getenv("CRISPASR_DOTS_DIFF_GPU");
+    const char* e = std::getenv("STELNETTTS_DOTS_DIFF_GPU");
     return e && *e && *e != '0';
 }
 
@@ -3136,24 +3136,24 @@ extern "C" int dots_tts_flowmatch_diff(const char* model_gguf, const char* ref_g
                          noise.data(), num_steps, cfg_scale, got.data());
 
     // Byte-exact A/B hook (fused-step verification): dump the raw latent so two
-    // runs (CRISPASR_DOTS_FUSED_STEP=0 vs 1) can be diffed with cmp.
-    if (const char* dump = std::getenv("CRISPASR_DOTS_FM_DUMP")) {
+    // runs (STELNETTTS_DOTS_FUSED_STEP=0 vs 1) can be diffed with cmp.
+    if (const char* dump = std::getenv("STELNETTTS_DOTS_FM_DUMP")) {
         if (FILE* f = fopen(dump, "wb")) {
             fwrite(got.data(), sizeof(float), got.size(), f);
             fclose(f);
             std::fprintf(stderr, "dots-tts flow-match: dumped %d floats to %s\n", out_n, dump);
         }
     }
-    // In-process fused-vs-legacy A/B (CRISPASR_DOTS_FM_AB=1): rerun the solver
+    // In-process fused-vs-legacy A/B (STELNETTTS_DOTS_FM_AB=1): rerun the solver
     // with the fused gate forced the OTHER way and require byte-equality —
     // one model load instead of two full runs.
-    const char* ab_env = std::getenv("CRISPASR_DOTS_FM_AB");
+    const char* ab_env = std::getenv("STELNETTTS_DOTS_FM_AB");
     if (ab_env && *ab_env && *ab_env != '0') {
         // Resolve the gate the primary run ACTUALLY used (env override, else
         // the backend default) — deriving it from the raw env alone would
         // compare fused-vs-fused when the env is unset on CPU/Metal.
         const bool cur_fused = [&] {
-            const char* cur_gate = std::getenv("CRISPASR_DOTS_FUSED_STEP");
+            const char* cur_gate = std::getenv("STELNETTTS_DOTS_FUSED_STEP");
             if (cur_gate && *cur_gate)
                 return *cur_gate != '0';
             return !(ctx->backend && std::strstr(ggml_backend_name(ctx->backend), "CUDA") != nullptr);
@@ -3277,7 +3277,7 @@ extern "C" int dots_tts_dit_diff(const char* model_gguf, const char* ref_gguf, i
 extern "C" int dots_tts_vocoder_diff(const char* voc_gguf, const char* ref_gguf, int verbosity) {
     auto* ctx = new dots_tts_context();
     ctx->backend_cpu = core_cpu_backend::init();
-    ctx->backend = dots_diff_use_gpu() ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = dots_diff_use_gpu() ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
     ctx->params = dots_tts_context_default_params();

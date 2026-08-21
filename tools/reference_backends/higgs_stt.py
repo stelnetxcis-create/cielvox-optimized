@@ -1,7 +1,7 @@
 """bosonai/higgs-audio-v3-stt reference dump backend.
 
 Captures the architectural boundary the C++ runtime (src/higgs_stt.cpp)
-reproduces, so crispasr-diff can localize a divergence:
+reproduces, so stelnettts-diff can localize a divergence:
 
   raw_audio       the 16 kHz mono PCM fed in
   audio_embeds    chunked Whisper tower + projector output, concatenated over

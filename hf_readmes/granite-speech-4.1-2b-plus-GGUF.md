@@ -12,7 +12,7 @@ tags:
 - asr
 - speech
 - gguf
-- crispasr
+- stelnettts
 - granite-speech-plus
 - speaker-attributed
 - word-timestamps
@@ -21,14 +21,14 @@ tags:
 # granite-speech-4.1-2b-plus — GGUF
 
 GGUF conversion of [ibm-granite/granite-speech-4.1-2b-plus](https://huggingface.co/ibm-granite/granite-speech-4.1-2b-plus)
-for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 The PLUS variant adds two capabilities over the base 4.1-2b:
 
 - **Punctuated and capitalised transcripts by default** — no special
   prompt required.
 - **Speaker labels and word-level timestamps** in the model's structured
-  output (full output parsing in CrispASR is the next step; raw text
+  output (full output parsing in StelnetTTS is the next step; raw text
   works today).
 
 Architecturally PLUS is the base 4.1-2b plus a single change: the
@@ -63,16 +63,16 @@ across the 16-layer Conformer and shows up amplified after the concat,
 which is why `encoder_out` cos_min drops to ~0.62 on PLUS where base-4.1
 mini sits at ~0.93. End-to-end JFK transcription is still correct.
 
-_Tested with `crispasr-diff granite-4.1 <model.gguf> <ref.gguf> samples/jfk.wav`_
+_Tested with `stelnettts-diff granite-4.1 <model.gguf> <ref.gguf> samples/jfk.wav`_
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # auto-download and transcribe
-crispasr --backend granite-4.1-plus -m auto samples/audio.wav
+stelnettts --backend granite-4.1-plus -m auto samples/audio.wav
 
 # or with explicit path
-crispasr --backend granite-4.1-plus \
+stelnettts --backend granite-4.1-plus \
   -m granite-speech-4.1-2b-plus-f16.gguf \
   samples/audio.wav
 ```
@@ -80,7 +80,7 @@ crispasr --backend granite-4.1-plus \
 End-to-end example on the JFK 11s clip:
 
 ```
-$ crispasr --backend granite-4.1-plus -m auto samples/jfk.wav
+$ stelnettts --backend granite-4.1-plus -m auto samples/jfk.wav
 And so my fellow Americans, ask not what your country can do for
 you, ask what you can do for your country.
 ```
@@ -110,17 +110,17 @@ python models/convert-granite-speech-to-gguf.py \
   --output granite-speech-4.1-2b-plus-f16.gguf
 
 # Quantise F16 → Q4_K (encoder + projector preserved F32, LLM Q4_K)
-crispasr-quantize granite-speech-4.1-2b-plus-f16.gguf \
+stelnettts-quantize granite-speech-4.1-2b-plus-f16.gguf \
                   granite-speech-4.1-2b-plus-q4_k.gguf q4_k
 
 # Q4_K with F16 encoder/projector (smaller, no measurable parity loss)
-CRISPASR_GRANITE_ENC_F16=1 \
-crispasr-quantize granite-speech-4.1-2b-plus-f16.gguf \
+STELNETTTS_GRANITE_ENC_F16=1 \
+stelnettts-quantize granite-speech-4.1-2b-plus-f16.gguf \
                   granite-speech-4.1-2b-plus-q4_k-f16enc.gguf q4_k
 
 # Aggressive Q4_K everywhere (encoder + projector + LLM)
-CRISPASR_GRANITE_QUANT_ALL=1 \
-crispasr-quantize granite-speech-4.1-2b-plus-f16.gguf \
+STELNETTTS_GRANITE_QUANT_ALL=1 \
+stelnettts-quantize granite-speech-4.1-2b-plus-f16.gguf \
                   granite-speech-4.1-2b-plus-q4_k-mini.gguf q4_k
 ```
 

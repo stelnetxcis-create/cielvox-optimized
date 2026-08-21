@@ -6,7 +6,7 @@ ts() {
 }
 
 log() {
-    echo "[$(ts)] crispasr-docker: $*" >&2
+    echo "[$(ts)] stelnettts-docker: $*" >&2
 }
 
 fail_dir_not_writable() {
@@ -16,7 +16,7 @@ fail_dir_not_writable() {
     ls -ld "$dir" >&2 || true
     log "       If this is a bind mount, create it before starting the container and chown it:"
     log "       mkdir -p cache models && sudo chown -R $(id -u):$(id -g) cache models"
-    log "       Or set CRISPASR_UID/CRISPASR_GID in .env to match the host owner."
+    log "       Or set STELNETTTS_UID/STELNETTTS_GID in .env to match the host owner."
     exit 70
 }
 
@@ -36,24 +36,24 @@ ensure_writable_dir() {
     fi
 }
 
-SERVER_HOST="${CRISPASR_SERVER_HOST:-0.0.0.0}"
-SERVER_PORT="${CRISPASR_PORT:-${CRISPASR_SERVER_PORT:-8080}}"
-MODEL_PATH="${CRISPASR_MODEL:-/models/model.gguf}"
-LANGUAGE="${CRISPASR_LANGUAGE:-auto}"
-BACKEND="${CRISPASR_BACKEND:-}"
-AUTO_DOWNLOAD="${CRISPASR_AUTO_DOWNLOAD:-0}"
-CACHE_DIR="${CRISPASR_CACHE_DIR:-/cache}"
-EXTRA_ARGS="${CRISPASR_EXTRA_ARGS:-}"
-API_KEYS="${CRISPASR_API_KEYS:-}"
-USE_CUDA_COMPAT="${CRISPASR_USE_CUDA_COMPAT:-0}"
-VERBOSE="${CRISPASR_VERBOSE:-0}"
+SERVER_HOST="${STELNETTTS_SERVER_HOST:-0.0.0.0}"
+SERVER_PORT="${STELNETTTS_PORT:-${STELNETTTS_SERVER_PORT:-8080}}"
+MODEL_PATH="${STELNETTTS_MODEL:-/models/model.gguf}"
+LANGUAGE="${STELNETTTS_LANGUAGE:-auto}"
+BACKEND="${STELNETTTS_BACKEND:-}"
+AUTO_DOWNLOAD="${STELNETTTS_AUTO_DOWNLOAD:-0}"
+CACHE_DIR="${STELNETTTS_CACHE_DIR:-/cache}"
+EXTRA_ARGS="${STELNETTTS_EXTRA_ARGS:-}"
+API_KEYS="${STELNETTTS_API_KEYS:-}"
+USE_CUDA_COMPAT="${STELNETTTS_USE_CUDA_COMPAT:-0}"
+VERBOSE="${STELNETTTS_VERBOSE:-0}"
 
 # ---------------------------------------------------------------------------
 # Startup diagnostics. Always emit a concise build banner; emit a fuller
-# environment + GPU dump when CRISPASR_VERBOSE=1. Driver-mismatch tickets
+# environment + GPU dump when STELNETTTS_VERBOSE=1. Driver-mismatch tickets
 # (#31) need a single self-contained log block to triage; this gives it.
 # ---------------------------------------------------------------------------
-log "=== crispasr container starting ==="
+log "=== stelnettts container starting ==="
 if [[ -r /app/build-info.txt ]]; then
     while IFS= read -r line; do
         log "build-info: $line"
@@ -98,17 +98,17 @@ else
     log "no /dev/dri/renderD* nodes (AMD/Intel Vulkan GPU not passed through — add --device=/dev/dri and --group-add video --group-add render to docker run)"
 fi
 
-# CRISPASR_USE_CUDA_COMPAT=1 — opt-in for hosts whose driver is OLDER
+# STELNETTTS_USE_CUDA_COMPAT=1 — opt-in for hosts whose driver is OLDER
 # than the runtime needs. The Dockerfile ships compat libs on disk but
 # does NOT register them in ldconfig (that broke newer drivers per #31).
 # Setting this var prepends the compat dir to LD_LIBRARY_PATH for this
 # process tree so the container can fall back to forward-compatibility.
 if [[ "$USE_CUDA_COMPAT" == "1" ]]; then
     if [[ -d /usr/local/cuda/compat ]]; then
-        log "CRISPASR_USE_CUDA_COMPAT=1 — prepending /usr/local/cuda/compat to LD_LIBRARY_PATH"
+        log "STELNETTTS_USE_CUDA_COMPAT=1 — prepending /usr/local/cuda/compat to LD_LIBRARY_PATH"
         export LD_LIBRARY_PATH="/usr/local/cuda/compat:${LD_LIBRARY_PATH:-}"
     else
-        log "CRISPASR_USE_CUDA_COMPAT=1 set but /usr/local/cuda/compat does not exist (non-CUDA image)"
+        log "STELNETTTS_USE_CUDA_COMPAT=1 set but /usr/local/cuda/compat does not exist (non-CUDA image)"
     fi
 fi
 
@@ -116,15 +116,15 @@ fi
 # env, ggml device enumeration). This will trigger CUDA init in-process
 # so any GGML_LOG_ERROR from the driver/runtime mismatch lands in the
 # same log block as nvidia-smi.
-if [[ "$VERBOSE" == "1" ]] || [[ "${CRISPASR_DIAGNOSTICS:-0}" == "1" ]]; then
-    log "running 'crispasr --diagnostics':"
-    crispasr --diagnostics 2>&1 | sed 's/^/  /' >&2 || log "crispasr --diagnostics failed (continuing)"
+if [[ "$VERBOSE" == "1" ]] || [[ "${STELNETTTS_DIAGNOSTICS:-0}" == "1" ]]; then
+    log "running 'stelnettts --diagnostics':"
+    stelnettts --diagnostics 2>&1 | sed 's/^/  /' >&2 || log "stelnettts --diagnostics failed (continuing)"
 fi
 
-# CRISPASR_DIAGNOSTICS=1 — run diagnostics only, then exit.
+# STELNETTTS_DIAGNOSTICS=1 — run diagnostics only, then exit.
 # Useful for troubleshooting GPU issues (#31) without needing a model.
-if [[ "${CRISPASR_DIAGNOSTICS:-0}" == "1" ]]; then
-    log "CRISPASR_DIAGNOSTICS=1 — diagnostics-only mode, exiting."
+if [[ "${STELNETTTS_DIAGNOSTICS:-0}" == "1" ]]; then
+    log "STELNETTTS_DIAGNOSTICS=1 — diagnostics-only mode, exiting."
     exit 0
 fi
 
@@ -133,7 +133,7 @@ ensure_writable_dir "$CACHE_DIR" "cache"
 if [[ "$AUTO_DOWNLOAD" != "1" ]]; then
     if [[ ! -r "$MODEL_PATH" ]]; then
         log "ERROR: model '$MODEL_PATH' is not readable."
-        log "       Mount a model under /models, set CRISPASR_MODEL to a readable file, or set CRISPASR_AUTO_DOWNLOAD=1."
+        log "       Mount a model under /models, set STELNETTTS_MODEL to a readable file, or set STELNETTTS_AUTO_DOWNLOAD=1."
         if [[ -e "$(dirname "$MODEL_PATH")" ]]; then
             ls -ld "$(dirname "$MODEL_PATH")" >&2 || true
         fi
@@ -142,7 +142,7 @@ if [[ "$AUTO_DOWNLOAD" != "1" ]]; then
 fi
 
 declare -a args
-args=(crispasr --server --host "$SERVER_HOST" --port "$SERVER_PORT" --cache-dir "$CACHE_DIR")
+args=(stelnettts --server --host "$SERVER_HOST" --port "$SERVER_PORT" --cache-dir "$CACHE_DIR")
 
 if [[ "$AUTO_DOWNLOAD" == "1" ]]; then
     args+=(-m auto --auto-download)
@@ -158,7 +158,7 @@ if [[ -n "$LANGUAGE" ]]; then
     args+=(-l "$LANGUAGE")
 fi
 
-# CRISPASR_VERBOSE=1 also propagates `-v` to the binary so the per-request
+# STELNETTTS_VERBOSE=1 also propagates `-v` to the binary so the per-request
 # server logs include the build banner + per-stage timings. Useful for
 # bug reports — without this the binary's own log stream is silent on
 # the critical CUDA init lines.
@@ -166,7 +166,7 @@ if [[ "$VERBOSE" == "1" ]]; then
     args+=(-v)
 fi
 
-# API keys are read from CRISPASR_API_KEYS env var directly by the server
+# API keys are read from STELNETTTS_API_KEYS env var directly by the server
 # binary — do NOT pass as --api-keys CLI arg (visible in ps/top, issue #28).
 # The env var is already set by docker-compose.yml from the .env file.
 

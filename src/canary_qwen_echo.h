@@ -4,7 +4,7 @@
 // transcription, the Qwen3 LLM decoder falls back to its language prior and
 // echoes the task framing as a meta word instead of transcribing. Verified
 // against the NeMo SALM reference (nvidia/canary-qwen-2.5b): on a 0.1 s clip
-// both NeMo and CrispASR emit "Okay"; on ~0.3 s clips both emit "Transcript".
+// both NeMo and StelnetTTS emit "Okay"; on ~0.3 s clips both emit "Transcript".
 // These exact leading words are never a real ASR transcript under the
 // "Transcribe the following:" prompt, so the decode path strips them.
 //

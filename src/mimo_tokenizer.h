@@ -2,7 +2,7 @@
 
 // MiMo-Audio-Tokenizer encoder (PCM → 8-channel RVQ codes) public C ABI.
 //
-// Loads cstr/mimo-tokenizer-GGUF (the upstream XiaomiMiMo/MiMo-Audio-Tokenizer
+// Loads Xenna/mimo-tokenizer-GGUF (the upstream XiaomiMiMo/MiMo-Audio-Tokenizer
 // stripped to encoder-only). Used by the MiMo-V2.5-ASR runtime in
 // src/mimo_asr.cpp; not meant to be a standalone speech tokenizer model.
 //
@@ -35,7 +35,7 @@ struct mimo_tokenizer_context_params {
 
 struct mimo_tokenizer_context_params mimo_tokenizer_context_default_params(void);
 
-// Initialise from the encoder GGUF file (cstr/mimo-tokenizer-GGUF).
+// Initialise from the encoder GGUF file (Xenna/mimo-tokenizer-GGUF).
 // Returns nullptr on failure.
 struct mimo_tokenizer_context* mimo_tokenizer_init_from_file(const char* path_model,
                                                              struct mimo_tokenizer_context_params params);

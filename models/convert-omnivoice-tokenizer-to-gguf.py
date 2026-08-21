@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert the OmniVoice audio tokenizer (HiggsAudioV2TokenizerModel)
-from HuggingFace safetensors → GGUF F16 for the CrispASR `omnivoice` backend.
+from HuggingFace safetensors → GGUF F16 for the StelnetTTS `omnivoice` backend.
 
 The audio tokenizer lives in k2-fsa/OmniVoice/audio_tokenizer/ (or as a
 separate model at the same path in finetunes). It consists of:

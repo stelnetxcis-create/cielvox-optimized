@@ -3,7 +3,7 @@
 Loads a NeMo Parakeet-TDT model (e.g. nvidia/parakeet-tdt-0.6b-v2) and
 captures intermediate activations from the transducer decoding path —
 prediction network, joint network, and MAES beam search — so
-``crispasr-diff`` can validate the C++ MAES implementation step by step.
+``stelnettts-diff`` can validate the C++ MAES implementation step by step.
 
 This backend builds on the encoder-only ``parakeet.py`` backend by adding
 the transducer decoding components that greedy/MAES search needs:
@@ -39,7 +39,7 @@ Usage:
       --audio samples/jfk.wav \\
       --output /tmp/parakeet-maes-ref.gguf
 
-The intermediate stages allow crispasr-diff to pinpoint bugs before
+The intermediate stages allow stelnettts-diff to pinpoint bugs before
 running the full MAES loop:
   1. encoder_output_projected → validates joint.project_encoder
   2. decoder_initial → validates StatelessTransducerDecoder for blank

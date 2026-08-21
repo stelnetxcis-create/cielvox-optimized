@@ -1,4 +1,4 @@
-# CrispASR — Architecture
+# StelnetTTS — Architecture
 
 One-page dependency map for contributors. Start here if you need to
 know which file to edit for a given change, or which models would be
@@ -13,23 +13,23 @@ For the reasoning behind design choices see `LEARNINGS.md`.
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│ examples/cli/  — the crispasr binary                              │
+│ examples/cli/  — the stelnettts binary                              │
 │ ──────────────────────────────────────────────────────────────── │
-│   cli.cpp                   crispasr entry + --backend branch  │
+│   cli.cpp                   stelnettts entry + --backend branch  │
 │   whisper_params.h          shared params struct                  │
 │                                                                    │
-│   crispasr_backend.{h,cpp}  interface + factory + GGUF detect     │
-│   crispasr_backend_*.cpp    8 per-model adapter files             │
+│   stelnettts_backend.{h,cpp}  interface + factory + GGUF detect     │
+│   stelnettts_backend_*.cpp    8 per-model adapter files             │
 │     whisper (adapter is cli.cpp's historical path)                │
 │     parakeet  canary  cohere  granite                             │
 │     voxtral   voxtral4b  qwen3                                    │
 │                                                                    │
-│   crispasr_run.cpp          top-level pipeline dispatch           │
-│   crispasr_vad.{h,cpp}      Silero VAD slicing                    │
-│   crispasr_output.{h,cpp}   TXT/SRT/VTT/CSV/JSON/LRC writers      │
-│   crispasr_model_mgr.{h,cpp}  -m auto via curl/wget               │
-│   crispasr_aligner.{h,cpp}  canary_ctc forced alignment wrapper   │
-│   crispasr_llm_pipeline.h   shared LLM decode loop (CLI-side)     │
+│   stelnettts_run.cpp          top-level pipeline dispatch           │
+│   stelnettts_vad.{h,cpp}      Silero VAD slicing                    │
+│   stelnettts_output.{h,cpp}   TXT/SRT/VTT/CSV/JSON/LRC writers      │
+│   stelnettts_model_mgr.{h,cpp}  -m auto via curl/wget               │
+│   stelnettts_aligner.{h,cpp}  canary_ctc forced alignment wrapper   │
+│   stelnettts_llm_pipeline.h   shared LLM decode loop (CLI-side)     │
 ├───────────────────────────────────────────────────────────────────┤
 │ src/  — per-model C runtimes (public headers in include/)         │
 │ ──────────────────────────────────────────────────────────────── │
@@ -38,13 +38,13 @@ For the reasoning behind design choices see `LEARNINGS.md`.
 │   canary.{h,cpp}           NVIDIA Canary 1B v2                    │
 │   canary_ctc.{h,cpp}       Canary auxiliary CTC aligner           │
 │   cohere.{h,cpp}            Cohere Transcribe 2B                  │
-│   qwen3_asr.{h,cpp}        Qwen3-ASR 0.6B (speech-LLM)            │
+│   cielvox2_asr.{h,cpp}        Qwen3-ASR 0.6B (speech-LLM)            │
 │   voxtral.{h,cpp}           Voxtral-Mini-3B (speech-LLM)          │
 │   voxtral4b.{h,cpp}         Voxtral-Mini-4B-Realtime              │
 │   granite_speech.{h,cpp}    Granite 4.0-1B Speech                 │
 │   wav2vec2-ggml.{h,cpp}     Wav2vec2 CTC (cohere-align)           │
 ├───────────────────────────────────────────────────────────────────┤
-│ src/core/  — shared primitives (static library crispasr-core)    │
+│ src/core/  — shared primitives (static library stelnettts-core)    │
 │ ──────────────────────────────────────────────────────────────── │
 │   mel.{h,cpp}          log-mel spectrogram (NeMo + HF clusters)   │
 │   ffn.h                SwiGLU / plain-SiLU FFN (header-only)      │
@@ -69,7 +69,7 @@ Which model uses which shared helper, today:
 | cohere        |  ✔  |     |     |  ✔  |
 | voxtral       |  ✔  |  ✔  |  ✔ (LLM block) |  ✔  |
 | voxtral4b     |  ✔  |  ✔  |  ✔ (encoder + LLM) |  ✔  |
-| qwen3_asr     |  ✔  |  ✔  |     |  ✔  |
+| cielvox2_asr     |  ✔  |  ✔  |     |  ✔  |
 | granite_speech|     |  ✔  |     |  ✔  |
 | wav2vec2-ggml |     |     |     |     |
 | **whisper**   |     |     |     |     |
@@ -90,32 +90,32 @@ has a minimal model structure and hasn't been worth migrating.
 ## Dependency graph (edge direction: "depends on")
 
 ```
-             crispasr binary
+             stelnettts binary
                    │
     ┌──────────────┴──────────────┐
     │                              │
- cli.cpp                   crispasr_backend_*.cpp
+ cli.cpp                   stelnettts_backend_*.cpp
     │                              │
     │                              ├─→ whisper.{cpp,h}
     │                              ├─→ parakeet.{cpp,h} ──┐
     │                              ├─→ canary.{cpp,h}    │
     │                              ├─→ canary_ctc.*     ─┤
     │                              ├─→ cohere.{cpp,h}   │
-    │                              ├─→ qwen3_asr.*      ─┤
-    │                              ├─→ voxtral.{cpp,h}  ─┼──→ crispasr-core
+    │                              ├─→ cielvox2_asr.*      ─┤
+    │                              ├─→ voxtral.{cpp,h}  ─┼──→ stelnettts-core
     │                              ├─→ voxtral4b.*     ──┤    (src/core/)
     │                              ├─→ granite_speech.*─ ┘       │
     │                              └─→ canary_ctc (aligner)      │
     │                                                             │
-    ├─→ common (crispasr example lib)                          │
+    ├─→ common (stelnettts example lib)                          │
     ├─→ whisper (for the whisper-backend path)                    │
-    └─→ crispasr_{vad,output,model_mgr,aligner,run}               │
+    └─→ stelnettts_{vad,output,model_mgr,aligner,run}               │
                                                                    │
                                                                    ▼
                                                                  ggml
 ```
 
-Every non-whisper model links `crispasr-core`. The whisper model does
+Every non-whisper model links `stelnettts-core`. The whisper model does
 not, by design.
 
 ---
@@ -125,22 +125,22 @@ not, by design.
 | Looking for | Look in |
 |---|---|
 | `--backend` CLI flag parsing | `examples/cli/cli.cpp` (look for `"--backend"`) |
-| Backend auto-detection from GGUF | `examples/cli/crispasr_backend.cpp` → `crispasr_detect_backend_from_gguf` |
-| Feature capability matrix / warnings | `examples/cli/crispasr_run.cpp` → `warn_unsupported` |
-| `-m auto` download | `examples/cli/crispasr_model_mgr.cpp` |
-| VAD slicing | `examples/cli/crispasr_vad.{h,cpp}` |
-| SRT / VTT / JSON writers | `examples/cli/crispasr_output.{h,cpp}` |
-| CTC alignment for LLM backends | `examples/cli/crispasr_aligner.{h,cpp}` |
+| Backend auto-detection from GGUF | `examples/cli/stelnettts_backend.cpp` → `stelnettts_detect_backend_from_gguf` |
+| Feature capability matrix / warnings | `examples/cli/stelnettts_run.cpp` → `warn_unsupported` |
+| `-m auto` download | `examples/cli/stelnettts_model_mgr.cpp` |
+| VAD slicing | `examples/cli/stelnettts_vad.{h,cpp}` |
+| SRT / VTT / JSON writers | `examples/cli/stelnettts_output.{h,cpp}` |
+| CTC alignment for LLM backends | `examples/cli/stelnettts_aligner.{h,cpp}` |
 | Whisper code path (historical) | `examples/cli/cli.cpp` main(), post-dispatch |
-| Model-specific transcribe logic | `examples/cli/crispasr_backend_<X>.cpp` |
+| Model-specific transcribe logic | `examples/cli/stelnettts_backend_<X>.cpp` |
 | Model-specific mel / encoder / LLM | `src/<model>.cpp` |
 | Shared log-mel spectrogram | `src/core/mel.{h,cpp}` |
 | Shared SwiGLU FFN helper | `src/core/ffn.h` |
 | Shared Llama self-attention helper | `src/core/attention.h` |
 | Shared GGUF loading + weight map | `src/core/gguf_loader.{h,cpp}` |
-| Streaming session API (whisper / kyutai-stt / moonshine-streaming) | `src/crispasr_c_api.cpp` → `crispasr_session_stream_open` + `crispasr_stream_*` dispatch |
+| Streaming session API (whisper / kyutai-stt / moonshine-streaming) | `src/stelnettts_c_api.cpp` → `stelnettts_session_stream_open` + `stelnettts_stream_*` dispatch |
 | Native voxtral4b streaming (PLAN #7: incremental encoder + speculative prefill + live captions + decoder thread) | `src/voxtral4b.cpp` → `voxtral4b_stream_*` |
-| Mic capture (cross-platform via miniaudio) | `src/crispasr_mic.{h,cpp}` |
+| Mic capture (cross-platform via miniaudio) | `src/stelnettts_mic.{h,cpp}` |
 
 ---
 
@@ -153,16 +153,16 @@ Step-by-step with worked examples is in `README.md` →
 1. Implement `src/yourmodel.{h,cpp}` with a C API. Prefer
    `core_mel::compute`, `core_ffn::swiglu`, `core_attn::…`, and
    `core_gguf::…` over hand-rolling the equivalents.
-2. Wrap it in `examples/cli/crispasr_backend_yourmodel.cpp` (~120
-   LOC, see `crispasr_backend_parakeet.cpp` as the minimal template).
-3. Register in `examples/cli/crispasr_backend.cpp` factory + list,
-   add the architecture string to `crispasr_detect_backend_from_gguf`.
+2. Wrap it in `examples/cli/stelnettts_backend_yourmodel.cpp` (~120
+   LOC, see `stelnettts_backend_parakeet.cpp` as the minimal template).
+3. Register in `examples/cli/stelnettts_backend.cpp` factory + list,
+   add the architecture string to `stelnettts_detect_backend_from_gguf`.
 4. Link in `src/CMakeLists.txt` (new library) and
-   `examples/cli/CMakeLists.txt` (add to crispasr target).
+   `examples/cli/CMakeLists.txt` (add to stelnettts target).
 5. Optional: register the default quantised HF repo in
-   `crispasr_model_mgr.cpp` so `-m auto` works.
+   `stelnettts_model_mgr.cpp` so `-m auto` works.
 
-Regression-test by running `crispasr --backend yourmodel -m model.gguf
+Regression-test by running `stelnettts --backend yourmodel -m model.gguf
 -f samples/jfk.wav` before AND after your change and `diff`-ing the
 output. Bit-identical is the gate.
 

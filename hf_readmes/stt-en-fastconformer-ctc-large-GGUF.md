@@ -6,7 +6,7 @@ language:
 tags:
   - automatic-speech-recognition
   - gguf
-  - crispasr
+  - stelnettts
   - fastconformer
   - ctc
   - nemo
@@ -15,7 +15,7 @@ pipeline_tag: automatic-speech-recognition
 
 # stt-en-fastconformer-ctc-large-GGUF
 
-GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_large](https://huggingface.co/nvidia/stt_en_fastconformer_ctc_large) for [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_large](https://huggingface.co/nvidia/stt_en_fastconformer_ctc_large) for [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 | Quant | Size | Description |
 |---|---|---|
@@ -31,7 +31,7 @@ GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_large](https://huggingfac
 ## Usage
 
 ```bash
-crispasr --backend fastconformer-ctc -m stt-en-fastconformer-ctc-large-q4_k.gguf -f audio.wav
+stelnettts --backend fastconformer-ctc -m stt-en-fastconformer-ctc-large-q4_k.gguf -f audio.wav
 ```
 
 ## NeMo Family

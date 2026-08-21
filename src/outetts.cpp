@@ -21,8 +21,8 @@
 #include "core/bpe.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "outetts_wavtok.h"
 
 #include "ggml-backend.h"
@@ -54,7 +54,7 @@ namespace {
 static bool outetts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_OUTETTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_OUTETTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -887,7 +887,7 @@ extern "C" struct outetts_context* outetts_init_from_file(const char* path_model
         return nullptr;
     }
     core_cpu_backend::set_n_threads(c->backend_cpu, c->n_threads);
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend) {
         c->backend = c->backend_cpu;
     }

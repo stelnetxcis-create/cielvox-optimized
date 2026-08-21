@@ -12,8 +12,8 @@ Modes (comma-separated via --modes):
   ctc        CTC branch decode (hybrid TDT+CTC models), full attention
   local      change_attention_model("rel_pos_local_attn", [C, C]) — NeMo's
              documented long-form switch; C from --context (encoder frames,
-             1 frame = 80 ms). CrispASR equivalent:
-             CRISPASR_PARAKEET_ATT_CONTEXT="C,C"
+             1 frame = 80 ms). StelnetTTS equivalent:
+             STELNETTTS_PARAKEET_ATT_CONTEXT="C,C"
   local-ctc  local attention + CTC branch
   buffered   BatchedFrameASRTDT chunked long-form inference (NeMo's
              recommended long-form path; --chunk-len/--total-buffer;
@@ -21,7 +21,7 @@ Modes (comma-separated via --modes):
 
 Measured on the issue #89 reporter's 60 s clip (recall vs whisper-large-v3):
 plain 11 %, ctc 1 %, local[128] 46 %, buffered 15-51 % — all worse than
-CrispASR's shipped VAD-cap + gap-fill pipeline (97 %). Score outputs with
+StelnetTTS's shipped VAD-cap + gap-fill pipeline (97 %). Score outputs with
 tools/asr_coverage_score.py.
 
 macOS note: NeMo imports eventlet-adjacent code that breaks; the

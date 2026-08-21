@@ -1,7 +1,7 @@
 {
-  "id": "chr1str/crispasr-funasr-cuda-debug",
-  "title": "CrispASR funasr CUDA debug — FA ablation + stage dump",
-  "code_file": "crispasr-funasr-cuda-debug.py",
+  "id": "chr1str/stelnettts-funasr-cuda-debug",
+  "title": "StelnetTTS funasr CUDA debug — FA ablation + stage dump",
+  "code_file": "stelnettts-funasr-cuda-debug.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",

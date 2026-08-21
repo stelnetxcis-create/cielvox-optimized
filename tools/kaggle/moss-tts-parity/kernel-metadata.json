@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-moss-tts-parity",
-  "title": "CrispASR moss tts parity",
-  "code_file": "crispasr-moss-tts-parity.py",
+  "id": "chr1str/stelnettts-moss-tts-parity",
+  "title": "StelnetTTS moss tts parity",
+  "code_file": "stelnettts-moss-tts-parity.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

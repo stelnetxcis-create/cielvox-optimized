@@ -4,7 +4,7 @@ Instruments the HuggingFace `Qwen3ASRForConditionalGeneration` forward
 pass with per-layer hooks and emits a dict of captured activations
 following the stage contract in `tools/dump_reference.py`.
 
-Mechanical port of `models/qwen3-asr-reference-dump.py` into the new
+Mechanical port of `models/cielvox2-asr-reference-dump.py` into the new
 modular interface. The only differences from the legacy script:
 
   1. dump() takes `stages: set[str]` and only captures the stages the
@@ -40,7 +40,7 @@ DEFAULT_STAGES = [
     "llm_logits",
     "llm_argmax",
     "generated_text",
-    # Trace stages for the full-prompt end-to-end diff (qwen3-asr-test-trace).
+    # Trace stages for the full-prompt end-to-end diff (cielvox2-asr-test-trace).
     # These go through processor.apply_chat_template() to build a prompt that
     # matches what the wrapper uses internally, splice audio embeds in, and
     # run one forward pass so the C++ side can diff a bit-identical prompt.
@@ -167,7 +167,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     # (apply_chat_template → processor → embed → splice audio → text_model
     # forward → lm_head). It gives the C++ side a bit-identical ground truth
     # for the "prompt build + first-forward" path, which is what
-    # qwen3-asr-test-trace checks.
+    # cielvox2-asr-test-trace checks.
     trace_keys = {
         "trace_input_ids", "trace_audio_pad_pos", "trace_inputs_embeds",
         "trace_first_logits", "trace_generated_ids", "llm_input_ids",
@@ -232,7 +232,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
                 logits = lm_head(hidden)                              # (1, T, V)
             if "llm_logits" in stages:
                 # Full per-token logits in ne-order [vocab, T] so the existing
-                # qwen3-asr-test-llm driver can compare element-wise.
+                # cielvox2-asr-test-llm driver can compare element-wise.
                 full = logits[0].detach().cpu().float().numpy()       # (T, V)
                 out["llm_logits"] = full.T.copy()                      # (V, T)
             if "llm_argmax" in stages:

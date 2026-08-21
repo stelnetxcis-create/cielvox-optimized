@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-zonos-tts-gpu-test",
-  "title": "crispasr-zonos-tts-gpu-test",
-  "code_file": "crispasr-zonos-tts-gpu-test.py",
+  "id": "chr1str/stelnettts-zonos-tts-gpu-test",
+  "title": "stelnettts-zonos-tts-gpu-test",
+  "code_file": "stelnettts-zonos-tts-gpu-test.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

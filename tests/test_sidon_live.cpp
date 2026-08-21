@@ -1,6 +1,6 @@
 // Sidon live integration test — model load + 16 kHz speech restoration.
 //
-// Requires CRISPASR_MODEL_SIDON to point to a Sidon GGUF. Skips cleanly
+// Requires STELNETTTS_MODEL_SIDON to point to a Sidon GGUF. Skips cleanly
 // when the model is not available.
 
 #include <catch2/catch_test_macros.hpp>
@@ -95,9 +95,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("sidon speech restoration", "[integration][sidon]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_SIDON");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_SIDON");
     if (!model_path || !*model_path)
-        SKIP("CRISPASR_MODEL_SIDON not set");
+        SKIP("STELNETTTS_MODEL_SIDON not set");
 
     auto params = sidon_context_default_params();
     params.verbosity = 0;
@@ -172,7 +172,7 @@ TEST_CASE("sidon speech restoration", "[integration][sidon]") {
     //
     // This also exercises scheduler teardown/recreation on a persistent context.
     {
-        ScopedTestEnv full_decode("CRISPASR_SIDON_DECODER_CHUNK_FRAMES", "0");
+        ScopedTestEnv full_decode("STELNETTTS_SIDON_DECODER_CHUNK_FRAMES", "0");
         const auto full_output = sidon_restore(ctx, input.data(), (int)input.size());
         REQUIRE(full_output.size() == output.size());
         float max_abs_diff = 0.0f;
@@ -190,7 +190,7 @@ TEST_CASE("sidon speech restoration", "[integration][sidon]") {
     // these are close, not identical, and the DAC amplifies the difference — so
     // check the magnitudes too, since cosine alone is scale-blind.
     for (const char* mode : {"expand", "bucket-direct"}) {
-        ScopedTestEnv rpe("CRISPASR_SIDON_RPE", mode);
+        ScopedTestEnv rpe("STELNETTTS_SIDON_RPE", mode);
         const auto alt = sidon_restore(ctx, input.data(), (int)input.size());
         REQUIRE(alt.size() == output.size());
         double dot = 0.0, alt_sq = 0.0, ref_sq = 0.0;

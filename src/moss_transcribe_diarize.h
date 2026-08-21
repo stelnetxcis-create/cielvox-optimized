@@ -73,7 +73,7 @@ void moss_diarize_set_ask(struct moss_diarize_context* ctx, const char* instruct
 // Set a language hint injected into the system prompt. Pass NULL/"" to clear.
 void moss_diarize_set_language(struct moss_diarize_context* ctx, const char* lang);
 
-// ---- Stage helpers for differential testing (crispasr-diff) ----
+// ---- Stage helpers for differential testing (stelnettts-diff) ----
 
 float* moss_diarize_compute_mel(struct moss_diarize_context* ctx, const float* samples, int n_samples, int* out_n_mels,
                                 int* out_T_mel);

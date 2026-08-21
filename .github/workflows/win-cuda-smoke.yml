@@ -1,7 +1,7 @@
 # Fast, on-demand Windows CUDA compile probe (#302). Configures ggml-cuda with a
 # chosen CMAKE_CUDA_ARCHITECTURES and compiles a couple of ggml-cuda kernels —
 # just enough to hit (or clear) the `nvcc fatal: A single input file is required
-# for a non-link phase` that dropped crispasr-windows-x86_64-cuda from v0.8.23.
+# for a non-link phase` that dropped stelnettts-windows-x86_64-cuda from v0.8.23.
 # Dispatch with different arch strings to isolate whether Pascal/Volta (sm_60/61/70)
 # can go back on Windows now that /bigobj is guarded to C/CXX (not nvcc).
 name: Windows CUDA Smoke
@@ -37,7 +37,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release ^
             -DGGML_CUDA=ON ^
             -DCMAKE_CUDA_ARCHITECTURES="${{ inputs.arch }}" ^
-            -DCRISPASR_OPUS_FETCH=ON || exit /b 1
+            -DSTELNETTTS_OPUS_FETCH=ON || exit /b 1
           echo === compiling ggml-cpu + 2 CUDA kernels (verbose shows compiler commands) ===
           cmake --build build --verbose -- ^
             ggml-cpu ^

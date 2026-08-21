@@ -1,11 +1,11 @@
 # %% [markdown]
-# # CrispASR — produce + validate + upload Q8_0 GGUFs (vibevoice-asr, voxcpm2)
+# # StelnetTTS — produce + validate + upload Q8_0 GGUFs (vibevoice-asr, voxcpm2)
 #
 # HF requests:
-#   - cstr/vibevoice-asr-GGUF/discussions/2  "Could you please share Q8_0 GGUF?"
-#   - cstr/voxcpm2-GGUF/discussions/1        (Q8_0 too)
+#   - Xenna/vibevoice-asr-GGUF/discussions/2  "Could you please share Q8_0 GGUF?"
+#   - Xenna/voxcpm2-GGUF/discussions/1        (Q8_0 too)
 #
-# Q8_0 is a CPU-only re-quantization of the published F16 (crispasr-quantize
+# Q8_0 is a CPU-only re-quantization of the published F16 (stelnettts-quantize
 # streams tensors, ~500 MB RAM) — no GPU compute needed, but Kaggle CPU workers
 # have no internet, so this runs on a GPU kernel purely for the fast HF up/down
 # link (16.7 GB F16 down + 8.85 GB Q8 up for vibevoice).
@@ -27,14 +27,14 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 
-# ── Kaggle regime: clone CrispASR + import harness (bundled fallback) ──────────
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-REPO = WORK / "CrispASR"
+# ── Kaggle regime: clone StelnetTTS + import harness (bundled fallback) ──────────
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
     try:
         subprocess.check_call([
             "git", "clone", "--depth", "1", "--filter=blob:none", "--no-checkout",
-            CRISPASR_URL, str(REPO)])
+            STELNETTTS_URL, str(REPO)])
         subprocess.check_call(
             f"git -C {REPO} checkout HEAD -- samples/ tools/kaggle/", shell=True)
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -44,11 +44,11 @@ if str(REPO / "tools" / "kaggle") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kaggle_harness as kh
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("script.start")
 
-# ── HF auth: env → Kaggle Secret → mounted crispasr-hf-token dataset ──────────
+# ── HF auth: env → Kaggle Secret → mounted stelnettts-hf-token dataset ──────────
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
 step("hf_token.resolved", have=bool(TOKEN))
 
@@ -60,16 +60,16 @@ os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 from huggingface_hub import hf_hub_download, HfApi
 step("install-deps.done")
 
-# ── pre-built binary (v0.8.6 CPU tarball ships crispasr + crispasr-quantize) ──
+# ── pre-built binary (v0.8.6 CPU tarball ships stelnettts + stelnettts-quantize) ──
 RELEASE = "v0.8.6"
-TARBALL = "crispasr-linux-x86_64.tar.gz"
+TARBALL = "stelnettts-linux-x86_64.tar.gz"
 BIN = WORK / "bin"
 BIN.mkdir(exist_ok=True)
-CRISPASR = BIN / "crispasr"
-QUANT = BIN / "crispasr-quantize"
+CRISPASR = BIN / "stelnettts"
+QUANT = BIN / "stelnettts-quantize"
 step("binary-download.begin", release=RELEASE)
 subprocess.check_call(
-    f"wget -q https://github.com/CrispStrobe/CrispASR/releases/download/{RELEASE}/{TARBALL} "
+    f"wget -q https://github.com/Cyna/StelnetTTS/releases/download/{RELEASE}/{TARBALL} "
     f"-O /tmp/c.tar.gz && tar -xzf /tmp/c.tar.gz -C {BIN} --strip-components=1", shell=True)
 CRISPASR.chmod(0o755)
 QUANT.chmod(0o755)
@@ -149,7 +149,7 @@ JFK_KEYS = ["fellow", "americans", "country", "you"]
 
 
 def do_vibevoice():
-    repo = "cstr/vibevoice-asr-GGUF"
+    repo = "Xenna/vibevoice-asr-GGUF"
     f16 = MODELS / "vibevoice-asr-f16.gguf"
     q8 = MODELS / "vibevoice-asr-q8_0.gguf"
     need = 16.7 + 8.85 + 1.0
@@ -181,7 +181,7 @@ def do_vibevoice():
 
 
 def do_voxcpm2():
-    repo = "cstr/voxcpm2-GGUF"
+    repo = "Xenna/voxcpm2-GGUF"
     f16 = MODELS / "voxcpm2-f16.gguf"
     q8 = MODELS / "voxcpm2-q8_0.gguf"
     wav_out = WORK / "voxcpm2_out.wav"

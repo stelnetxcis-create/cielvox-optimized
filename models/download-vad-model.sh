@@ -90,13 +90,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Check if 'crispasr' is available in the system PATH
-if command -v crispasr >/dev/null 2>&1; then
-    # If found, use 'crispasr' (relying on PATH resolution)
-    whisper_cmd="crispasr"
+# Check if 'stelnettts' is available in the system PATH
+if command -v stelnettts >/dev/null 2>&1; then
+    # If found, use 'stelnettts' (relying on PATH resolution)
+    whisper_cmd="stelnettts"
 else
     # If not found, use the local build version
-    whisper_cmd="./build/bin/crispasr"
+    whisper_cmd="./build/bin/stelnettts"
 fi
 
 printf "Done! Model '%s' saved in '%s/ggml-%s.bin'\n" "$model" "$models_path" "$model"

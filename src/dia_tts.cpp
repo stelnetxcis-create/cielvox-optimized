@@ -40,8 +40,8 @@
 #include "core/conv.h"
 #include "core/dac_decoder.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (§232 dia GPU path)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (§232 dia GPU path)
+#include "core/stelnettts_env.h"
 #if defined(GGML_USE_METAL)
 #include "ggml-metal.h" // core_cpu_backend::is_metal(§232 Metal-only GPU default)
 #endif
@@ -65,7 +65,7 @@
 static bool dia_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_DIA_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_DIA_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -843,12 +843,12 @@ struct dia_tts_context* dia_tts_init_from_file(const char* path_model, struct di
     //     Kaggle CUDA re-run confirms the fix. Mirrors LEARNING 34's
     //     ggml_backend_is_metal gate (here Metal is the *validated* one).
     ctx->backend_cpu = core_cpu_backend::init();
-    const char* gpu_env = crispasr_env::get("CRISPASR_DIA_TTS_GPU");
+    const char* gpu_env = stelnettts_env::get("STELNETTTS_DIA_TTS_GPU");
     const bool force_gpu = gpu_env && std::atoi(gpu_env) != 0;
     const bool force_cpu = gpu_env && std::atoi(gpu_env) == 0;
     ctx->backend = ctx->backend_cpu;
     if (!force_cpu && (force_gpu || params.use_gpu)) {
-        ggml_backend_t gpu = crispasr_init_gpu_backend();
+        ggml_backend_t gpu = stelnettts_init_gpu_backend();
         if (gpu) {
             bool is_metal = false;
 #if defined(GGML_USE_METAL)
@@ -1267,7 +1267,7 @@ float* dia_tts_synthesize(struct dia_tts_context* ctx, const char* text, int* ou
 
     // DIA_DECODE_CODES=path: isolate the DAC. Load post-revert codebook (T*9 int32,
     // interleaved [frame*9+ch]) and decode it directly, bypassing generation.
-    if (const char* cp = crispasr_env::get("CRISPASR_DIA_DECODE_CODES")) {
+    if (const char* cp = stelnettts_env::get("STELNETTTS_DIA_DECODE_CODES")) {
         std::vector<uint32_t> codes;
         FILE* f = fopen(cp, "rb");
         if (f) {
@@ -1322,7 +1322,7 @@ float* dia_tts_synthesize(struct dia_tts_context* ctx, const char* text, int* ou
     // TEMP: limit for CPU testing (full 3072 steps impractical on this CPU).
     // Override with DIA_MAX_STEPS for longer prompts on faster backends.
     uint32_t step_cap = 200;
-    if (const char* ms = crispasr_env::get("CRISPASR_DIA_MAX_STEPS"))
+    if (const char* ms = stelnettts_env::get("STELNETTTS_DIA_MAX_STEPS"))
         step_cap = (uint32_t)atoi(ms);
     if (max_gen > step_cap)
         max_gen = step_cap;
@@ -1333,12 +1333,12 @@ float* dia_tts_synthesize(struct dia_tts_context* ctx, const char* text, int* ou
     // DIA_FORCE_TOKENS=f   : teacher-force per-step input from file f (N*9 int32 raw); caps max_gen=N
     // DIA_DUMP_STEPLOGITS=f: append per-step [uncond(9*V) | cond(9*V)] f32 to file f
     // DIA_DUMP_DIR=d       : write step-0 stage dumps (encoder/cross/ca/final/logits) under dir d
-    const bool dia_greedy = crispasr_env::get("CRISPASR_DIA_GREEDY") != nullptr;
-    const bool dia_dump_tokens = crispasr_env::get("CRISPASR_DIA_DUMP_TOKENS") != nullptr;
-    const char* dia_dump_dir = crispasr_env::get("CRISPASR_DIA_DUMP_DIR");
+    const bool dia_greedy = stelnettts_env::get("STELNETTTS_DIA_GREEDY") != nullptr;
+    const bool dia_dump_tokens = stelnettts_env::get("STELNETTTS_DIA_DUMP_TOKENS") != nullptr;
+    const char* dia_dump_dir = stelnettts_env::get("STELNETTTS_DIA_DUMP_DIR");
     auto dia_dpath = [&](const char* name) { return std::string(dia_dump_dir ? dia_dump_dir : ".") + "/" + name; };
     std::vector<int32_t> dia_forced;
-    if (const char* fp = crispasr_env::get("CRISPASR_DIA_FORCE_TOKENS")) {
+    if (const char* fp = stelnettts_env::get("STELNETTTS_DIA_FORCE_TOKENS")) {
         FILE* f = fopen(fp, "rb");
         if (f) {
             int32_t v;
@@ -1350,7 +1350,7 @@ float* dia_tts_synthesize(struct dia_tts_context* ctx, const char* text, int* ou
                 dia_forced.size() / m.n_output_heads);
     }
     const bool dia_force = !dia_forced.empty();
-    const char* dia_steplogits_path = crispasr_env::get("CRISPASR_DIA_DUMP_STEPLOGITS");
+    const char* dia_steplogits_path = stelnettts_env::get("STELNETTTS_DIA_DUMP_STEPLOGITS");
     if (dia_force)
         max_gen = (uint32_t)(dia_forced.size() / m.n_output_heads);
     if (dia_steplogits_path)
@@ -1602,7 +1602,7 @@ float* dia_tts_synthesize(struct dia_tts_context* ctx, const char* text, int* ou
         // (upload of the reordered past KV + readback/append of new K/V) vs the
         // total decode, to decide whether a device-resident KV rewrite is worth
         // its correctness risk. Gated by DIA_BENCH.
-        const bool kv_bench = crispasr_env::get("CRISPASR_DIA_BENCH") != nullptr;
+        const bool kv_bench = stelnettts_env::get("STELNETTTS_DIA_BENCH") != nullptr;
         double kv_up_us = 0.0, kv_rb_us = 0.0;
         for (uint32_t step = 0; step < max_gen; step++) {
             ctx->current_position = step;

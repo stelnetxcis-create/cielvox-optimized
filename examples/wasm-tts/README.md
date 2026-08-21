@@ -1,6 +1,6 @@
-# CrispASR WASM TTS demo (on-device, multithreaded)
+# StelnetTTS WASM TTS demo (on-device, multithreaded)
 
-Fully client-side neural TTS (kokoro) running in the browser via CrispASR's WebAssembly build —
+Fully client-side neural TTS (kokoro) running in the browser via StelnetTTS's WebAssembly build —
 no cloud, no API key. Synthesis runs **multithreaded** on a proxied pthread (`PROXY_TO_PTHREAD`),
 driven from a Web Worker so the main thread never blocks.
 
@@ -29,7 +29,7 @@ Into this directory:
 - `cmudict.dict` — English G2P dictionary; **must** be loaded so pronunciation is correct
 - German also needs `olaph_de.txt` + `espeak_de.tsv`
 
-The worker writes `cmudict.dict` to `/home/web_user/.cache/crispasr/` (kokoro's G2P cache path) — do
+The worker writes `cmudict.dict` to `/home/web_user/.cache/stelnettts/` (kokoro's G2P cache path) — do
 not change that path or pronunciation garbles.
 
 ## 3. Run

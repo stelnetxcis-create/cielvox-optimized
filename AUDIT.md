@@ -1,4 +1,4 @@
-# CrispASR / CrispLens / cloud-backup Audit
+# StelnetTTS / CrispLens / cloud-backup Audit
 
 Date: 2026-05-14
 
@@ -19,13 +19,13 @@ that path for read-only service checks.
 
 The architecture makes sense as a three-part system:
 
-- `CrispASR` is the local/native ASR runtime and can run as an
+- `StelnetTTS` is the local/native ASR runtime and can run as an
   OpenAI-compatible persistent HTTP transcription server.
 - `CrispLens` is the media/face/video indexing application. It has partial
   video ingest support: representative frame extraction, face recognition on
   frames, optional transcript storage, and VLM enrichment using the transcript.
   It currently uses `faster_whisper`, OpenAI Whisper, or Gladia for video
-  transcription; CrispASR would be a sensible additional provider, not a
+  transcription; StelnetTTS would be a sensible additional provider, not a
   required existing dependency. Its stored video transcripts are now included
   in browse/path search and semantic text embeddings.
 - `cloud-backup` is the archive, manifest, blob, and VPS index layer. It can
@@ -49,13 +49,13 @@ listed below.
 
 ## Verified Codebases
 
-- `CrispASR`: `/Users/christianstrobele/code/CrispASR`
+- `StelnetTTS`: `/Users/christianstrobele/code/StelnetTTS`
 - `CrispLens`: `/Users/christianstrobele/code/CrispLens`
 - `cloud-backup`: `/Users/christianstrobele/code/cloud-backup`
 
 Relevant docs read:
 
-- `CrispASR`: `README.md`, `ARCHITECTURE.md`, `docs/architecture.md`,
+- `StelnetTTS`: `README.md`, `ARCHITECTURE.md`, `docs/architecture.md`,
   `docs/server.md`, `docs/install.md`, `PLAN.md` and related project docs.
 - `CrispLens`: `README.md`, `electron-app-v4/README.md`,
   `electron-app-v2/README.md`, `PLAN.md`, `config.example.yaml`.
@@ -79,16 +79,16 @@ Relevant docs read:
 5. `CrispLens` can already detect video files in `process_image()`, route them
    to `process_video()`, extract still frames, detect/recognize faces on those
    frames, and optionally store a transcript on the parent `images` row.
-   CrispASR is not currently one of the transcription providers.
+   StelnetTTS is not currently one of the transcription providers.
 
 ### Current Gap
 
-There is no direct CrispLens -> CrispASR integration found. That is not
-necessarily wrong, because your current architecture puts CrispASR
+There is no direct CrispLens -> StelnetTTS integration found. That is not
+necessarily wrong, because your current architecture puts StelnetTTS
 transcription in `vps_worker` on the VPS and locally in
 CrispSorter/crisp-index-server. If CrispLens is intended to search videos by
-their own transcript, however, CrispASR fits cleanly as an optional additional
-provider because CrispASR already exposes an OpenAI-compatible
+their own transcript, however, StelnetTTS fits cleanly as an optional additional
+provider because StelnetTTS already exposes an OpenAI-compatible
 `/v1/audio/transcriptions` endpoint.
 
 There is also no direct CrispLens -> `cb-api` integration found in the current
@@ -174,7 +174,7 @@ Tests run:
 - `../cloud-backup`: `python -m pytest -q` -> `57 passed in 101.28s`.
 - `../CrispLens`: `python -m pytest -q` -> originally `27 passed`; after
   transcript-search tests and wiring, `30 passed in 6.02s`.
-- `CrispASR`: attempted a pytest target, but no Python tests were collected
+- `StelnetTTS`: attempted a pytest target, but no Python tests were collected
   from the selected files.
 
 Additional audit tests added and run after SSH access was confirmed:
@@ -194,16 +194,16 @@ Additional audit tests added and run after SSH access was confirmed:
   - live Apache proxy shape check;
   - live Internxt CLI auth and worker queue checks.
 - Added `pytest.ini` to register the custom `live` marker.
-- `CrispASR`: `python -m pytest -q tests/test_audit_cross_stack.py -rsx`
+- `StelnetTTS`: `python -m pytest -q tests/test_audit_cross_stack.py -rsx`
   -> now `14 passed in 14.23s` after restarting `vps-worker.service`.
-- `CrispASR`: `python -m pytest -q tests/test_backend_config.py
+- `StelnetTTS`: `python -m pytest -q tests/test_backend_config.py
   tests/regression/test_driver_smoke.py tests/test_audit_cross_stack.py -rsx`
   -> `31 passed, 4 xfailed in 20.18s`.
 - `../CrispLens`: `python -m pytest -q` -> `30 passed in 6.86s`.
 - `../cloud-backup`: `python -m pytest -q` ->
   `57 passed in 85.58s`.
-- `CrispASR`: `cmake --build build --target crispasr-lib`,
-  `cmake --build build --target crispasr-cli crispasr-server -j2` -> passed
+- `StelnetTTS`: `cmake --build build --target stelnettts-lib`,
+  `cmake --build build --target stelnettts-cli stelnettts-server -j2` -> passed
   with existing compiler warnings only.
 
 ## Findings
@@ -224,7 +224,7 @@ Changes made:
   `VPS_SCRATCH_DIR` or `VPS_STORAGE_ROOT`.
 - `../cloud-backup/controller.py` now stages generated remote scripts and
   service files through configured scratch roots.
-- CrispASR cache and CLI/server scratch files now use `CRISPASR_SCRATCH_DIR`
+- StelnetTTS cache and CLI/server scratch files now use `STELNETTTS_SCRATCH_DIR`
   or cache-local scratch, not system temp.
 
 The live VPS confirmed this was not just theoretical before the fix: deployed
@@ -234,14 +234,14 @@ failure mode the configured-scratch rule is meant to prevent after the patched
 code is deployed/restarted.
 
 The local `../.env` now contains `CRISPLENS_SCRATCH_DIR`,
-`CLOUD_BACKUP_SCRATCH_DIR`, `CRISPASR_SCRATCH_DIR`, and `VPS_SCRATCH_DIR`.
+`CLOUD_BACKUP_SCRATCH_DIR`, `STELNETTTS_SCRATCH_DIR`, and `VPS_SCRATCH_DIR`.
 
 ### Critical: `/Volumes/backups` Is Effectively Full
 
 `df -h /Volumes/backups` shows a 1.9 TiB volume with about 13 GiB available and
 capacity reported as 100%. Current large observed directories include:
 
-- `/Volumes/backups/ai/crispasr`: 166 GB
+- `/Volumes/backups/ai/stelnettts`: 166 GB
 - `/Volumes/backups/ai/huggingface-hub`: 280 GB
 - `/Volumes/backups/texte`: 39 GB
 
@@ -347,7 +347,7 @@ The live CrispLens DB is also small: 72 images and 48 description embeddings.
 So neither the VPS catalog nor the media index has yet validated the target
 TB-scale behavior.
 
-### Medium: CrispLens Has Partial Video Search Support, But Not CrispASR ASR
+### Medium: CrispLens Has Partial Video Search Support, But Not StelnetTTS ASR
 
 CrispLens does already have video support in code:
 
@@ -372,9 +372,9 @@ Current transcription providers are:
 - `openai_whisper`
 - `gladia`
 
-There is no CrispASR provider despite CrispASR already exposing an
+There is no StelnetTTS provider despite StelnetTTS already exposing an
 OpenAI-compatible transcription endpoint. That is not inherently a bug if
-CrispASR transcription remains owned by `vps_worker` and
+StelnetTTS transcription remains owned by `vps_worker` and
 CrispSorter/crisp-index-server. It is a reasonable future enhancement for
 CrispLens if you want video transcript search inside the image/video gallery.
 
@@ -511,15 +511,15 @@ entire TB-scale corpus in browser IndexedDB without aggressive caps.
 3. Keep the live `/etc/cb-api.env` and local `../.env` aligned on
    `CB_API_STORAGE_ROOT`, `CB_API_LANCE_ROOT`, and `XDG_CACHE_HOME`; keep
    `CB_API_SHARD_ROOT` unset while the target storage is CIFS/SMB.
-4. CrispLens now has CrispASR transcription entry points in all relevant
-   surfaces: v2/FastAPI can use either CrispASR's OpenAI-compatible HTTP
-   endpoint or the local `crispasr` CLI wrapper, and v4/Electron standalone can
+4. CrispLens now has StelnetTTS transcription entry points in all relevant
+   surfaces: v2/FastAPI can use either StelnetTTS's OpenAI-compatible HTTP
+   endpoint or the local `stelnettts` CLI wrapper, and v4/Electron standalone can
    call the CLI wrapper through IPC. v4 local and server image schemas now store
    `media_type`, duration fields, and `transcript`, and local/server search
    include transcript text. Mobile/Capacitor now has native wrappers: iOS wires
-   the `CrispASR` plugin name, audio extraction, and the vendored framework
+   the `StelnetTTS` plugin name, audio extraction, and the vendored framework
    entry point; Android decodes media with `MediaCodec`, resamples to 16 kHz
-   mono, calls CrispASR through JNI, and returns transcript segments.
+   mono, calls StelnetTTS through JNI, and returns transcript segments.
 5. Decide and document the index data policy: which clients may push
    `full_text`, chunk embeddings, and blobs; define per-collection caps.
 6. Continue hardening `vps_worker.py` for provider-specific retry/resume and
@@ -534,7 +534,7 @@ Conceptually sound and now correctly wired for the current SSH-only deployment
 shape: cb-api and CrispLens are healthy over VPS localhost, cb-api uses attached
 storage for blobs/LanceDB/cache, `CB_API_SHARD_ROOT` is intentionally unset on
 CIFS, configured scratch roots avoid system temp in audited production paths,
-and CrispLens can create/search video transcripts through CrispASR in v2 and
+and CrispLens can create/search video transcripts through StelnetTTS in v2 and
 v4/Electron standalone. The v4 Capacitor path now has a native iOS plugin
 skeleton and JavaScript wrapper; Android still needs a packaged runtime before
 offline mobile transcription can work there. The worker/index paths also still
@@ -581,11 +581,11 @@ without downloading new models:
 
 - `/Volumes/backups` was writable but nearly full (`~1.3 GiB` free), so only
   existing models/caches were used.
-- CrispASR transcribed `samples/jfk.mp3` with existing
-  `/Volumes/backups/ai/crispasr/moonshine-tiny-q4_k.gguf` and
-  `/Volumes/backups/ai/crispasr/tokenizer.bin`.
+- StelnetTTS transcribed `samples/jfk.mp3` with existing
+  `/Volumes/backups/ai/stelnettts/moonshine-tiny-q4_k.gguf` and
+  `/Volumes/backups/ai/stelnettts/tokenizer.bin`.
 - The JSON transcript was written to
-  `/Volumes/backups/crispasr-scratch/live-transcript/jfk-moonshine-20260516T132159.json`.
+  `/Volumes/backups/stelnettts-scratch/live-transcript/jfk-moonshine-20260516T132159.json`.
 - CrispLens imported that JSON into
   `/Volumes/backups/crisplens-live-tests/transcript-import-1778930531476.db`
   and transcript search for `ask not what your country` returned the imported
@@ -594,7 +594,7 @@ without downloading new models:
   `python -m pytest -q tests/test_audit_cross_stack.py` (`16 passed`),
   `npm run build` in `../CrispLens/electron-app-v4/renderer`,
   `npm audit --audit-level=moderate` in both v4 package roots, and
-  `CRISPASR_SCRATCH_DIR=/Volumes/backups/crispasr-scratch build/bin/test-crispasr-cache`.
+  `STELNETTTS_SCRATCH_DIR=/Volumes/backups/stelnettts-scratch build/bin/test-stelnettts-cache`.
 - Vite warning cleanup was completed in the v4 renderer: an explicit
   `svelte.config.js` was added, ineffective mixed static/dynamic imports were
   made explicit static imports, and the `jeep-sqlite` Node `crypto` fallback was
@@ -604,13 +604,13 @@ without downloading new models:
 After `/Volumes/backups` was cleaned up (`~145 GiB` free), the postponed live
 checks were expanded:
 
-- CrispASR transcribed `samples/jfk.mp3` with existing local models:
+- StelnetTTS transcribed `samples/jfk.mp3` with existing local models:
   moonshine, fastconformer-ctc, and data2vec.
 - A real video test used
   `/Users/christianstrobele/Downloads/PURplus-Was_darf_ein_Detektiv.mp4`.
   A 70 second audio crop was written under
-  `/Volumes/backups/crispasr-scratch/live-video/`, transcribed with existing
-  `/Volumes/backups/ai/crispasr/canary-1b-v2-q4_k.gguf`, imported into
+  `/Volumes/backups/stelnettts-scratch/live-video/`, transcribed with existing
+  `/Volumes/backups/ai/stelnettts/canary-1b-v2-q4_k.gguf`, imported into
   CrispLens v4, and found by transcript search for `Detektivarbeit`.
 - cloud-backup live API checks ran via SSH against VPS localhost `cb-api`.
   The master catalog was backed up first under
@@ -622,7 +622,7 @@ checks were expanded:
 - cloud-backup deploy env examples and the shared local `.env` were reconciled
   with the live scratch/cache variables.
 - Remaining change classification was completed:
-  - CrispASR source/docs/tests: `AUDIT.md`, `PLAN.md`, `HISTORY.md`,
+  - StelnetTTS source/docs/tests: `AUDIT.md`, `PLAN.md`, `HISTORY.md`,
     scratch-root hardening in ASR test scripts/tools, `pytest.ini`, and
     `tests/test_audit_cross_stack.py`.
   - CrispLens source/docs/tests: `PLAN.md`, `HISTORY.md`,
@@ -635,17 +635,17 @@ checks were expanded:
     paths, deploy env examples, local/live tests, `readme.md`, `PLAN.md`, and
     `HISTORY.md`.
   - Unrelated or pre-existing local artifacts still need owner review before
-    any commit: CrispASR `.ccache/`, `docs/prompts/`,
+    any commit: StelnetTTS `.ccache/`, `docs/prompts/`,
     `tools/benchmark_asr_engines.results.json`, and
     `tools/kaggle-issue81-cuda-ab.py`.
 - iOS Capacitor smoke was completed locally. CocoaPods was run under the
-  existing Ruby 3.1.3 toolchain, `npx cap sync ios` detected the CrispASR
+  existing Ruby 3.1.3 toolchain, `npx cap sync ios` detected the StelnetTTS
   plugin, and `xcodebuild` built the iOS simulator app with derived data under
   `/Volumes/backups/crisplens-xcode-deriveddata`. The built app installed and
   launched on the iPhone 17 simulator as `com.crisplens.app`.
 - Android Capacitor packaging was completed for the v4 app. `@capacitor/android`
-  was added, the generated Android project was created, and the CrispASR
-  plugin now builds a native JNI bridge against the sibling CrispASR checkout.
+  was added, the generated Android project was created, and the StelnetTTS
+  plugin now builds a native JNI bridge against the sibling StelnetTTS checkout.
   The full debug APK builds with JDK 21 and Gradle cache on `/Volumes/backups`;
   the verified APK was copied to `/Volumes/backups/crisplens-android-builds/`
   before generated build outputs were cleaned from the repo volume.

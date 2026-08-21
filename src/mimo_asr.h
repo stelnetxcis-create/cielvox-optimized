@@ -4,7 +4,7 @@
 //
 // XiaomiMiMo/MiMo-V2.5-ASR pairs a 6-layer "input_local_transformer"
 // audio-token processor with a 36-layer Qwen2 LLM. Audio enters as
-// 8-channel RVQ codes from the SEPARATE `cstr/mimo-tokenizer-GGUF`
+// 8-channel RVQ codes from the SEPARATE `Xenna/mimo-tokenizer-GGUF`
 // model, which the host wires up via `mimo_asr_set_audio_tokens`
 // (or via the backend-level helper that does it for you).
 
@@ -25,7 +25,7 @@ struct mimo_asr_context_params {
 
 struct mimo_asr_context_params mimo_asr_context_default_params(void);
 
-// Initialise from the LM GGUF file (cstr/mimo-asr-GGUF).
+// Initialise from the LM GGUF file (Xenna/mimo-asr-GGUF).
 // Returns nullptr on failure.
 struct mimo_asr_context* mimo_asr_init_from_file(const char* path_model, struct mimo_asr_context_params params);
 
@@ -54,7 +54,7 @@ void mimo_asr_result_free(struct mimo_asr_result* r);
 // SentencePiece ▁→space). Returns empty string for out-of-range / special.
 const char* mimo_asr_token_text(struct mimo_asr_context* ctx, int id);
 
-// Set the path to the audio-tokeniser GGUF (cstr/mimo-tokenizer-GGUF).
+// Set the path to the audio-tokeniser GGUF (Xenna/mimo-tokenizer-GGUF).
 // Required before the first transcribe call. Returns 0 on success.
 int mimo_asr_set_tokenizer_path(struct mimo_asr_context* ctx, const char* path);
 

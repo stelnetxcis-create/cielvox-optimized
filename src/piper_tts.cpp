@@ -29,12 +29,12 @@
 #include "core/g2p_es.h"
 #include "core/g2p_fr.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "phonemizer.h" // strip_espeak_lang_markers (#169)
-// crispasr_cache is part of crispasr-lib, not piper-tts; guard behind CRISPASR_BUILD.
-#ifdef CRISPASR_BUILD
-#include "crispasr_cache.h"
+// stelnettts_cache is part of stelnettts-lib, not piper-tts; guard behind STELNETTTS_BUILD.
+#ifdef STELNETTTS_BUILD
+#include "stelnettts_cache.h"
 #define PIPER_HAS_CACHE 1
 #endif
 
@@ -57,7 +57,7 @@
 static bool piper_use_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_PIPER_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_PIPER_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 #endif
@@ -69,7 +69,7 @@ static bool piper_use_scalar() {
 static bool piper_tts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_PIPER_TTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_PIPER_TTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -90,12 +90,12 @@ struct piper_tts_bench_stage {
 
 // espeak-ng phonemizer (shared with kokoro.cpp).
 // Three modes:
-//   1. CRISPASR_HAVE_ESPEAK_NG — build-time linked (GPLv3 binary)
-//   2. CRISPASR_ESPEAK_DLOPEN  — dlopen at runtime (MIT-clean binary)
+//   1. STELNETTTS_HAVE_ESPEAK_NG — build-time linked (GPLv3 binary)
+//   2. STELNETTTS_ESPEAK_DLOPEN  — dlopen at runtime (MIT-clean binary)
 //   3. neither                 — popen("espeak-ng ...") subprocess fallback
-#ifdef CRISPASR_HAVE_ESPEAK_NG
+#ifdef STELNETTTS_HAVE_ESPEAK_NG
 #include <espeak-ng/speak_lib.h>
-#elif defined(CRISPASR_ESPEAK_DLOPEN)
+#elif defined(STELNETTTS_ESPEAK_DLOPEN)
 #include "espeak_dlopen.h"
 #endif
 
@@ -254,13 +254,13 @@ static const char* piper_redir = " 2>/dev/null";
 // Try in-process phonemization via linked or dlopen'd libespeak-ng.
 // Returns true if successful, false to fall through to popen.
 static bool phonemize_espeak_lib(const std::string& voice, const std::string& text, std::string& out) {
-#if defined(CRISPASR_HAVE_ESPEAK_NG)
+#if defined(STELNETTTS_HAVE_ESPEAK_NG)
     // Build-time linked (GPLv3 binary).
     std::lock_guard<std::mutex> g(g_piper_espeak_mu);
     if (g_piper_espeak_init_failed)
         return false;
     if (!g_piper_espeak_inited) {
-        const char* data_path = getenv("CRISPASR_ESPEAK_DATA_PATH");
+        const char* data_path = getenv("STELNETTTS_ESPEAK_DATA_PATH");
         int sr = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, data_path,
                                    espeakINITIALIZE_PHONEME_IPA | espeakINITIALIZE_DONT_EXIT);
         if (sr < 0) {
@@ -282,7 +282,7 @@ static bool phonemize_espeak_lib(const std::string& voice, const std::string& te
         }
     }
     return !out.empty();
-#elif defined(CRISPASR_ESPEAK_DLOPEN)
+#elif defined(STELNETTTS_ESPEAK_DLOPEN)
     // Runtime dlopen (MIT-clean binary).
     std::lock_guard<std::mutex> g(g_piper_espeak_mu);
     if (g_piper_espeak_init_failed)
@@ -294,9 +294,9 @@ static bool phonemize_espeak_lib(const std::string& voice, const std::string& te
             // dlopen failed — fall through to popen
             return false;
         }
-        const char* data_path = getenv("CRISPASR_ESPEAK_DATA_PATH");
-        int sr = dl.Initialize(CRISPASR_ESPEAK_AUDIO_OUTPUT_SYNCHRONOUS, 0, data_path,
-                               CRISPASR_ESPEAK_INITIALIZE_PHONEME_IPA | CRISPASR_ESPEAK_INITIALIZE_DONT_EXIT);
+        const char* data_path = getenv("STELNETTTS_ESPEAK_DATA_PATH");
+        int sr = dl.Initialize(STELNETTTS_ESPEAK_AUDIO_OUTPUT_SYNCHRONOUS, 0, data_path,
+                               STELNETTTS_ESPEAK_INITIALIZE_PHONEME_IPA | STELNETTTS_ESPEAK_INITIALIZE_DONT_EXIT);
         if (sr < 0) {
             fprintf(stderr, "piper_tts: espeak_Initialize failed (rc=%d)\n", sr);
             g_piper_espeak_init_failed = true;
@@ -310,7 +310,7 @@ static bool phonemize_espeak_lib(const std::string& voice, const std::string& te
     out.clear();
     const char* tp = text.c_str();
     while (tp && *tp) {
-        const char* phon = dl.TextToPhonemes((const void**)&tp, CRISPASR_ESPEAK_CHARS_UTF8, 0x02);
+        const char* phon = dl.TextToPhonemes((const void**)&tp, STELNETTTS_ESPEAK_CHARS_UTF8, 0x02);
         if (phon && *phon) {
             if (!out.empty())
                 out += ' ';
@@ -363,18 +363,18 @@ static void g2p_ensure_espeak_dict() {
     if (!home)
         home = getenv("USERPROFILE");
     if (home) {
-        std::string p = std::string(home) + "/.cache/crispasr/espeak_en_us.tsv";
+        std::string p = std::string(home) + "/.cache/stelnettts/espeak_en_us.tsv";
         int n = g2p_en::load_ipa_dict_file(g_g2p_ctx.espeak_ipa, p);
         if (n > 0) {
             fprintf(stderr, "piper_tts: espeak IPA dict loaded (%d entries)\n", n);
             return;
         }
     }
-    // Auto-download from HuggingFace (only when linked into crispasr-lib)
+    // Auto-download from HuggingFace (only when linked into stelnettts-lib)
 #ifdef PIPER_HAS_CACHE
-    std::string path = crispasr_cache::ensure_cached_file(
-        "espeak_en_us.tsv", "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/espeak_en_us.tsv",
-        /*quiet=*/true, "crispasr", "");
+    std::string path = stelnettts_cache::ensure_cached_file(
+        "espeak_en_us.tsv", "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/espeak_en_us.tsv",
+        /*quiet=*/true, "stelnettts", "");
     if (!path.empty()) {
         int n = g2p_en::load_ipa_dict_file(g_g2p_ctx.espeak_ipa, path);
         if (n > 0)
@@ -394,7 +394,7 @@ static void g2p_ensure_cmudict() {
     }
 
     // 1. Env var
-    const char* env = getenv("CRISPASR_CMUDICT_PATH");
+    const char* env = getenv("STELNETTTS_CMUDICT_PATH");
     if (env && *env && g2p_en::load_cmudict_file(g_g2p_ctx.dict, env) > 0)
         return;
     // 2. Local cache
@@ -402,15 +402,15 @@ static void g2p_ensure_cmudict() {
     if (!home)
         home = getenv("USERPROFILE");
     if (home) {
-        std::string base = std::string(home) + "/.cache/crispasr/";
+        std::string base = std::string(home) + "/.cache/stelnettts/";
         if (g2p_en::load_cmudict_file(g_g2p_ctx.dict, base + "cmudict.dict") > 0)
             return;
     }
-    // 3. Auto-download from HuggingFace (only when linked into crispasr-lib)
+    // 3. Auto-download from HuggingFace (only when linked into stelnettts-lib)
 #ifdef PIPER_HAS_CACHE
-    std::string path = crispasr_cache::ensure_cached_file(
-        "cmudict.dict", "https://huggingface.co/datasets/cstr/g2p-dicts/resolve/main/cmudict.dict",
-        /*quiet=*/true, "crispasr", "");
+    std::string path = stelnettts_cache::ensure_cached_file(
+        "cmudict.dict", "https://huggingface.co/datasets/Xenna/g2p-dicts/resolve/main/cmudict.dict",
+        /*quiet=*/true, "stelnettts", "");
     if (!path.empty())
         g2p_en::load_cmudict_file(g_g2p_ctx.dict, path);
 #endif
@@ -451,11 +451,11 @@ static bool phonemize_builtin(const std::string& voice, const std::string& text,
 static bool phonemize_espeak(const std::string& voice, const std::string& text, std::string& out) {
     // Try in-process espeak first, then popen, then built-in G2P.
     if (phonemize_espeak_lib(voice, text, out)) {
-        crispasr::strip_espeak_lang_markers(out); // #169
+        stelnettts::strip_espeak_lang_markers(out); // #169
         return true;
     }
     if (phonemize_espeak_popen(voice, text, out)) {
-        crispasr::strip_espeak_lang_markers(out); // #169
+        stelnettts::strip_espeak_lang_markers(out); // #169
         return true;
     }
     return phonemize_builtin(voice, text, out);
@@ -631,7 +631,7 @@ struct piper_tts_context {
 
     // Pre-cached F32 weight data. Populated at init to avoid repeated
     // ggml_backend_tensor_get + dequant on every synthesis call.
-    // Gated by CRISPASR_PIPER_WEIGHT_CACHE (default ON).
+    // Gated by STELNETTTS_PIPER_WEIGHT_CACHE (default ON).
     std::unordered_map<ggml_tensor*, std::vector<float>> weight_cache;
     bool weight_cache_enabled = true;
 };
@@ -2264,7 +2264,7 @@ struct piper_tts_context* piper_tts_init_from_file(const char* path_model, struc
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -2305,10 +2305,10 @@ struct piper_tts_context* piper_tts_init_from_file(const char* path_model, struc
     ctx->espeak_voice = ctx->hp.espeak_voice;
 
     // Pre-cache all weights as F32 to avoid repeated backend_tensor_get +
-    // dequant on every synthesis call. Gated by CRISPASR_PIPER_WEIGHT_CACHE
+    // dequant on every synthesis call. Gated by STELNETTTS_PIPER_WEIGHT_CACHE
     // (default ON). Cost: ~2× model RAM (30 MB F16 → +60 MB F32 cache).
     {
-        const char* env = std::getenv("CRISPASR_PIPER_WEIGHT_CACHE");
+        const char* env = std::getenv("STELNETTTS_PIPER_WEIGHT_CACHE");
         ctx->weight_cache_enabled = (!env || *env != '0');
     }
     if (ctx->weight_cache_enabled && ctx->w_ctx) {

@@ -7,9 +7,9 @@ VISIONOS_MIN_OS_VERSION=1.0
 TVOS_MIN_OS_VERSION=16.4
 
 BUILD_SHARED_LIBS=OFF
-CRISPASR_BUILD_EXAMPLES=OFF
-CRISPASR_BUILD_TESTS=OFF
-CRISPASR_BUILD_SERVER=OFF
+STELNETTTS_BUILD_EXAMPLES=OFF
+STELNETTTS_BUILD_TESTS=OFF
+STELNETTTS_BUILD_SERVER=OFF
 GGML_METAL=ON
 GGML_METAL_EMBED_LIBRARY=ON
 GGML_BLAS_DEFAULT=ON
@@ -31,9 +31,9 @@ COMMON_CMAKE_ARGS=(
     -DCMAKE_XCODE_ATTRIBUTE_STRIP_INSTALLED_PRODUCT=NO
     -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=ggml
     -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
-    -DCRISPASR_BUILD_EXAMPLES=${CRISPASR_BUILD_EXAMPLES}
-    -DCRISPASR_BUILD_TESTS=${CRISPASR_BUILD_TESTS}
-    -DCRISPASR_BUILD_SERVER=${CRISPASR_BUILD_SERVER}
+    -DSTELNETTTS_BUILD_EXAMPLES=${STELNETTTS_BUILD_EXAMPLES}
+    -DSTELNETTTS_BUILD_TESTS=${STELNETTTS_BUILD_TESTS}
+    -DSTELNETTTS_BUILD_SERVER=${STELNETTTS_BUILD_SERVER}
     -DGGML_METAL_EMBED_LIBRARY=${GGML_METAL_EMBED_LIBRARY}
     -DGGML_BLAS_DEFAULT=${GGML_BLAS_DEFAULT}
     -DGGML_METAL=${GGML_METAL}
@@ -80,7 +80,7 @@ setup_framework_structure() {
     local build_dir=$1
     local min_os_version=$2
     local platform=$3  # "ios", "macos", "visionos", or "tvos"
-    local framework_name="crispasr"
+    local framework_name="stelnettts"
 
     echo "Creating ${platform}-style framework structure for ${build_dir}"
 
@@ -114,7 +114,7 @@ setup_framework_structure() {
     fi
 
     # Copy all required headers (common for all platforms)
-    cp include/crispasr.h          ${header_path}
+    cp include/stelnettts.h          ${header_path}
     cp ggml/include/ggml.h         ${header_path}
     cp ggml/include/ggml-alloc.h   ${header_path}
     cp ggml/include/ggml-backend.h ${header_path}
@@ -125,8 +125,8 @@ setup_framework_structure() {
 
     # Create module map (common for all platforms)
     cat > ${module_path}module.modulemap << EOF
-framework module crispasr {
-    header "crispasr.h"
+framework module stelnettts {
+    header "stelnettts.h"
     header "ggml.h"
     header "ggml-alloc.h"
     header "ggml-backend.h"
@@ -196,13 +196,13 @@ EOF
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>crispasr</string>
+    <string>stelnettts</string>
     <key>CFBundleIdentifier</key>
-    <string>org.ggml.crispasr</string>
+    <string>org.ggml.stelnettts</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>crispasr</string>
+    <string>stelnettts</string>
     <key>CFBundlePackageType</key>
     <string>FMWK</string>
     <key>CFBundleShortVersionString</key>
@@ -231,7 +231,7 @@ combine_static_libraries() {
     local platform="$3"  # "ios", "macos", "visionos", or "tvos"
     local is_simulator="$4"
     local base_dir="$(pwd)"
-    local framework_name="crispasr"
+    local framework_name="stelnettts"
 
     # Determine output path based on platform
     local output_lib=""
@@ -251,16 +251,16 @@ combine_static_libraries() {
         "${base_dir}/${build_dir}/ggml/src/ggml-blas/${release_dir}/libggml-blas.a"
     )
 
-    # Auto-discover every static library produced under src/. CrispASR
-    # has 25+ STATIC backend libraries (parakeet, canary, qwen3_asr,
+    # Auto-discover every static library produced under src/. StelnetTTS
+    # has 25+ STATIC backend libraries (parakeet, canary, cielvox2_asr,
     # voxtral, voxtral4b, granite_speech, wav2vec2-ggml, glm-asr,
     # kyutai-stt, firered-asr, omniasr, vibevoice, gemma4_e2b,
-    # mimo_tokenizer, mimo_asr, qwen3_tts, orpheus, chatterbox, …)
-    # that crispasr.a publicly depends on via target_link_libraries
+    # mimo_tokenizer, mimo_asr, cielvox2_tts, orpheus, chatterbox, …)
+    # that stelnettts.a publicly depends on via target_link_libraries
     # but does NOT statically embed. libtool -static needs every one
     # of them on its command line, otherwise the xcframework consumer
     # gets undefined symbols at app-link time
-    # (e.g. wav2vec2_load referenced from crispasr_c_api.cpp).
+    # (e.g. wav2vec2_load referenced from stelnettts_c_api.cpp).
     #
     # Hardcoding the full list would drift the next time a backend
     # lands; glob the build tree instead. Order doesn't matter to
@@ -274,10 +274,10 @@ combine_static_libraries() {
     # iOS dylib link fails with undefined fireredpunc_*/pcs_*/text_lid_*/
     # truecaser_lstm_* symbols. Missing roots are skipped (-print0 2>/dev/null).
     # Also search _deps/ for FetchContent-built static libs (opus, ogg,
-    # opusfile, opencore-amr) that crispasr-lib links via PRIVATE but
+    # opusfile, opencore-amr) that stelnettts-lib links via PRIVATE but
     # whose objects must be in combined.a for the xcframework consumer.
     # glint is the in-tree clean-room codec suite (glint/CMakeLists.txt); its
-    # libglint.a lands under build/glint/, and crispasr-lib links it PUBLIC. It
+    # libglint.a lands under build/glint/, and stelnettts-lib links it PUBLIC. It
     # was NOT in these roots, so the iOS xcframework link failed with undefined
     # glint_aac_dec_*/glint_opus_* (v0.8.20 build-xcframework). Same drift this
     # comment already flags for crisp_lid/punc/truecase — the root list is hand-
@@ -293,10 +293,10 @@ combine_static_libraries() {
     else
         # Fall back to the original explicit list if glob finds nothing
         # (shouldn't happen — defensive).
-        echo "warning: glob found no static libs under src/${release_dir}/; falling back to libcrispasr.a only"
-        libs+=("${base_dir}/${build_dir}/src/${release_dir}/libcrispasr.a")
+        echo "warning: glob found no static libs under src/${release_dir}/; falling back to libstelnettts.a only"
+        libs+=("${base_dir}/${build_dir}/src/${release_dir}/libstelnettts.a")
     fi
-    # Coreml lib lives under src/ as libcrispasr.coreml.a; the glob
+    # Coreml lib lives under src/ as libstelnettts.coreml.a; the glob
     # above will already have picked it up on macOS/iOS — no extra
     # work needed.
 
@@ -327,14 +327,14 @@ combine_static_libraries() {
                 archs="arm64"
                 min_version_flag="-mios-version-min=${IOS_MIN_OS_VERSION}"
             fi
-            install_name="@rpath/crispasr.framework/crispasr"
+            install_name="@rpath/stelnettts.framework/stelnettts"
             frameworks+=" -framework CoreML"
             ;;
         "macos")
             sdk="macosx"
             archs="arm64 x86_64"
             min_version_flag="-mmacosx-version-min=${MACOS_MIN_OS_VERSION}"
-            install_name="@rpath/crispasr.framework/Versions/Current/crispasr"
+            install_name="@rpath/stelnettts.framework/Versions/Current/stelnettts"
             frameworks+=" -framework CoreML"
             ;;
         "visionos")
@@ -348,7 +348,7 @@ combine_static_libraries() {
                 min_version_flag="-mtargetos=xros${VISIONOS_MIN_OS_VERSION}"
             fi
             # Use flat structure for visionOS, same as iOS
-            install_name="@rpath/crispasr.framework/crispasr"
+            install_name="@rpath/stelnettts.framework/stelnettts"
             ;;
         "tvos")
             if [[ "$is_simulator" == "true" ]]; then
@@ -360,7 +360,7 @@ combine_static_libraries() {
                 archs="arm64"
                 min_version_flag="-mtvos-version-min=${TVOS_MIN_OS_VERSION}"
             fi
-            install_name="@rpath/crispasr.framework/crispasr"
+            install_name="@rpath/stelnettts.framework/stelnettts"
             ;;
     esac
 
@@ -429,7 +429,7 @@ combine_static_libraries() {
     # iOS and visionOS style dSYM (flat structure)
     if [[ "$platform" == "ios" || "$platform" == "visionos" || "$platform" == "tvos" ]]; then
         # Generate dSYM in the dSYMs directory
-        xcrun dsymutil "${base_dir}/${output_lib}" -o "${base_dir}/${build_dir}/dSYMs/crispasr.dSYM"
+        xcrun dsymutil "${base_dir}/${output_lib}" -o "${base_dir}/${build_dir}/dSYMs/stelnettts.dSYM"
 
         # Create a copy of the binary that will be stripped
         cp "${base_dir}/${output_lib}" "${temp_dir}/binary_to_strip"
@@ -445,7 +445,7 @@ combine_static_libraries() {
         xcrun strip -S "${base_dir}/${output_lib}" -o "${temp_dir}/stripped_lib"
 
         # Generate dSYM in the dSYMs directory
-        xcrun dsymutil "${base_dir}/${output_lib}" -o "${base_dir}/${build_dir}/dSYMs/crispasr.dSYM"
+        xcrun dsymutil "${base_dir}/${output_lib}" -o "${base_dir}/${build_dir}/dSYMs/stelnettts.dSYM"
 
         # Replace original binary with stripped version
         mv "${temp_dir}/stripped_lib" "${base_dir}/${output_lib}"
@@ -473,8 +473,8 @@ cmake -B build-ios-sim -G Xcode \
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS=iphonesimulator \
     -DCMAKE_C_FLAGS="${COMMON_C_FLAGS}" \
     -DCMAKE_CXX_FLAGS="${COMMON_CXX_FLAGS}" \
-    -DCRISPASR_COREML="ON" \
-    -DCRISPASR_COREML_ALLOW_FALLBACK="ON" \
+    -DSTELNETTTS_COREML="ON" \
+    -DSTELNETTTS_COREML_ALLOW_FALLBACK="ON" \
     -S .
 cmake --build build-ios-sim --config Release -- -quiet || { echo "::error::xcframework slice build-ios-sim failed to build"; exit 1; }
 
@@ -487,8 +487,8 @@ cmake -B build-ios-device -G Xcode \
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS=iphoneos \
     -DCMAKE_C_FLAGS="${COMMON_C_FLAGS}" \
     -DCMAKE_CXX_FLAGS="${COMMON_CXX_FLAGS}" \
-    -DCRISPASR_COREML="ON" \
-    -DCRISPASR_COREML_ALLOW_FALLBACK="ON" \
+    -DSTELNETTTS_COREML="ON" \
+    -DSTELNETTTS_COREML_ALLOW_FALLBACK="ON" \
     -S .
 cmake --build build-ios-device --config Release -- -quiet || { echo "::error::xcframework slice build-ios-device failed to build"; exit 1; }
 
@@ -499,12 +499,12 @@ cmake -B build-macos -G Xcode \
     -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
     -DCMAKE_C_FLAGS="${COMMON_C_FLAGS}" \
     -DCMAKE_CXX_FLAGS="${COMMON_CXX_FLAGS}" \
-    -DCRISPASR_COREML="ON" \
-    -DCRISPASR_COREML_ALLOW_FALLBACK="ON" \
+    -DSTELNETTTS_COREML="ON" \
+    -DSTELNETTTS_COREML_ALLOW_FALLBACK="ON" \
     -S .
 cmake --build build-macos --config Release -- -quiet || { echo "::error::xcframework slice build-macos failed to build"; exit 1; }
 
-# visionOS/tvOS: build with -DCRISPASR_OPUS=OFF. Opus 1.5.2's FetchContent
+# visionOS/tvOS: build with -DSTELNETTTS_OPUS=OFF. Opus 1.5.2's FetchContent
 # build doesn't compile cleanly on these SDKs (the u_int/_XOPEN_SOURCE compat
 # gaps noted below), which broke the ios-xcode-build CI at the xcframework
 # step. These platforms use AudioToolbox for decode anyway, so opus isn't
@@ -512,7 +512,7 @@ cmake --build build-macos --config Release -- -quiet || { echo "::error::xcframe
 echo "Building for visionOS..."
 cmake -B build-visionos -G Xcode \
     "${COMMON_CMAKE_ARGS[@]}" \
-    -DCRISPASR_OPUS=OFF \
+    -DSTELNETTTS_OPUS=OFF \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${VISIONOS_MIN_OS_VERSION} \
     -DCMAKE_OSX_ARCHITECTURES="arm64" \
     -DCMAKE_SYSTEM_NAME=visionOS \
@@ -526,7 +526,7 @@ cmake --build build-visionos --config Release -- -quiet || { echo "::error::xcfr
 echo "Building for visionOS simulator..."
 cmake -B build-visionos-sim -G Xcode \
     "${COMMON_CMAKE_ARGS[@]}" \
-    -DCRISPASR_OPUS=OFF \
+    -DSTELNETTTS_OPUS=OFF \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${VISIONOS_MIN_OS_VERSION} \
     -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
     -DCMAKE_SYSTEM_NAME=visionOS \
@@ -541,7 +541,7 @@ cmake --build build-visionos-sim --config Release -- -quiet || { echo "::error::
 echo "Building for tvOS simulator..."
 cmake -B build-tvos-sim -G Xcode \
     "${COMMON_CMAKE_ARGS[@]}" \
-    -DCRISPASR_OPUS=OFF \
+    -DSTELNETTTS_OPUS=OFF \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${TVOS_MIN_OS_VERSION} \
     -DCMAKE_SYSTEM_NAME=tvOS \
     -DCMAKE_OSX_SYSROOT=appletvsimulator \
@@ -556,7 +556,7 @@ cmake --build build-tvos-sim --config Release -- -quiet || { echo "::error::xcfr
 echo "Building for tvOS devices..."
 cmake -B build-tvos-device -G Xcode \
     "${COMMON_CMAKE_ARGS[@]}" \
-    -DCRISPASR_OPUS=OFF \
+    -DSTELNETTTS_OPUS=OFF \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${TVOS_MIN_OS_VERSION} \
     -DCMAKE_SYSTEM_NAME=tvOS \
     -DCMAKE_OSX_SYSROOT=appletvos \
@@ -593,30 +593,30 @@ echo "Creating XCFramework..."
 
 if [[ "${BUILD_STATIC_XCFRAMEWORK}" == "ON" ]]; then
     xcodebuild -create-xcframework \
-        -framework $(pwd)/build-ios-sim/framework/crispasr.framework \
-        -framework $(pwd)/build-ios-device/framework/crispasr.framework \
-        -framework $(pwd)/build-macos/framework/crispasr.framework \
-        -framework $(pwd)/build-visionos/framework/crispasr.framework \
-        -framework $(pwd)/build-visionos-sim/framework/crispasr.framework \
-        -framework $(pwd)/build-tvos-device/framework/crispasr.framework \
-        -framework $(pwd)/build-tvos-sim/framework/crispasr.framework \
-        -output $(pwd)/build-apple/crispasr.xcframework
+        -framework $(pwd)/build-ios-sim/framework/stelnettts.framework \
+        -framework $(pwd)/build-ios-device/framework/stelnettts.framework \
+        -framework $(pwd)/build-macos/framework/stelnettts.framework \
+        -framework $(pwd)/build-visionos/framework/stelnettts.framework \
+        -framework $(pwd)/build-visionos-sim/framework/stelnettts.framework \
+        -framework $(pwd)/build-tvos-device/framework/stelnettts.framework \
+        -framework $(pwd)/build-tvos-sim/framework/stelnettts.framework \
+        -output $(pwd)/build-apple/stelnettts.xcframework
     exit 0
 fi
 
 xcodebuild -create-xcframework \
-    -framework $(pwd)/build-ios-sim/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-ios-sim/dSYMs/crispasr.dSYM \
-    -framework $(pwd)/build-ios-device/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-ios-device/dSYMs/crispasr.dSYM \
-    -framework $(pwd)/build-macos/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-macos/dSYMs/crispasr.dSYM \
-    -framework $(pwd)/build-visionos/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-visionos/dSYMs/crispasr.dSYM \
-    -framework $(pwd)/build-visionos-sim/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-visionos-sim/dSYMs/crispasr.dSYM \
-    -framework $(pwd)/build-tvos-device/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-tvos-device/dSYMs/crispasr.dSYM \
-    -framework $(pwd)/build-tvos-sim/framework/crispasr.framework \
-    -debug-symbols $(pwd)/build-tvos-sim/dSYMs/crispasr.dSYM \
-    -output $(pwd)/build-apple/crispasr.xcframework
+    -framework $(pwd)/build-ios-sim/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-ios-sim/dSYMs/stelnettts.dSYM \
+    -framework $(pwd)/build-ios-device/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-ios-device/dSYMs/stelnettts.dSYM \
+    -framework $(pwd)/build-macos/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-macos/dSYMs/stelnettts.dSYM \
+    -framework $(pwd)/build-visionos/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-visionos/dSYMs/stelnettts.dSYM \
+    -framework $(pwd)/build-visionos-sim/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-visionos-sim/dSYMs/stelnettts.dSYM \
+    -framework $(pwd)/build-tvos-device/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-tvos-device/dSYMs/stelnettts.dSYM \
+    -framework $(pwd)/build-tvos-sim/framework/stelnettts.framework \
+    -debug-symbols $(pwd)/build-tvos-sim/dSYMs/stelnettts.dSYM \
+    -output $(pwd)/build-apple/stelnettts.xcframework

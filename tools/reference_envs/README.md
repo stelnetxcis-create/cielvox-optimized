@@ -21,10 +21,10 @@ tools/bootstrap_ref_env.sh <backend>
 ```
 
 Creates a venv at `/Volumes/backups/ai/refenvs/<backend>/` (or
-`$CRISPASR_REF_ENVS_ROOT/<backend>` if set), installs the pinned
+`$STELNETTTS_REF_ENVS_ROOT/<backend>` if set), installs the pinned
 deps, and prints the activate command. Override the install root if
 you don't want the env on the external disk (e.g.
-`CRISPASR_REF_ENVS_ROOT=$HOME/.crispasr-refenvs`).
+`STELNETTTS_REF_ENVS_ROOT=$HOME/.stelnettts-refenvs`).
 
 After bootstrap, dump a reference archive:
 

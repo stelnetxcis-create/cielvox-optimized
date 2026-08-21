@@ -36,9 +36,9 @@
 #include "core/fastconformer.h"
 #include "core/gguf_loader.h"
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/rnnt_ggml.h"        // §232 GPU transducer decode (shared)
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #if defined(HAVE_ACCELERATE)
 #include <Accelerate/Accelerate.h>
@@ -48,7 +48,7 @@
 static bool nemotron_force_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_NEMOTRON_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_NEMOTRON_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 
@@ -72,7 +72,7 @@ static bool nemotron_force_scalar() {
 static bool nemotron_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_NEMOTRON_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_NEMOTRON_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -217,7 +217,7 @@ struct nemotron_model {
     ggml_context* ctx = nullptr;
     ggml_backend_buffer_t buf = nullptr;
 
-    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, CRISPASR_FC_PW_Q8).
+    // Q8_0 repack of the F16 conv pw1/pw2 weights (issue #81, STELNETTTS_FC_PW_Q8).
     // Note: no fuse_qkv here — nemotron's streaming block builder reads the
     // per-tensor attn weights directly, never core_conformer::build_block.
     core_conformer::PwRepackBuf pw_q8;
@@ -1090,10 +1090,10 @@ static ggml_cgraph* nemotron_build_graph_encoder(nemotron_context* ctx, int T_me
     ggml_set_input(pos_enc);
 
     // ----- Window mask for cache-aware streaming attention -----
-    // CRISPASR_NEMOTRON_NO_WINDOW_MASK=1 → bidirectional attention (for A/B testing).
+    // STELNETTTS_NEMOTRON_NO_WINDOW_MASK=1 → bidirectional attention (for A/B testing).
     // Default: banded attention with att_context_left/right.
     ggml_tensor* window_mask_t = nullptr;
-    const bool use_window_mask = !crispasr_env::get("CRISPASR_NEMOTRON_NO_WINDOW_MASK");
+    const bool use_window_mask = !stelnettts_env::get("STELNETTTS_NEMOTRON_NO_WINDOW_MASK");
     if (use_window_mask && T > 0) {
         window_mask_t = ggml_new_tensor_2d(ctx0, GGML_TYPE_F16, T, T);
         ggml_set_name(window_mask_t, "window_mask");
@@ -1180,7 +1180,7 @@ static bool nemotron_run_encoder(nemotron_context* ctx, const float* mel, int n_
         int right = ctx->model.hparams.att_context_right[preset];
         auto wm = build_window_mask(T_enc, left, right);
         ggml_backend_tensor_set(wm_t, wm.data(), 0, wm.size() * sizeof(ggml_fp16_t));
-        fprintf(stderr, "nemotron: streaming attention L=%d R=%d (CRISPASR_NEMOTRON_NO_WINDOW_MASK to disable)\n", left,
+        fprintf(stderr, "nemotron: streaming attention L=%d R=%d (STELNETTTS_NEMOTRON_NO_WINDOW_MASK to disable)\n", left,
                 right);
     }
 
@@ -1194,7 +1194,7 @@ static bool nemotron_run_encoder(nemotron_context* ctx, const float* mel, int n_
     enc_out.resize((size_t)T_enc * d_model_out);
     ggml_backend_tensor_get(enc_out_t, enc_out.data(), 0, enc_out.size() * sizeof(float));
 
-    if (getenv("CRISPASR_NEMOTRON_DEBUG")) {
+    if (getenv("STELNETTTS_NEMOTRON_DEBUG")) {
         float emin = 1e30f, emax = -1e30f, esum = 0.0f;
         for (size_t i = 0; i < enc_out.size(); i++) {
             float v = enc_out[i];
@@ -1438,7 +1438,7 @@ static bool nemotron_run_encoder_chunked(nemotron_context* ctx, const float* pre
             }
 
             // Debug: print per-layer stats for first chunk
-            if (ci == 0 && getenv("CRISPASR_NEMOTRON_DEBUG")) {
+            if (ci == 0 && getenv("STELNETTTS_NEMOTRON_DEBUG")) {
                 float lmin = 1e30f, lmax = -1e30f;
                 for (size_t i = 0; i < chunk_in.size(); i++) {
                     if (chunk_in[i] < lmin)
@@ -1463,7 +1463,7 @@ static bool nemotron_run_encoder_chunked(nemotron_context* ctx, const float* pre
         ggml_free(lg.ctx0);
     }
 
-    if (getenv("CRISPASR_NEMOTRON_DEBUG")) {
+    if (getenv("STELNETTTS_NEMOTRON_DEBUG")) {
         float emin = 1e30f, emax = -1e30f, esum = 0.0f;
         for (size_t i = 0; i < enc_out.size(); i++) {
             float v = enc_out[i];
@@ -1673,9 +1673,9 @@ static bool nemotron_init_ggml_decoder(nemotron_context* ctx, core_rnnt_ggml::De
     if (ggml_dec && core_cpu_backend::is_metal(ctx->backend))
         ggml_dec = false;
 #endif
-    if (const char* e = crispasr_env::get("CRISPASR_NEMOTRON_GGML_DECODE"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_NEMOTRON_GGML_DECODE"))
         ggml_dec = (e[0] == '1');
-    if (ggml_dec && crispasr_env::get("CRISPASR_RNNT_GGML_PERSTEP") == nullptr) {
+    if (ggml_dec && stelnettts_env::get("STELNETTTS_RNNT_GGML_PERSTEP") == nullptr) {
         const auto& p = ctx->model.predictor;
         const auto& j = ctx->model.joint;
         core_rnnt_ggml::decoder_init(gdec, ctx->backend, p.embed_w, p.lstm0_w_ih, p.lstm0_b_ih, p.lstm0_w_hh,
@@ -1719,7 +1719,7 @@ static std::vector<nemotron_emitted_token> nemotron_rnnt_decode(nemotron_context
     // §232: ggml GPU decode default (see nemotron_init_ggml_decoder / LEARNINGS 33).
     core_rnnt_ggml::Decoder gdec;
     const bool ggml_dec = nemotron_init_ggml_decoder(ctx, gdec);
-    const bool time_dec = crispasr_env::get("CRISPASR_NEMOTRON_DECODE_TIMING") != nullptr;
+    const bool time_dec = stelnettts_env::get("STELNETTTS_NEMOTRON_DECODE_TIMING") != nullptr;
     auto _dt0 = std::chrono::steady_clock::now();
 
     const auto& W = ctx->pred_w;
@@ -2369,12 +2369,12 @@ extern "C" struct nemotron_context* nemotron_init_from_file(const char* path_mod
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    // Backend selection — use crispasr_init_gpu_backend() for portable GPU init
+    // Backend selection — use stelnettts_init_gpu_backend() for portable GPU init
     ctx->backend = nullptr;
     ctx->backend_cpu = core_cpu_backend::init();
 
     if (params.use_gpu) {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
     }
     if (!ctx->backend) {
         ctx->backend = ctx->backend_cpu;
@@ -2394,7 +2394,7 @@ extern "C" struct nemotron_context* nemotron_init_from_file(const char* path_mod
     }
 
     // Repack F16 conv pw1/pw2 to Q8_0 (issue #81 — the 3D conv layout dodges
-    // crispasr-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
+    // stelnettts-quantize, and the CPU F16 mul_mat path is ~6x slower than Q8_0).
     {
         auto& m = ctx->model;
         std::vector<core_conformer::BlockWeights*> layers;
@@ -2404,12 +2404,12 @@ extern "C" struct nemotron_context* nemotron_init_from_file(const char* path_mod
         core_conformer::repack_conv_pw_q8(layers, ctx->backend, quantized, m.pw_q8, "nemotron");
     }
 
-    // CRISPASR_NEMOTRON_CONTEXT_PRESET=N selects attention context preset
+    // STELNETTTS_NEMOTRON_CONTEXT_PRESET=N selects attention context preset
     // 0: L=56, R=3  (streaming, chunk=4)
     // 1: L=56, R=0  (left-only)
     // 2: L=56, R=6  (chunk=7)
     // 3: L=56, R=13 (chunk=14, best quality)
-    if (const char* s = getenv("CRISPASR_NEMOTRON_CONTEXT_PRESET")) {
+    if (const char* s = getenv("STELNETTTS_NEMOTRON_CONTEXT_PRESET")) {
         int p = atoi(s);
         if (p >= 0 && p < (int)ctx->model.hparams.n_att_context_presets) {
             ctx->att_context_preset = p;
@@ -2478,10 +2478,10 @@ static nemotron_result* nemotron_transcribe_impl(nemotron_context* ctx, const fl
         return nullptr;
 
     // Run encoder — default: full-sequence with chunked_limited attention mask.
-    // CRISPASR_NEMOTRON_STREAMING=1 selects the cache-aware streaming path.
+    // STELNETTTS_NEMOTRON_STREAMING=1 selects the cache-aware streaming path.
     std::vector<float> enc_out;
     int T_enc = 0, d_model = 0;
-    const bool use_chunked = getenv("CRISPASR_NEMOTRON_STREAMING");
+    const bool use_chunked = getenv("STELNETTTS_NEMOTRON_STREAMING");
     {
         nemotron_bench_stage _b("encoder");
         if (!use_chunked) {
@@ -2618,7 +2618,7 @@ static nemotron_result* nemotron_transcribe_impl(nemotron_context* ctx, const fl
         fprintf(stderr, "nemotron: prompt kernel applied (prompt_id=%d)\n", prompt_id);
     }
 
-    if (getenv("CRISPASR_NEMOTRON_DEBUG")) {
+    if (getenv("STELNETTTS_NEMOTRON_DEBUG")) {
         float emin = 1e30f, emax = -1e30f;
         for (size_t i = 0; i < enc_out.size(); i++) {
             if (enc_out[i] < emin)
@@ -2648,12 +2648,12 @@ static nemotron_result* nemotron_transcribe_impl(nemotron_context* ctx, const fl
                                                        ctx->maes_num_steps, ctx->maes_gamma, ctx->maes_beta)
                   : (beam_sz > 1)
                       ? nemotron_rnnt_beam_decode(ctx, enc_out.data(), T_enc, d_model, beam_sz)
-                      : (getenv("CRISPASR_RNNT_BATCH")
+                      : (getenv("STELNETTTS_RNNT_BATCH")
                              ? nemotron_rnnt_decode_batched(ctx, enc_out.data(), T_enc, d_model, on_tok, on_tok_ud)
                              : nemotron_rnnt_decode(ctx, enc_out.data(), T_enc, d_model, on_tok, on_tok_ud));
     }
 
-    if (getenv("CRISPASR_NEMOTRON_DEBUG")) {
+    if (getenv("STELNETTTS_NEMOTRON_DEBUG")) {
         fprintf(stderr, "nemotron: RNNT emitted %zu tokens\n", emitted.size());
         for (size_t i = 0; i < std::min(emitted.size(), (size_t)5); i++) {
             fprintf(stderr, "  tok %zu: id=%d t=%d-%d p=%.3f\n", i, emitted[i].id, emitted[i].t_start, emitted[i].t_end,

@@ -5,7 +5,7 @@
 // `ggml_backend_tensor_get(t, buf, 0, n*sizeof(float))` over-reads a quantized
 // tensor (nbytes << n*4) and an F16-only reader leaves quantized weights as
 // garbage — the bug class this helper closes (paraformer CIF, piper emb,
-// parakeet ctc, and the CrispEmbed pcs/DeBERTa/MLM-head crashes).
+// parakeet ctc, and the StelnetEmbed pcs/DeBERTa/MLM-head crashes).
 
 #include <catch2/catch_test_macros.hpp>
 

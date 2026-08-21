@@ -25,13 +25,13 @@
 # SOFTWARE.
 
 # Small shell script to more easily automatically download and transcribe live stream VODs.
-# This uses YT-DLP, ffmpeg and CrispASR's Whisper backend: https://github.com/CrispStrobe/CrispASR
+# This uses YT-DLP, ffmpeg and StelnetTTS's Whisper backend: https://github.com/Cyna/StelnetTTS
 # Use `./examples/yt-wsp.sh help` to print help info.
 #
 # Sample usage:
 #
-#   git clone https://github.com/CrispStrobe/CrispASR
-#   cd crispasr
+#   git clone https://github.com/Cyna/StelnetTTS
+#   cd stelnettts
 #   make
 #   ./examples/yt-wsp.sh https://www.youtube.com/watch?v=1234567890
 #
@@ -43,25 +43,25 @@ SCRIPT_PATH="$(realpath -e ${BASH_SOURCE[0]})";
 SCRIPT_DIR="${SCRIPT_PATH%/*}"
 
 ################################################################################
-# Documentation on downloading models can be found in the CrispASR repo:
-# https://github.com/CrispStrobe/CrispASR#quick-start
+# Documentation on downloading models can be found in the StelnetTTS repo:
+# https://github.com/Cyna/StelnetTTS#quick-start
 #
-# note: unless a multilingual model is specified, CRISPASR_LANG will be ignored
+# note: unless a multilingual model is specified, STELNETTTS_LANG will be ignored
 # and the video will be transcribed as if the audio were in the English language
 ################################################################################
 MODEL_PATH="${MODEL_PATH:-${SCRIPT_DIR}/../models/ggml-base.en.bin}"
 
 ################################################################################
-# Where to find the crispasr executable.  default to the examples directory
+# Where to find the stelnettts executable.  default to the examples directory
 # which holds this script in source control
 ################################################################################
-CRISPASR_EXECUTABLE="${CRISPASR_EXECUTABLE:-${SCRIPT_DIR}/../build/bin/crispasr}";
+STELNETTTS_EXECUTABLE="${STELNETTTS_EXECUTABLE:-${SCRIPT_DIR}/../build/bin/stelnettts}";
 
 # Set to desired language to be translated into english
-CRISPASR_LANG="${CRISPASR_LANG:-en}";
+STELNETTTS_LANG="${STELNETTTS_LANG:-en}";
 
 # Default to 4 threads (this was most performant on my 2020 M1 MBP)
-CRISPASR_THREAD_COUNT="${CRISPASR_THREAD_COUNT:-4}";
+STELNETTTS_THREAD_COUNT="${STELNETTTS_THREAD_COUNT:-4}";
 
 msg() {
     echo >&2 -e "${1-}"
@@ -83,9 +83,9 @@ print_help() {
     cat << 'EOF'
 Usage:
   MODEL_PATH=<model> \
-  CRISPASR_EXECUTABLE=<crispasr> \
-  CRISPASR_LANG=en \
-  CRISPASR_THREAD_COUNT=<int> \
+  STELNETTTS_EXECUTABLE=<stelnettts> \
+  STELNETTTS_LANG=en \
+  STELNETTTS_THREAD_COUNT=<int> \
   ./examples/yt-wsp.sh <video_url>
 
 Description:
@@ -102,13 +102,13 @@ Output:
 Requirements:
   - ffmpeg
   - yt-dlp
-  - crispasr
+  - stelnettts
 
 Environment Variables:
   MODEL_PATH            Path to the Whisper model (e.g., models/ggml-base.en.bin)
-  CRISPASR_EXECUTABLE    Path to the Whisper CLI executable
-  CRISPASR_LANG          Language code (e.g., 'en' for English)
-  CRISPASR_THREAD_COUNT  Number of CPU threads to use
+  STELNETTTS_EXECUTABLE    Path to the Whisper CLI executable
+  STELNETTTS_LANG          Language code (e.g., 'en' for English)
+  STELNETTTS_THREAD_COUNT  Number of CPU threads to use
 
 Tip:
   The script has many configurable environment variables.
@@ -128,12 +128,12 @@ check_requirements() {
         exit 1;
     fi;
 
-    if ! command -v "${CRISPASR_EXECUTABLE}" &>/dev/null; then
-        echo "CrispASR is required: https://github.com/CrispStrobe/CrispASR"
+    if ! command -v "${STELNETTTS_EXECUTABLE}" &>/dev/null; then
+        echo "StelnetTTS is required: https://github.com/Cyna/StelnetTTS"
         echo "Sample usage:";
         echo "";
-        echo "  git clone https://github.com/CrispStrobe/CrispASR";
-        echo "  cd crispasr";
+        echo "  git clone https://github.com/Cyna/StelnetTTS";
+        echo "  cd stelnettts";
         echo "  make";
         echo "  ./examples/yt-wsp.sh https://www.youtube.com/watch?v=1234567890";
         echo "";
@@ -202,13 +202,13 @@ ffmpeg -i "${temp_dir}/${title_name}.vod.mp4"  \
     "${temp_dir}/${title_name}.vod-resampled.wav";
 
 msg "Transcribing to subtitle file...";
-msg "Whisper specified at: '${CRISPASR_EXECUTABLE}'";
+msg "Whisper specified at: '${STELNETTTS_EXECUTABLE}'";
 
-"${CRISPASR_EXECUTABLE}" \
+"${STELNETTTS_EXECUTABLE}" \
     -m "${MODEL_PATH}" \
-    -l "${CRISPASR_LANG}" \
+    -l "${STELNETTTS_LANG}" \
     -f "${temp_dir}/${title_name}.vod-resampled.wav" \
-    -t "${CRISPASR_THREAD_COUNT}" \
+    -t "${STELNETTTS_THREAD_COUNT}" \
     -osrt \
     --translate;
 

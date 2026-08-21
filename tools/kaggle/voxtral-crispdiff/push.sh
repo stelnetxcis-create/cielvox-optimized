@@ -2,4 +2,4 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 kaggle kernels push -p "$DIR"
-echo "Watch: https://www.kaggle.com/code/chr1str/crispasr-voxtral-tts-crispdiff"
+echo "Watch: https://www.kaggle.com/code/chr1str/stelnettts-voxtral-tts-crispdiff"

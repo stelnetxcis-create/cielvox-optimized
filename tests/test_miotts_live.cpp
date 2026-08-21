@@ -1,6 +1,6 @@
 // tests/test_miotts_live.cpp — live integration test for MioTTS backend.
 //
-// Requires CRISPASR_MODEL_MIOTTS env var pointing to a MioTTS GGUF.
+// Requires STELNETTTS_MODEL_MIOTTS env var pointing to a MioTTS GGUF.
 // Generates speech from text and verifies non-empty PCM output.
 
 #include "miotts.h"
@@ -11,9 +11,9 @@
 #include <string>
 
 TEST_CASE("miotts: init from GGUF", "[miotts][live]") {
-    const char* model = std::getenv("CRISPASR_MODEL_MIOTTS");
+    const char* model = std::getenv("STELNETTTS_MODEL_MIOTTS");
     if (!model || !*model) {
-        SKIP("CRISPASR_MODEL_MIOTTS not set");
+        SKIP("STELNETTTS_MODEL_MIOTTS not set");
         return;
     }
     auto p = miotts_context_default_params();
@@ -27,9 +27,9 @@ TEST_CASE("miotts: init from GGUF", "[miotts][live]") {
 }
 
 TEST_CASE("miotts: synthesize produces audio", "[miotts][live]") {
-    const char* model = std::getenv("CRISPASR_MODEL_MIOTTS");
+    const char* model = std::getenv("STELNETTTS_MODEL_MIOTTS");
     if (!model || !*model) {
-        SKIP("CRISPASR_MODEL_MIOTTS not set");
+        SKIP("STELNETTTS_MODEL_MIOTTS not set");
         return;
     }
     auto p = miotts_context_default_params();
@@ -61,9 +61,9 @@ TEST_CASE("miotts: synthesize produces audio", "[miotts][live]") {
 }
 
 TEST_CASE("miotts: FSQ dequant exact", "[miotts][live]") {
-    const char* model = std::getenv("CRISPASR_MODEL_MIOTTS");
+    const char* model = std::getenv("STELNETTTS_MODEL_MIOTTS");
     if (!model || !*model) {
-        SKIP("CRISPASR_MODEL_MIOTTS not set");
+        SKIP("STELNETTTS_MODEL_MIOTTS not set");
         return;
     }
     auto p = miotts_context_default_params();

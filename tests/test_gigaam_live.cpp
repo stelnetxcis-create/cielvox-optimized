@@ -4,9 +4,9 @@
 // Run: ctest -R test-gigaam --output-on-failure
 //
 // Env vars (see tests/env-live-tests.sh):
-//   CRISPASR_MODEL_GIGAAM      — Q4_K GGUF path (e2e_rnnt by default)
-//   CRISPASR_MODEL_GIGAAM_F16  — F16 GGUF path (optional)
-//   CRISPASR_FIXTURE_GIGAAM    — 16 kHz mono Russian WAV
+//   STELNETTTS_MODEL_GIGAAM      — Q4_K GGUF path (e2e_rnnt by default)
+//   STELNETTTS_MODEL_GIGAAM_F16  — F16 GGUF path (optional)
+//   STELNETTTS_FIXTURE_GIGAAM    — 16 kHz mono Russian WAV
 //
 // The fixture is GigaAM's own `example.wav`
 // (https://cdn.chatwm.opensmodel.sberdevices.ru/GigaAM/example.wav), whose
@@ -93,9 +93,9 @@ static std::vector<float> load_wav_16k_mono(const std::string& path) {
 }
 
 TEST_CASE("gigaam: init reports the model's shape", "[gigaam][.live]") {
-    const std::string model = get_env("CRISPASR_MODEL_GIGAAM");
+    const std::string model = get_env("STELNETTTS_MODEL_GIGAAM");
     if (model.empty())
-        SKIP("CRISPASR_MODEL_GIGAAM not set");
+        SKIP("STELNETTTS_MODEL_GIGAAM not set");
 
     gigaam_context_params cp = gigaam_context_default_params();
     cp.n_threads = 2;
@@ -116,10 +116,10 @@ TEST_CASE("gigaam: init reports the model's shape", "[gigaam][.live]") {
 }
 
 TEST_CASE("gigaam: Russian transcription", "[gigaam][.live]") {
-    const std::string model = get_env("CRISPASR_MODEL_GIGAAM");
-    const std::string fixture = get_env("CRISPASR_FIXTURE_GIGAAM");
+    const std::string model = get_env("STELNETTTS_MODEL_GIGAAM");
+    const std::string fixture = get_env("STELNETTTS_FIXTURE_GIGAAM");
     if (model.empty() || fixture.empty())
-        SKIP("CRISPASR_MODEL_GIGAAM / CRISPASR_FIXTURE_GIGAAM not set");
+        SKIP("STELNETTTS_MODEL_GIGAAM / STELNETTTS_FIXTURE_GIGAAM not set");
 
     auto pcm = load_wav_16k_mono(fixture);
     REQUIRE(!pcm.empty());
@@ -147,10 +147,10 @@ TEST_CASE("gigaam: Russian transcription", "[gigaam][.live]") {
 }
 
 TEST_CASE("gigaam: word timings are ordered and inside the clip", "[gigaam][.live]") {
-    const std::string model = get_env("CRISPASR_MODEL_GIGAAM");
-    const std::string fixture = get_env("CRISPASR_FIXTURE_GIGAAM");
+    const std::string model = get_env("STELNETTTS_MODEL_GIGAAM");
+    const std::string fixture = get_env("STELNETTTS_FIXTURE_GIGAAM");
     if (model.empty() || fixture.empty())
-        SKIP("CRISPASR_MODEL_GIGAAM / CRISPASR_FIXTURE_GIGAAM not set");
+        SKIP("STELNETTTS_MODEL_GIGAAM / STELNETTTS_FIXTURE_GIGAAM not set");
 
     auto pcm = load_wav_16k_mono(fixture);
     REQUIRE(!pcm.empty());
@@ -176,11 +176,11 @@ TEST_CASE("gigaam: word timings are ordered and inside the clip", "[gigaam][.liv
 }
 
 TEST_CASE("gigaam: F16 and Q4_K agree on the transcript", "[gigaam][.live]") {
-    const std::string model_q4k = get_env("CRISPASR_MODEL_GIGAAM");
-    const std::string model_f16 = get_env("CRISPASR_MODEL_GIGAAM_F16");
-    const std::string fixture = get_env("CRISPASR_FIXTURE_GIGAAM");
+    const std::string model_q4k = get_env("STELNETTTS_MODEL_GIGAAM");
+    const std::string model_f16 = get_env("STELNETTTS_MODEL_GIGAAM_F16");
+    const std::string fixture = get_env("STELNETTTS_FIXTURE_GIGAAM");
     if (model_q4k.empty() || model_f16.empty() || fixture.empty())
-        SKIP("CRISPASR_MODEL_GIGAAM / _F16 / CRISPASR_FIXTURE_GIGAAM not set");
+        SKIP("STELNETTTS_MODEL_GIGAAM / _F16 / STELNETTTS_FIXTURE_GIGAAM not set");
 
     auto pcm = load_wav_16k_mono(fixture);
     REQUIRE(!pcm.empty());

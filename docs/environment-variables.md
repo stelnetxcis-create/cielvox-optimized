@@ -1,9 +1,9 @@
 # Environment variables
 
-CrispASR exposes a large number of environment variables — tuning knobs, device
+StelnetTTS exposes a large number of environment variables — tuning knobs, device
 placement overrides, benchmark timers, and debug/dump switches. This page is the
 single reference for all of them: the naming convention, the cross-cutting
-variables, the per-backend variables, and the ones CrispASR deliberately does
+variables, the per-backend variables, and the ones StelnetTTS deliberately does
 **not** own.
 
 > This document was introduced for issue #265 ("consistency and documentation").
@@ -12,44 +12,44 @@ variables, the per-backend variables, and the ones CrispASR deliberately does
 
 ## Naming convention
 
-Every CrispASR-owned variable is named:
+Every StelnetTTS-owned variable is named:
 
 ```
-CRISPASR_<BACKEND>_<FEATURE>
+STELNETTTS_<BACKEND>_<FEATURE>
 ```
 
-for example `CRISPASR_OMNIVOICE_CODEC_GPU`, `CRISPASR_IRODORI_CODEC_GPU`,
-`CRISPASR_PARAKEET_BENCH`. Process-global variables that are not tied to one
-backend drop the `<BACKEND>` segment (`CRISPASR_MODELS_DIR`, `CRISPASR_KV_ON_CPU`).
+for example `STELNETTTS_OMNIVOICE_CODEC_GPU`, `STELNETTTS_IRODORI_CODEC_GPU`,
+`STELNETTTS_PARAKEET_BENCH`. Process-global variables that are not tied to one
+backend drop the `<BACKEND>` segment (`STELNETTTS_MODELS_DIR`, `STELNETTTS_KV_ON_CPU`).
 
 ### Legacy aliases and deprecation warnings
 
 Historically many backends used a bare prefix (`OMNIVOICE_CODEC_GPU`,
-`QWEN3_TTS_BENCH`, `CHATTERBOX_DEBUG`, …). Those bare names **still work** as
+`CIELVOX2_TTS_BENCH`, `CHATTERBOX_DEBUG`, …). Those bare names **still work** as
 legacy aliases so existing scripts, notebooks, and Kaggle A/B kernels keep
-running. The alias is derived automatically by stripping the `CRISPASR_` prefix,
-so for any `CRISPASR_FOO_BAR` documented here the bare `FOO_BAR` is also honored.
+running. The alias is derived automatically by stripping the `STELNETTTS_` prefix,
+so for any `STELNETTTS_FOO_BAR` documented here the bare `FOO_BAR` is also honored.
 
-The first time a run reads a value from a **legacy** name, CrispASR prints a
+The first time a run reads a value from a **legacy** name, StelnetTTS prints a
 one-time notice to stderr:
 
 ```
-[crispasr] warning: environment variable 'OMNIVOICE_CODEC_GPU' is deprecated and
-will be removed in a future release; use 'CRISPASR_OMNIVOICE_CODEC_GPU' instead
+[stelnettts] warning: environment variable 'OMNIVOICE_CODEC_GPU' is deprecated and
+will be removed in a future release; use 'STELNETTTS_OMNIVOICE_CODEC_GPU' instead
 (the old name still works for now). ...
 ```
 
-Migrate to the canonical `CRISPASR_`-prefixed name at your convenience. To
+Migrate to the canonical `STELNETTTS_`-prefixed name at your convenience. To
 silence the warnings (e.g. for a pipeline that scrapes stderr and cannot migrate
 yet), set:
 
 ```
-CRISPASR_SUPPRESS_ENV_DEPRECATION=1
+STELNETTTS_SUPPRESS_ENV_DEPRECATION=1
 ```
 
-The lookup + aliasing is implemented once in `src/core/crispasr_env.h`
-(`crispasr_env::get / truthy / present`); new backends should read env vars
-through that helper with a canonical `CRISPASR_`-prefixed name.
+The lookup + aliasing is implemented once in `src/core/stelnettts_env.h`
+(`stelnettts_env::get / truthy / present`); new backends should read env vars
+through that helper with a canonical `STELNETTTS_`-prefixed name.
 
 ### Value/truthiness conventions
 
@@ -89,34 +89,34 @@ These are not tied to a single backend.
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_MODELS_DIR` | Directory searched for GGUF models (also the auto-download target root). |
-| `CRISPASR_CACHE_DIR` | Base cache directory for auto-downloaded models/assets (default `~/.cache/crispasr`). |
-| `CRISPASR_SCRATCH_DIR` | Scratch directory for temporary run artifacts. |
-| `CRISPASR_DUMP_DIR` | Global tensor-dump directory (diagnostics). |
-| `CRISPASR_GGUF_MMAP` / `CRISPASR_GGUF_PRELOAD` | Control GGUF mmap vs. preload-into-RAM loading. |
-| `CRISPASR_MLOCK` | mlock model weights into RAM. |
+| `STELNETTTS_MODELS_DIR` | Directory searched for GGUF models (also the auto-download target root). |
+| `STELNETTTS_CACHE_DIR` | Base cache directory for auto-downloaded models/assets (default `~/.cache/stelnettts`). |
+| `STELNETTTS_SCRATCH_DIR` | Scratch directory for temporary run artifacts. |
+| `STELNETTTS_DUMP_DIR` | Global tensor-dump directory (diagnostics). |
+| `STELNETTTS_GGUF_MMAP` / `STELNETTTS_GGUF_PRELOAD` | Control GGUF mmap vs. preload-into-RAM loading. |
+| `STELNETTTS_MLOCK` | mlock model weights into RAM. |
 
 ### GPU / device placement
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_N_GPU_LAYERS` | Number of transformer layers to offload to the GPU. |
-| `CRISPASR_ARG_DEVICE` | Default device selection for the CLI. |
-| `CRISPASR_KV_ON_CPU` | Keep the KV cache on the CPU. |
-| `CRISPASR_KV_QUANT` / `_KV_QUANT_K` / `_KV_QUANT_V` / `_KV_READ_F32` | KV-cache quantization / read format. |
+| `STELNETTTS_N_GPU_LAYERS` | Number of transformer layers to offload to the GPU. |
+| `STELNETTTS_ARG_DEVICE` | Default device selection for the CLI. |
+| `STELNETTTS_KV_ON_CPU` | Keep the KV cache on the CPU. |
+| `STELNETTTS_KV_QUANT` / `_KV_QUANT_K` / `_KV_QUANT_V` / `_KV_READ_F32` | KV-cache quantization / read format. |
 
 > Device *selection* across compiled backends also honors the standard ggml /
 > CUDA variables `CUDA_VISIBLE_DEVICES` and `GGML_VK_VISIBLE_DEVICES` — see
-> "Variables CrispASR does not own" below.
+> "Variables StelnetTTS does not own" below.
 
 ### Session / long-audio chunking
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_SESSION_AUTOCHUNK` | Enable auto-chunking in the session API for long audio. |
-| `CRISPASR_SESSION_CHUNK_SECONDS` | Chunk length (seconds) for session auto-chunking. |
-| `CRISPASR_SESSION_PERBACKEND_CHUNK` | Use per-backend chunk-window tuning instead of a flat window. |
-| `CRISPASR_SESSION_UNIFIED_DISPATCH` | Route surfaces through the unified library dispatch path. |
+| `STELNETTTS_SESSION_AUTOCHUNK` | Enable auto-chunking in the session API for long audio. |
+| `STELNETTTS_SESSION_CHUNK_SECONDS` | Chunk length (seconds) for session auto-chunking. |
+| `STELNETTTS_SESSION_PERBACKEND_CHUNK` | Use per-backend chunk-window tuning instead of a flat window. |
+| `STELNETTTS_SESSION_UNIFIED_DISPATCH` | Route surfaces through the unified library dispatch path. |
 
 ### Post-decode hygiene (PLAN.md §W2–W7)
 
@@ -126,71 +126,71 @@ surviving artifact. Applied on both the CLI and the session C-ABI.
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_SEG_MAX_CHARS` | Truncate any segment longer than N **code points**, backing up to the last `。．.！!？?、,` but never below 75% of the cap. A line past the cap is almost always a repetition hallucination that survived the n-gram collapse. |
-| `CRISPASR_SEG_DROP_NONVERBAL` | Drop segments that are entirely a non-verbal marker — `[Music]`, `(applause)`, `（喘ぎ声）`, `♪`. Running speech merely *containing* such a word is never dropped. |
-| `CRISPASR_SEG_LOGPROB_THOLD` | Drop segments whose average log-probability is below this. Post-hoc, on top of the decoder's own fallback gate. |
-| `CRISPASR_SEG_LOGPROB_MARGIN` | Loosen that threshold by this much for segments ≤1.6 s — a short segment's mean logprob is noisier, so it gets more room, not less. |
-| `CRISPASR_SEG_MERGE_REPEATS` | Collapse runs of near-identical adjacent segments into one spanning the whole run. Catches a phrase repeating *across* segment boundaries, which per-segment loop fixes cannot see. |
-| `CRISPASR_SEG_MERGE_SIMILARITY` | Similarity bar for the above (default 0.90; LCS over code points). |
-| `CRISPASR_SEG_MERGE_GAP_CS` | Never merge across a gap wider than this many centiseconds (default 200). Two identical lines a minute apart are two real utterances. |
-| `CRISPASR_SEG_MERGE_MIN_RUN` | Minimum consecutive similar segments before merging (default 3), so an ordinary repeated "yes." pair survives. |
+| `STELNETTTS_SEG_MAX_CHARS` | Truncate any segment longer than N **code points**, backing up to the last `。．.！!？?、,` but never below 75% of the cap. A line past the cap is almost always a repetition hallucination that survived the n-gram collapse. |
+| `STELNETTTS_SEG_DROP_NONVERBAL` | Drop segments that are entirely a non-verbal marker — `[Music]`, `(applause)`, `（喘ぎ声）`, `♪`. Running speech merely *containing* such a word is never dropped. |
+| `STELNETTTS_SEG_LOGPROB_THOLD` | Drop segments whose average log-probability is below this. Post-hoc, on top of the decoder's own fallback gate. |
+| `STELNETTTS_SEG_LOGPROB_MARGIN` | Loosen that threshold by this much for segments ≤1.6 s — a short segment's mean logprob is noisier, so it gets more room, not less. |
+| `STELNETTTS_SEG_MERGE_REPEATS` | Collapse runs of near-identical adjacent segments into one spanning the whole run. Catches a phrase repeating *across* segment boundaries, which per-segment loop fixes cannot see. |
+| `STELNETTTS_SEG_MERGE_SIMILARITY` | Similarity bar for the above (default 0.90; LCS over code points). |
+| `STELNETTTS_SEG_MERGE_GAP_CS` | Never merge across a gap wider than this many centiseconds (default 200). Two identical lines a minute apart are two real utterances. |
+| `STELNETTTS_SEG_MERGE_MIN_RUN` | Minimum consecutive similar segments before merging (default 3), so an ordinary repeated "yes." pair survives. |
 
 ### Alignment and VAD sanity checks
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_ALIGN_SENTINEL` | `0` disables the forced-alignment collapse check. On by default, **detect + warn only**. Catches `ctc_forced_align()` returning words at `t0 == t1 == 0` — its two silent-zero paths (characters absent from the CTC vocab, or a word the Viterbi path never visited) produce garbage timestamps inside a *successful* return. |
-| `CRISPASR_ALIGN_SENTINEL_REDISTRIBUTE` | `1` opts into repair: respace the words across the clip in proportion to character count. Off by default — a wrong auto-repair would be just as invisible as the collapse. |
-| `CRISPASR_VAD_FAILOVER` | `0` disables the VAD sanity check. On by default: if a clip over 120 s comes back with under 1% speech coverage (or a couple of segments covering under 10% of a very long clip), the VAD is wrong and the run falls back to fixed full-clip chunks rather than losing the transcript. |
-| `CRISPASR_NGRAM_LOOPFIX_OFF` | `1` disables the repeated-n-gram collapse entirely, exposing the RAW decoded text. Diagnostic: for telling whether a loop originates in the decode itself or is merely being masked. |
+| `STELNETTTS_ALIGN_SENTINEL` | `0` disables the forced-alignment collapse check. On by default, **detect + warn only**. Catches `ctc_forced_align()` returning words at `t0 == t1 == 0` — its two silent-zero paths (characters absent from the CTC vocab, or a word the Viterbi path never visited) produce garbage timestamps inside a *successful* return. |
+| `STELNETTTS_ALIGN_SENTINEL_REDISTRIBUTE` | `1` opts into repair: respace the words across the clip in proportion to character count. Off by default — a wrong auto-repair would be just as invisible as the collapse. |
+| `STELNETTTS_VAD_FAILOVER` | `0` disables the VAD sanity check. On by default: if a clip over 120 s comes back with under 1% speech coverage (or a couple of segments covering under 10% of a very long clip), the VAD is wrong and the run falls back to fixed full-clip chunks rather than losing the transcript. |
+| `STELNETTTS_NGRAM_LOOPFIX_OFF` | `1` disables the repeated-n-gram collapse entirely, exposing the RAW decoded text. Diagnostic: for telling whether a loop originates in the decode itself or is merely being masked. |
 
 ### Decoding / beam search (shared)
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_MAES_BETA` / `_MAES_GAMMA` / `_MAES_NUM_STEPS` | MAES beam-search parameters. |
-| `CRISPASR_TDT_BATCH` / `CRISPASR_RNNT_BATCH` | Batch the TDT / RNNT joint decode. |
-| `CRISPASR_RNNT_GGML_PERSTEP` | Per-step (vs. persistent-graph) ggml RNNT decode. |
-| `CRISPASR_NGRAM_LOOPFIX_OFF` | Disable the n-gram decode-loop breaker. |
-| `CRISPASR_GAP_FILL` / `_GAP_FILL_MIN_CS` | Re-transcribe spans a first pass left empty (long audio); on by default for parakeet, threshold non-JA 300 cs / JA 100 cs. |
+| `STELNETTTS_MAES_BETA` / `_MAES_GAMMA` / `_MAES_NUM_STEPS` | MAES beam-search parameters. |
+| `STELNETTTS_TDT_BATCH` / `STELNETTTS_RNNT_BATCH` | Batch the TDT / RNNT joint decode. |
+| `STELNETTTS_RNNT_GGML_PERSTEP` | Per-step (vs. persistent-graph) ggml RNNT decode. |
+| `STELNETTTS_NGRAM_LOOPFIX_OFF` | Disable the n-gram decode-loop breaker. |
+| `STELNETTTS_GAP_FILL` / `_GAP_FILL_MIN_CS` | Re-transcribe spans a first pass left empty (long audio); on by default for parakeet, threshold non-JA 300 cs / JA 100 cs. |
 
 ### G2P / phonemizer
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_CMUDICT_PATH` | Path to the CMUdict pronunciation dictionary. |
-| `CRISPASR_DE_DICT_PATH` / `_FR_DICT_PATH` / `_ES_DICT_PATH` | Language-specific pronunciation dictionaries. |
-| `CRISPASR_G2P_DICT_SOURCE` / `_G2P_MODEL_PATH` | G2P dictionary source / neural G2P model path. |
-| `CRISPASR_ESPEAK_DATA_PATH` | eSpeak-NG data directory. |
-| `CRISPASR_KOKORO_G2P` | Kokoro G2P backend selection. |
-| `CRISPASR_KOKORO_MISAKI_IPA` | `0` disables the espeak-IPA → misaki-alphabet conversion Kokoro needs (#316), restoring the raw G2P spelling for A/B. On by default. |
-| `CRISPASR_G2P_DE_UNSTRESS` | `1` reads the German closed class the way espeak reads it in a SENTENCE (`sie` → `ziː`) instead of the citation form our per-word dictionary stores (`zˈiː`). Off by default: it takes phoneme agreement with espeak from 45.9% to 87.1%, but the ASR round-trip could not resolve a difference, and that metric measures intelligibility rather than naturalness (#316). |
-| `CRISPASR_KOKORO_DE_MISAKI_ALPHABET` | `1` applies misaki's tied-sequence collapse for German (`tsvˈaɪ` → `ʦvˈI`), which is what the published training recipe does. Off by default: it made the ASR round-trip worse on the `kokoro-de-hui-base` model we ship, which appears to predate that part of the recipe (#316). The `ʏ`→`y` vocabulary fixup is applied either way. |
-| `CRISPASR_T5_REPEAT_BREAK` | `0` disables the decode-loop break for madlad/T5 translation, restoring exact PyTorch-blueprint behaviour. On by default: MADLAD greedy-decodes into a repeated token cycle on some short inputs and burns the whole token budget on it. The blueprint does the same — this is a deliberate improvement on it, not a parity fix (#333). |
-| `CRISPASR_T5_NO_KV_REUSE` | `1` re-forwards the whole decoder prefix each step instead of appending to the KV cache. Same output, much slower; an A/B lever for isolating cache bugs (#333). |
-| `CRISPASR_T5_KEEP_EMBED` | `1` keeps `shared.embed.*` and `lm_head.*` at source precision when quantizing a T5 model. **Off by default because it was measured and loses**: on madlad400 it makes q8_0 3.38→3.62 GB and q4_k 2.04→2.41 GB for a worst-stage cosine that does not improve (0.999922→0.999920, 0.992929→0.992606). The Q4_K loss accumulates through the 32 encoder blocks, not in the embedding lookup (#333). |
-| `CRISPASR_KOKORO_PUNCT` | `0` drops punctuation from the phoneme string for the German/French/Spanish built-in G2Ps, restoring pre-0.8.26 behaviour for A/B. On by default: Kokoro's vocabulary contains `,.;:!?` and they are how it pauses (#316). English is not gated — it is settled against misaki. |
+| `STELNETTTS_CMUDICT_PATH` | Path to the CMUdict pronunciation dictionary. |
+| `STELNETTTS_DE_DICT_PATH` / `_FR_DICT_PATH` / `_ES_DICT_PATH` | Language-specific pronunciation dictionaries. |
+| `STELNETTTS_G2P_DICT_SOURCE` / `_G2P_MODEL_PATH` | G2P dictionary source / neural G2P model path. |
+| `STELNETTTS_ESPEAK_DATA_PATH` | eSpeak-NG data directory. |
+| `STELNETTTS_KOKORO_G2P` | Kokoro G2P backend selection. |
+| `STELNETTTS_KOKORO_MISAKI_IPA` | `0` disables the espeak-IPA → misaki-alphabet conversion Kokoro needs (#316), restoring the raw G2P spelling for A/B. On by default. |
+| `STELNETTTS_G2P_DE_UNSTRESS` | `1` reads the German closed class the way espeak reads it in a SENTENCE (`sie` → `ziː`) instead of the citation form our per-word dictionary stores (`zˈiː`). Off by default: it takes phoneme agreement with espeak from 45.9% to 87.1%, but the ASR round-trip could not resolve a difference, and that metric measures intelligibility rather than naturalness (#316). |
+| `STELNETTTS_KOKORO_DE_MISAKI_ALPHABET` | `1` applies misaki's tied-sequence collapse for German (`tsvˈaɪ` → `ʦvˈI`), which is what the published training recipe does. Off by default: it made the ASR round-trip worse on the `kokoro-de-hui-base` model we ship, which appears to predate that part of the recipe (#316). The `ʏ`→`y` vocabulary fixup is applied either way. |
+| `STELNETTTS_T5_REPEAT_BREAK` | `0` disables the decode-loop break for madlad/T5 translation, restoring exact PyTorch-blueprint behaviour. On by default: MADLAD greedy-decodes into a repeated token cycle on some short inputs and burns the whole token budget on it. The blueprint does the same — this is a deliberate improvement on it, not a parity fix (#333). |
+| `STELNETTTS_T5_NO_KV_REUSE` | `1` re-forwards the whole decoder prefix each step instead of appending to the KV cache. Same output, much slower; an A/B lever for isolating cache bugs (#333). |
+| `STELNETTTS_T5_KEEP_EMBED` | `1` keeps `shared.embed.*` and `lm_head.*` at source precision when quantizing a T5 model. **Off by default because it was measured and loses**: on madlad400 it makes q8_0 3.38→3.62 GB and q4_k 2.04→2.41 GB for a worst-stage cosine that does not improve (0.999922→0.999920, 0.992929→0.992606). The Q4_K loss accumulates through the 32 encoder blocks, not in the embedding lookup (#333). |
+| `STELNETTTS_KOKORO_PUNCT` | `0` drops punctuation from the phoneme string for the German/French/Spanish built-in G2Ps, restoring pre-0.8.26 behaviour for A/B. On by default: Kokoro's vocabulary contains `,.;:!?` and they are how it pauses (#316). English is not gated — it is settled against misaki. |
 
 ### Watermark / provenance
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_NO_WATERMARK` | Disable the audio watermark. |
-| `CRISPASR_WATERMARK_LEGACY` | Use the legacy watermark path. |
-| `CRISPASR_NO_C2PA_REMUX` | Skip the C2PA MP4 remux step. |
+| `STELNETTTS_NO_WATERMARK` | Disable the audio watermark. |
+| `STELNETTTS_WATERMARK_LEGACY` | Use the legacy watermark path. |
+| `STELNETTTS_NO_C2PA_REMUX` | Skip the C2PA MP4 remux step. |
 
 ### Quantization / diff-harness / misc
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_QUANT_LMHEAD` | Quantize the LM head during `crispasr-quantize`. |
-| `CRISPASR_IMATRIX_OUT` | Importance-matrix output path. |
-| `CRISPASR_ACTDUMP_OUT` / `_ACTDUMP_TENSOR` | Activation dump output / target tensor. |
-| `CRISPASR_DIFF_NO_GPU` / `_DIFF_USE_GPU` / `_DIFF_SLICES` / `_DIFF_STAGES` | `crispasr-diff` harness controls. |
-| `CRISPASR_MEL_PARALLEL` / `_MEL_TIMING` | Parallelize / time mel-spectrogram computation. |
-| `CRISPASR_VERBOSE` | Global verbose output. |
-| `CRISPASR_NO_WARMUP` / `CRISPASR_WARMUP` | Skip / force the model warmup pass. |
-| `CRISPASR_SERVER_WORKERS` / `CRISPASR_API_KEYS` | HTTP server worker count / API keys. |
+| `STELNETTTS_QUANT_LMHEAD` | Quantize the LM head during `stelnettts-quantize`. |
+| `STELNETTTS_IMATRIX_OUT` | Importance-matrix output path. |
+| `STELNETTTS_ACTDUMP_OUT` / `_ACTDUMP_TENSOR` | Activation dump output / target tensor. |
+| `STELNETTTS_DIFF_NO_GPU` / `_DIFF_USE_GPU` / `_DIFF_SLICES` / `_DIFF_STAGES` | `stelnettts-diff` harness controls. |
+| `STELNETTTS_MEL_PARALLEL` / `_MEL_TIMING` | Parallelize / time mel-spectrogram computation. |
+| `STELNETTTS_VERBOSE` | Global verbose output. |
+| `STELNETTTS_NO_WARMUP` / `STELNETTTS_WARMUP` | Skip / force the model warmup pass. |
+| `STELNETTTS_SERVER_WORKERS` / `STELNETTTS_API_KEYS` | HTTP server worker count / API keys. |
 
 ## Reference-voice cache (voice cloning)
 
@@ -199,23 +199,23 @@ Perceiver, or an ASR pass) is slow and produces a small, reusable blob. Every
 voice-cloning TTS backend caches that blob through **one shared mechanism**
 (`src/core/tts_ref_cache.h`), so the location and disable switch are identical
 across backends (issue #265 unified OmniVoice — which previously used a bespoke
-`~/.cache/crispasr` cache — onto this path):
+`~/.cache/stelnettts` cache — onto this path):
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_TTS_REF_CACHE` | Set to `0` to disable reference-voice caching everywhere. |
-| `CRISPASR_TTS_REF_CACHE_DIR` | Override the cache directory (default `<TMPDIR>/crispasr-tts-refcache`). |
+| `STELNETTTS_TTS_REF_CACHE` | Set to `0` to disable reference-voice caching everywhere. |
+| `STELNETTTS_TTS_REF_CACHE_DIR` | Override the cache directory (default `<TMPDIR>/stelnettts-tts-refcache`). |
 
 Content-addressed entries are keyed by a hash of the raw reference (plus, for
 some backends, an encoder-weight fingerprint) and tagged per backend
 (`irodori-latent`, `openvoice2-se`, `omnivoice-voice`, `f5-reftext`, …) so no two
 backends read each other's blob. OmniVoice additionally honors the legacy
-`CRISPASR_OMNIVOICE_VOICE_CACHE=0` as an alias for the shared disable switch.
+`STELNETTTS_OMNIVOICE_VOICE_CACHE=0` as an alias for the shared disable switch.
 
-## Variables CrispASR does not own
+## Variables StelnetTTS does not own
 
-These are read by CrispASR but are **OS / third-party conventions** and are
-intentionally *not* renamed to the `CRISPASR_` prefix:
+These are read by StelnetTTS but are **OS / third-party conventions** and are
+intentionally *not* renamed to the `STELNETTTS_` prefix:
 
 | Variable | Origin |
 |----------|--------|
@@ -229,7 +229,7 @@ intentionally *not* renamed to the `CRISPASR_` prefix:
 ### Sibling modular libraries (own conventions)
 
 The in-tree modular libraries keep their own established prefixes and are synced
-from their sibling repos, so their variables are **not** part of the `CRISPASR_`
+from their sibling repos, so their variables are **not** part of the `STELNETTTS_`
 scheme:
 
 - **`crisp_audio/`** — audio tower: `CRISP_AUDIO_DUMP_STAGES`, `CRISP_AUDIO_KEEP_PAD_FRAMES`, `CRISP_AUDIO_WINDOWED_ATTN`.
@@ -239,863 +239,863 @@ scheme:
 
 ## Test fixtures
 
-The live/integration test suite reads a few `CRISPASR_`-prefixed fixture
+The live/integration test suite reads a few `STELNETTTS_`-prefixed fixture
 variables (model/audio paths); `tests/env-live-tests.sh` sets sensible defaults.
 Like every other variable here, the pre-standardization bare names are still
 honored as deprecated aliases:
 
 | Variable | Purpose |
 |----------|---------|
-| `CRISPASR_PARAFORMER_MODEL` / `_PARAFORMER_MODEL_Q4K` / `_PARAFORMER_AUDIO_ZH` / `_PARAFORMER_AUDIO_EN` | Paraformer test model / audio paths. |
-| `CRISPASR_AUDIOSEAL_GGUF` | AudioSeal test model path. |
-| `CRISPASR_PIPER_TEST_MODEL` | Piper phonemize test model path. |
-| `CRISPASR_OV2_DUMP_DIR` | OpenVoice2 HiFi test dump directory. |
-| `CRISPASR_MODEL_BTC_CHORDS` | BTC chord-recognition test model path. Defaults to `$CRISPASR_MODELS_DIR/btc-chords-large-f32.gguf`. |
+| `STELNETTTS_PARAFORMER_MODEL` / `_PARAFORMER_MODEL_Q4K` / `_PARAFORMER_AUDIO_ZH` / `_PARAFORMER_AUDIO_EN` | Paraformer test model / audio paths. |
+| `STELNETTTS_AUDIOSEAL_GGUF` | AudioSeal test model path. |
+| `STELNETTTS_PIPER_TEST_MODEL` | Piper phonemize test model path. |
+| `STELNETTTS_OV2_DUMP_DIR` | OpenVoice2 HiFi test dump directory. |
+| `STELNETTTS_MODEL_BTC_CHORDS` | BTC chord-recognition test model path. Defaults to `$STELNETTTS_MODELS_DIR/btc-chords-large-f32.gguf`. |
 
 ---
 
 # Per-backend variables
 
-Every variable below is the canonical `CRISPASR_`-prefixed name; the bare form
-(without `CRISPASR_`) is accepted as a deprecated alias. See the **suffix
+Every variable below is the canonical `STELNETTTS_`-prefixed name; the bare form
+(without `STELNETTTS_`) is accepted as a deprecated alias. See the **suffix
 legend** above for the meaning of the common `_BENCH` / `_DEBUG` / `_DUMP_*` /
 `_GPU` / `_CPU` / `_FORCE_SCALAR` / `_FASTCONV` / `_CFG_INTERVAL` / `_SEED`
 suffixes.
 
 ### AAC codec
 
-- `CRISPASR_AAC_DEBUG`
-- `CRISPASR_AAC_DECODER`
+- `STELNETTTS_AAC_DEBUG`
+- `STELNETTTS_AAC_DECODER`
 
 ### ARK-ASR
 
-- `CRISPASR_ARKASR_CPU`
-- `CRISPASR_ARKASR_DEBUG_GEN`
-- `CRISPASR_ARKASR_GPU`
-- `CRISPASR_ARKASR_MAX_SINGLE_PASS_S`
-- `CRISPASR_ARKASR_NO_CHUNK_CONTEXT`
-- `CRISPASR_ARKASR_NO_EOS_SUPPRESS`
-- `CRISPASR_ARKASR_TIMING`
+- `STELNETTTS_ARKASR_CPU`
+- `STELNETTTS_ARKASR_DEBUG_GEN`
+- `STELNETTTS_ARKASR_GPU`
+- `STELNETTTS_ARKASR_MAX_SINGLE_PASS_S`
+- `STELNETTTS_ARKASR_NO_CHUNK_CONTEXT`
+- `STELNETTTS_ARKASR_NO_EOS_SUPPRESS`
+- `STELNETTTS_ARKASR_TIMING`
 
 ### AudioSeal watermark
 
-- `CRISPASR_AUDIOSEAL_BENCH`
-- `CRISPASR_AUDIOSEAL_DEBUG`
-- `CRISPASR_AUDIOSEAL_DUMP_STAGES`
+- `STELNETTTS_AUDIOSEAL_BENCH`
+- `STELNETTTS_AUDIOSEAL_DEBUG`
+- `STELNETTTS_AUDIOSEAL_DUMP_STAGES`
 
 ### BananaMind TTS
 
-- `CRISPASR_BANANAMIND_DEBUG`
-- `CRISPASR_BANANAMIND_TTS_BENCH`
+- `STELNETTTS_BANANAMIND_DEBUG`
+- `STELNETTTS_BANANAMIND_TTS_BENCH`
 
 ### Bark
 
-- `CRISPASR_BARK_BENCH`
-- `CRISPASR_BARK_DECODE_CODES`
-- `CRISPASR_BARK_DUMP_DIR`
+- `STELNETTTS_BARK_BENCH`
+- `STELNETTTS_BARK_DECODE_CODES`
+- `STELNETTTS_BARK_DUMP_DIR`
 
 ### BERT encoder
 
-- `CRISPASR_BERT_ENCODER_BENCH`
+- `STELNETTTS_BERT_ENCODER_BENCH`
 
 ### BTC chord recognition
 
-- `CRISPASR_BTC_MAJ_MIN` — collapse the 170-class chord output to the 25-class
+- `STELNETTTS_BTC_MAJ_MIN` — collapse the 170-class chord output to the 25-class
   maj/min vocabulary. Default off (full 170-class output): 170 reduces to
   maj/min at runtime, but a 25-class model can never be expanded, so the
   170-class checkpoint is the shipping default.
 
 > The shipped BTC weights are **CC-BY-NC-SA** (trained on Isophonics / Robbie
 > Williams / UsPop2002 chord annotations) even though the upstream BTC code and
-> CrispASR itself are MIT. The registry refuses to download them without
-> `--accept-license cc-by-nc-sa-4.0` (or `CRISPASR_ACCEPT_LICENSE`). A
+> StelnetTTS itself are MIT. The registry refuses to download them without
+> `--accept-license cc-by-nc-sa-4.0` (or `STELNETTTS_ACCEPT_LICENSE`). A
 > commercial product must supply its own weights.
 
 ### Canary / Canary-CTC / Canary-Qwen
 
-- `CRISPASR_CANARY_BENCH`
-- `CRISPASR_CANARY_CTC_BENCH`
-- `CRISPASR_CANARY_QWEN_BENCH`
-- `CRISPASR_CANARY_QWEN_DEBUG`
-- `CRISPASR_CANARY_QWEN_MIN_ENC_FRAMES`
-- `CRISPASR_CANARY_QWEN_NO_ECHO_STRIP`
-- `CRISPASR_CANARY_STREAM_THRESHOLD_S`
+- `STELNETTTS_CANARY_BENCH`
+- `STELNETTTS_CANARY_CTC_BENCH`
+- `STELNETTTS_CANARY_QWEN_BENCH`
+- `STELNETTTS_CANARY_QWEN_DEBUG`
+- `STELNETTTS_CANARY_QWEN_MIN_ENC_FRAMES`
+- `STELNETTTS_CANARY_QWEN_NO_ECHO_STRIP`
+- `STELNETTTS_CANARY_STREAM_THRESHOLD_S`
 
 ### Chatterbox
 
-- `CRISPASR_CHATTERBOX_BENCH`
-- `CRISPASR_CHATTERBOX_BENCH_B2`
-- `CRISPASR_CHATTERBOX_DEBUG`
-- `CRISPASR_CHATTERBOX_DUMP_ATTN_AT`
-- `CRISPASR_CHATTERBOX_DUMP_FFN_AT`
-- `CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS`
-- `CRISPASR_CHATTERBOX_DUMP_KPROJ_AT`
-- `CRISPASR_CHATTERBOX_DUMP_KROPE_AT`
-- `CRISPASR_CHATTERBOX_DUMP_KV_AT`
-- `CRISPASR_CHATTERBOX_DUMP_KV_LAYER`
-- `CRISPASR_CHATTERBOX_DUMP_LAYER`
-- `CRISPASR_CHATTERBOX_DUMP_LOGITS_AT`
-- `CRISPASR_CHATTERBOX_DUMP_NORM_AT`
-- `CRISPASR_CHATTERBOX_DUMP_QPROJ_AT`
-- `CRISPASR_CHATTERBOX_DUMP_VPROJ_AT`
-- `CRISPASR_CHATTERBOX_DUMP_WK`
-- `CRISPASR_CHATTERBOX_LANG`
-- `CRISPASR_CHATTERBOX_NAIVE_ATTN`
-- `CRISPASR_CHATTERBOX_SEED`
-- `CRISPASR_CHATTERBOX_SYN_TEXT`
-- `CRISPASR_CHATTERBOX_T3_BUCKET_REUSE`
-- `CRISPASR_CHATTERBOX_T3_CFG_B2`
-- `CRISPASR_CHATTERBOX_T3_CFG_BUCKET`
-- `CRISPASR_CHATTERBOX_T3_SEED`
-- `CRISPASR_CHATTERBOX_TEMP`
-- `CRISPASR_CHATTERBOX_THREADS`
+- `STELNETTTS_CHATTERBOX_BENCH`
+- `STELNETTTS_CHATTERBOX_BENCH_B2`
+- `STELNETTTS_CHATTERBOX_DEBUG`
+- `STELNETTTS_CHATTERBOX_DUMP_ATTN_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_FFN_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS`
+- `STELNETTTS_CHATTERBOX_DUMP_KPROJ_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_KROPE_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_KV_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_KV_LAYER`
+- `STELNETTTS_CHATTERBOX_DUMP_LAYER`
+- `STELNETTTS_CHATTERBOX_DUMP_LOGITS_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_NORM_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_QPROJ_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_VPROJ_AT`
+- `STELNETTTS_CHATTERBOX_DUMP_WK`
+- `STELNETTTS_CHATTERBOX_LANG`
+- `STELNETTTS_CHATTERBOX_NAIVE_ATTN`
+- `STELNETTTS_CHATTERBOX_SEED`
+- `STELNETTTS_CHATTERBOX_SYN_TEXT`
+- `STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE`
+- `STELNETTTS_CHATTERBOX_T3_CFG_B2`
+- `STELNETTTS_CHATTERBOX_T3_CFG_BUCKET`
+- `STELNETTTS_CHATTERBOX_T3_SEED`
+- `STELNETTTS_CHATTERBOX_TEMP`
+- `STELNETTTS_CHATTERBOX_THREADS`
 
 ### Chatterbox S3Gen
 
-- `CRISPASR_S3GEN_CFG_INTERVAL`
-- `CRISPASR_S3GEN_DUMP`
-- `CRISPASR_S3GEN_DUMP_UNET`
-- `CRISPASR_S3GEN_DUMP_UNET_NO_AUTO_MARK`
-- `CRISPASR_S3GEN_FASTCONV`
-- `CRISPASR_S3GEN_FASTCONV_DEBUG`
-- `CRISPASR_S3GEN_RC_AS_MUL_MAT`
-- `CRISPASR_S3GEN_UNET_CFG_SINGLE`
-- `CRISPASR_S3GEN_UNET_CPU`
-- `CRISPASR_S3GEN_UNET_GALLOCR`
-- `CRISPASR_S3GEN_UNET_KEEP_GPU_OP`
-- `CRISPASR_S3GEN_UNET_MARK_DB_OUT`
-- `CRISPASR_S3GEN_UNET_MARK_DB_RESNET`
-- `CRISPASR_S3GEN_UNET_MARK_DB_TB`
-- `CRISPASR_S3GEN_UNET_MARK_MB_OUT`
-- `CRISPASR_S3GEN_UNET_MARK_MB_OUT_INDEX`
-- `CRISPASR_S3GEN_UNET_MARK_MB_OUT_MAX`
-- `CRISPASR_S3GEN_UNET_MARK_MB_RESNET`
-- `CRISPASR_S3GEN_UNET_PIN_CPU_OP`
-- `CRISPASR_S3GEN_UNET_PRESERVE_INTERMEDIATES`
-- `CRISPASR_S3GEN_UNET_PROBE_BLOCK1`
-- `CRISPASR_S3GEN_UNET_PROBE_DENOISER_OUT`
-- `CRISPASR_S3GEN_UNET_PROBE_INPUT_SNAPSHOT`
-- `CRISPASR_S3GEN_UNET_PROBE_RC_OUT`
+- `STELNETTTS_S3GEN_CFG_INTERVAL`
+- `STELNETTTS_S3GEN_DUMP`
+- `STELNETTTS_S3GEN_DUMP_UNET`
+- `STELNETTTS_S3GEN_DUMP_UNET_NO_AUTO_MARK`
+- `STELNETTTS_S3GEN_FASTCONV`
+- `STELNETTTS_S3GEN_FASTCONV_DEBUG`
+- `STELNETTTS_S3GEN_RC_AS_MUL_MAT`
+- `STELNETTTS_S3GEN_UNET_CFG_SINGLE`
+- `STELNETTTS_S3GEN_UNET_CPU`
+- `STELNETTTS_S3GEN_UNET_GALLOCR`
+- `STELNETTTS_S3GEN_UNET_KEEP_GPU_OP`
+- `STELNETTTS_S3GEN_UNET_MARK_DB_OUT`
+- `STELNETTTS_S3GEN_UNET_MARK_DB_RESNET`
+- `STELNETTTS_S3GEN_UNET_MARK_DB_TB`
+- `STELNETTTS_S3GEN_UNET_MARK_MB_OUT`
+- `STELNETTTS_S3GEN_UNET_MARK_MB_OUT_INDEX`
+- `STELNETTTS_S3GEN_UNET_MARK_MB_OUT_MAX`
+- `STELNETTTS_S3GEN_UNET_MARK_MB_RESNET`
+- `STELNETTTS_S3GEN_UNET_PIN_CPU_OP`
+- `STELNETTTS_S3GEN_UNET_PRESERVE_INTERMEDIATES`
+- `STELNETTTS_S3GEN_UNET_PROBE_BLOCK1`
+- `STELNETTTS_S3GEN_UNET_PROBE_DENOISER_OUT`
+- `STELNETTTS_S3GEN_UNET_PROBE_INPUT_SNAPSHOT`
+- `STELNETTTS_S3GEN_UNET_PROBE_RC_OUT`
 
 ### Chatterbox sub-modules
 
-- `CRISPASR_CB_CAMPPLUS_BENCH`
-- `CRISPASR_CB_S3GEN_BENCH`
-- `CRISPASR_CB_S3TOK_BENCH`
-- `CRISPASR_CB_VE_BENCH`
+- `STELNETTTS_CB_CAMPPLUS_BENCH`
+- `STELNETTTS_CB_S3GEN_BENCH`
+- `STELNETTTS_CB_S3TOK_BENCH`
+- `STELNETTTS_CB_VE_BENCH`
 
 ### Cohere
 
-- `CRISPASR_COHERE_BENCH`
-- `CRISPASR_COHERE_DEBUG`
-- `CRISPASR_COHERE_DEVICE`
-- `CRISPASR_COHERE_DUMP_ATTN`
-- `CRISPASR_COHERE_DUMP_ENCOUT`
-- `CRISPASR_COHERE_DUMP_MEL`
-- `CRISPASR_COHERE_DUMP_STAGES`
-- `CRISPASR_COHERE_FLASH`
-- `CRISPASR_COHERE_GAPS`
-- `CRISPASR_COHERE_LEGACY_SA`
-- `CRISPASR_COHERE_PROF`
-- `CRISPASR_COHERE_THREADS`
+- `STELNETTTS_COHERE_BENCH`
+- `STELNETTTS_COHERE_DEBUG`
+- `STELNETTTS_COHERE_DEVICE`
+- `STELNETTTS_COHERE_DUMP_ATTN`
+- `STELNETTTS_COHERE_DUMP_ENCOUT`
+- `STELNETTTS_COHERE_DUMP_MEL`
+- `STELNETTTS_COHERE_DUMP_STAGES`
+- `STELNETTTS_COHERE_FLASH`
+- `STELNETTTS_COHERE_GAPS`
+- `STELNETTTS_COHERE_LEGACY_SA`
+- `STELNETTTS_COHERE_PROF`
+- `STELNETTTS_COHERE_THREADS`
 
 ### CosyVoice3
 
-- `CRISPASR_COSYVOICE3_BENCH`
-- `CRISPASR_COSYVOICE3_CAMPPLUS_PATH`
-- `CRISPASR_COSYVOICE3_CFG_BATCH`
-- `CRISPASR_COSYVOICE3_CFG_INTERVAL`
-- `CRISPASR_COSYVOICE3_CFG_INTERVAL_DEBUG`
-- `CRISPASR_COSYVOICE3_DUMP_TOKENS`
-- `CRISPASR_COSYVOICE3_FASTCONV`
-- `CRISPASR_COSYVOICE3_FASTCONV_DEBUG`
-- `CRISPASR_COSYVOICE3_FLOW_STEPS`
-- `CRISPASR_COSYVOICE3_HIFT_PATH`
-- `CRISPASR_COSYVOICE3_KV_BUCKET`
-- `CRISPASR_COSYVOICE3_NO_CLONE_CACHE` — re-extract the `--voice ref.wav`
+- `STELNETTTS_COSYVOICE3_BENCH`
+- `STELNETTTS_COSYVOICE3_CAMPPLUS_PATH`
+- `STELNETTTS_COSYVOICE3_CFG_BATCH`
+- `STELNETTTS_COSYVOICE3_CFG_INTERVAL`
+- `STELNETTTS_COSYVOICE3_CFG_INTERVAL_DEBUG`
+- `STELNETTTS_COSYVOICE3_DUMP_TOKENS`
+- `STELNETTTS_COSYVOICE3_FASTCONV`
+- `STELNETTTS_COSYVOICE3_FASTCONV_DEBUG`
+- `STELNETTTS_COSYVOICE3_FLOW_STEPS`
+- `STELNETTTS_COSYVOICE3_HIFT_PATH`
+- `STELNETTTS_COSYVOICE3_KV_BUCKET`
+- `STELNETTTS_COSYVOICE3_NO_CLONE_CACHE` — re-extract the `--voice ref.wav`
   speaker (s3tokenizer + CAMPPlus + prompt mel) on every synthesis instead of
   once per reference. Output-identical; the cached path is ~30% faster on a
   multi-sentence `--tts` (#334).
-- `CRISPASR_COSYVOICE3_NO_MIN_LEN` — drop the decode's minimum-length floor
+- `STELNETTTS_COSYVOICE3_NO_MIN_LEN` — drop the decode's minimum-length floor
   (2 speech tokens per target text token, upstream's `min_token_text_ratio`).
   Without the floor a single unlucky sample at step 0 ends the decode with no
   audio at all (#334).
-- `CRISPASR_COSYVOICE3_VOICES_PATH`
+- `STELNETTTS_COSYVOICE3_VOICES_PATH`
 
 ### CosyVoice3 (diff-harness assets)
 
-- `CRISPASR_CV3_FLOW_GGUF`
-- `CRISPASR_CV3_HIFT_GGUF`
-- `CRISPASR_CV3_S3TOK_GGUF`
+- `STELNETTTS_CV3_FLOW_GGUF`
+- `STELNETTTS_CV3_HIFT_GGUF`
+- `STELNETTTS_CV3_S3TOK_GGUF`
 
 ### CSM TTS
 
-- `CRISPASR_CSM_BENCH`
-- `CRISPASR_CSM_WAV_FRAMES`
-- `CRISPASR_CSM_WAV_OUT`
-- `CRISPASR_CSM_WAV_TEMP`
-- `CRISPASR_CSM_WAV_TEXT`
+- `STELNETTTS_CSM_BENCH`
+- `STELNETTTS_CSM_WAV_FRAMES`
+- `STELNETTTS_CSM_WAV_OUT`
+- `STELNETTTS_CSM_WAV_TEMP`
+- `STELNETTTS_CSM_WAV_TEXT`
 
 ### Dia TTS
 
-- `CRISPASR_DIA_BENCH`
-- `CRISPASR_DIA_DECODE_CODES`
-- `CRISPASR_DIA_DUMP_DIR`
-- `CRISPASR_DIA_DUMP_STEPLOGITS`
-- `CRISPASR_DIA_DUMP_TOKENS`
-- `CRISPASR_DIA_FORCE_TOKENS`
-- `CRISPASR_DIA_GREEDY`
-- `CRISPASR_DIA_MAX_STEPS`
-- `CRISPASR_DIA_TTS_GPU`
+- `STELNETTTS_DIA_BENCH`
+- `STELNETTTS_DIA_DECODE_CODES`
+- `STELNETTTS_DIA_DUMP_DIR`
+- `STELNETTTS_DIA_DUMP_STEPLOGITS`
+- `STELNETTTS_DIA_DUMP_TOKENS`
+- `STELNETTTS_DIA_FORCE_TOKENS`
+- `STELNETTTS_DIA_GREEDY`
+- `STELNETTTS_DIA_MAX_STEPS`
+- `STELNETTTS_DIA_TTS_GPU`
 
 ### dots.tts
 
-- `CRISPASR_DOTS_CFG_INTERVAL`
-- `CRISPASR_DOTS_CFG_INTERVAL_DEBUG`
-- `CRISPASR_DOTS_DIFF_GPU`
-- `CRISPASR_DOTS_DIT_DEBUG`
-- `CRISPASR_DOTS_EOS_THRESHOLD`
-- `CRISPASR_DOTS_FM_AB`
-- `CRISPASR_DOTS_FM_DUMP`
-- `CRISPASR_DOTS_FUSED_STEP`
-- `CRISPASR_DOTS_MAX_PATCHES`
-- `CRISPASR_DOTS_ODE_STEPS`
-- `CRISPASR_DOTS_PENC_VERIFY`
-- `CRISPASR_DOTS_TTS_BENCH`
-- `CRISPASR_DOTS_TTS_CPU`
-- `CRISPASR_DOTS_TTS_DEBUG`
+- `STELNETTTS_DOTS_CFG_INTERVAL`
+- `STELNETTTS_DOTS_CFG_INTERVAL_DEBUG`
+- `STELNETTTS_DOTS_DIFF_GPU`
+- `STELNETTTS_DOTS_DIT_DEBUG`
+- `STELNETTTS_DOTS_EOS_THRESHOLD`
+- `STELNETTTS_DOTS_FM_AB`
+- `STELNETTTS_DOTS_FM_DUMP`
+- `STELNETTTS_DOTS_FUSED_STEP`
+- `STELNETTTS_DOTS_MAX_PATCHES`
+- `STELNETTTS_DOTS_ODE_STEPS`
+- `STELNETTTS_DOTS_PENC_VERIFY`
+- `STELNETTTS_DOTS_TTS_BENCH`
+- `STELNETTTS_DOTS_TTS_CPU`
+- `STELNETTTS_DOTS_TTS_DEBUG`
 
 ### ECAPA (LID / speaker)
 
-- `CRISPASR_ECAPA_ASP_CPU`
-- `CRISPASR_ECAPA_ASP_GGML`
-- `CRISPASR_ECAPA_FORCE_SCALAR`
-- `CRISPASR_ECAPA_LID_BENCH`
-- `CRISPASR_ECAPA_REF_FBANK`
-- `CRISPASR_ECAPA_TIMING`
+- `STELNETTTS_ECAPA_ASP_CPU`
+- `STELNETTTS_ECAPA_ASP_GGML`
+- `STELNETTTS_ECAPA_FORCE_SCALAR`
+- `STELNETTTS_ECAPA_LID_BENCH`
+- `STELNETTTS_ECAPA_REF_FBANK`
+- `STELNETTTS_ECAPA_TIMING`
 
 ### F5-TTS
 
-- `CRISPASR_F5_BATCH_CFG`
-- `CRISPASR_F5_BENCH`
-- `CRISPASR_F5_CFG_INTERVAL`
-- `CRISPASR_F5_DURATION_CLAMP` — clamp the per-char speech rate into a sane English band so a reference whose audio/transcript lengths are mismatched can't truncate (or balloon) the output (#294). Default on; set `0` to restore the exact upstream `ref_T / ref_text_len * gen_text_len / speed` estimate.
-- `CRISPASR_F5_FORCE_SCALAR`
-- `CRISPASR_F5_REF_MAX_SEC` — clip the reference audio to this many seconds before it drives the duration estimate (upstream parity: 12 s). Default `12`; set `0` to disable the clip.
-- `CRISPASR_F5_REF_TRIM_SILENCE` — strip leading/trailing silence and collapse internal silences >~1 s in the reference audio (upstream parity). Default on; set `0` to disable.
+- `STELNETTTS_F5_BATCH_CFG`
+- `STELNETTTS_F5_BENCH`
+- `STELNETTTS_F5_CFG_INTERVAL`
+- `STELNETTTS_F5_DURATION_CLAMP` — clamp the per-char speech rate into a sane English band so a reference whose audio/transcript lengths are mismatched can't truncate (or balloon) the output (#294). Default on; set `0` to restore the exact upstream `ref_T / ref_text_len * gen_text_len / speed` estimate.
+- `STELNETTTS_F5_FORCE_SCALAR`
+- `STELNETTTS_F5_REF_MAX_SEC` — clip the reference audio to this many seconds before it drives the duration estimate (upstream parity: 12 s). Default `12`; set `0` to disable the clip.
+- `STELNETTTS_F5_REF_TRIM_SILENCE` — strip leading/trailing silence and collapse internal silences >~1 s in the reference audio (upstream parity). Default on; set `0` to disable.
 
 ### FastConformer (shared encoder)
 
-- `CRISPASR_FC_ATTN_CONT`
-- `CRISPASR_FC_BUCKET`
-- `CRISPASR_FC_FUSED_QKV`
-- `CRISPASR_FC_GPU_MANUAL_ATTN`
-- `CRISPASR_FC_MAX_LAYERS`
-- `CRISPASR_FC_MEM_DEBUG`
-- `CRISPASR_FC_NO_FLASH`
-- `CRISPASR_FC_PROFILE`
-- `CRISPASR_FC_PROF_FP`
-- `CRISPASR_FC_PROF_FP_COLS`
-- `CRISPASR_FC_PW_Q8`
-- `CRISPASR_FC_TILED_ATTN`
-- `CRISPASR_FC_TILED_BLOCK`
-- `CRISPASR_FC_WINDOWED_ATTN`
-- `CRISPASR_FC_WINDOW_BLOCK`
+- `STELNETTTS_FC_ATTN_CONT`
+- `STELNETTTS_FC_BUCKET`
+- `STELNETTTS_FC_FUSED_QKV`
+- `STELNETTTS_FC_GPU_MANUAL_ATTN`
+- `STELNETTTS_FC_MAX_LAYERS`
+- `STELNETTTS_FC_MEM_DEBUG`
+- `STELNETTTS_FC_NO_FLASH`
+- `STELNETTTS_FC_PROFILE`
+- `STELNETTTS_FC_PROF_FP`
+- `STELNETTTS_FC_PROF_FP_COLS`
+- `STELNETTTS_FC_PW_Q8`
+- `STELNETTTS_FC_TILED_ATTN`
+- `STELNETTTS_FC_TILED_BLOCK`
+- `STELNETTTS_FC_WINDOWED_ATTN`
+- `STELNETTTS_FC_WINDOW_BLOCK`
 
 ### FastPitch
 
-- `CRISPASR_FASTPITCH_BENCH`
-- `CRISPASR_FASTPITCH_DUMP_DIR`
-- `CRISPASR_FASTPITCH_FORCE_TOKENS`
+- `STELNETTTS_FASTPITCH_BENCH`
+- `STELNETTTS_FASTPITCH_DUMP_DIR`
+- `STELNETTTS_FASTPITCH_FORCE_TOKENS`
 
 ### Ffmpeg
 
-- `CRISPASR_FFMPEG_LOG`
+- `STELNETTTS_FFMPEG_LOG`
 
 ### FireRed ASR / VAD
 
-- `CRISPASR_FIRERED_BEAM_F32`
-- `CRISPASR_FIRERED_BENCH`
-- `CRISPASR_FIRERED_ENC_CPU`
-- `CRISPASR_FIRERED_GGML_ATTN`
-- `CRISPASR_FIRERED_LID_BENCH`
-- `CRISPASR_FIRERED_MATVEC_CACHE`
-- `CRISPASR_FIRERED_NO_REPEAT_BREAK`
-- `CRISPASR_FIRERED_VAD_BENCH`
-- `CRISPASR_FIRERED_VAD_DEBUG`
-- `CRISPASR_FIRERED_VAD_FORCE_SCALAR`
+- `STELNETTTS_FIRERED_BEAM_F32`
+- `STELNETTTS_FIRERED_BENCH`
+- `STELNETTTS_FIRERED_ENC_CPU`
+- `STELNETTTS_FIRERED_GGML_ATTN`
+- `STELNETTTS_FIRERED_LID_BENCH`
+- `STELNETTTS_FIRERED_MATVEC_CACHE`
+- `STELNETTTS_FIRERED_NO_REPEAT_BREAK`
+- `STELNETTTS_FIRERED_VAD_BENCH`
+- `STELNETTTS_FIRERED_VAD_DEBUG`
+- `STELNETTTS_FIRERED_VAD_FORCE_SCALAR`
 
 ### FunASR / SenseVoice
 
-- `CRISPASR_FUNASR_BENCH`
-- `CRISPASR_FUNASR_DUMP_STAGES`
-- `CRISPASR_FUNASR_EMBED_FAST`
-- `CRISPASR_FUNASR_LLM_CPU`
-- `CRISPASR_FUNASR_LLM_LAYERS`
-- `CRISPASR_FUNASR_NAN_CHECK`
-- `CRISPASR_FUNASR_NO_FA`
-- `CRISPASR_FUNASR_STEP_CACHE`
+- `STELNETTTS_FUNASR_BENCH`
+- `STELNETTTS_FUNASR_DUMP_STAGES`
+- `STELNETTTS_FUNASR_EMBED_FAST`
+- `STELNETTTS_FUNASR_LLM_CPU`
+- `STELNETTTS_FUNASR_LLM_LAYERS`
+- `STELNETTTS_FUNASR_NAN_CHECK`
+- `STELNETTTS_FUNASR_NO_FA`
+- `STELNETTTS_FUNASR_STEP_CACHE`
 
 ### Gemma-4 E2B
 
-- `CRISPASR_GEMMA4_AUTO_CHUNK`
-- `CRISPASR_GEMMA4_E2B_BENCH`
-- `CRISPASR_GEMMA4_E2B_EMBED_FAST`
+- `STELNETTTS_GEMMA4_AUTO_CHUNK`
+- `STELNETTTS_GEMMA4_E2B_BENCH`
+- `STELNETTTS_GEMMA4_E2B_EMBED_FAST`
 
 ### GLM-ASR
 
-- `CRISPASR_GLM_ASR_BENCH`
-- `CRISPASR_GLM_ASR_DEBUG`
-- `CRISPASR_GLM_ASR_EMBED_FAST`
-- `CRISPASR_GLM_ASR_LEGACY_PROMPT`
-- `CRISPASR_GLM_ASR_SINGLE_WINDOW`
+- `STELNETTTS_GLM_ASR_BENCH`
+- `STELNETTTS_GLM_ASR_DEBUG`
+- `STELNETTTS_GLM_ASR_EMBED_FAST`
+- `STELNETTTS_GLM_ASR_LEGACY_PROMPT`
+- `STELNETTTS_GLM_ASR_SINGLE_WINDOW`
 
 ### Granite speech / NLE
 
-- `CRISPASR_GRANITE_BENCH`
-- `CRISPASR_GRANITE_DEC_GALLOCR`
-- `CRISPASR_GRANITE_DEC_PROFILE`
-- `CRISPASR_GRANITE_DISABLE_ENCODER_GRAPH`
-- `CRISPASR_GRANITE_ENC_F16`
-- `CRISPASR_GRANITE_FORCE_SCALAR`
-- `CRISPASR_GRANITE_NLE_BENCH`
-- `CRISPASR_GRANITE_NLE_EDIT_DUMP`
-- `CRISPASR_GRANITE_QUANT_ALL`
+- `STELNETTTS_GRANITE_BENCH`
+- `STELNETTTS_GRANITE_DEC_GALLOCR`
+- `STELNETTTS_GRANITE_DEC_PROFILE`
+- `STELNETTTS_GRANITE_DISABLE_ENCODER_GRAPH`
+- `STELNETTTS_GRANITE_ENC_F16`
+- `STELNETTTS_GRANITE_FORCE_SCALAR`
+- `STELNETTTS_GRANITE_NLE_BENCH`
+- `STELNETTTS_GRANITE_NLE_EDIT_DUMP`
+- `STELNETTTS_GRANITE_QUANT_ALL`
 
 ### HiFT vocoder
 
-- `CRISPASR_HIFT_FULL_IDFT`
+- `STELNETTTS_HIFT_FULL_IDFT`
 
 ### HTDemucs (source separation)
 
-- `CRISPASR_HTDEMUCS_BLAS` — route the CrossTransformer matmuls through
+- `STELNETTTS_HTDEMUCS_BLAS` — route the CrossTransformer matmuls through
   `cblas_sgemm` (default **ON** where Accelerate is available). `=0` selects the
   scalar path. The transformer is ~86% of an unoptimised forward pass, so this is
   the dominant knob (measured 44x on the transformer, 4.6x overall).
-- `CRISPASR_HTDEMUCS_FASTCONV` — batched im2col + one GEMM for the CPU convs
+- `STELNETTTS_HTDEMUCS_FASTCONV` — batched im2col + one GEMM for the CPU convs
   (default **ON**). `=0` selects the original per-time-frame scalar path.
   Measured `enc.conv2d` 10.0 s -> 0.17 s and `enc.rewrite` 12.2 s -> 0.30 s.
-- `CRISPASR_HTDEMUCS_WCACHE` — cache F32 copies of weight tensors by pointer
+- `STELNETTTS_HTDEMUCS_WCACHE` — cache F32 copies of weight tensors by pointer
   (default **ON**). `=0` re-reads and re-converts on every access, which the
   DConv stacks do ~6k times per encoder layer.
-- `CRISPASR_HTDEMUCS_GGML` — run the CrossTransformer as a ggml graph instead of
+- `STELNETTTS_HTDEMUCS_GGML` — run the CrossTransformer as a ggml graph instead of
   the CPU/BLAS path (default **OFF**). Verified correct on CPU and Metal (45/45
   stages, every layer cos 1.000000) but not yet proven faster overall, so it
   stays opt-in per the inverse-default rule.
-- `CRISPASR_HTDEMUCS_GPU` — request a GPU backend (CUDA > Metal > Vulkan, CPU
+- `STELNETTTS_HTDEMUCS_GPU` — request a GPU backend (CUDA > Metal > Vulkan, CPU
   fallback). Only meaningful together with `_GGML=1`: under the CPU/BLAS path
   the weights would sit on the device and every kernel would pay a read back.
-- `CRISPASR_HTDEMUCS_PROFILE` — print a per-phase wall-time breakdown of one
+- `STELNETTTS_HTDEMUCS_PROFILE` — print a per-phase wall-time breakdown of one
   forward pass (stft / enc / transformer / dec / istft).
-- `CRISPASR_HTDEMUCS_DEBUG` — verbose per-layer shape and NaN diagnostics.
-- `CRISPASR_HTDEMUCS_SKIP_TIME` — skip the time branch (bisection aid).
+- `STELNETTTS_HTDEMUCS_DEBUG` — verbose per-layer shape and NaN diagnostics.
+- `STELNETTTS_HTDEMUCS_SKIP_TIME` — skip the time branch (bisection aid).
 
 All three optimisation gates are output-equivalent: the per-stage diff reports
 45/45 stages passing with them ON or OFF.
 
 ### Higgs STT
 
-- `CRISPASR_HIGGS_DEBUG`
-- `CRISPASR_HIGGS_STT_BENCH`
-- `CRISPASR_HIGGS_STT_EMBED_FAST`
-- `CRISPASR_HIGGS_STT_FUSED_QKV`
+- `STELNETTTS_HIGGS_DEBUG`
+- `STELNETTTS_HIGGS_STT_BENCH`
+- `STELNETTTS_HIGGS_STT_EMBED_FAST`
+- `STELNETTTS_HIGGS_STT_FUSED_QKV`
 
 ### IndexTTS
 
-- `CRISPASR_INDEXTTS_AA_BACKEND`
-- `CRISPASR_INDEXTTS_AA_SCALAR`
-- `CRISPASR_INDEXTTS_AUDIO24K_FILE`
-- `CRISPASR_INDEXTTS_BEAM_SIZE`
-- `CRISPASR_INDEXTTS_BENCH`
-- `CRISPASR_INDEXTTS_COND_FILE`
-- `CRISPASR_INDEXTTS_DEBUG`
-- `CRISPASR_INDEXTTS_KV_DEVICE_COPY`
-- `CRISPASR_INDEXTTS_LATENT_FILE`
-- `CRISPASR_INDEXTTS_MEL_CODES_FILE`
-- `CRISPASR_INDEXTTS_MEL_FILE`
-- `CRISPASR_INDEXTTS_SPK_NORM`
-- `CRISPASR_INDEXTTS_TEXT_NORMALIZER`
-- `CRISPASR_INDEXTTS_VOCODER_AA`
-- `CRISPASR_INDEXTTS_VOCODER_RAW`
-- `CRISPASR_INDEXTTS_VOC_BENCH`
-- `CRISPASR_INDEXTTS_VOC_FORCE_GPU`
+- `STELNETTTS_INDEXTTS_AA_BACKEND`
+- `STELNETTTS_INDEXTTS_AA_SCALAR`
+- `STELNETTTS_INDEXTTS_AUDIO24K_FILE`
+- `STELNETTTS_INDEXTTS_BEAM_SIZE`
+- `STELNETTTS_INDEXTTS_BENCH`
+- `STELNETTTS_INDEXTTS_COND_FILE`
+- `STELNETTTS_INDEXTTS_DEBUG`
+- `STELNETTTS_INDEXTTS_KV_DEVICE_COPY`
+- `STELNETTTS_INDEXTTS_LATENT_FILE`
+- `STELNETTTS_INDEXTTS_MEL_CODES_FILE`
+- `STELNETTTS_INDEXTTS_MEL_FILE`
+- `STELNETTTS_INDEXTTS_SPK_NORM`
+- `STELNETTTS_INDEXTTS_TEXT_NORMALIZER`
+- `STELNETTTS_INDEXTTS_VOCODER_AA`
+- `STELNETTTS_INDEXTTS_VOCODER_RAW`
+- `STELNETTTS_INDEXTTS_VOC_BENCH`
+- `STELNETTTS_INDEXTTS_VOC_FORCE_GPU`
 
 ### Irodori TTS
 
-- `CRISPASR_IRODORI_CAPTION`
-- `CRISPASR_IRODORI_CAPTION_TOKEN_IDS`
-- `CRISPASR_IRODORI_CFG_CAPTION`
-- `CRISPASR_IRODORI_CFG_INTERVAL`
-- `CRISPASR_IRODORI_CFG_INTERVAL_DEBUG`
-- `CRISPASR_IRODORI_CFG_SPEAKER`
-- `CRISPASR_IRODORI_CFG_TEXT`
-- `CRISPASR_IRODORI_CODEC_CPU`
-- `CRISPASR_IRODORI_CODEC_GPU`
-- `CRISPASR_IRODORI_CPU`
-- `CRISPASR_IRODORI_DEBUG`
-- `CRISPASR_IRODORI_DECODE_CHUNK`
-- `CRISPASR_IRODORI_DECODE_CTX`
-- `CRISPASR_IRODORI_DIT_TIMING`
-- `CRISPASR_IRODORI_DUMP_LATENT`
-- `CRISPASR_IRODORI_DUMP_TEXT_STATE`
-- `CRISPASR_IRODORI_DUMP_TOKENS`
-- `CRISPASR_IRODORI_DUMP_V_PRED0`
-- `CRISPASR_IRODORI_ENC_DUMP`
-- `CRISPASR_IRODORI_ENC_PRENORM`
-- `CRISPASR_IRODORI_FASTCONV`
-- `CRISPASR_IRODORI_LAYERS`
-- `CRISPASR_IRODORI_ODE_STEPS`
-- `CRISPASR_IRODORI_PERSIST_GRAPH`
-- `CRISPASR_IRODORI_REF_NOISE`
-- `CRISPASR_IRODORI_TOKEN_IDS`
-- `CRISPASR_IRODORI_T_LATENT`
+- `STELNETTTS_IRODORI_CAPTION`
+- `STELNETTTS_IRODORI_CAPTION_TOKEN_IDS`
+- `STELNETTTS_IRODORI_CFG_CAPTION`
+- `STELNETTTS_IRODORI_CFG_INTERVAL`
+- `STELNETTTS_IRODORI_CFG_INTERVAL_DEBUG`
+- `STELNETTTS_IRODORI_CFG_SPEAKER`
+- `STELNETTTS_IRODORI_CFG_TEXT`
+- `STELNETTTS_IRODORI_CODEC_CPU`
+- `STELNETTTS_IRODORI_CODEC_GPU`
+- `STELNETTTS_IRODORI_CPU`
+- `STELNETTTS_IRODORI_DEBUG`
+- `STELNETTTS_IRODORI_DECODE_CHUNK`
+- `STELNETTTS_IRODORI_DECODE_CTX`
+- `STELNETTTS_IRODORI_DIT_TIMING`
+- `STELNETTTS_IRODORI_DUMP_LATENT`
+- `STELNETTTS_IRODORI_DUMP_TEXT_STATE`
+- `STELNETTTS_IRODORI_DUMP_TOKENS`
+- `STELNETTTS_IRODORI_DUMP_V_PRED0`
+- `STELNETTTS_IRODORI_ENC_DUMP`
+- `STELNETTTS_IRODORI_ENC_PRENORM`
+- `STELNETTTS_IRODORI_FASTCONV`
+- `STELNETTTS_IRODORI_LAYERS`
+- `STELNETTTS_IRODORI_ODE_STEPS`
+- `STELNETTTS_IRODORI_PERSIST_GRAPH`
+- `STELNETTTS_IRODORI_REF_NOISE`
+- `STELNETTTS_IRODORI_TOKEN_IDS`
+- `STELNETTTS_IRODORI_T_LATENT`
 
 ### Kokoro
 
-- `CRISPASR_KOKORO_BENCH`
-- `CRISPASR_KOKORO_DEBUG`
-- `CRISPASR_KOKORO_DEBUG_INTERMEDIATES`
-- `CRISPASR_KOKORO_DUMP_STAGES`
-- `CRISPASR_KOKORO_FASTCONV`
-- `CRISPASR_KOKORO_FASTCONV_DEBUG`
-- `CRISPASR_KOKORO_G2P`
-- `CRISPASR_KOKORO_SEED`
-- `CRISPASR_KOKORO_USE_GPU`
-- `CRISPASR_KOKORO_VOICE_GGUF`
+- `STELNETTTS_KOKORO_BENCH`
+- `STELNETTTS_KOKORO_DEBUG`
+- `STELNETTTS_KOKORO_DEBUG_INTERMEDIATES`
+- `STELNETTTS_KOKORO_DUMP_STAGES`
+- `STELNETTTS_KOKORO_FASTCONV`
+- `STELNETTTS_KOKORO_FASTCONV_DEBUG`
+- `STELNETTTS_KOKORO_G2P`
+- `STELNETTTS_KOKORO_SEED`
+- `STELNETTTS_KOKORO_USE_GPU`
+- `STELNETTTS_KOKORO_VOICE_GGUF`
 
 ### KugelAudio
 
-- `CRISPASR_KUGELAUDIO_CPU_ONLY`
-- `CRISPASR_KUGELAUDIO_DEBUG`
+- `STELNETTTS_KUGELAUDIO_CPU_ONLY`
+- `STELNETTTS_KUGELAUDIO_DEBUG`
 
 ### Kyutai STT
 
-- `CRISPASR_KYUTAI_RVQ_FAST`
-- `CRISPASR_KYUTAI_STT_BENCH`
+- `STELNETTTS_KYUTAI_RVQ_FAST`
+- `STELNETTTS_KYUTAI_STT_BENCH`
 
 ### LFM2-Audio
 
-- `CRISPASR_LFM2_AUDIO_BENCH`
-- `CRISPASR_LFM2_AUDIO_CPU`
-- `CRISPASR_LFM2_SNAP_LAYERS`
+- `STELNETTTS_LFM2_AUDIO_BENCH`
+- `STELNETTTS_LFM2_AUDIO_CPU`
+- `STELNETTTS_LFM2_SNAP_LAYERS`
 
 ### M2M-100 translate
 
-- `CRISPASR_M2M100_BENCH`
-- `CRISPASR_M2M100_GPU`
+- `STELNETTTS_M2M100_BENCH`
+- `STELNETTTS_M2M100_GPU`
 
 ### MarbleNet VAD
 
-- `CRISPASR_MARBLENET_VAD_BENCH`
+- `STELNETTTS_MARBLENET_VAD_BENCH`
 
 ### MeloTTS
 
-- `CRISPASR_MELOTTS_BENCH`
-- `CRISPASR_MELOTTS_BERT`
-- `CRISPASR_MELOTTS_FORCE_SCALAR`
-- `CRISPASR_MELOTTS_WEIGHT_CACHE`
+- `STELNETTTS_MELOTTS_BENCH`
+- `STELNETTTS_MELOTTS_BERT`
+- `STELNETTTS_MELOTTS_FORCE_SCALAR`
+- `STELNETTTS_MELOTTS_WEIGHT_CACHE`
 
 ### Mimi codec
 
-- `CRISPASR_MIMI_NONCAUSAL`
+- `STELNETTTS_MIMI_NONCAUSAL`
 
 ### MiMo-ASR
 
-- `CRISPASR_MIMO_ASR_BENCH`
-- `CRISPASR_MIMO_ASR_DIAG`
-- `CRISPASR_MIMO_ASR_DUMP_STAGES`
-- `CRISPASR_MIMO_ASR_GPU`
-- `CRISPASR_MIMO_FORCE_CPU`
-- `CRISPASR_MIMO_SMOKE_DUMP`
-- `CRISPASR_MIMO_SMOKE_GPU`
-- `CRISPASR_MIMO_TOKENIZER_GPU`
-- `CRISPASR_MIMO_TOK_CPU`
+- `STELNETTTS_MIMO_ASR_BENCH`
+- `STELNETTTS_MIMO_ASR_DIAG`
+- `STELNETTTS_MIMO_ASR_DUMP_STAGES`
+- `STELNETTTS_MIMO_ASR_GPU`
+- `STELNETTTS_MIMO_FORCE_CPU`
+- `STELNETTTS_MIMO_SMOKE_DUMP`
+- `STELNETTTS_MIMO_SMOKE_GPU`
+- `STELNETTTS_MIMO_TOKENIZER_GPU`
+- `STELNETTTS_MIMO_TOK_CPU`
 
 ### mini-omni2
 
-- `CRISPASR_MINI_OMNI2_BENCH`
+- `STELNETTTS_MINI_OMNI2_BENCH`
 
 ### Moonshine
 
-- `CRISPASR_MOONSHINE_ALL_GPU`
-- `CRISPASR_MOONSHINE_BENCH`
-- `CRISPASR_MOONSHINE_ENC_ATTN`
-- `CRISPASR_MOONSHINE_NO_REPEAT_BREAK`
-- `CRISPASR_MOONSHINE_STREAMING_BENCH`
-- `CRISPASR_MOONSHINE_STREAMING_GPU`
-- `CRISPASR_MOONSHINE_STREAM_BENCH`
+- `STELNETTTS_MOONSHINE_ALL_GPU`
+- `STELNETTTS_MOONSHINE_BENCH`
+- `STELNETTTS_MOONSHINE_ENC_ATTN`
+- `STELNETTTS_MOONSHINE_NO_REPEAT_BREAK`
+- `STELNETTTS_MOONSHINE_STREAMING_BENCH`
+- `STELNETTTS_MOONSHINE_STREAMING_GPU`
+- `STELNETTTS_MOONSHINE_STREAM_BENCH`
 
 ### MOSS family
 
-- `CRISPASR_MOSS_AUDIO_BENCH`
-- `CRISPASR_MOSS_AUDIO_EMBED_FAST`
-- `CRISPASR_MOSS_AUDIO_ENC_FLASH`
-- `CRISPASR_MOSS_AUDIO_ENC_MANUAL`
-- `CRISPASR_MOSS_AUDIO_FORCE_CPU`
-- `CRISPASR_MOSS_AUDIO_MEL_FILE`
-- `CRISPASR_MOSS_DIARIZE_BENCH`
-- `CRISPASR_MOSS_DIARIZE_DEBUG`
-- `CRISPASR_MOSS_DIARIZE_DUMP_CONV`
-- `CRISPASR_MOSS_DIARIZE_ENC_FLASH`
-- `CRISPASR_MOSS_DIARIZE_ENC_MANUAL`
-- `CRISPASR_MOSS_DIARIZE_FORCE_CPU`
-- `CRISPASR_MOSS_DIARIZE_NO_LOOPFIX`
-- `CRISPASR_MOSS_TRANSCRIBE_BENCH`
-- `CRISPASR_MOSS_TRANSCRIBE_ENC_DUMP`
-- `CRISPASR_MOSS_TRANSCRIBE_ENC_FLASH`
-- `CRISPASR_MOSS_TRANSCRIBE_ENC_MANUAL`
-- `CRISPASR_MOSS_TRANSCRIBE_FORCE_CPU`
-- `CRISPASR_MOSS_TRANSCRIBE_L0_DUMP`
-- `CRISPASR_MOSS_TRANSCRIBE_MEL_DUMP`
-- `CRISPASR_MOSS_TRANSCRIBE_NO_LOOPFIX`
-- `CRISPASR_MOSS_TTS_BENCH`
-- `CRISPASR_MOSS_TTS_LOCAL_DEBUG`
-- `CRISPASR_MOSS_TTS_LOCAL_GREEDY_AUDIO`
-- `CRISPASR_MOSS_TTS_LOCAL_NO_GPU`
+- `STELNETTTS_MOSS_AUDIO_BENCH`
+- `STELNETTTS_MOSS_AUDIO_EMBED_FAST`
+- `STELNETTTS_MOSS_AUDIO_ENC_FLASH`
+- `STELNETTTS_MOSS_AUDIO_ENC_MANUAL`
+- `STELNETTTS_MOSS_AUDIO_FORCE_CPU`
+- `STELNETTTS_MOSS_AUDIO_MEL_FILE`
+- `STELNETTTS_MOSS_DIARIZE_BENCH`
+- `STELNETTTS_MOSS_DIARIZE_DEBUG`
+- `STELNETTTS_MOSS_DIARIZE_DUMP_CONV`
+- `STELNETTTS_MOSS_DIARIZE_ENC_FLASH`
+- `STELNETTTS_MOSS_DIARIZE_ENC_MANUAL`
+- `STELNETTTS_MOSS_DIARIZE_FORCE_CPU`
+- `STELNETTTS_MOSS_DIARIZE_NO_LOOPFIX`
+- `STELNETTTS_MOSS_TRANSCRIBE_BENCH`
+- `STELNETTTS_MOSS_TRANSCRIBE_ENC_DUMP`
+- `STELNETTTS_MOSS_TRANSCRIBE_ENC_FLASH`
+- `STELNETTTS_MOSS_TRANSCRIBE_ENC_MANUAL`
+- `STELNETTTS_MOSS_TRANSCRIBE_FORCE_CPU`
+- `STELNETTTS_MOSS_TRANSCRIBE_L0_DUMP`
+- `STELNETTTS_MOSS_TRANSCRIBE_MEL_DUMP`
+- `STELNETTTS_MOSS_TRANSCRIBE_NO_LOOPFIX`
+- `STELNETTTS_MOSS_TTS_BENCH`
+- `STELNETTTS_MOSS_TTS_LOCAL_DEBUG`
+- `STELNETTTS_MOSS_TTS_LOCAL_GREEDY_AUDIO`
+- `STELNETTTS_MOSS_TTS_LOCAL_NO_GPU`
 
 ### MP3 codec
 
-- `CRISPASR_MP3_ENCODER`
+- `STELNETTTS_MP3_ENCODER`
 
 ### Diarization — foxnose (#324)
 
-- `CRISPASR_DIARIZE_COUNT` — speaker-count estimator: `bic` (default, the
+- `STELNETTTS_DIARIZE_COUNT` — speaker-count estimator: `bic` (default, the
   upstream GMM/BIC + silhouette sweep) or `eigengap`. Eigengap is better on
   well-separated synthetic data and cheaper, but under-counts on real speech
   (11.4 % vs 5.3 % DER on VoxConverse) — see `docs/foxnose-diarize/PLAN.md`
-- `CRISPASR_DIARIZE_BIC_WINDOW` — score silhouette only in a `[k-2, k+3]` window
+- `STELNETTTS_DIARIZE_BIC_WINDOW` — score silhouette only in a `[k-2, k+3]` window
   around the BIC anchor instead of the full `[min, max]` range. The full range is
   the default: the BIC anchor is unreliable in both directions (measured errors
   of +5 / -3 / -3 on 4/5/6 well-separated blobs) and when it over-counts the
   window is stranded above the truth and cannot climb back to it
-- `CRISPASR_WESPEAKER_BENCH` — per-stage embedder timings (fbank / resnet /
+- `STELNETTTS_WESPEAKER_BENCH` — per-stage embedder timings (fbank / resnet /
   resnet_windows). Counting invocations of these is also how you check WHICH
   embedding path actually ran
-- `CRISPASR_WESPEAKER_DEBUG` — embedder diagnostics
-- `CRISPASR_DIARIZE_DEBUG` — chosen speaker count, the reason it was chosen,
+- `STELNETTTS_WESPEAKER_DEBUG` — embedder diagnostics
+- `STELNETTTS_DIARIZE_DEBUG` — chosen speaker count, the reason it was chosen,
   and the per-k silhouette curve behind it. Worth reading before trusting a
   count: on a borderline file the decision can rest on a <1 % score gap
-- `CRISPASR_DIARIZE_EMBED_WORKERS` — windows embedded concurrently (default:
+- `STELNETTTS_DIARIZE_EMBED_WORKERS` — windows embedded concurrently (default:
   `-t`). Each worker gets its own context sharing one copy of the weights
-- `CRISPASR_SPEAKER_EMBED_THREADS` — ggml threads per embedder context
+- `STELNETTTS_SPEAKER_EMBED_THREADS` — ggml threads per embedder context
   (default: `-t`). Honoured by the pluggable embedders and by wespeaker
-- `CRISPASR_DIARIZE_SPAN_EMBED=1` — run ONE network pass per span of windows
+- `STELNETTTS_DIARIZE_SPAN_EMBED=1` — run ONE network pass per span of windows
   instead of one per window. 1.78x less diarization CPU for +0.30 mean DER on
   the VoxConverse dev shard; off by default because accuracy is the better
   default for a diarizer. See `docs/cli.md#diarization`
-- `CRISPASR_DIARIZE_SPAN_WINDOWS` — windows per span (default 32). Measured NOT
+- `STELNETTTS_DIARIZE_SPAN_WINDOWS` — windows per span (default 32). Measured NOT
   to affect the accuracy cost — identical from N=2 to N=32 — so there is
   nothing to tune here; larger is simply faster
 
 ### GigaAM-v3
 
-- `CRISPASR_GIGAAM_BENCH` — per-stage timings (mel / encoder / decode)
-- `CRISPASR_GIGAAM_DEBUG` — encoder output min/max/mean
-- `CRISPASR_GIGAAM_FLASH` — `ggml_flash_attn_ext` in the encoder (opt-in; the
+- `STELNETTTS_GIGAAM_BENCH` — per-stage timings (mel / encoder / decode)
+- `STELNETTTS_GIGAAM_DEBUG` — encoder output min/max/mean
+- `STELNETTTS_GIGAAM_FLASH` — `ggml_flash_attn_ext` in the encoder (opt-in; the
   manual QK^T path is what the per-stage diff was validated on)
-- `CRISPASR_GIGAAM_FORCE_SCALAR` — scalar LSTM/joint loops instead of cblas
-- `CRISPASR_GIGAAM_QUANT_ALL` — let `crispasr-quantize` quantize the heads and
+- `STELNETTTS_GIGAAM_FORCE_SCALAR` — scalar LSTM/joint loops instead of cblas
+- `STELNETTTS_GIGAAM_QUANT_ALL` — let `stelnettts-quantize` quantize the heads and
   the pre-encode convs too (default keeps them at source precision)
 
 ### Nemotron
 
-- `CRISPASR_NEMOTRON_BENCH`
-- `CRISPASR_NEMOTRON_CONTEXT_PRESET`
-- `CRISPASR_NEMOTRON_DEBUG`
-- `CRISPASR_NEMOTRON_DECODE_TIMING`
-- `CRISPASR_NEMOTRON_FORCE_SCALAR`
-- `CRISPASR_NEMOTRON_GGML_DECODE`
-- `CRISPASR_NEMOTRON_MAES`
-- `CRISPASR_NEMOTRON_NO_WINDOW_MASK`
-- `CRISPASR_NEMOTRON_STREAMING`
+- `STELNETTTS_NEMOTRON_BENCH`
+- `STELNETTTS_NEMOTRON_CONTEXT_PRESET`
+- `STELNETTTS_NEMOTRON_DEBUG`
+- `STELNETTTS_NEMOTRON_DECODE_TIMING`
+- `STELNETTTS_NEMOTRON_FORCE_SCALAR`
+- `STELNETTTS_NEMOTRON_GGML_DECODE`
+- `STELNETTTS_NEMOTRON_MAES`
+- `STELNETTTS_NEMOTRON_NO_WINDOW_MASK`
+- `STELNETTTS_NEMOTRON_STREAMING`
 
 ### OmniASR
 
-- `CRISPASR_OMNIASR_BENCH`
-- `CRISPASR_OMNIASR_DEBUG`
-- `CRISPASR_OMNIASR_DUMP_DIR`
-- `CRISPASR_OMNIASR_KEEP_F16_HEAD`
-- `CRISPASR_OMNIASR_KEEP_F16_TAIL`
-- `CRISPASR_OMNIASR_QUANT_ALL`
+- `STELNETTTS_OMNIASR_BENCH`
+- `STELNETTTS_OMNIASR_DEBUG`
+- `STELNETTTS_OMNIASR_DUMP_DIR`
+- `STELNETTTS_OMNIASR_KEEP_F16_HEAD`
+- `STELNETTTS_OMNIASR_KEEP_F16_TAIL`
+- `STELNETTTS_OMNIASR_QUANT_ALL`
 
 ### OmniVoice
 
-- `CRISPASR_OMNIVOICE_ACENC_BISECT`
-- `CRISPASR_OMNIVOICE_AUTO_LANG` — **default on.** When no language was requested
+- `STELNETTTS_OMNIVOICE_ACENC_BISECT`
+- `STELNETTTS_OMNIVOICE_AUTO_LANG` — **default on.** When no language was requested
   (`-l` / `-tl` / the server's `"language"` / `set_target_language`), guess one
   from the text being spoken and use it if it maps to an id the model knows.
   An explicitly requested language always wins; a low-confidence guess resolves
   to nothing and behaves exactly as before. `=0` restores the old
   always-language-agnostic behaviour. Exists because SubtitleEdit's language
   menu is not yet wired to its request payload (#13273).
-- `CRISPASR_OMNIVOICE_BENCH`
-- `CRISPASR_OMNIVOICE_CFG_INTERVAL`
-- `CRISPASR_OMNIVOICE_CHUNK`
-- `CRISPASR_OMNIVOICE_CLASS_TEMP`
-- `CRISPASR_OMNIVOICE_CODEC_FASTCONV`
-- `CRISPASR_OMNIVOICE_CODEC_GPU` — codec placement override (`1` = GPU, `0` = CPU). Unset defaults to GPU on
+- `STELNETTTS_OMNIVOICE_BENCH`
+- `STELNETTTS_OMNIVOICE_CFG_INTERVAL`
+- `STELNETTTS_OMNIVOICE_CHUNK`
+- `STELNETTTS_OMNIVOICE_CLASS_TEMP`
+- `STELNETTTS_OMNIVOICE_CODEC_FASTCONV`
+- `STELNETTTS_OMNIVOICE_CODEC_GPU` — codec placement override (`1` = GPU, `0` = CPU). Unset defaults to GPU on
   CUDA and CPU on Metal/CPU.
-- `CRISPASR_OMNIVOICE_CPU`
-- `CRISPASR_OMNIVOICE_DEBUG_CODES`
-- `CRISPASR_OMNIVOICE_DEBUG_SUM`
-- `CRISPASR_OMNIVOICE_ENCODE_DIFF`
-- `CRISPASR_OMNIVOICE_FRAMES_PER_CHAR`
-- `CRISPASR_OMNIVOICE_FUSED_STEP`
-- `CRISPASR_OMNIVOICE_GUIDANCE`
-- `CRISPASR_OMNIVOICE_HUBERT_REF`
-- `CRISPASR_OMNIVOICE_NUM_STEPS`
-- `CRISPASR_OMNIVOICE_PERSISTENT_GRAPH`
-- `CRISPASR_OMNIVOICE_POS_TEMP`
-- `CRISPASR_OMNIVOICE_UNIFIED_CFG`
-- `CRISPASR_OMNIVOICE_VOICE_CACHE`
+- `STELNETTTS_OMNIVOICE_CPU`
+- `STELNETTTS_OMNIVOICE_DEBUG_CODES`
+- `STELNETTTS_OMNIVOICE_DEBUG_SUM`
+- `STELNETTTS_OMNIVOICE_ENCODE_DIFF`
+- `STELNETTTS_OMNIVOICE_FRAMES_PER_CHAR`
+- `STELNETTTS_OMNIVOICE_FUSED_STEP`
+- `STELNETTTS_OMNIVOICE_GUIDANCE`
+- `STELNETTTS_OMNIVOICE_HUBERT_REF`
+- `STELNETTTS_OMNIVOICE_NUM_STEPS`
+- `STELNETTTS_OMNIVOICE_PERSISTENT_GRAPH`
+- `STELNETTTS_OMNIVOICE_POS_TEMP`
+- `STELNETTTS_OMNIVOICE_UNIFIED_CFG`
+- `STELNETTTS_OMNIVOICE_VOICE_CACHE`
 
 ### OpenVoice2
 
-- `CRISPASR_OPENVOICE2_BENCH`
+- `STELNETTTS_OPENVOICE2_BENCH`
 
 ### OpenVoice2
 
-- `CRISPASR_OV2_DUMP_DIR`
-- `CRISPASR_OV2_FORCE_SCALAR`
-- `CRISPASR_OV2_NO_NORMALIZE`
-- `CRISPASR_OV2_TAU`
+- `STELNETTTS_OV2_DUMP_DIR`
+- `STELNETTTS_OV2_FORCE_SCALAR`
+- `STELNETTTS_OV2_NO_NORMALIZE`
+- `STELNETTTS_OV2_TAU`
 
 ### Opus codec
 
-- `CRISPASR_OPUS_DEBUG`
-- `CRISPASR_OPUS_DECODER`
-- `CRISPASR_OPUS_ENCODER`
+- `STELNETTTS_OPUS_DEBUG`
+- `STELNETTTS_OPUS_DECODER`
+- `STELNETTTS_OPUS_ENCODER`
 
 ### Orpheus
 
-- `CRISPASR_ORPHEUS_BENCH`
-- `CRISPASR_ORPHEUS_BUCKET`
-- `CRISPASR_ORPHEUS_DEBUG`
-- `CRISPASR_ORPHEUS_DIFF_GPU`
-- `CRISPASR_ORPHEUS_DIFF_MAXGEN`
-- `CRISPASR_ORPHEUS_PROMPT_IDS`
-- `CRISPASR_ORPHEUS_SNAC_CODE`
-- `CRISPASR_ORPHEUS_SNAC_GPU`
-- `CRISPASR_ORPHEUS_SNAC_T_SUPER`
+- `STELNETTTS_ORPHEUS_BENCH`
+- `STELNETTTS_ORPHEUS_BUCKET`
+- `STELNETTTS_ORPHEUS_DEBUG`
+- `STELNETTTS_ORPHEUS_DIFF_GPU`
+- `STELNETTTS_ORPHEUS_DIFF_MAXGEN`
+- `STELNETTTS_ORPHEUS_PROMPT_IDS`
+- `STELNETTTS_ORPHEUS_SNAC_CODE`
+- `STELNETTTS_ORPHEUS_SNAC_GPU`
+- `STELNETTTS_ORPHEUS_SNAC_T_SUPER`
 
 ### OuteTTS
 
-- `CRISPASR_OUTETTS_BENCH`
+- `STELNETTTS_OUTETTS_BENCH`
 
 ### Paraformer
 
-- `CRISPASR_PARAFORMER_BENCH`
-- `CRISPASR_PARAFORMER_GPU`
+- `STELNETTTS_PARAFORMER_BENCH`
+- `STELNETTTS_PARAFORMER_GPU`
 
 ### Parakeet
 
-- `CRISPASR_PARAKEET_ATT_CONTEXT`
-- `CRISPASR_PARAKEET_BENCH`
-- `CRISPASR_PARAKEET_CHUNK_OVERLAP`
-- `CRISPASR_PARAKEET_CHUNK_SECONDS`
-- `CRISPASR_PARAKEET_DEBUG`
-- `CRISPASR_PARAKEET_DECODE_TIMING`
-- `CRISPASR_PARAKEET_ENC_CACHE`
-- `CRISPASR_PARAKEET_ENC_PROBE`
-- `CRISPASR_PARAKEET_FORCE_SCALAR`
-- `CRISPASR_PARAKEET_GGML_DECODE`
-- `CRISPASR_PARAKEET_INTERNAL_CHUNKING`
-- `CRISPASR_PARAKEET_LONGFORM`
-- `CRISPASR_PARAKEET_MAES`
-- `CRISPASR_PARAKEET_MEM_COEFF`
-- `CRISPASR_PARAKEET_MEM_POLICY`
-- `CRISPASR_PARAKEET_QUANT_ALL`
-- `CRISPASR_PARAKEET_SIMULATE_ENCODE_OOM`
-- `CRISPASR_PARAKEET_STREAM_CHUNK`
-- `CRISPASR_PARAKEET_STREAM_OVERLAP`
-- `CRISPASR_PARAKEET_STREAM_THRESHOLD`
-- `CRISPASR_PARAKEET_VAD_SLICE_CAP`
-- `CRISPASR_PARAKEET_VRAM_BUDGET_MB`
+- `STELNETTTS_PARAKEET_ATT_CONTEXT`
+- `STELNETTTS_PARAKEET_BENCH`
+- `STELNETTTS_PARAKEET_CHUNK_OVERLAP`
+- `STELNETTTS_PARAKEET_CHUNK_SECONDS`
+- `STELNETTTS_PARAKEET_DEBUG`
+- `STELNETTTS_PARAKEET_DECODE_TIMING`
+- `STELNETTTS_PARAKEET_ENC_CACHE`
+- `STELNETTTS_PARAKEET_ENC_PROBE`
+- `STELNETTTS_PARAKEET_FORCE_SCALAR`
+- `STELNETTTS_PARAKEET_GGML_DECODE`
+- `STELNETTTS_PARAKEET_INTERNAL_CHUNKING`
+- `STELNETTTS_PARAKEET_LONGFORM`
+- `STELNETTTS_PARAKEET_MAES`
+- `STELNETTTS_PARAKEET_MEM_COEFF`
+- `STELNETTTS_PARAKEET_MEM_POLICY`
+- `STELNETTTS_PARAKEET_QUANT_ALL`
+- `STELNETTTS_PARAKEET_SIMULATE_ENCODE_OOM`
+- `STELNETTTS_PARAKEET_STREAM_CHUNK`
+- `STELNETTTS_PARAKEET_STREAM_OVERLAP`
+- `STELNETTTS_PARAKEET_STREAM_THRESHOLD`
+- `STELNETTTS_PARAKEET_VAD_SLICE_CAP`
+- `STELNETTTS_PARAKEET_VRAM_BUDGET_MB`
 
 ### Parler-TTS
 
-- `CRISPASR_PARLER_BUCKET`
-- `CRISPASR_PARLER_DEBUG`
-- `CRISPASR_PARLER_DESC_IDS`
-- `CRISPASR_PARLER_DIFF_MAXGEN`
-- `CRISPASR_PARLER_DUMP_ENC`
-- `CRISPASR_PARLER_PROMPT_IDS`
-- `CRISPASR_PARLER_TTS_BENCH`
+- `STELNETTTS_PARLER_BUCKET`
+- `STELNETTTS_PARLER_DEBUG`
+- `STELNETTTS_PARLER_DESC_IDS`
+- `STELNETTTS_PARLER_DIFF_MAXGEN`
+- `STELNETTTS_PARLER_DUMP_ENC`
+- `STELNETTTS_PARLER_PROMPT_IDS`
+- `STELNETTTS_PARLER_TTS_BENCH`
 
 ### Piper
 
-- `CRISPASR_PIPER_FORCE_SCALAR`
-- `CRISPASR_PIPER_TTS_BENCH`
-- `CRISPASR_PIPER_WEIGHT_CACHE`
+- `STELNETTTS_PIPER_FORCE_SCALAR`
+- `STELNETTTS_PIPER_TTS_BENCH`
+- `STELNETTTS_PIPER_WEIGHT_CACHE`
 
 ### Pocket-TTS
 
-- `CRISPASR_POCKET_DUMP_DIR`
-- `CRISPASR_POCKET_FORCE_LATENTS`
-- `CRISPASR_POCKET_FORCE_NOISE`
-- `CRISPASR_POCKET_MANUAL_BACKBONE`
-- `CRISPASR_POCKET_MANUAL_MIMI`
-- `CRISPASR_POCKET_MAX_FRAMES`
-- `CRISPASR_POCKET_MIMI_DUMP`
-- `CRISPASR_POCKET_MIMI_SCALAR`
-- `CRISPASR_POCKET_TTS_BENCH`
-- `CRISPASR_POCKET_VOICE_CACHE`
-- `CRISPASR_POCKET_VULKAN_MIMI_MAX_FRAMES`
+- `STELNETTTS_POCKET_DUMP_DIR`
+- `STELNETTTS_POCKET_FORCE_LATENTS`
+- `STELNETTTS_POCKET_FORCE_NOISE`
+- `STELNETTTS_POCKET_MANUAL_BACKBONE`
+- `STELNETTTS_POCKET_MANUAL_MIMI`
+- `STELNETTTS_POCKET_MAX_FRAMES`
+- `STELNETTTS_POCKET_MIMI_DUMP`
+- `STELNETTTS_POCKET_MIMI_SCALAR`
+- `STELNETTTS_POCKET_TTS_BENCH`
+- `STELNETTTS_POCKET_VOICE_CACHE`
+- `STELNETTTS_POCKET_VULKAN_MIMI_MAX_FRAMES`
 
 ### Pyannote segmentation
 
-- `CRISPASR_PYANNOTE_LEGACY`
-- `CRISPASR_PYANNOTE_SEG_BENCH`
-- `CRISPASR_PYANNOTE_SEG_DUMP`
-- `CRISPASR_PYANNOTE_CHUNK_S` — audio per chunk of parallel inference, in
+- `STELNETTTS_PYANNOTE_LEGACY`
+- `STELNETTTS_PYANNOTE_SEG_BENCH`
+- `STELNETTTS_PYANNOTE_SEG_DUMP`
+- `STELNETTTS_PYANNOTE_CHUNK_S` — audio per chunk of parallel inference, in
   seconds (default 60; `0` restores the pre-#326 single scan over the whole
   file). Chunking is decided by audio LENGTH and never by thread count, so
   posteriors do not change with `-t`
-- `CRISPASR_PYANNOTE_CHUNK_CONTEXT_S` — real audio spliced either side of a
+- `STELNETTTS_PYANNOTE_CHUNK_CONTEXT_S` — real audio spliced either side of a
   chunk and then trimmed (default 5), which absorbs the convolutions' zero
   padding and the LSTM's zero initial state
 
 ### Qwen3-ASR
 
-- `CRISPASR_QWEN3ASR_QUANT_AUDIO`
+- `STELNETTTS_CIELVOX2ASR_QUANT_AUDIO`
 
 ### Qwen3-ASR / Qwen3-TTS
 
-- `CRISPASR_QWEN3_ASR_BENCH`
-- `CRISPASR_QWEN3_ASR_EMBED_FAST`
-- `CRISPASR_QWEN3_ASR_FUSED_QKV`
-- `CRISPASR_QWEN3_SYSPROMPT_LANG`
-- `CRISPASR_QWEN3_TTS_BENCH`
-- `CRISPASR_QWEN3_TTS_CODEC_ALLOW_FULL`
-- `CRISPASR_QWEN3_TTS_CODEC_CHUNK`
-- `CRISPASR_QWEN3_TTS_CODEC_CPU`
-- `CRISPASR_QWEN3_TTS_CODEC_CTX`
-- `CRISPASR_QWEN3_TTS_CODEC_FORCE_METAL`
-- `CRISPASR_QWEN3_TTS_CODEC_GGUF`
-- `CRISPASR_QWEN3_TTS_CODEC_GPU`
-- `CRISPASR_QWEN3_TTS_CODEC_TRACE`
-- `CRISPASR_QWEN3_TTS_EMBD_CHECK`
-- `CRISPASR_QWEN3_TTS_DUMP_LOGITS=<dir>` — write the raw per-frame talker
+- `STELNETTTS_CIELVOX2_ASR_BENCH`
+- `STELNETTTS_CIELVOX2_ASR_EMBED_FAST`
+- `STELNETTTS_CIELVOX2_ASR_FUSED_QKV`
+- `STELNETTTS_QWEN3_SYSPROMPT_LANG`
+- `STELNETTTS_CIELVOX2_TTS_BENCH`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_ALLOW_FULL`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_CHUNK`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_CPU`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_CTX`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_FORCE_METAL`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_GGUF`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_GPU`
+- `STELNETTTS_CIELVOX2_TTS_CODEC_TRACE`
+- `STELNETTTS_CIELVOX2_TTS_EMBD_CHECK`
+- `STELNETTTS_CIELVOX2_TTS_DUMP_LOGITS=<dir>` — write the raw per-frame talker
   logits (f32, before the repetition penalty and the suppress mask) plus a
   top-5 line to stderr. The instrument for a cross-backend diff: tokens
   alone cannot tell a miscompute from amplified rounding (#337).
-- `CRISPASR_QWEN3_TTS_REPLAY_CODES=<file>` — 16 whitespace-separated codec ids
+- `STELNETTTS_CIELVOX2_TTS_REPLAY_CODES=<file>` — 16 whitespace-separated codec ids
   per frame; the decode uses them instead of sampling. Teacher forcing, and
   the ONLY way to compare two backends step by step: pin the whole frame or
   the 15 residual codebooks (which must be sampled) diverge and the diff
   measures trajectory, not arithmetic (#337).
-- `CRISPASR_QWEN3_TTS_REPLAY_TOKENS=<file>` — the weaker form: codebook-0 ids
+- `STELNETTTS_CIELVOX2_TTS_REPLAY_TOKENS=<file>` — the weaker form: codebook-0 ids
   only. Useful for forcing a trajectory, NOT sufficient for a logits diff.
-- `CRISPASR_QWEN3_TTS_GREEDY` — force the talker's codebook-0 sampler to argmax
+- `STELNETTTS_CIELVOX2_TTS_GREEDY` — force the talker's codebook-0 sampler to argmax
   (top_k=1). The frame sequence then depends only on the logits, so two
   backends agree if and only if their logits agree — this is the lever for
   telling a GPU miscompute apart from a sampling difference, and without it a
   CPU-vs-GPU token comparison proves nothing (#337).
-- `CRISPASR_QWEN3_TTS_MAX_FRAMES`
-- `CRISPASR_QWEN3_TTS_SKIP_REF_DECODE`
+- `STELNETTTS_CIELVOX2_TTS_MAX_FRAMES`
+- `STELNETTTS_CIELVOX2_TTS_SKIP_REF_DECODE`
 
 ### SenseVoice
 
-- `CRISPASR_SENSEVOICE_BENCH`
-- `CRISPASR_SENSEVOICE_NO_FA`
+- `STELNETTTS_SENSEVOICE_BENCH`
+- `STELNETTTS_SENSEVOICE_NO_FA`
 
 ### Sidon
 
-- `CRISPASR_SIDON_FASTCONV` — DAC convolution mode (`off`, `k1-f16`, `k1-f32`, or `full`). Unset defaults to
+- `STELNETTTS_SIDON_FASTCONV` — DAC convolution mode (`off`, `k1-f16`, `k1-f32`, or `full`). Unset defaults to
   `k1-f16` on CUDA and `off` on Vulkan/CPU.
-- `CRISPASR_SIDON_RPE` — relative-position-bias formulation: `bucket-direct` (default), `bucket`, or `expand`
+- `STELNETTTS_SIDON_RPE` — relative-position-bias formulation: `bucket-direct` (default), `bucket`, or `expand`
   (legacy `[head_dim, T, T]` expansion, ~1 GiB more predictor workspace at `T≈2825`; keeps the Vulkan
   `mul_mat` batching branch). All three are algebraically equivalent.
-- `CRISPASR_SIDON_DECODER_CHUNK_FRAMES` — maximum DAC core size in feature frames (default `512`). `0` decodes
+- `STELNETTTS_SIDON_DECODER_CHUNK_FRAMES` — maximum DAC core size in feature frames (default `512`). `0` decodes
   the whole utterance in one graph (~4.5 GiB at `T≈2825` vs ~0.79 GiB chunked). Chunked output is bit-exact
   against the whole-utterance decode.
-- `CRISPASR_SIDON_LOOKAHEAD` — set to `0` to disable the input padding (one leading predictor frame plus 1.5 s
+- `STELNETTTS_SIDON_LOOKAHEAD` — set to `0` to disable the input padding (one leading predictor frame plus 1.5 s
   of right-side lookahead). Padding is on by default; without it the last ~12 ms of every clip is a full-scale
   transient.
-- `CRISPASR_SIDON_MAX_FRAMES` — predictor input cap in feature frames (default `3000`, ~58.5 s after the
+- `STELNETTTS_SIDON_MAX_FRAMES` — predictor input cap in feature frames (default `3000`, ~58.5 s after the
   lookahead). Guards the `O(T^2)` attention.
-- `CRISPASR_SIDON_DEBUG` — print per-stage scheduler workspace sizes (per backend) after graph allocation.
+- `STELNETTTS_SIDON_DEBUG` — print per-stage scheduler workspace sizes (per backend) after graph allocation.
 
 ### Sherpa
 
-- `CRISPASR_SHERPA_LID_BIN`
+- `STELNETTTS_SHERPA_LID_BIN`
 
 ### Silero LID
 
-- `CRISPASR_SILERO_FORCE_SCALAR`
-- `CRISPASR_SILERO_LID_BENCH`
-- `CRISPASR_SILERO_LID_DEBUG`
-- `CRISPASR_SILERO_LID_DUMP`
-- `CRISPASR_SILERO_LID_LEGACY`
-- `CRISPASR_SILERO_LID_MAX_S`
-- `CRISPASR_SILERO_LID_TRACE`
-- `CRISPASR_SILERO_LID_TRACE_OFF`
-- `CRISPASR_SILERO_LID_TRUNC`
-- `CRISPASR_SILERO_LID_VULKAN`
+- `STELNETTTS_SILERO_FORCE_SCALAR`
+- `STELNETTTS_SILERO_LID_BENCH`
+- `STELNETTTS_SILERO_LID_DEBUG`
+- `STELNETTTS_SILERO_LID_DUMP`
+- `STELNETTTS_SILERO_LID_LEGACY`
+- `STELNETTTS_SILERO_LID_MAX_S`
+- `STELNETTTS_SILERO_LID_TRACE`
+- `STELNETTTS_SILERO_LID_TRACE_OFF`
+- `STELNETTTS_SILERO_LID_TRUNC`
+- `STELNETTTS_SILERO_LID_VULKAN`
 
 ### SpeechT5
 
-- `CRISPASR_SPEECHT5_DUMP_DIR`
-- `CRISPASR_SPEECHT5_FASTCONV`
-- `CRISPASR_SPEECHT5_FASTCONV_DEBUG`
-- `CRISPASR_SPEECHT5_TTS_BENCH`
+- `STELNETTTS_SPEECHT5_DUMP_DIR`
+- `STELNETTTS_SPEECHT5_FASTCONV`
+- `STELNETTTS_SPEECHT5_FASTCONV_DEBUG`
+- `STELNETTTS_SPEECHT5_TTS_BENCH`
 
 ### T5 translate
 
-- `CRISPASR_T5_GPU`
-- `CRISPASR_T5_TRANSLATE_BENCH`
+- `STELNETTTS_T5_GPU`
+- `STELNETTTS_T5_TRANSLATE_BENCH`
 
 ### TaDa TTS
 
-- `CRISPASR_TADA_ACOUSTIC_CFG`
-- `CRISPASR_TADA_ALLOW_VULKAN`
-- `CRISPASR_TADA_BATCH_PREFILL`
-- `CRISPASR_TADA_BENCH`
-- `CRISPASR_TADA_BUCKET_MIN`
-- `CRISPASR_TADA_CFG_INTERVAL`
-- `CRISPASR_TADA_CFG_INTERVAL_DEBUG`
-- `CRISPASR_TADA_CODEC_BENCH`
-- `CRISPASR_TADA_CODEC_DUMP`
-- `CRISPASR_TADA_CODEC_GGUF`
-- `CRISPASR_TADA_CODEC_VULKAN_NATIVE`
-- `CRISPASR_TADA_CTC_ASR`
-- `CRISPASR_TADA_DIFF_TEXT`
-- `CRISPASR_TADA_DO_SAMPLE`
-- `CRISPASR_TADA_DUMP_ACOUSTIC_FEATURES`
-- `CRISPASR_TADA_DUMP_FEATURES`
-- `CRISPASR_TADA_DUMP_FM_STEPS`
-- `CRISPASR_TADA_DUMP_TIME_BEFORE`
-- `CRISPASR_TADA_ENCODER_DEBUG`
-- `CRISPASR_TADA_EXTRA_STEPS`
-- `CRISPASR_TADA_FM_B2`
-- `CRISPASR_TADA_KEEP_F16_HEAD`
-- `CRISPASR_TADA_KEEP_F16_TAIL`
-- `CRISPASR_TADA_MAX_EXPANDED_FRAMES`
-- `CRISPASR_TADA_NOISE_TEMP`
-- `CRISPASR_TADA_NO_BUCKET`
-- `CRISPASR_TADA_NUM_CANDIDATES`
-- `CRISPASR_TADA_NUM_FM_STEPS`
-- `CRISPASR_TADA_PROMPT_CACHE`
-- `CRISPASR_TADA_PROMPT_TEXT`
-- `CRISPASR_TADA_QUANT_ALL`
-- `CRISPASR_TADA_REPETITION_PENALTY`
-- `CRISPASR_TADA_SCORER`
-- `CRISPASR_TADA_TALKER_TIMING`
-- `CRISPASR_TADA_TEMPERATURE`
-- `CRISPASR_TADA_TOP_K`
-- `CRISPASR_TADA_TOP_P`
-- `CRISPASR_TADA_VULKAN_NATIVE`
+- `STELNETTTS_TADA_ACOUSTIC_CFG`
+- `STELNETTTS_TADA_ALLOW_VULKAN`
+- `STELNETTTS_TADA_BATCH_PREFILL`
+- `STELNETTTS_TADA_BENCH`
+- `STELNETTTS_TADA_BUCKET_MIN`
+- `STELNETTTS_TADA_CFG_INTERVAL`
+- `STELNETTTS_TADA_CFG_INTERVAL_DEBUG`
+- `STELNETTTS_TADA_CODEC_BENCH`
+- `STELNETTTS_TADA_CODEC_DUMP`
+- `STELNETTTS_TADA_CODEC_GGUF`
+- `STELNETTTS_TADA_CODEC_VULKAN_NATIVE`
+- `STELNETTTS_TADA_CTC_ASR`
+- `STELNETTTS_TADA_DIFF_TEXT`
+- `STELNETTTS_TADA_DO_SAMPLE`
+- `STELNETTTS_TADA_DUMP_ACOUSTIC_FEATURES`
+- `STELNETTTS_TADA_DUMP_FEATURES`
+- `STELNETTTS_TADA_DUMP_FM_STEPS`
+- `STELNETTTS_TADA_DUMP_TIME_BEFORE`
+- `STELNETTTS_TADA_ENCODER_DEBUG`
+- `STELNETTTS_TADA_EXTRA_STEPS`
+- `STELNETTTS_TADA_FM_B2`
+- `STELNETTTS_TADA_KEEP_F16_HEAD`
+- `STELNETTTS_TADA_KEEP_F16_TAIL`
+- `STELNETTTS_TADA_MAX_EXPANDED_FRAMES`
+- `STELNETTTS_TADA_NOISE_TEMP`
+- `STELNETTTS_TADA_NO_BUCKET`
+- `STELNETTTS_TADA_NUM_CANDIDATES`
+- `STELNETTTS_TADA_NUM_FM_STEPS`
+- `STELNETTTS_TADA_PROMPT_CACHE`
+- `STELNETTTS_TADA_PROMPT_TEXT`
+- `STELNETTTS_TADA_QUANT_ALL`
+- `STELNETTTS_TADA_REPETITION_PENALTY`
+- `STELNETTTS_TADA_SCORER`
+- `STELNETTTS_TADA_TALKER_TIMING`
+- `STELNETTTS_TADA_TEMPERATURE`
+- `STELNETTTS_TADA_TOP_K`
+- `STELNETTTS_TADA_TOP_P`
+- `STELNETTTS_TADA_VULKAN_NATIVE`
 
 ### TitaNet speaker
 
-- `CRISPASR_TITANET_BENCH`
-- `CRISPASR_TITANET_DUMP`
-- `CRISPASR_TITANET_DUMP_MEL`
-- `CRISPASR_TITANET_FORCE_SCALAR`
-- `CRISPASR_TITANET_GGML`
-- `CRISPASR_TITANET_GPU`
-- `CRISPASR_TITANET_LEGACY`
-- `CRISPASR_TITANET_REF_MEL`
+- `STELNETTTS_TITANET_BENCH`
+- `STELNETTTS_TITANET_DUMP`
+- `STELNETTTS_TITANET_DUMP_MEL`
+- `STELNETTTS_TITANET_FORCE_SCALAR`
+- `STELNETTTS_TITANET_GGML`
+- `STELNETTTS_TITANET_GPU`
+- `STELNETTTS_TITANET_LEGACY`
+- `STELNETTTS_TITANET_REF_MEL`
 
 Three compute paths exist and all are kept working; the default is the fastest
 one measured per platform.
@@ -1103,17 +1103,17 @@ one measured per platform.
 | path | selected by | measured, M1, 2 s segment |
 | --- | --- | --- |
 | legacy (Accelerate / hand-rolled) | default where `HAVE_ACCELERATE` | **71.7 ms** |
-| ggml graph, CPU | default elsewhere; `CRISPASR_TITANET_GGML=1` | 277.3 ms |
-| ggml graph, GPU | `CRISPASR_TITANET_GGML=1 CRISPASR_TITANET_GPU=1` | 31.9 ms *(but see below)* |
+| ggml graph, CPU | default elsewhere; `STELNETTTS_TITANET_GGML=1` | 277.3 ms |
+| ggml graph, GPU | `STELNETTTS_TITANET_GGML=1 STELNETTTS_TITANET_GPU=1` | 31.9 ms *(but see below)* |
 
 All three agree to cosine **1.000000** with each other and **0.999996** against
 NVIDIA's `nemo_en_titanet_large.onnx` export fed the same mel — so the choice is
 purely about speed.
 
-⚠ **`CRISPASR_TITANET_GPU=1` is opt-in because it loses on real workloads
+⚠ **`STELNETTTS_TITANET_GPU=1` is opt-in because it loses on real workloads
 despite winning the micro-benchmark.** Diarization embeds one segment per call
 at *variable* lengths, so every call reshapes the graph and the GPU allocator
-re-reserves; and `CRISPASR_SPEAKER_EMBED_WORKERS` runs several embedders at once,
+re-reserves; and `STELNETTTS_SPEAKER_EMBED_WORKERS` runs several embedders at once,
 which contend for the one GPU. End-to-end on a 600 s clip, 47 segments:
 
 ```
@@ -1124,96 +1124,96 @@ workers=4, GPU     49866 ms
 ```
 
 Keep it for evaluating a discrete GPU (where the balance may differ) or for
-`CRISPASR_SPEAKER_EMBED_WORKERS=1` on a machine with weak CPU cores. Bucketing
+`STELNETTTS_SPEAKER_EMBED_WORKERS=1` on a machine with weak CPU cores. Bucketing
 segment lengths so the graph shape stops changing is the work that would make
 this path win generally.
 
-`CRISPASR_TITANET_DUMP_MEL=<path>` writes the computed mel as `[T][n_mels]`
-float32 — the counterpart to `CRISPASR_TITANET_REF_MEL`. Feeding that dump to an
+`STELNETTTS_TITANET_DUMP_MEL=<path>` writes the computed mel as `[T][n_mels]`
+float32 — the counterpart to `STELNETTTS_TITANET_REF_MEL`. Feeding that dump to an
 upstream ONNX export separates the front-end from the network, which a single
 end-to-end cosine cannot do.
 
 ### VibeVoice
 
-- `CRISPASR_VIBEVOICE_BENCH`
-- `CRISPASR_VIBEVOICE_DEBUG`
-- `CRISPASR_VIBEVOICE_DUMP_DIR`
-- `CRISPASR_VIBEVOICE_ENCODER_CHUNK_SECONDS`
-- `CRISPASR_VIBEVOICE_ENCODER_CONTEXT_SECONDS`
-- `CRISPASR_VIBEVOICE_LM_BUCKETS`
-- `CRISPASR_VIBEVOICE_NO_LM_BUCKETS`
-- `CRISPASR_VIBEVOICE_PRED_SCHED`
-- `CRISPASR_VIBEVOICE_QUANT_ALL`
-- `CRISPASR_VIBEVOICE_REF_FEATURES`
-- `CRISPASR_VIBEVOICE_REUSE_PRED_GRAPH`
-- `CRISPASR_VIBEVOICE_TTS_CFG_SCALE`
-- `CRISPASR_VIBEVOICE_TTS_DUMP`
-- `CRISPASR_VIBEVOICE_TTS_DUMP_DECODER`
-- `CRISPASR_VIBEVOICE_TTS_DUMP_PERFRAME`
-- `CRISPASR_VIBEVOICE_TTS_FLASH_ATTN`
-- `CRISPASR_VIBEVOICE_TTS_LATENTS`
-- `CRISPASR_VIBEVOICE_TTS_NOISE`
-- `CRISPASR_VIBEVOICE_TTS_SEED`
-- `CRISPASR_VIBEVOICE_TTS_TRACE`
-- `CRISPASR_VIBEVOICE_TTS_TRACE_FRAME`
-- `CRISPASR_VIBEVOICE_VAE_BACKEND`
-- `CRISPASR_VIBEVOICE_VOICE_AUDIO`
+- `STELNETTTS_VIBEVOICE_BENCH`
+- `STELNETTTS_VIBEVOICE_DEBUG`
+- `STELNETTTS_VIBEVOICE_DUMP_DIR`
+- `STELNETTTS_VIBEVOICE_ENCODER_CHUNK_SECONDS`
+- `STELNETTTS_VIBEVOICE_ENCODER_CONTEXT_SECONDS`
+- `STELNETTTS_VIBEVOICE_LM_BUCKETS`
+- `STELNETTTS_VIBEVOICE_NO_LM_BUCKETS`
+- `STELNETTTS_VIBEVOICE_PRED_SCHED`
+- `STELNETTTS_VIBEVOICE_QUANT_ALL`
+- `STELNETTTS_VIBEVOICE_REF_FEATURES`
+- `STELNETTTS_VIBEVOICE_REUSE_PRED_GRAPH`
+- `STELNETTTS_VIBEVOICE_TTS_CFG_SCALE`
+- `STELNETTTS_VIBEVOICE_TTS_DUMP`
+- `STELNETTTS_VIBEVOICE_TTS_DUMP_DECODER`
+- `STELNETTTS_VIBEVOICE_TTS_DUMP_PERFRAME`
+- `STELNETTTS_VIBEVOICE_TTS_FLASH_ATTN`
+- `STELNETTTS_VIBEVOICE_TTS_LATENTS`
+- `STELNETTTS_VIBEVOICE_TTS_NOISE`
+- `STELNETTTS_VIBEVOICE_TTS_SEED`
+- `STELNETTTS_VIBEVOICE_TTS_TRACE`
+- `STELNETTTS_VIBEVOICE_TTS_TRACE_FRAME`
+- `STELNETTTS_VIBEVOICE_VAE_BACKEND`
+- `STELNETTTS_VIBEVOICE_VOICE_AUDIO`
 
 ### VoxCPM2
 
-- `CRISPASR_VOXCPM2_BENCH`
-- `CRISPASR_VOXCPM2_CFG_INTERVAL`
-- `CRISPASR_VOXCPM2_CFG_INTERVAL_DEBUG`
-- `CRISPASR_VOXCPM2_CFG_VALUE`
-- `CRISPASR_VOXCPM2_CPU_ONLY`
-- `CRISPASR_VOXCPM2_INFERENCE_STEPS`
-- `CRISPASR_VOXCPM2_MAX_LEN`
-- `CRISPASR_VOXCPM2_USE_REF`
-- `CRISPASR_VOXCPM2_VAE_MAX_SAMPLES` - maximum 16 kHz input samples accepted by one `voxcpm2-vae` upscaling call
+- `STELNETTTS_VOXCPM2_BENCH`
+- `STELNETTTS_VOXCPM2_CFG_INTERVAL`
+- `STELNETTTS_VOXCPM2_CFG_INTERVAL_DEBUG`
+- `STELNETTTS_VOXCPM2_CFG_VALUE`
+- `STELNETTTS_VOXCPM2_CPU_ONLY`
+- `STELNETTTS_VOXCPM2_INFERENCE_STEPS`
+- `STELNETTTS_VOXCPM2_MAX_LEN`
+- `STELNETTTS_VOXCPM2_USE_REF`
+- `STELNETTTS_VOXCPM2_VAE_MAX_SAMPLES` - maximum 16 kHz input samples accepted by one `voxcpm2-vae` upscaling call
   (default `960000`, or 60 seconds). Split longer audio, or raise this only when enough RAM/VRAM is available.
 
 ### Voxtral / Voxtral-TTS
 
-- `CRISPASR_VOXTRAL_BENCH`
-- `CRISPASR_VOXTRAL_FUSED_QKV`
-- `CRISPASR_VOXTRAL_TTS_CODEC_FROM_FILE`
-- `CRISPASR_VOXTRAL_TTS_DIFF_DUMP`
-- `CRISPASR_VOXTRAL_TTS_SEMANTIC_CB`
-- `CRISPASR_VOXTRAL_TTS_TEXT`
-- `CRISPASR_VOXTRAL_TTS_VOICE`
+- `STELNETTTS_VOXTRAL_BENCH`
+- `STELNETTTS_VOXTRAL_FUSED_QKV`
+- `STELNETTTS_VOXTRAL_TTS_CODEC_FROM_FILE`
+- `STELNETTTS_VOXTRAL_TTS_DIFF_DUMP`
+- `STELNETTTS_VOXTRAL_TTS_SEMANTIC_CB`
+- `STELNETTTS_VOXTRAL_TTS_TEXT`
+- `STELNETTTS_VOXTRAL_TTS_VOICE`
 
 ### Voxtral-4B
 
-- `CRISPASR_VOXTRAL4B_BENCH`
-- `CRISPASR_VOXTRAL4B_FUSED_QKV`
-- `CRISPASR_VOXTRAL4B_STREAM_BATCH_ENCODER`
-- `CRISPASR_VOXTRAL4B_STREAM_CHUNK_MS`
-- `CRISPASR_VOXTRAL4B_STREAM_DEBUG`
-- `CRISPASR_VOXTRAL4B_STREAM_DECODER_THREAD`
-- `CRISPASR_VOXTRAL4B_STREAM_DIFF`
-- `CRISPASR_VOXTRAL4B_STREAM_LIVE`
-- `CRISPASR_VOXTRAL4B_STREAM_TIMING`
+- `STELNETTTS_VOXTRAL4B_BENCH`
+- `STELNETTTS_VOXTRAL4B_FUSED_QKV`
+- `STELNETTTS_VOXTRAL4B_STREAM_BATCH_ENCODER`
+- `STELNETTTS_VOXTRAL4B_STREAM_CHUNK_MS`
+- `STELNETTTS_VOXTRAL4B_STREAM_DEBUG`
+- `STELNETTTS_VOXTRAL4B_STREAM_DECODER_THREAD`
+- `STELNETTTS_VOXTRAL4B_STREAM_DIFF`
+- `STELNETTTS_VOXTRAL4B_STREAM_LIVE`
+- `STELNETTTS_VOXTRAL4B_STREAM_TIMING`
 
 ### Wav2Vec2
 
-- `CRISPASR_WAV2VEC2_BENCH`
-- `CRISPASR_WAV2VEC2_DUMP_DIR`
-- `CRISPASR_WAV2VEC2_VERBOSE`
+- `STELNETTTS_WAV2VEC2_BENCH`
+- `STELNETTTS_WAV2VEC2_DUMP_DIR`
+- `STELNETTTS_WAV2VEC2_VERBOSE`
 
 ### WavTokenizer
 
-- `CRISPASR_WAVTOK_BENCH`
-- `CRISPASR_WAVTOK_DUMP_DIR`
-- `CRISPASR_WAVTOK_FIXED_CODES`
+- `STELNETTTS_WAVTOK_BENCH`
+- `STELNETTTS_WAVTOK_DUMP_DIR`
+- `STELNETTTS_WAVTOK_FIXED_CODES`
 
 ### Zonos
 
-- `CRISPASR_ZONOS_CPP_DUMP_DIR`
-- `CRISPASR_ZONOS_DECODE_CHUNK`
-- `CRISPASR_ZONOS_DECODE_CTX`
-- `CRISPASR_ZONOS_DIFF_N_STEPS`
-- `CRISPASR_ZONOS_FASTCONV`
-- `CRISPASR_ZONOS_SPEAKER_EMB_PATH`
-- `CRISPASR_ZONOS_TTS_BENCH`
-- `CRISPASR_ZONOS_TTS_TEXT`
+- `STELNETTTS_ZONOS_CPP_DUMP_DIR`
+- `STELNETTTS_ZONOS_DECODE_CHUNK`
+- `STELNETTTS_ZONOS_DECODE_CTX`
+- `STELNETTTS_ZONOS_DIFF_N_STEPS`
+- `STELNETTTS_ZONOS_FASTCONV`
+- `STELNETTTS_ZONOS_SPEAKER_EMB_PATH`
+- `STELNETTTS_ZONOS_TTS_BENCH`
+- `STELNETTTS_ZONOS_TTS_TEXT`
 

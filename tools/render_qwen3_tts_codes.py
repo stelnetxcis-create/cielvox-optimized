@@ -9,8 +9,8 @@ them into shape (T, 16), feeds them through `qwen_tts`'s built-in
 Used as a temporary bridge until the C++ codec decoder lands.
 
     # Pipe codes from the C++ test driver:
-    ./build/bin/test_qwen3_tts_talker MODEL VOICE "Hello world." 50 \\
-        | tools/render_qwen3_tts_codes.py --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \\
+    ./build/bin/test_cielvox2_tts_talker MODEL VOICE "Hello world." 50 \\
+        | tools/render_cielvox2_tts_codes.py --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \\
                                           -o /tmp/our.wav
 """
 

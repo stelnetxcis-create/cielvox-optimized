@@ -19,11 +19,11 @@ import subprocess
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
 
 SRC_REPO = "mistralai/Voxtral-4B-TTS-2603"
-HF_REPO = "cstr/voxtral-4b-tts-GGUF"
+HF_REPO = "Xenna/voxtral-4b-tts-GGUF"
 NAME = "voxtral-4b-tts"
 
 # ── Phase 0: Clone repo ──────────────────────────────────────────────────────
@@ -32,12 +32,12 @@ if not REPO.exists():
     try:
         subprocess.check_call([
             "git", "clone", "--depth", "1", "-b", "main",
-            "https://github.com/CrispStrobe/CrispASR", str(REPO),
+            "https://github.com/Cyna/StelnetTTS", str(REPO),
         ])
     except Exception as e:
         print(f"  git clone failed: {e}")
 
-# Init ggml submodule (needed by crispasr-quantize build)
+# Init ggml submodule (needed by stelnettts-quantize build)
 if (REPO / "ggml").is_dir() and not (REPO / "ggml" / "CMakeLists.txt").exists():
     try:
         subprocess.check_call(["git", "submodule", "update", "--init", "ggml"], cwd=str(REPO))
@@ -115,7 +115,7 @@ api.upload_file(
 )
 print("  uploaded F16")
 
-# ── Phase 6: Build crispasr-quantize ─────────────────────────────────────────
+# ── Phase 6: Build stelnettts-quantize ─────────────────────────────────────────
 kh.step("build quantizer")
 BUILD = TEMP / "build"
 BUILD.mkdir(parents=True, exist_ok=True)
@@ -126,9 +126,9 @@ kh.sh_with_progress(
 )
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} --target crispasr-quantize"
+        f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} --target stelnettts-quantize"
     )
-quantize_bin = BUILD / "bin" / "crispasr-quantize"
+quantize_bin = BUILD / "bin" / "stelnettts-quantize"
 print(f"  quantizer: {quantize_bin}")
 
 # ── Phase 7: Quantize + upload ────────────────────────────────────────────────

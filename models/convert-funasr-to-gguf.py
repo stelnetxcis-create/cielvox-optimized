@@ -41,7 +41,7 @@ Tensor naming (kept under GGUF 64-char limit):
     funasr.adaptor.blk.K.attn.{q,k,v,out}.{w,b}  separate Q/K/V/O linears
     funasr.adaptor.blk.K.ffn.l{1,2}.{w,b}   PositionwiseFeedForward 1024↔256
 
-  LLM (llama.cpp-standard naming so the runtime can reuse the qwen3_asr /
+  LLM (llama.cpp-standard naming so the runtime can reuse the cielvox2_asr /
   voxtral / granite_speech load patterns):
     token_embd.weight                       embed_tokens (151936, 1024)
     output.weight                           lm_head      (151936, 1024)
@@ -62,11 +62,11 @@ Tensor naming (kept under GGUF 64-char limit):
 Usage:
   python models/convert-funasr-to-gguf.py \\
       --input FunAudioLLM/Fun-ASR-Nano-2512 \\
-      --output /Volumes/backups/ai/crispasr-models/funasr-nano-2512/funasr-nano-2512-f16.gguf
+      --output /Volumes/backups/ai/stelnettts-models/funasr-nano-2512/funasr-nano-2512-f16.gguf
 
   python models/convert-funasr-to-gguf.py \\
       --input FunAudioLLM/Fun-ASR-MLT-Nano-2512 \\
-      --output /Volumes/backups/ai/crispasr-models/funasr-mlt-nano-2512/funasr-mlt-nano-2512-f16.gguf
+      --output /Volumes/backups/ai/stelnettts-models/funasr-mlt-nano-2512/funasr-mlt-nano-2512-f16.gguf
 """
 
 import argparse
@@ -241,7 +241,7 @@ def main():
         writer.add_uint32(f"funasr.{k}", int(v))
     writer.add_bool("funasr.use_low_frame_rate", use_low_frame_rate)
 
-    # LLM hyperparameters — match qwen3_asr conventions but under funasr.llm.*
+    # LLM hyperparameters — match cielvox2_asr conventions but under funasr.llm.*
     writer.add_uint32("funasr.llm.n_layers", int(llm_cfg["num_hidden_layers"]))
     writer.add_uint32("funasr.llm.d_model",  int(llm_cfg["hidden_size"]))
     writer.add_uint32("funasr.llm.n_heads",  int(llm_cfg["num_attention_heads"]))

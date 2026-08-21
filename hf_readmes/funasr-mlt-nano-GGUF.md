@@ -52,7 +52,7 @@ base_model: FunAudioLLM/Fun-ASR-MLT-Nano-2512
 
 # Fun-ASR-MLT-Nano-2512 — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`FunAudioLLM/Fun-ASR-MLT-Nano-2512`](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512) for use with the `funasr` backend in **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**. Multilingual variant — same architecture as `funasr-nano-GGUF`, broader language coverage (~31 languages including Korean, Vietnamese, Indonesian, Thai, Malay, Filipino, Arabic, Hindi, Bulgarian, German, French, Spanish, Italian, Portuguese, Dutch, Polish, Czech, Romanian, Greek, Finnish, Swedish, Turkish, Persian, Danish, Hungarian, Macedonian, Russian).
+GGUF / ggml conversion of [`FunAudioLLM/Fun-ASR-MLT-Nano-2512`](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512) for use with the `funasr` backend in **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**. Multilingual variant — same architecture as `funasr-nano-GGUF`, broader language coverage (~31 languages including Korean, Vietnamese, Indonesian, Thai, Malay, Filipino, Arabic, Hindi, Bulgarian, German, French, Spanish, Italian, Portuguese, Dutch, Polish, Czech, Romanian, Greek, Finnish, Swedish, Turkish, Persian, Danish, Hungarian, Macedonian, Russian).
 
 The architecture is identical to Fun-ASR-Nano-2512:
 
@@ -63,7 +63,7 @@ The architecture is identical to Fun-ASR-Nano-2512:
 
 ## Architecture note — no CTC path
 
-Upstream `config.yaml` and `funasr/models/fun_asr_nano/model.py` declare a CTC decoder + head, but the published `model.pt` ships **only** `audio_encoder.* + audio_adaptor.* + llm.*` (zero `ctc_decoder.*` / `ctc.ctc_lo.*` keys). The LLM-decoder path is therefore the only viable inference path for these weights, and is what this GGUF and the CrispASR runtime implement.
+Upstream `config.yaml` and `funasr/models/fun_asr_nano/model.py` declare a CTC decoder + head, but the published `model.pt` ships **only** `audio_encoder.* + audio_adaptor.* + llm.*` (zero `ctc_decoder.*` / `ctc.ctc_lo.*` keys). The LLM-decoder path is therefore the only viable inference path for these weights, and is what this GGUF and the StelnetTTS runtime implement.
 
 ## Files
 
@@ -79,17 +79,17 @@ both); no `--punc-model` post-processor needed.
 ## Quick Start
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build-ninja-compile -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-ninja-compile --target crispasr-lib
+cmake --build build-ninja-compile --target stelnettts-lib
 
 # Auto-download (recommended Q4_K)
-./build-ninja-compile/bin/crispasr -m fun-asr-mlt-nano --auto-download -f samples/jfk.wav
+./build-ninja-compile/bin/stelnettts -m fun-asr-mlt-nano --auto-download -f samples/jfk.wav
 
 # Or pin a specific file
-hf download cstr/funasr-mlt-nano-GGUF funasr-mlt-nano-2512-q4_k.gguf --local-dir .
-./build-ninja-compile/bin/crispasr -m funasr-mlt-nano-2512-q4_k.gguf -f samples/jfk.wav
+hf download Xenna/funasr-mlt-nano-GGUF funasr-mlt-nano-2512-q4_k.gguf --local-dir .
+./build-ninja-compile/bin/stelnettts -m funasr-mlt-nano-2512-q4_k.gguf -f samples/jfk.wav
 ```
 
 ## Licence + attribution
@@ -97,7 +97,7 @@ hf download cstr/funasr-mlt-nano-GGUF funasr-mlt-nano-2512-q4_k.gguf --local-dir
 Upstream **FunAudioLLM/Fun-ASR-MLT-Nano-2512**:
 
 - **Code** (the `funasr` Python package): Apache-2.0.
-- **Model weights**: [**FunASR Model License v1.1**](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512/blob/main/LICENSE) (Alibaba) — commercial use OK with attribution. Confirmed on the upstream-tracking discussion in [CrispStrobe/CrispASR#99](https://github.com/CrispStrobe/CrispASR/issues/99).
+- **Model weights**: [**FunASR Model License v1.1**](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512/blob/main/LICENSE) (Alibaba) — commercial use OK with attribution. Confirmed on the upstream-tracking discussion in [Cyna/StelnetTTS#99](https://github.com/Cyna/StelnetTTS/issues/99).
 
 These GGUF files are a quantised / repackaged distribution of the upstream weights and inherit the FunASR Model License v1.1. Please attribute Alibaba / FunAudioLLM in downstream products.
 

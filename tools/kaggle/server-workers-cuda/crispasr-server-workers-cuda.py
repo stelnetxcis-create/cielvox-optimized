@@ -1,9 +1,9 @@
 """
-CrispASR — server worker-pool concurrency: CUDA proof (improvements Phase 4b).
+StelnetTTS — server worker-pool concurrency: CUDA proof (improvements Phase 4b).
 
 Question this kernel answers (needs a real NVIDIA card — on M1 the memory-bound
 CPU model contends, so concurrency showed no throughput win): does
-CRISPASR_SERVER_WORKERS=N give real request concurrency on a GPU where a single
+STELNETTTS_SERVER_WORKERS=N give real request concurrency on a GPU where a single
 request under-utilises the card, with identical transcripts?
 
 The server pools N independent backend instances; a pure-ASR request (explicit
@@ -11,7 +11,7 @@ language, no aligner / no post-processing) runs on a pooled worker so up to N ru
 concurrently, while the primary backend + model_mutex serialise everything else.
 Each worker owns its own CUDA context (separate command queue).
 
-Design (CUDA build from CRISPASR_REF; a small ASR model so one request doesn't
+Design (CUDA build from STELNETTTS_REF; a small ASR model so one request doesn't
 saturate the GPU):
   A. WORKERS=1 (control) — 2 concurrent requests must SERIALISE (~2× single).
   B. WORKERS=2 — 2 SERIAL requests (~2× single) vs 2 CONCURRENT requests
@@ -33,13 +33,13 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-MODEL_REPO = os.environ.get("MODEL_REPO", "cstr/moonshine-tiny-GGUF")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+MODEL_REPO = os.environ.get("MODEL_REPO", "Xenna/moonshine-tiny-GGUF")
 MODEL_FILE = os.environ.get("MODEL_FILE", "moonshine-tiny-q8_0.gguf")
 BACKEND = os.environ.get("BACKEND", "moonshine")
 PORT = int(os.environ.get("PORT", "8799"))
@@ -51,9 +51,9 @@ def _sh(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF}", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF}", flush=True)
 if not REPO.exists():
-    _sh(f"git clone --depth 1 --branch {CRISPASR_REF} --recursive https://github.com/CrispStrobe/CrispASR {REPO}")
+    _sh(f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive https://github.com/Cyna/StelnetTTS {REPO}")
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
@@ -62,7 +62,7 @@ kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("script.start", ref=CRISPASR_REF, sha=sha)
+kh.step("script.start", ref=STELNETTTS_REF, sha=sha)
 
 # ── Build (CUDA) ───────────────────────────────────────────────────────────
 kh.step("build.begin")
@@ -72,8 +72,8 @@ cmake_cmd = (f"cmake {REPO} -B{BUILD} -GNinja -DCMAKE_BUILD_TYPE=Release "
 with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{kh.safe_build_jobs(gpu=True)}")
-assert CRISPASR.is_file(), "crispasr binary missing"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{kh.safe_build_jobs(gpu=True)}")
+assert CRISPASR.is_file(), "stelnettts binary missing"
 kh.step("build.done")
 
 # ── Model ──────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ HEALTH = f"http://127.0.0.1:{PORT}/health"
 
 
 def start_server(workers: int):
-    env = {**os.environ, "CRISPASR_SERVER_WORKERS": str(workers), "CRISPASR_NO_WARMUP": "1"}
+    env = {**os.environ, "STELNETTTS_SERVER_WORKERS": str(workers), "STELNETTTS_NO_WARMUP": "1"}
     proc = subprocess.Popen(
         [str(CRISPASR), "--server", "--host", "127.0.0.1", "--port", str(PORT),
          "-m", str(model_path), "--backend", BACKEND],

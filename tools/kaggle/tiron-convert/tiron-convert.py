@@ -1,22 +1,22 @@
-# CrispASR — Tiron (#295) convert → quantize → reference-dump, checkpointing to HF.
+# StelnetTTS — Tiron (#295) convert → quantize → reference-dump, checkpointing to HF.
 #
-# THE PORT PIPELINE steps 1-8 (see crispasr-crispembed-dev.md). Two iron rules:
+# THE PORT PIPELINE steps 1-8 (see stelnettts-crispembed-dev.md). Two iron rules:
 #   * never let disk fill: produce → upload → delete;
 #   * never crash before a produced artifact is checkpointed to HF.
 # RESUMABLE: a step whose artifact already exists on HF is skipped, so a re-run
 # after a late failure only redoes what's missing (no wasted convert/quantize).
 #
 #   1. convert Trelis/tiron -> f16 legacy whisper ggml bin
-#   2. upload f16 -> cstr/tiron-GGML                                  (checkpoint)
-#   3. quantize q4_k with crispasr-LEGACY-quantize (the whisper-bin quantizer;
-#      crispasr-quantize is GGUF-only and rc=1s on a legacy bin)
-#   4. upload q4_k -> cstr/tiron-GGML                                 (checkpoint)
+#   2. upload f16 -> Xenna/tiron-GGML                                  (checkpoint)
+#   3. quantize q4_k with stelnettts-LEGACY-quantize (the whisper-bin quantizer;
+#      stelnettts-quantize is GGUF-only and rc=1s on a legacy bin)
+#   4. upload q4_k -> Xenna/tiron-GGML                                 (checkpoint)
 #   5/6. rm f16 locally
 #   7. dump tiron-ref.gguf via tools/dump_reference.py --backend tiron
-#   8. upload tiron-ref.gguf -> cstr/crispasr-regression-fixtures     (checkpoint)
+#   8. upload tiron-ref.gguf -> Xenna/stelnettts-regression-fixtures     (checkpoint)
 #
-# Validation (crispasr-diff q4_k vs the ref) is LOCAL, not here.
-# Datasets (chr1str): chr1str/crispasr-hf-token, chr1str/crispasr-ccache.
+# Validation (stelnettts-diff q4_k vs the ref) is LOCAL, not here.
+# Datasets (chr1str): chr1str/stelnettts-hf-token, chr1str/stelnettts-ccache.
 
 import os
 import shutil
@@ -26,18 +26,18 @@ from pathlib import Path
 
 SCRATCH = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
 WORK = Path("/kaggle/working")
-REPO = SCRATCH / "CrispASR"
+REPO = SCRATCH / "StelnetTTS"
 BUILD = SCRATCH / "build"
 MODELS = SCRATCH / "models"
 OUT = SCRATCH / "out"
 for d in (MODELS, OUT):
     d.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/tiron-asr")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/tiron-asr")
 TIRON_SRC = "Trelis/tiron"
-TIRON_HF_OUT = "cstr/tiron-GGML"
-FIXTURES_REPO = "cstr/crispasr-regression-fixtures"
+TIRON_HF_OUT = "Xenna/tiron-GGML"
+FIXTURES_REPO = "Xenna/stelnettts-regression-fixtures"
 REF_PATH_IN_REPO = "tiron/multispeaker/ref.gguf"
 NAME = "tiron"
 TIRON_FILES = [
@@ -66,13 +66,13 @@ def run(cmd, cwd=None, timeout=None, check=True, env=None):
 # ---- clone + harness + auth (early, so the mirror is live) ----
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 kh._HF_PUSH_INTERVAL_S = 20.0
-kh.step("start", ref=CRISPASR_REF, scratch=str(SCRATCH),
+kh.step("start", ref=STELNETTTS_REF, scratch=str(SCRATCH),
         sha=subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip())
 
 token = kh.resolve_hf_token()
@@ -120,11 +120,11 @@ else:
     run(["cmake", "-S", str(REPO), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release",
          "-DBUILD_SHARED_LIBS=ON"] + kh.cuda_build_flags(arch) + kh.cache_and_link_flags())
     with kh.build_heartbeat("build"):
-        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-legacy-quantize "
+        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-legacy-quantize "
                             f"-j{kh.safe_build_jobs(gpu=True)}")
-    QUANT = next((c for c in BUILD.rglob("crispasr-legacy-quantize") if c.is_file() and os.access(c, os.X_OK)), None)
+    QUANT = next((c for c in BUILD.rglob("stelnettts-legacy-quantize") if c.is_file() and os.access(c, os.X_OK)), None)
     if QUANT is None:
-        raise SystemExit("crispasr-legacy-quantize not built")
+        raise SystemExit("stelnettts-legacy-quantize not built")
     os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
     kh.step("build.done", quant=str(QUANT))
 
@@ -149,11 +149,11 @@ else:
         f"""---
 license: apache-2.0
 base_model: {TIRON_SRC}
-tags: [automatic-speech-recognition, whisper, speaker-diarization, crispasr, ggml]
+tags: [automatic-speech-recognition, whisper, speaker-diarization, stelnettts, ggml]
 ---
-# {NAME} — GGML for CrispASR (#295)
+# {NAME} — GGML for StelnetTTS (#295)
 Converted from [`{TIRON_SRC}`](https://huggingface.co/{TIRON_SRC}) (Apache-2.0).
-Whisper large-v3 + inline `<|speakerN|>` markers; needs a CrispASR build with the
+Whisper large-v3 + inline `<|speakerN|>` markers; needs a StelnetTTS build with the
 tiron decode mode. Files: `{NAME}-f16.bin`, `{NAME}-q4_k.bin`.
 """, encoding="utf-8")
     upload(readme, "README.md", TIRON_HF_OUT)

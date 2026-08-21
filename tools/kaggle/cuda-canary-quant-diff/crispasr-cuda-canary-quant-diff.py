@@ -26,13 +26,13 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = TEMP / "build"
 MODELS = TEMP / "models"
 FIX = TEMP / "fixtures"
 OUT = WORK / "outputs"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 for d in (MODELS, FIX, OUT):
     d.mkdir(parents=True, exist_ok=True)
 
@@ -63,11 +63,11 @@ def record(name, passed, **kw):
 
 
 # ── cell 1: clone + harness (FULL regime) ──────────────────────────────────
-print(json.dumps({"step": "start", "ref": CRISPASR_REF}), flush=True)
+print(json.dumps({"step": "start", "ref": STELNETTTS_REF}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)], capture=False)
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)], capture=False)
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive"],
     check=False, capture=False, timeout=1800)
 
@@ -80,7 +80,7 @@ kh.init_progress()
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 kh.step("cloned", sha=sha)
 RESULTS["env"]["sha"] = sha
-RESULTS["env"]["ref"] = CRISPASR_REF
+RESULTS["env"]["ref"] = STELNETTTS_REF
 run(["nvidia-smi", "-L"], check=False)
 gpu = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True).strip()
 kh.step("gpu", gpu=gpu)
@@ -95,21 +95,21 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = [
     "cmake", "-S", str(REPO), "-B", str(BUILD),
     "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-    "-DCRISPASR_NO_C2PA_NATIVE=ON",
+    "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
 ] + kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
 run(cmake_args, capture=False)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 kh.step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
     if not cands:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("cli", path=str(CLI))
@@ -156,12 +156,12 @@ M = {}
 # The other affected backends (canary-qwen q4_k 3.6 GB, mimo q4_k 4.5 GB) are the
 # SAME code pattern and were dropped to keep the run short — CI already compiled
 # all 10 and the fix is identical per-backend.
-M["canary_qwen"] = hf_get("cstr/canary-qwen-2.5b-GGUF", "canary-qwen-2.5b-q4_k.gguf",
+M["canary_qwen"] = hf_get("Xenna/canary-qwen-2.5b-GGUF", "canary-qwen-2.5b-q4_k.gguf",
                           MODELS / "canary-qwen-q4_k.gguf")
 kh.step("downloads_done")
 
 # also grab the REGISTRY DEFAULT q8_0 (4.1 GB) — the precision real users get.
-M["canary_qwen_q8"] = hf_get("cstr/canary-qwen-2.5b-GGUF", "canary-qwen-2.5b-q8_0.gguf",
+M["canary_qwen_q8"] = hf_get("Xenna/canary-qwen-2.5b-GGUF", "canary-qwen-2.5b-q8_0.gguf",
                              MODELS / "canary-qwen-q8_0.gguf")
 kh.step("downloads_done_q8")
 
@@ -169,7 +169,7 @@ JFK = REPO / "samples" / "jfk.wav"
 
 def canary_gen(model_path, env_extra=None, cap=32):
     """Run canary-qwen on jfk; return the 'generated N tokens: <text>' debug line."""
-    env = {**os.environ, "CRISPASR_CANARY_QWEN_DEBUG": "1"}
+    env = {**os.environ, "STELNETTTS_CANARY_QWEN_DEBUG": "1"}
     if env_extra:
         env.update(env_extra)
     args = [str(CLI), "-m", str(model_path), "--backend", "canary-qwen",
@@ -184,9 +184,9 @@ def canary_gen(model_path, env_extra=None, cap=32):
 MATRIX = [
     ("q8_0-default",       "canary_qwen_q8", None),
     ("q4_k-default",       "canary_qwen",    None),
-    ("q4_k-FUSED_QKV_off", "canary_qwen",    {"CRISPASR_FC_FUSED_QKV": "0"}),
-    ("q4_k-PW_Q8_off",     "canary_qwen",    {"CRISPASR_FC_PW_Q8": "0"}),
-    ("q4_k-both_opts_off", "canary_qwen",    {"CRISPASR_FC_FUSED_QKV": "0", "CRISPASR_FC_PW_Q8": "0"}),
+    ("q4_k-FUSED_QKV_off", "canary_qwen",    {"STELNETTTS_FC_FUSED_QKV": "0"}),
+    ("q4_k-PW_Q8_off",     "canary_qwen",    {"STELNETTTS_FC_PW_Q8": "0"}),
+    ("q4_k-both_opts_off", "canary_qwen",    {"STELNETTTS_FC_FUSED_QKV": "0", "STELNETTTS_FC_PW_Q8": "0"}),
 ]
 for name, key, env_extra in MATRIX:
     with kh.build_heartbeat(f"gen.{name}"):

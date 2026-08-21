@@ -18,7 +18,7 @@ tags:
 - tts
 - text-to-speech
 - gguf
-- crispasr
+- stelnettts
 - cosyvoice3
 - multilingual
 - voice-cloning
@@ -29,7 +29,7 @@ tags:
 # Fun-CosyVoice3-0.5B-2512 — GGUF
 
 GGUF conversion of [FunAudioLLM/Fun-CosyVoice3-0.5B-2512](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512)
-for use with [CrispASR](https://github.com/CrispStrobe/CrispASR)
+for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS)
 (`--backend cosyvoice3-tts`).
 
 CosyVoice3 is a streaming, multilingual, zero-shot voice-cloning TTS
@@ -74,17 +74,17 @@ voice bank are shared**, so switching is just pointing `-m` at the other LLM
 GGUF and leaving every companion file in place:
 
 ```bash
-crispasr -m cosyvoice3-llm-rl-q4_k.gguf --backend cosyvoice3-tts \
+stelnettts -m cosyvoice3-llm-rl-q4_k.gguf --backend cosyvoice3-tts \
     --voice fleurs-en --i-have-rights \
     --tts "The northern lights can be heard as well as seen." --tts-output out.wav
 ```
 
-CrispASR also ships `--backend cosyvoice3-tts-rl` (aliases `cosyvoice3-rl`,
+StelnetTTS also ships `--backend cosyvoice3-tts-rl` (aliases `cosyvoice3-rl`,
 `cv3-rl`): the same engine, wired so that `-m auto` fetches the RL talker and
 reuses the shared companions.
 
 ```bash
-crispasr --backend cosyvoice3-tts-rl -m auto \
+stelnettts --backend cosyvoice3-tts-rl -m auto \
     --voice fleurs-en --i-have-rights \
     --tts "The northern lights can be heard as well as seen." --tts-output out.wav
 ```
@@ -118,11 +118,11 @@ languages. Q8_0 flow is perceptually indistinguishable from F16.
 
 ## Usage
 
-### CrispASR (recommended)
+### StelnetTTS (recommended)
 
 ```bash
 # Auto-discovers flow + hift + voices as siblings of the LLM.
-crispasr -m cosyvoice3-llm-q4_k.gguf \
+stelnettts -m cosyvoice3-llm-q4_k.gguf \
          --backend cosyvoice3-tts \
          --tts "Hello, this is a test." \
          --voice zero_shot \
@@ -163,7 +163,7 @@ The `fleurs-*` prompts are ~4–6 s clips from Google's
 (CC BY 4.0), loudness-normalised before baking. CV3 clones the prompt's
 timbre *and* level, so quiet prompts yield quiet output — normalise your
 own prompt clips for a consistent level. More voices can be baked with
-the converter in the CrispASR tree:
+the converter in the StelnetTTS tree:
 
 ```bash
 python models/convert-cosyvoice3-voices-to-gguf.py \
@@ -181,7 +181,7 @@ from HF on first run.
 `--i-have-rights` is required: baking turns a real speaker's recording
 into a reusable voice clone, and by passing it you attest that you have
 that speaker's consent or that the voice is your own. The converter
-stamps each entry as recording-derived, which is what makes CrispASR
+stamps each entry as recording-derived, which is what makes StelnetTTS
 demand `--i-have-rights` / `consent_attestation` at synthesis time and
 prepend the spoken AI disclosure to the output (EU AI Act Art. 50(4)).
 
@@ -196,7 +196,7 @@ companions present (siblings of the LLM, or pulled by `-m auto`), you
 can clone from any 16 kHz WAV at runtime:
 
 ```bash
-crispasr -m cosyvoice3-llm-q4_k.gguf \
+stelnettts -m cosyvoice3-llm-q4_k.gguf \
          --backend cosyvoice3-tts \
          --voice my_reference.wav \
          --ref-text "exact transcription of my_reference.wav" \
@@ -207,7 +207,7 @@ crispasr -m cosyvoice3-llm-q4_k.gguf \
 The runtime ports all three front-end extractors to ggml: the
 **speech_tokenizer_v3** token extractor (12 FSMN/attention blocks +
 FSQ head — byte-exact vs the ONNX reference, validated stage-by-stage
-with `crispasr-diff`), the **CAMPPlus** 192-D speaker encoder, and the
+with `stelnettts-diff`), the **CAMPPlus** 192-D speaker encoder, and the
 **matcha 24 kHz** reference mel. The legacy Python pre-bake bridge
 (`convert-cosyvoice3-voices-to-gguf.py`) remains as an automatic
 fallback when the companions are absent.
@@ -250,4 +250,4 @@ permissive licenses (Apache-2.0 / CC BY 4.0).
 * Upstream: [FunAudioLLM/Fun-CosyVoice3-0.5B-2512](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512)
 * Project page: [funaudiollm.github.io/cosyvoice3](https://funaudiollm.github.io/cosyvoice3/)
 * Code: [github.com/FunAudioLLM/CosyVoice](https://github.com/FunAudioLLM/CosyVoice)
-* CrispASR: [github.com/CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)
+* StelnetTTS: [github.com/Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)

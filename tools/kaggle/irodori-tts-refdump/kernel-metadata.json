@@ -1,6 +1,6 @@
 {
-  "id": "chr1str/crispasr-irodori-tts-ref-dump",
-  "title": "crispasr-irodori-tts-ref-dump",
+  "id": "chr1str/stelnettts-irodori-tts-ref-dump",
+  "title": "stelnettts-irodori-tts-ref-dump",
   "code_file": "irodori_e2e_test.py",
   "language": "python",
   "kernel_type": "script",
@@ -8,7 +8,7 @@
   "enable_gpu": "true",
   "enable_internet": "true",
   "competition_sources": [],
-  "dataset_sources": ["chr1str/crispasr-hf-token"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token"],
   "kernel_sources": [],
   "model_sources": []
 }

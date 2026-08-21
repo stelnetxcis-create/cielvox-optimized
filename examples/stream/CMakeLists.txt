@@ -1,5 +1,5 @@
-if (CRISPASR_SDL2)
-    set(TARGET crispasr-stream)
+if (STELNETTTS_SDL2)
+    set(TARGET stelnettts-stream)
     add_executable(${TARGET} stream.cpp)
 
     include(DefaultTargetOptions)

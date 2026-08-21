@@ -1,18 +1,18 @@
 # %% [markdown]
-# # CrispASR — produce + validate + upload MOSS-TTS quants (#249)
+# # StelnetTTS — produce + validate + upload MOSS-TTS quants (#249)
 #
 # Issue #249 (subof): "Q6 and Q8 quanta are available for MOSS-TTS. Perhaps this
 # would be another step towards improving the quality of generation."
 #
 # For each model, download F16 (+ codec) → quantize → VALIDATE via TTS→whisper
-# round-trip → upload only on pass → delete local files. crispasr-quantize is a
+# round-trip → upload only on pass → delete local files. stelnettts-quantize is a
 # CPU-only streaming re-quant of the published F16; synthesis is run on CPU too
 # (always numerically correct — GPU could confound a quant-quality check).
 #
-#   cstr/moss-tts-v1.5-GGUF        (8B):  add q6_k, q8_0   (already has q4_k)
-#   cstr/moss-tts-local-v1.5-GGUF  (4B):  add q4_k, q6_k, q8_0  (was f16-only)
+#   Xenna/moss-tts-v1.5-GGUF        (8B):  add q6_k, q8_0   (already has q4_k)
+#   Xenna/moss-tts-local-v1.5-GGUF  (4B):  add q4_k, q6_k, q8_0  (was f16-only)
 #
-# Prebuilt v0.8.23 CPU tarball (ships crispasr + crispasr-quantize, MOSS-TTS
+# Prebuilt v0.8.23 CPU tarball (ships stelnettts + stelnettts-quantize, MOSS-TTS
 # support landed v0.8.21). gpu=false, internet=true.
 
 # %% [code]
@@ -25,14 +25,14 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 
-# ── Kaggle regime: clone CrispASR + import the harness FROM the clone ──────────
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-REPO = WORK / "CrispASR"
+# ── Kaggle regime: clone StelnetTTS + import the harness FROM the clone ──────────
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
     try:
         subprocess.check_call([
             "git", "clone", "--depth", "1", "--filter=blob:none", "--no-checkout",
-            CRISPASR_URL, str(REPO)])
+            STELNETTTS_URL, str(REPO)])
         subprocess.check_call(
             f"git -C {REPO} checkout HEAD -- tools/kaggle/", shell=True)
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -42,7 +42,7 @@ if str(REPO / "tools" / "kaggle") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kaggle_harness as kh  # noqa: E402
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("script.start")
 
@@ -56,16 +56,16 @@ os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 from huggingface_hub import hf_hub_download, HfApi  # noqa: E402
 step("install-deps.done")
 
-# ── prebuilt binary: v0.8.23 CPU tarball (crispasr + crispasr-quantize) ───────
+# ── prebuilt binary: v0.8.23 CPU tarball (stelnettts + stelnettts-quantize) ───────
 RELEASE = "v0.8.23"
-TARBALL = "crispasr-linux-x86_64.tar.gz"
+TARBALL = "stelnettts-linux-x86_64.tar.gz"
 BIN = WORK / "bin"
 BIN.mkdir(exist_ok=True)
-CRISPASR = BIN / "crispasr"
-QUANT = BIN / "crispasr-quantize"
+CRISPASR = BIN / "stelnettts"
+QUANT = BIN / "stelnettts-quantize"
 step("binary-download.begin", release=RELEASE)
 subprocess.check_call(
-    f"wget -q https://github.com/CrispStrobe/CrispASR/releases/download/{RELEASE}/{TARBALL} "
+    f"wget -q https://github.com/Cyna/StelnetTTS/releases/download/{RELEASE}/{TARBALL} "
     f"-O /tmp/c.tar.gz && tar -xzf /tmp/c.tar.gz -C {BIN} --strip-components=1", shell=True)
 CRISPASR.chmod(0o755)
 QUANT.chmod(0o755)
@@ -192,8 +192,8 @@ def do_model(repo, base, backend, quants):
 # %% [code]
 RESULT = {}
 for repo, base, backend, quants in [
-    ("cstr/moss-tts-v1.5-GGUF", "moss-tts-v1.5", "moss-tts", ["q6_k", "q8_0"]),
-    ("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5", "moss-tts-local",
+    ("Xenna/moss-tts-v1.5-GGUF", "moss-tts-v1.5", "moss-tts", ["q6_k", "q8_0"]),
+    ("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5", "moss-tts-local",
      ["q4_k", "q6_k", "q8_0"]),
 ]:
     try:

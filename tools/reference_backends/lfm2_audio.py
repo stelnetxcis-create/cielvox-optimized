@@ -2,7 +2,7 @@
 
 Loads LiquidAI/LFM2.5-Audio-1.5B-JP (or any LFM2-Audio variant) via the
 liquid-audio package and captures intermediates at every architectural
-boundary for crispasr-diff comparison against the C++ runtime.
+boundary for stelnettts-diff comparison against the C++ runtime.
 
 Stages:
 

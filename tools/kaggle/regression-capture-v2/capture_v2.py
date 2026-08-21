@@ -27,10 +27,10 @@ def main():
     log("=== Regression capture v2 ===")
 
     # Clone + build
-    cdir = WORK / "CrispASR"
+    cdir = WORK / "StelnetTTS"
     if not cdir.exists():
         subprocess.check_call(["git", "clone", "--depth", "1",
-            "https://github.com/CrispStrobe/CrispASR.git", str(cdir)])
+            "https://github.com/Cyna/StelnetTTS.git", str(cdir)])
     sys.path.insert(0, str(cdir / "tools" / "kaggle"))
     try:
         import kaggle_harness as kh
@@ -44,8 +44,8 @@ def main():
         kh.install_build_toolchain()
     except Exception as e:
         log(f"harness: {e}")
-        for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-                  "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+        for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+                  "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
             if os.path.exists(p):
                 os.environ["HF_TOKEN"] = open(p).read().strip()
                 break
@@ -53,14 +53,14 @@ def main():
             subprocess.run([sys.executable, "-m", "pip", "install", "-q", "cmake", "ninja"], check=False)
 
     bdir = cdir / "build"
-    cmake_args = ["-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON"]
+    cmake_args = ["-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON"]
     if shutil.which("ninja"): cmake_args += ["-G", "Ninja"]
     if shutil.which("ccache"): cmake_args += ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"]
     subprocess.check_call(["cmake", "-B", str(bdir)] + cmake_args, cwd=str(cdir))
     subprocess.check_call(["cmake", "--build", str(bdir), "-j2"], cwd=str(cdir))
     log("Build OK")
 
-    CLI = str(bdir / "bin" / "crispasr")
+    CLI = str(bdir / "bin" / "stelnettts")
     JFK = str(cdir / "samples" / "jfk.wav")
     MDIR = WORK / "models"
     MDIR.mkdir(exist_ok=True)
@@ -79,8 +79,8 @@ def main():
     # 1. mimo-asr (needs --codec-model)
     log("\n[1] mimo-asr")
     try:
-        m1 = dl("cstr/mimo-asr-GGUF", "mimo-asr-q4_k.gguf")
-        m1c = dl("cstr/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf")
+        m1 = dl("Xenna/mimo-asr-GGUF", "mimo-asr-q4_k.gguf")
+        m1c = dl("Xenna/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf")
         log(f"  DL OK")
         t0 = time.time()
         rc, txt, _ = run([CLI, "--backend", "mimo-asr", "-m", m1, "--codec-model", m1c, "-f", JFK, "-np"])
@@ -105,7 +105,7 @@ def main():
         results["kugelaudio"] = {"status": "skip_disk"}
     else:
         try:
-            m2 = dl("cstr/kugelaudio-0-open-GGUF", "kugelaudio-0-open-q4_k.gguf")
+            m2 = dl("Xenna/kugelaudio-0-open-GGUF", "kugelaudio-0-open-q4_k.gguf")
             log(f"  DL OK")
             t0 = time.time()
             rc, txt, _ = run([CLI, "--backend", "kugelaudio", "-m", m2, "-f", JFK, "-np"], timeout=900)
@@ -121,7 +121,7 @@ def main():
     # 3. granite-4.1-nar (SIGABRT on CUDA — try CPU-only)
     log("\n[3] granite-4.1-nar (CPU-only attempt)")
     try:
-        m3 = dl("cstr/granite-speech-4.1-2b-nar-GGUF", "granite-speech-4.1-2b-nar-q4_k.gguf")
+        m3 = dl("Xenna/granite-speech-4.1-2b-nar-GGUF", "granite-speech-4.1-2b-nar-q4_k.gguf")
         log(f"  DL OK")
         t0 = time.time()
         rc, txt, _ = run([CLI, "--backend", "granite", "-m", m3, "-f", JFK, "-np", "--no-gpu"], timeout=600)

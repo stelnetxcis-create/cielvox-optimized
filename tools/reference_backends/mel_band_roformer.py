@@ -1,4 +1,4 @@
-"""Mel-Band RoFormer reference backend — per-stage dumper for crispasr-diff (§248).
+"""Mel-Band RoFormer reference backend — per-stage dumper for stelnettts-diff (§248).
 
 Blueprint: lucidrains/BS-RoFormer `mel_band_roformer.py` (MIT). Weights:
 KimberleyJSN/melbandroformer (MIT). NOT Kim's inference repo — it ships no

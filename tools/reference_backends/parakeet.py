@@ -1,7 +1,7 @@
 """NeMo Parakeet-TDT reference dump backend.
 
 Loads `nvidia/parakeet-tdt_ctc-0.6b-ja` (or v3) via NeMo and captures the
-mel features and final encoder output for crispasr-diff comparison
+mel features and final encoder output for stelnettts-diff comparison
 against the C++ runtime. Intended for diagnosing the JA TDT decoder bug
 (emits 1 token then collapses to blanks) where the C++ encoder
 diverged from the NeMo reference at the FIRST output frame.
@@ -12,7 +12,7 @@ Stages:
   mel_spectrogram  (n_mels, T_mel) NeMo preprocessor output, batch-stripped
   encoder_output   (T_enc, d_model) FastConformer encoder output
 
-Captures match the names that `examples/cli/crispasr_diff_main.cpp`
+Captures match the names that `examples/cli/stelnettts_diff_main.cpp`
 already looks up for the "parakeet" backend.
 
 Usage:
@@ -49,7 +49,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     forward hooks on `model.encoder.pre_encode` and
     `model.encoder.layers[K]` so we get the exact tensor each module
     produces — no manual reconstruction. All captures are transposed
-    to (T, d_model) row-major to match crispasr's flat layout.
+    to (T, d_model) row-major to match stelnettts's flat layout.
     """
     import sys, torch
 
@@ -181,7 +181,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
             out["mel_spectrogram"] = m.detach().cpu().float().numpy()
 
         encf, enc_len = model.encoder(audio_signal=feats, length=feat_len)
-        # encf: (B=1, d_model, T_enc) in NeMo's convention. crispasr-diff's
+        # encf: (B=1, d_model, T_enc) in NeMo's convention. stelnettts-diff's
         # parakeet_encoder_r returns (T_enc, d_model), so transpose to match.
         if "encoder_output" in stages:
             T_enc = int(enc_len.item())

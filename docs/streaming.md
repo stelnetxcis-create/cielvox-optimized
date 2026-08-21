@@ -1,6 +1,6 @@
 # Streaming & live transcription
 
-CrispASR supports three streaming modes — pipe input, microphone
+StelnetTTS supports three streaming modes — pipe input, microphone
 capture, and continuous live mode — and per-token confidence output.
 All work with every supported backend.
 
@@ -17,7 +17,7 @@ All work with every supported backend.
 ```bash
 # Pipe audio from ffmpeg, sox, or any tool that outputs raw PCM:
 ffmpeg -i audio.wav -f s16le -ar 16000 -ac 1 - | \
-    crispasr --stream -m model.gguf
+    stelnettts --stream -m model.gguf
 ```
 
 Sliding-window chunking, default 10 s window with 3 s step and 200 ms
@@ -40,14 +40,14 @@ Notes:
 
 For wrappers (browser bridges, live-translation pipelines, captioning
 UIs) that need to distinguish a still-evolving partial from a
-finalized utterance, pass `--stream-json`. CrispASR then emits one
+finalized utterance, pass `--stream-json`. StelnetTTS then emits one
 JSON object per line on stdout — never plain text — and FireRed VAD
 diagnostics stay off stderr unless you opt in with
 `--firered-vad-debug`.
 
 ```bash
 ffmpeg -i input.wav -f s16le -ar 16000 -ac 1 - 2>/dev/null \
-  | crispasr --stream --stream-json -m model.gguf \
+  | stelnettts --stream --stream-json -m model.gguf \
       --vad --vad-model firered-vad.gguf \
       --stream-final-on-silence-ms 800
 ```
@@ -116,16 +116,16 @@ Two modes; `redecode` is the default.
 # Best quality — re-runs the backend on the buffered utterance PCM at
 # finalize time. final.text is guaranteed to cover [t0..t1] regardless
 # of how the rolling window evicted audio.
-crispasr --stream --stream-json --stream-final-mode redecode ...
+stelnettts --stream --stream-json --stream-final-mode redecode ...
 
 # Cheaper — no extra encoder pass. final.text is built from a
 # longest-common-prefix accumulator across consecutive partials, with
 # the last partial appended. Subject to text duplication when the
 # rolling window evicts mid-utterance audio.
-crispasr --stream --stream-json --stream-final-mode prefix ...
+stelnettts --stream --stream-json --stream-final-mode prefix ...
 ```
 
-In `redecode` mode CrispASR buffers the speech-region PCM in memory
+In `redecode` mode StelnetTTS buffers the speech-region PCM in memory
 (capped at `--stream-utterance-max-sec`, default `60` s — about 4 MB
 at 16 kHz mono float). When the cap is hit the current utterance
 auto-finalizes and the next speech opens a new utterance with a
@@ -141,7 +141,7 @@ Useful when the encoder is large and the per-chunk budget is tight.
 encoders (moonshine, parakeet, voxtral, …) abort with `OW > 0` from
 `ggml_im2col` when handed audio shorter than the encoder's first conv
 kernel — about 2 s at 16 kHz. When `redecode` would hit that limit
-(the VAD-trimmed `[t0..t1]` is under 2 s) CrispASR skips the extra
+(the VAD-trimmed `[t0..t1]` is under 2 s) StelnetTTS skips the extra
 backend pass and falls back to the **`prefix`-mode stitcher** for
 that one finalize. `final.text` is then the LCP-accumulated prefix
 plus the last partial — the same content the wrapper has already
@@ -153,7 +153,7 @@ event change.
 
 When `--stream-json --vad` is combined with `--punc-model`, FireRedPunc
 can sit on either the partial path, the final path, both, or neither.
-PR [#112](https://github.com/CrispStrobe/CrispASR/pull/112) introduced
+PR [#112](https://github.com/Cyna/StelnetTTS/pull/112) introduced
 the explicit knob; before that, partials and finals both ran through
 FireRedPunc (equivalent to today's `--stream-punc partial`).
 
@@ -195,19 +195,19 @@ truecasers (`--truecase-model`, `--truecase-crf-model`,
 
 ```bash
 # Live microphone transcription (auto-detects arecord/sox/ffmpeg):
-crispasr --mic -m model.gguf
+stelnettts --mic -m model.gguf
 ```
 
-CrispASR auto-detects whichever audio capture tool is on `$PATH`.
+StelnetTTS auto-detects whichever audio capture tool is on `$PATH`.
 
 ## Continuous live mode (`--live`)
 
 ```bash
 # Continuous live mode (prints each chunk as a new line, never stops):
-crispasr --live -m model.gguf
+stelnettts --live -m model.gguf
 
 # With progress monitor symbols (▶ processing, ✓ got text, · silence):
-crispasr --live --monitor -m model.gguf
+stelnettts --live --monitor -m model.gguf
 ```
 
 `--live` runs indefinitely, emitting one transcript line per processed
@@ -217,7 +217,7 @@ state at a glance.
 ## Per-token confidence
 
 ```bash
-crispasr -m model.gguf -f audio.wav --alt
+stelnettts -m model.gguf -f audio.wav --alt
 ```
 
 `--alt` prints alternative candidate tokens with probabilities — useful
@@ -289,7 +289,7 @@ the full decode to finish:
 | `kyutai-stt` | LLM greedy (SentencePiece) | Via `kyutai_stt_transcribe_cb`; padding tokens filtered in C lib |
 | `mimo-asr` | LLM greedy (GPT-2 BPE) | Via `mimo_asr_transcribe_cb` |
 | `nemotron` | RNN-T (per non-blank frame) | Via `nemotron_transcribe_cb`; fires per emitted frame |
-| `qwen3-asr` | LLM greedy (Qwen3) | Native |
+| `cielvox2-asr` | LLM greedy (Qwen3) | Native |
 | `voxtral` | LLM greedy (Mistral LLM) | Native |
 
 For these backends, `--stream` output grows one token at a time. For batch
@@ -306,7 +306,7 @@ incrementally — the sliding window cost is lower than for batch backends.
 `cache_last_channel` + `cache_last_time` architecture. Enable with:
 
 ```bash
-CRISPASR_NEMOTRON_STREAMING=1 crispasr --backend nemotron -m model.gguf -f audio.wav
+STELNETTTS_NEMOTRON_STREAMING=1 stelnettts --backend nemotron -m model.gguf -f audio.wav
 ```
 
 Four context presets trade latency for accuracy:
@@ -318,7 +318,7 @@ Four context presets trade latency for accuracy:
 | 2      | 6 frames     | 7 frames   | ~560 ms        | 7.07 %        |
 | 3      | 13 frames    | 14 frames  | ~1120 ms       | 6.93 %        |
 
-Set via `CRISPASR_NEMOTRON_CONTEXT_PRESET=N` (default: 0).
+Set via `STELNETTTS_NEMOTRON_CONTEXT_PRESET=N` (default: 0).
 
 ## Speaker diarization while streaming
 
@@ -328,14 +328,14 @@ named-voiceprint identification — those two are recorded-file (offline) featur
 by design. See [`diarization-speakers.md`](diarization-speakers.md) for the full
 diarization model.
 
-Both backends [issue #300](https://github.com/CrispStrobe/CrispASR/issues/300)
+Both backends [issue #300](https://github.com/Cyna/StelnetTTS/issues/300)
 asked about produce speaker information while streaming, but by **two different
 mechanisms** — worth understanding because they behave differently downstream:
 
 | Backend | How speaker info is produced | In streaming you get |
 |---|---|---|
-| **`moss-diarize`** (MOSS-Transcribe-Diarize-0.9B, `cstr/MOSS-Transcribe-Diarize-GGUF`) | a **structured** per-segment speaker label (`seg.speaker`), parsed from the model's `[Sxx]` tags | inline `(Speaker N)` in plain `--stream`; a `"speaker"` field on `--stream-json` `final` events |
-| **`vibevoice`** (VibeVoice-ASR, `cstr/vibevoice-asr-GGUF`) | a **structured** per-segment speaker label, parsed from the JSON array the model answers with (its prompt asks for "Start time, End time, Speaker ID, Content") — from v0.8.24; before that the blob was passed through as raw text | inline `(Speaker N)` in plain `--stream`; a `"speaker"` field on `--stream-json` `final` events. Set `CRISPASR_VIBEVOICE_RAW_TRANSCRIPT=1` for the old raw-blob behaviour |
+| **`moss-diarize`** (MOSS-Transcribe-Diarize-0.9B, `Xenna/MOSS-Transcribe-Diarize-GGUF`) | a **structured** per-segment speaker label (`seg.speaker`), parsed from the model's `[Sxx]` tags | inline `(Speaker N)` in plain `--stream`; a `"speaker"` field on `--stream-json` `final` events |
+| **`vibevoice`** (VibeVoice-ASR, `Xenna/vibevoice-asr-GGUF`) | a **structured** per-segment speaker label, parsed from the JSON array the model answers with (its prompt asks for "Start time, End time, Speaker ID, Content") — from v0.8.24; before that the blob was passed through as raw text | inline `(Speaker N)` in plain `--stream`; a `"speaker"` field on `--stream-json` `final` events. Set `STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT=1` for the old raw-blob behaviour |
 
 Issue #300's change surfaces the **structured** `seg.speaker` field in streaming
 — so it applies to `moss-diarize`, to `granite` in speaker-aware `--diarize`
@@ -348,7 +348,7 @@ mode, and to `vibevoice`.
 > field below could not fire for this backend at all. v0.8.24 reads the answer:
 > one segment per utterance, native per-utterance timings, and the speaker in
 > the structured field like any other native diarizer.
-> `CRISPASR_VIBEVOICE_RAW_TRANSCRIPT=1` restores the raw blob for callers that
+> `STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT=1` restores the raw blob for callers that
 > were parsing it themselves.
 
 ### What works in streaming
@@ -360,7 +360,7 @@ labels (substitute `--backend vibevoice` in either recipe below):
 ```bash
 # Plain streaming — labels are prefixed inline, exactly like file-mode text output:
 ffmpeg -i meeting.wav -f s16le -ar 16000 -ac 1 - 2>/dev/null \
-  | crispasr --stream -m auto --backend moss-diarize
+  | stelnettts --stream -m auto --backend moss-diarize
 # (Speaker 1) welcome everyone
 # (Speaker 2) thanks, glad to be here
 ```
@@ -369,7 +369,7 @@ ffmpeg -i meeting.wav -f s16le -ar 16000 -ac 1 - 2>/dev/null \
 # Structured streaming — a `final` event gains a "speaker" field when the
 # finalized utterance is single-speaker (text stays clean, no inline labels):
 ffmpeg -i meeting.wav -f s16le -ar 16000 -ac 1 - 2>/dev/null \
-  | crispasr --stream --stream-json -m auto --backend moss-diarize \
+  | stelnettts --stream --stream-json -m auto --backend moss-diarize \
       --vad --vad-model auto --stream-final-on-silence-ms 800
 # {"type":"partial","utterance_id":1,"text":"welcome everyone","t0":0.30,"t1":1.80}
 # {"type":"final","utterance_id":1,"text":"welcome everyone.","speaker":"(Speaker 1)","t0":0.30,"t1":2.10}
@@ -396,7 +396,7 @@ into the text instead, matching the file-mode `text`/`srt`/`vtt` convention.
   needs the whole recording to assign consistent labels, so it is applied as a
   file-mode post-processing stage and is a no-op on the streaming path.
 - **`--speaker-db` / `--enroll-speaker` named identification.** These
-  **hard-refuse** in streaming mode (`crispasr: error: --speaker-db/--enroll-speaker
+  **hard-refuse** in streaming mode (`stelnettts: error: --speaker-db/--enroll-speaker
   are not available in streaming mode`) — real-time biometric identification is
   deliberately unsupported (EU AI Act Art. 5(1)(h); see
   [`diarization-speakers.md`](diarization-speakers.md#2-named-voiceprint-profiles---speaker-db--deliberate-opt-in)).
@@ -409,8 +409,8 @@ diarizer as above. For a transcript with **recording-stable** speaker labels
 backend with `--diarize-speakers` — over the recorded file once capture ends:
 
 ```bash
-crispasr -m auto --backend moss-diarize -f meeting.wav -ojf     # native labels + native timestamps
-crispasr -m auto --backend cohere      -f meeting.wav --diarize-speakers -ojf   # any backend + clustering
+stelnettts -m auto --backend moss-diarize -f meeting.wav -ojf     # native labels + native timestamps
+stelnettts -m auto --backend cohere      -f meeting.wav --diarize-speakers -ojf   # any backend + clustering
 ```
 
 ## Streaming synthesized audio (out)
@@ -427,14 +427,14 @@ sample rate; all logs stay on stderr, so stdout is a clean stream to pipe into a
 player:
 
 ```bash
-crispasr --backend irodori-tts -m model.gguf --codec-model dacvae-ja-32dim-f16.gguf \
+stelnettts --backend irodori-tts -m model.gguf --codec-model dacvae-ja-32dim-f16.gguf \
     --tts "こんにちは。今日はいい天気ですね。" --tts-stream \
   | ffplay -f s16le -ar 48000 -nodisp -
 ```
 
 The spoken AI-disclosure (voice-cloned output) is emitted first, each chunk is
 watermarked before emit (unless disabled process-wide via `--no-watermark` /
-`CRISPASR_NO_WATERMARK`), and a 200 ms gap separates chunks. Works with every
+`STELNETTTS_NO_WATERMARK`), and a 200 ms gap separates chunks. Works with every
 TTS backend.
 
 ### Server (`stream: true`)
@@ -448,17 +448,17 @@ curl -N http://localhost:8080/v1/audio/speech \
   -d '{"model":"irodori-tts","input":"…","stream":true,"response_format":"pcm"}' > out.pcm
 ```
 
-### C ABI (`crispasr_session_synthesize_streaming`)
+### C ABI (`stelnettts_session_synthesize_streaming`)
 
 For embedders/bindings — fires a callback per sentence chunk with that chunk's
 watermarked PCM (backend-native sample rate, owned by the call). As with the
 other bindings, this path watermarks unconditionally; the `--no-watermark` /
-`CRISPASR_NO_WATERMARK` opt-out does not apply here (see
+`STELNETTTS_NO_WATERMARK` opt-out does not apply here (see
 [`bindings.md`](bindings.md)):
 
 ```c
 void on_chunk(const float* pcm, int n, int is_final, void* user) { /* play/queue */ }
-crispasr_session_synthesize_streaming(session, "…", on_chunk, user);
+stelnettts_session_synthesize_streaming(session, "…", on_chunk, user);
 ```
 
 Note: for diffusion backends (e.g. irodori) the per-*sentence* granularity above

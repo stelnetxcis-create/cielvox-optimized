@@ -4,7 +4,7 @@
 //   FireRedPunc — BERT Chinese+multilingual, 5 classes
 //   PCS — XLM-R, punctuation + capitalization + segmentation
 //
-// Used by both CrispASR and CrispEmbed for post-OCR/ASR text cleanup.
+// Used by both StelnetTTS and StelnetEmbed for post-OCR/ASR text cleanup.
 
 #ifndef CRISP_PUNC_H
 #define CRISP_PUNC_H

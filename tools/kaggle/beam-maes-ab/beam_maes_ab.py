@@ -1,5 +1,5 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — beam search / MAES A/B benchmark (§167)
+# # StelnetTTS — beam search / MAES A/B benchmark (§167)
 #
 # Tests beam search and MAES on backends that are too large for the VPS
 # (8 GB RAM). Runs on Kaggle T4/P100 with CUDA.
@@ -39,15 +39,15 @@ def step(msg):
 _T0 = time.time()
 
 # ─────────────────────────── cell 2 (code) ───────────────────────────
-# ── Clone + build CrispASR with CUDA ──
-step("Clone CrispASR")
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_DIR = WORK / "CrispASR"
+# ── Clone + build StelnetTTS with CUDA ──
+step("Clone StelnetTTS")
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_DIR = WORK / "StelnetTTS"
 
-if not CRISPASR_DIR.exists():
-    subprocess.check_call(["git", "clone", "--depth", "1", CRISPASR_URL, str(CRISPASR_DIR)])
+if not STELNETTTS_DIR.exists():
+    subprocess.check_call(["git", "clone", "--depth", "1", STELNETTTS_URL, str(STELNETTTS_DIR)])
 
-sys.path.insert(0, str(CRISPASR_DIR / "tools" / "kaggle"))
+sys.path.insert(0, str(STELNETTTS_DIR / "tools" / "kaggle"))
 # Fallback to bundled harness (same dir as this script)
 try:
     _script_dir = str(Path(__file__).resolve().parent)
@@ -58,17 +58,17 @@ sys.path.insert(0, _script_dir)
 import kaggle_harness as kh
 kh.init_progress()
 
-step("Build CrispASR (CUDA)")
+step("Build StelnetTTS (CUDA)")
 kh.install_build_toolchain()
 
-build_dir = CRISPASR_DIR / "build"
+build_dir = STELNETTTS_DIR / "build"
 os.makedirs(build_dir, exist_ok=True)
-os.chdir(str(CRISPASR_DIR))
+os.chdir(str(STELNETTTS_DIR))
 
 # Configure with CUDA
 subprocess.check_call([
     "cmake", "-G", "Ninja", "-B", str(build_dir),
-    "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON",
+    "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
     "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
     "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
 ], env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")})
@@ -80,8 +80,8 @@ with kh.build_heartbeat("cuda-build"):
         env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")}
     )
 
-CLI = str(build_dir / "bin" / "crispasr")
-AUDIO = str(CRISPASR_DIR / "samples" / "jfk.wav")
+CLI = str(build_dir / "bin" / "stelnettts")
+AUDIO = str(STELNETTTS_DIR / "samples" / "jfk.wav")
 assert os.path.isfile(CLI), f"CLI not found: {CLI}"
 assert os.path.isfile(AUDIO), f"Audio not found: {AUDIO}"
 
@@ -220,7 +220,7 @@ if "nemotron" in MODELS:
         ab_test("nemotron", "auto",
                 "beam=4", ["--beam-size", "4"],
                 "MAES", ["--beam-size", "4"],
-                env_b={"CRISPASR_NEMOTRON_MAES": "1"})
+                env_b={"STELNETTTS_NEMOTRON_MAES": "1"})
         save_partial()
     except Exception as e:
         print(f"FAILED: nemotron MAES: {e}", flush=True)

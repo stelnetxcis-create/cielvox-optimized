@@ -10,7 +10,7 @@
         "CMAKE_BUILD_TYPE": "Release",
         "GGML_CCACHE":      "OFF",
         "GGML_OPENMP":      "OFF",
-        "CRISPASR_BUILD_TESTS": "OFF"
+        "STELNETTTS_BUILD_TESTS": "OFF"
       }
     },
     {
@@ -41,9 +41,9 @@
       "inherits": "debug",
       "binaryDir": "${sourceDir}/build-asan",
       "cacheVariables": {
-        "CRISPASR_SANITIZE_ADDRESS":   "ON",
-        "CRISPASR_SANITIZE_UNDEFINED": "OFF",
-        "CRISPASR_SANITIZE_THREAD":    "OFF"
+        "STELNETTTS_SANITIZE_ADDRESS":   "ON",
+        "STELNETTTS_SANITIZE_UNDEFINED": "OFF",
+        "STELNETTTS_SANITIZE_THREAD":    "OFF"
       }
     },
     {
@@ -53,9 +53,9 @@
       "inherits": "debug",
       "binaryDir": "${sourceDir}/build-ubsan",
       "cacheVariables": {
-        "CRISPASR_SANITIZE_ADDRESS":   "OFF",
-        "CRISPASR_SANITIZE_UNDEFINED": "ON",
-        "CRISPASR_SANITIZE_THREAD":    "OFF"
+        "STELNETTTS_SANITIZE_ADDRESS":   "OFF",
+        "STELNETTTS_SANITIZE_UNDEFINED": "ON",
+        "STELNETTTS_SANITIZE_THREAD":    "OFF"
       }
     },
     {
@@ -65,9 +65,9 @@
       "inherits": "debug",
       "binaryDir": "${sourceDir}/build-sanitize",
       "cacheVariables": {
-        "CRISPASR_SANITIZE_ADDRESS":   "ON",
-        "CRISPASR_SANITIZE_UNDEFINED": "ON",
-        "CRISPASR_SANITIZE_THREAD":    "OFF"
+        "STELNETTTS_SANITIZE_ADDRESS":   "ON",
+        "STELNETTTS_SANITIZE_UNDEFINED": "ON",
+        "STELNETTTS_SANITIZE_THREAD":    "OFF"
       }
     },
     {
@@ -77,9 +77,9 @@
       "inherits": "debug",
       "binaryDir": "${sourceDir}/build-tsan",
       "cacheVariables": {
-        "CRISPASR_SANITIZE_ADDRESS":   "OFF",
-        "CRISPASR_SANITIZE_UNDEFINED": "OFF",
-        "CRISPASR_SANITIZE_THREAD":    "ON"
+        "STELNETTTS_SANITIZE_ADDRESS":   "OFF",
+        "STELNETTTS_SANITIZE_UNDEFINED": "OFF",
+        "STELNETTTS_SANITIZE_THREAD":    "ON"
       }
     },
     {

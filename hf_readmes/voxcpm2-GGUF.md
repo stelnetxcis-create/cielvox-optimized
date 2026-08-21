@@ -36,14 +36,14 @@ tags:
 - text-to-speech
 - speech-synthesis
 - gguf
-- crispasr
+- stelnettts
 base_model: openbmb/VoxCPM2
 pipeline_tag: text-to-speech
 ---
 
 # VoxCPM2 GGUF
 
-GGUF conversion of [openbmb/VoxCPM2](https://huggingface.co/openbmb/VoxCPM2) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [openbmb/VoxCPM2](https://huggingface.co/openbmb/VoxCPM2) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model Details
 
@@ -61,16 +61,16 @@ GGUF conversion of [openbmb/VoxCPM2](https://huggingface.co/openbmb/VoxCPM2) for
 - **Multilingual:** 30-language support via CJK-split BPE tokenizer (73k vocab)
 - **Voice cloning:** Zero-shot voice cloning from reference audio
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Zero-shot TTS
-crispasr -m voxcpm2-f16.gguf \
+stelnettts -m voxcpm2-f16.gguf \
     --tts "Hello, this is VoxCPM2 speaking." \
     --tts-output output.wav
 
 # Quantized (smaller, faster)
-crispasr -m voxcpm2-q4_k.gguf \
+stelnettts -m voxcpm2-q4_k.gguf \
     --tts "Hello world" --tts-output output.wav
 ```
 
@@ -85,10 +85,10 @@ crispasr -m voxcpm2-q4_k.gguf \
 
 ## Numerical Validation
 
-The `voxcpm2-ref.gguf` file contains intermediate activation tensors captured from the PyTorch reference implementation. Used with `crispasr-diff` to validate the C++ inference path:
+The `voxcpm2-ref.gguf` file contains intermediate activation tensors captured from the PyTorch reference implementation. Used with `stelnettts-diff` to validate the C++ inference path:
 
 ```bash
-crispasr-diff voxcpm2-tts voxcpm2-f16.gguf voxcpm2-ref.gguf samples/jfk.wav
+stelnettts-diff voxcpm2-tts voxcpm2-f16.gguf voxcpm2-ref.gguf samples/jfk.wav
 ```
 
 Current status: **12 pass, 0 fail** across all transformer stages (TSLM, RALM, LocEnc, LocDiT, projections).
@@ -117,7 +117,7 @@ Text → BPE tokenize → TSLM (28L causal MiniCPM-4, GQA 16h/2kv, LongRoPE)
 
 ## Conversion
 
-Converted using `models/convert-voxcpm2-to-gguf.py` from the CrispASR repository:
+Converted using `models/convert-voxcpm2-to-gguf.py` from the StelnetTTS repository:
 
 ```bash
 python models/convert-voxcpm2-to-gguf.py \

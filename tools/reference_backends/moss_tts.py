@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MOSS-TTS-v1.5 (MossTTSDelay) reference dumper for the crispasr diff harness.
+"""MOSS-TTS-v1.5 (MossTTSDelay) reference dumper for the stelnettts diff harness.
 
 Produces the GREEDY audio code grid the C++ runtime must reproduce byte-for-byte
 (Phase 3 code-parity gate), and optionally the codec-decoded reference waveform

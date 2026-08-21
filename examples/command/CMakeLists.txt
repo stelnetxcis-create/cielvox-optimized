@@ -1,5 +1,5 @@
-if (CRISPASR_SDL2)
-    set(TARGET crispasr-command)
+if (STELNETTTS_SDL2)
+    set(TARGET stelnettts-command)
     add_executable(${TARGET} command.cpp)
 
     include(DefaultTargetOptions)

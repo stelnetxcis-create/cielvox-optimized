@@ -5,7 +5,7 @@
 //   ctest -R test-ark-asr --output-on-failure
 //
 // Env vars:
-//   CRISPASR_MODEL_ARK_ASR — Q8_0 (or F16) GGUF path
+//   STELNETTTS_MODEL_ARK_ASR — Q8_0 (or F16) GGUF path
 //
 // The backend is CPU-only by default (the GPU/sched path emits no tokens; see
 // PLAN.md §ARK). These tests use the default (CPU) path.
@@ -96,9 +96,9 @@ static bool contains_ci(const std::string& hay, const char* needle) {
 }
 
 TEST_CASE("ark-asr: init and free", "[ark-asr][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_ARK_ASR");
+    std::string model = get_env("STELNETTTS_MODEL_ARK_ASR");
     if (model.empty()) {
-        SKIP("CRISPASR_MODEL_ARK_ASR not set");
+        SKIP("STELNETTTS_MODEL_ARK_ASR not set");
     }
 
     ark_asr_context_params cp = ark_asr_context_default_params();
@@ -110,9 +110,9 @@ TEST_CASE("ark-asr: init and free", "[ark-asr][.live]") {
 }
 
 TEST_CASE("ark-asr: JFK English transcription (verbatim)", "[ark-asr][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_ARK_ASR");
+    std::string model = get_env("STELNETTTS_MODEL_ARK_ASR");
     if (model.empty()) {
-        SKIP("CRISPASR_MODEL_ARK_ASR not set");
+        SKIP("STELNETTTS_MODEL_ARK_ASR not set");
     }
 
     auto pcm = load_wav_16k_mono("samples/jfk.wav");
@@ -139,9 +139,9 @@ TEST_CASE("ark-asr: JFK English transcription (verbatim)", "[ark-asr][.live]") {
 }
 
 TEST_CASE("ark-asr: language instruction does not break English", "[ark-asr][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_ARK_ASR");
+    std::string model = get_env("STELNETTTS_MODEL_ARK_ASR");
     if (model.empty()) {
-        SKIP("CRISPASR_MODEL_ARK_ASR not set");
+        SKIP("STELNETTTS_MODEL_ARK_ASR not set");
     }
 
     auto pcm = load_wav_16k_mono("samples/jfk.wav");

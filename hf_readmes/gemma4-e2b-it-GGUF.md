@@ -16,7 +16,7 @@ base_model: google/gemma-4-E2B-it
 
 # Gemma-4-E2B-it — GGUF
 
-GGUF conversion of [`google/gemma-4-E2B-it`](https://huggingface.co/google/gemma-4-E2B-it) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversion of [`google/gemma-4-E2B-it`](https://huggingface.co/google/gemma-4-E2B-it) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -38,7 +38,7 @@ GGUF conversion of [`google/gemma-4-E2B-it`](https://huggingface.co/google/gemma
 
 ## What's included vs an upstream Gemma-4 GGUF
 
-This GGUF is built specifically for ASR with CrispASR and includes the audio path that
+This GGUF is built specifically for ASR with StelnetTTS and includes the audio path that
 standard text/vision Gemma-4 GGUFs (unsloth, ggml-org) omit:
 
 - 12-layer audio conformer encoder (~872 tensors total).
@@ -55,19 +55,19 @@ standard text/vision Gemma-4 GGUFs (unsloth, ggml-org) omit:
 
 Vision tower tensors are excluded.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Auto-download (recommended)
-./build/bin/crispasr --backend gemma4-e2b -m auto --auto-download -f audio.wav
+./build/bin/stelnettts --backend gemma4-e2b -m auto --auto-download -f audio.wav
 
 # Or explicit path
-./build/bin/crispasr --backend gemma4-e2b -m gemma4-e2b-it-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend gemma4-e2b -m gemma4-e2b-it-q4_k.gguf -f audio.wav
 ```
 
 ## Differential testing
 
-CrispASR ships a stage-by-stage differential test against the HF PyTorch
+StelnetTTS ships a stage-by-stage differential test against the HF PyTorch
 reference. Per-stage cosine similarity vs HF `Gemma4AudioModel`:
 
 ```
@@ -86,16 +86,16 @@ HF_HOME=/path/to/hf-cache python tools/dump_reference.py \
     --audio samples/jfk.wav --output /tmp/gemma4-ref.gguf
 
 # 2. Compare
-build/bin/crispasr-diff gemma4 \
+build/bin/stelnettts-diff gemma4 \
     gemma4-e2b-it-q4_k.gguf /tmp/gemma4-ref.gguf samples/jfk.wav
 ```
 
 ## Conversion provenance
 
-This GGUF was produced by `models/convert-gemma4-e2b-to-gguf.py` (CrispASR repo)
+This GGUF was produced by `models/convert-gemma4-e2b-to-gguf.py` (StelnetTTS repo)
 running on Kaggle T4 nodes (16 GB RAM). Conversion config:
 
-- `--outtype f16` then `crispasr-quantize` for Q-variants.
+- `--outtype f16` then `stelnettts-quantize` for Q-variants.
 - ClippableLinear QAT scalars persisted as 1-element F32 tensors named
   `audio.layers.{i}.{linear}.input_min/max, output_min/max`.
 - Vision tower (`model.vision_tower.*`, `model.embed_vision.*`) skipped.

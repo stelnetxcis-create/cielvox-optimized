@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Integration tests for the CrispASR Python chat binding (crispasr_chat.h).
+"""Integration tests for the StelnetTTS Python chat binding (stelnettts_chat.h).
 
-Gated on CRISPASR_CHAT_TEST_MODEL — a path to a small GGUF chat model
+Gated on STELNETTTS_CHAT_TEST_MODEL — a path to a small GGUF chat model
 (e.g. gemma-3-1b-it-Q4_K_M.gguf, qwen2.5-0.5b-instruct, smollm2-360m).
 When it is unset every case here is skipped, so a checkout without a model
 stays green. The same gate the Catch2 suite uses (tests/test-chat-ggml.cpp).
 
 The native library is found the way the binding itself finds it; set
-CRISPASR_LIB_PATH (or CRISPASR_LIB) to point at a build tree copy, e.g.
+STELNETTTS_LIB_PATH (or STELNETTTS_LIB) to point at a build tree copy, e.g.
 
-  CRISPASR_LIB_PATH=build-tests/src/libcrispasr.dylib \\
-  CRISPASR_CHAT_TEST_MODEL=models/gemma-3-1b-it-Q4_K_M.gguf \\
+  STELNETTTS_LIB_PATH=build-tests/src/libstelnettts.dylib \\
+  STELNETTTS_CHAT_TEST_MODEL=models/gemma-3-1b-it-Q4_K_M.gguf \\
   pytest tests/test_python_chat.py -v
 
 What the ctypes-specific cases pin, beyond the surface working at all:
@@ -40,18 +40,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 
-CHAT_MODEL = os.environ.get("CRISPASR_CHAT_TEST_MODEL")
+CHAT_MODEL = os.environ.get("STELNETTTS_CHAT_TEST_MODEL")
 
-# The binding probes $CRISPASR_LIB_PATH itself; $CRISPASR_LIB is what the
+# The binding probes $STELNETTTS_LIB_PATH itself; $STELNETTTS_LIB is what the
 # other Python tests in this tree use, and a build-tests tree is where the
 # ctest configuration puts the shared library.
-LIB_PATH = os.environ.get("CRISPASR_LIB_PATH") or os.environ.get("CRISPASR_LIB")
+LIB_PATH = os.environ.get("STELNETTTS_LIB_PATH") or os.environ.get("STELNETTTS_LIB")
 if not LIB_PATH:
     for candidate in [
-        os.path.join(REPO_ROOT, "build-tests", "src", "libcrispasr.dylib"),
-        os.path.join(REPO_ROOT, "build-tests", "src", "libcrispasr.so"),
-        os.path.join(REPO_ROOT, "build", "src", "libcrispasr.dylib"),
-        os.path.join(REPO_ROOT, "build", "src", "libcrispasr.so"),
+        os.path.join(REPO_ROOT, "build-tests", "src", "libstelnettts.dylib"),
+        os.path.join(REPO_ROOT, "build-tests", "src", "libstelnettts.so"),
+        os.path.join(REPO_ROOT, "build", "src", "libstelnettts.dylib"),
+        os.path.join(REPO_ROOT, "build", "src", "libstelnettts.so"),
     ]:
         if os.path.exists(candidate):
             LIB_PATH = candidate
@@ -103,7 +103,7 @@ class CallbackMarker(Exception):
     """Raised from inside a callback, so a test can recognise it again."""
 
 
-@unittest.skipUnless(LIB_PATH and os.path.exists(LIB_PATH), "libcrispasr not built")
+@unittest.skipUnless(LIB_PATH and os.path.exists(LIB_PATH), "libstelnettts not built")
 class TestChatSymbols(unittest.TestCase):
     """Symbol reachability — no model, so it runs on a checkout that has none.
 
@@ -112,20 +112,20 @@ class TestChatSymbols(unittest.TestCase):
     """
 
     SYMBOLS = [
-        "crispasr_chat_ai_disclosure_text",
-        "crispasr_chat_close",
-        "crispasr_chat_count_tokens",
-        "crispasr_chat_generate",
-        "crispasr_chat_generate_params_default",
-        "crispasr_chat_generate_stream",
-        "crispasr_chat_memory_estimate",
-        "crispasr_chat_n_ctx",
-        "crispasr_chat_open",
-        "crispasr_chat_open_params_default",
-        "crispasr_chat_reset",
-        "crispasr_chat_set_abort_callback",
-        "crispasr_chat_string_free",
-        "crispasr_chat_template_name",
+        "stelnettts_chat_ai_disclosure_text",
+        "stelnettts_chat_close",
+        "stelnettts_chat_count_tokens",
+        "stelnettts_chat_generate",
+        "stelnettts_chat_generate_params_default",
+        "stelnettts_chat_generate_stream",
+        "stelnettts_chat_memory_estimate",
+        "stelnettts_chat_n_ctx",
+        "stelnettts_chat_open",
+        "stelnettts_chat_open_params_default",
+        "stelnettts_chat_reset",
+        "stelnettts_chat_set_abort_callback",
+        "stelnettts_chat_string_free",
+        "stelnettts_chat_template_name",
     ]
 
     def test_every_chat_symbol_is_exported(self):
@@ -134,7 +134,7 @@ class TestChatSymbols(unittest.TestCase):
         self.assertEqual(missing, [])
 
     def test_the_binding_declares_them(self):
-        from crispasr import _binding
+        from stelnettts import _binding
         lib = _binding._chat_lib(LIB_PATH)
         # _chat_lib is where every argtype/restype is declared; a symbol it
         # forgot has no argtypes and would be called with ctypes' defaults.
@@ -146,9 +146,9 @@ class TestChatSymbols(unittest.TestCase):
         model's own trained context the figure runs past 2**32, so a
         narrower restype would silently truncate it into a number that fits.
         """
-        from crispasr import ChatSession, _binding
+        from stelnettts import ChatSession, _binding
         lib = _binding._chat_lib(LIB_PATH)
-        self.assertIs(lib.crispasr_chat_memory_estimate.restype, ctypes.c_size_t)
+        self.assertIs(lib.stelnettts_chat_memory_estimate.restype, ctypes.c_size_t)
         self.assertTrue(callable(ChatSession.memory_estimate))
 
 
@@ -171,17 +171,17 @@ class _FakeChatLib:
         self.registered = []
         self.closed = False
 
-    def crispasr_chat_generate_params_default(self, _params):
+    def stelnettts_chat_generate_params_default(self, _params):
         return None
 
-    def crispasr_chat_set_abort_callback(self, _handle, cb, _user):
+    def stelnettts_chat_set_abort_callback(self, _handle, cb, _user):
         # Clearing passes a NULL instance of the callback type; only a real
         # registration means C is holding a pointer.
         if cb:
             self.registered.append(weakref.ref(cb))
         return None
 
-    def crispasr_chat_generate_stream(self, _handle, _msgs, _n, _params,
+    def stelnettts_chat_generate_stream(self, _handle, _msgs, _n, _params,
                                       _token_cb, _user, _err):
         with self.lock:
             self.calls += 1
@@ -191,7 +191,7 @@ class _FakeChatLib:
             self.release.wait(10)
         return 0
 
-    def crispasr_chat_close(self, _handle):
+    def stelnettts_chat_close(self, _handle):
         self.closed = True
 
 
@@ -199,7 +199,7 @@ class _ParkingChatLib(_FakeChatLib):
     """A fake that parks inside a non-generate entry point.
 
     These are the calls that take no part in the one-generation-at-a-time
-    lock. ``crispasr_chat_close`` takes no session mutex either — it frees the
+    lock. ``stelnettts_chat_close`` takes no session mutex either — it frees the
     context, the model and the session outright — so a close that waited only
     for the generate pair would free the handle under one of these.
     """
@@ -208,19 +208,19 @@ class _ParkingChatLib(_FakeChatLib):
         self.entered.set()
         self.release.wait(10)
 
-    def crispasr_chat_count_tokens(self, _handle, _msgs, _n, _err):
+    def stelnettts_chat_count_tokens(self, _handle, _msgs, _n, _err):
         self._park()
         return 7
 
-    def crispasr_chat_reset(self, _handle, _err):
+    def stelnettts_chat_reset(self, _handle, _err):
         self._park()
         return 0
 
-    def crispasr_chat_n_ctx(self, _handle):
+    def stelnettts_chat_n_ctx(self, _handle):
         self._park()
         return 4096
 
-    def crispasr_chat_template_name(self, _handle):
+    def stelnettts_chat_template_name(self, _handle):
         self._park()
         return b"gemma"
 
@@ -232,7 +232,7 @@ def _fake_session(lib):
     Through _init_state rather than a hand-written copy of it: the locking
     these cases exercise is exactly what would drift if the two lists of
     attributes were maintained separately."""
-    from crispasr import ChatSession
+    from stelnettts import ChatSession
     chat = ChatSession.__new__(ChatSession)
     chat._init_state()
     chat._lib = lib
@@ -340,7 +340,7 @@ class TestChatCallbackLifetime(unittest.TestCase):
         self.assertEqual(failures, [])
         self.assertTrue(still_running, "close() returned while a call was running")
         self.assertFalse(freed_under_the_call,
-                         "crispasr_chat_close ran under a live generation")
+                         "stelnettts_chat_close ran under a live generation")
         self.assertFalse(trampoline_gone,
                          "close() dropped a trampoline C was still holding")
         self.assertTrue(lib.closed, "close() never ran once the call finished")
@@ -397,7 +397,7 @@ class TestChatCallbackLifetime(unittest.TestCase):
                 self.assertTrue(still_running,
                                 f"close() returned while {name} was running")
                 self.assertFalse(freed_under_the_call,
-                                 f"crispasr_chat_close ran under a live {name}")
+                                 f"stelnettts_chat_close ran under a live {name}")
                 self.assertTrue(lib.closed,
                                 "close() never ran once the call finished")
 
@@ -411,7 +411,7 @@ class TestChatCallbackLifetime(unittest.TestCase):
         self.assertEqual(lib.calls, 2)
 
 
-@unittest.skipUnless(CHAT_MODEL, "CRISPASR_CHAT_TEST_MODEL not set")
+@unittest.skipUnless(CHAT_MODEL, "STELNETTTS_CHAT_TEST_MODEL not set")
 class TestChatSession(unittest.TestCase):
     """One session for the whole class — loading a GGUF per case is slow.
 
@@ -423,7 +423,7 @@ class TestChatSession(unittest.TestCase):
     def setUpClass(cls):
         if not os.path.exists(CHAT_MODEL):
             raise unittest.SkipTest(f"chat model not found: {CHAT_MODEL}")
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         cls.chat = ChatSession(CHAT_MODEL, lib_path=LIB_PATH, n_ctx=1024)
 
     @classmethod
@@ -498,7 +498,7 @@ class TestChatSession(unittest.TestCase):
         self.assertLess(longer, self.chat.n_ctx)
 
     def test_count_tokens_accepts_the_message_dataclass(self):
-        from crispasr import ChatMessage
+        from stelnettts import ChatMessage
         as_dict = self.chat.count_tokens([{"role": "user", "content": "Hi."}])
         as_obj = self.chat.count_tokens([ChatMessage(role="user", content="Hi.")])
         self.assertEqual(as_dict, as_obj)
@@ -510,7 +510,7 @@ class TestChatSession(unittest.TestCase):
     # -- abort ------------------------------------------------------------
 
     def test_abort_stops_the_stream_early_and_the_session_is_reusable(self):
-        from crispasr import ChatAborted
+        from stelnettts import ChatAborted
 
         chunks = []
 
@@ -533,7 +533,7 @@ class TestChatSession(unittest.TestCase):
 
     def test_abort_polarity_is_true_means_keep_going(self):
         """Two-sided: either half alone passes under an inverted binding."""
-        from crispasr import ChatAborted
+        from stelnettts import ChatAborted
 
         never = []
         self.chat.generate_stream(USER, never.append, should_continue=lambda: True,
@@ -548,7 +548,7 @@ class TestChatSession(unittest.TestCase):
         self.assertLess(len(always), len(never))
 
     def test_abort_predicate_result_matches_the_one_shot_path(self):
-        from crispasr import ChatAborted
+        from stelnettts import ChatAborted
         with self.assertRaises(ChatAborted):
             self.chat.generate(USER, should_continue=lambda: False,
                                max_tokens=24, temperature=0.0)
@@ -576,7 +576,7 @@ class TestChatSession(unittest.TestCase):
         # The model path too, on both entry points that take one: truncating
         # it at the NUL would open a different file from the one named — or,
         # worse for a guard, estimate one.
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         bad_path = CHAT_MODEL + "\x00.gguf"
         with self.assertRaises(ValueError) as caught:
             ChatSession(bad_path, lib_path=LIB_PATH)
@@ -682,7 +682,7 @@ class TestChatSession(unittest.TestCase):
         self.assertGreater(during, 5, "the counter thread never ran during generation")
 
 
-@unittest.skipUnless(CHAT_MODEL, "CRISPASR_CHAT_TEST_MODEL not set")
+@unittest.skipUnless(CHAT_MODEL, "STELNETTTS_CHAT_TEST_MODEL not set")
 class TestChatSessionLifecycle(unittest.TestCase):
     """Opening and dropping sessions, away from the shared-session class."""
 
@@ -692,7 +692,7 @@ class TestChatSessionLifecycle(unittest.TestCase):
             raise unittest.SkipTest(f"chat model not found: {CHAT_MODEL}")
 
     def test_context_manager_closes_and_a_second_session_opens(self):
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         with ChatSession(CHAT_MODEL, lib_path=LIB_PATH, n_ctx=512) as chat:
             first = chat.generate(USER, max_tokens=8, temperature=0.0)
         self.assertNotEqual(first.strip(), "")
@@ -701,7 +701,7 @@ class TestChatSessionLifecycle(unittest.TestCase):
             self.assertGreater(chat.n_ctx, 0)
 
     def test_memory_estimate_covers_the_weights_and_scales_with_context(self):
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         file_size = os.path.getsize(CHAT_MODEL)
         self.assertGreater(file_size, 0)
 
@@ -731,22 +731,22 @@ class TestChatSessionLifecycle(unittest.TestCase):
     def test_memory_estimate_raises_for_a_model_it_cannot_read(self):
         """The C side signals failure by returning 0 with err filled. That has
         to surface as an exception, not as an estimate of nothing."""
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         with self.assertRaises(RuntimeError):
             ChatSession.memory_estimate(
-                "/nonexistent/crispasr-memory-estimate.gguf", lib_path=LIB_PATH)
+                "/nonexistent/stelnettts-memory-estimate.gguf", lib_path=LIB_PATH)
 
     def test_a_chat_template_with_an_interior_nul_is_rejected(self):
         """Rejected before the model is touched, so the bad template cannot
         reach C truncated."""
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         with self.assertRaises(ValueError) as caught:
             ChatSession(CHAT_MODEL, lib_path=LIB_PATH, n_ctx=512,
                         chat_template="{{ bos_token }}\x00{{ messages }}")
         self.assertIn("chat_template", str(caught.exception))
 
     def test_open_failure_raises(self):
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         with self.assertRaises(RuntimeError):
             ChatSession(os.path.join(REPO_ROOT, "no-such-model.gguf"), lib_path=LIB_PATH)
 
@@ -757,7 +757,7 @@ class TestChatSessionLifecycle(unittest.TestCase):
         parks until the second thread has had its turn, so the first call
         cannot finish before the second one tries.
         """
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         inside = threading.Event()
         attempted = threading.Event()
         outcome = []
@@ -805,7 +805,7 @@ class TestChatSessionLifecycle(unittest.TestCase):
                                               temperature=0.0).strip(), "")
 
 
-@unittest.skipUnless(CHAT_MODEL, "CRISPASR_CHAT_TEST_MODEL not set")
+@unittest.skipUnless(CHAT_MODEL, "STELNETTTS_CHAT_TEST_MODEL not set")
 class TestChatStopSequences(unittest.TestCase):
     """The ``stop`` array and ``prefill_only``.
 
@@ -818,7 +818,7 @@ class TestChatStopSequences(unittest.TestCase):
     def setUpClass(cls):
         if not os.path.exists(CHAT_MODEL):
             raise unittest.SkipTest(f"chat model not found: {CHAT_MODEL}")
-        from crispasr import ChatSession
+        from stelnettts import ChatSession
         cls.chat = ChatSession(CHAT_MODEL, lib_path=LIB_PATH,
                                n_ctx=2048, n_batch=256, n_ubatch=256)
 

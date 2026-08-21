@@ -1,6 +1,6 @@
 // test-params.cpp — unit tests for whisper_params struct defaults.
 //
-// Verifies that the crispasr-specific fields added to whisper_params carry
+// Verifies that the stelnettts-specific fields added to whisper_params carry
 // the right default values so callers that don't set them get sensible
 // behaviour without having to parse any command-line arguments.
 
@@ -12,7 +12,7 @@
 // We capture the default-constructed instance once and then inspect it.
 static const whisper_params kDefaults{};
 
-// ─── new crispasr fields ──────────────────────────────────────────────────────
+// ─── new stelnettts fields ──────────────────────────────────────────────────────
 
 TEST_CASE("whisper_params: cache_dir defaults to empty (platform default used)", "[unit]") {
     REQUIRE(kDefaults.cache_dir.empty());

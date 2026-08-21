@@ -27,7 +27,7 @@ base_model: mistralai/Voxtral-Mini-3B-2507
 
 # Voxtral-Mini-3B-2507 — GGUF
 
-GGUF / ggml conversions of [`mistralai/Voxtral-Mini-3B-2507`](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507) for use with the `voxtral-main` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`mistralai/Voxtral-Mini-3B-2507`](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507) for use with the `voxtral-main` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Voxtral Mini is Mistral's **3B-parameter speech-LLM** — an enhancement of [Ministral 3B](https://mistral.ai/news/ministraux) with state-of-the-art audio input capabilities while retaining best-in-class text performance. It excels at speech transcription, translation, and audio understanding.
 
@@ -55,13 +55,13 @@ The mel filterbank from `WhisperFeatureExtractor` and the Tekken tokenizer vocab
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target voxtral-main
 
 # 2. Download a quantisation
-huggingface-cli download cstr/voxtral-mini-3b-2507-GGUF \
+huggingface-cli download Xenna/voxtral-mini-3b-2507-GGUF \
     voxtral-mini-3b-2507-q4_k.gguf --local-dir .
 
 # 3. Transcribe
@@ -149,20 +149,20 @@ The 0.87 min cosine sim on the encoder is from the bf16 reference precision (7-b
 
 ## How this was made
 
-1. HF safetensors converted to GGUF F16 by [`models/convert-voxtral-to-gguf.py`](https://github.com/CrispStrobe/CrispASR/blob/main/models/convert-voxtral-to-gguf.py). All 765 tensors (762 model + mel_filters + mel_window + Tekken vocab blob) map cleanly.
-2. Quantised variants produced by [`crispasr-quantize`](https://github.com/CrispStrobe/CrispASR/blob/main/examples/cohere-main/crispasr-quantize.cpp) with the Q4_0 fallback for 1280-wide audio encoder tensors (1280 % 256 ≠ 0 for Q4_K, same situation as Qwen3-ASR).
-3. Inference implemented in [`src/voxtral.{h,cpp}`](https://github.com/CrispStrobe/CrispASR/blob/main/src/voxtral.cpp) (~1300 LOC): encoder and LLM each run as one ggml graph, with a persistent F16 KV cache `(head_dim, max_ctx, n_kv_heads, n_layers)` shared between prefill and per-token decode steps. Flash attention (`ggml_flash_attn_ext`) used on both prefill (F16 causal mask) and decode (no mask) paths.
+1. HF safetensors converted to GGUF F16 by [`models/convert-voxtral-to-gguf.py`](https://github.com/Cyna/StelnetTTS/blob/main/models/convert-voxtral-to-gguf.py). All 765 tensors (762 model + mel_filters + mel_window + Tekken vocab blob) map cleanly.
+2. Quantised variants produced by [`stelnettts-quantize`](https://github.com/Cyna/StelnetTTS/blob/main/examples/cohere-main/stelnettts-quantize.cpp) with the Q4_0 fallback for 1280-wide audio encoder tensors (1280 % 256 ≠ 0 for Q4_K, same situation as Qwen3-ASR).
+3. Inference implemented in [`src/voxtral.{h,cpp}`](https://github.com/Cyna/StelnetTTS/blob/main/src/voxtral.cpp) (~1300 LOC): encoder and LLM each run as one ggml graph, with a persistent F16 KV cache `(head_dim, max_ctx, n_kv_heads, n_layers)` shared between prefill and per-token decode steps. Flash attention (`ggml_flash_attn_ext`) used on both prefill (F16 causal mask) and decode (no mask) paths.
 
 ## Related
 
 - **Original model**: [`mistralai/Voxtral-Mini-3B-2507`](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507) (Apache-2.0)
-- **C++ runtime**: [CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)
+- **C++ runtime**: [Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)
 - **Research paper**: [arxiv.org/abs/2507.13264](https://arxiv.org/abs/2507.13264)
 - Sister releases in the same family:
-  - [`cstr/qwen3-asr-0.6b-GGUF`](https://huggingface.co/cstr/qwen3-asr-0.6b-GGUF) — Qwen3-ASR 0.6B (faster, 30 languages + Chinese dialects)
-  - [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) — Parakeet TDT 600M (free word timestamps)
-  - [`cstr/canary-1b-v2-GGUF`](https://huggingface.co/cstr/canary-1b-v2-GGUF) — Canary 978M (speech translation)
-  - [`cstr/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF) — Cohere Transcribe 2B (lowest English WER)
+  - [`Xenna/cielvox2-asr-0.6b-GGUF`](https://huggingface.co/Xenna/cielvox2-asr-0.6b-GGUF) — Qwen3-ASR 0.6B (faster, 30 languages + Chinese dialects)
+  - [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) — Parakeet TDT 600M (free word timestamps)
+  - [`Xenna/canary-1b-v2-GGUF`](https://huggingface.co/Xenna/canary-1b-v2-GGUF) — Canary 978M (speech translation)
+  - [`Xenna/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF) — Cohere Transcribe 2B (lowest English WER)
 
 ## License
 

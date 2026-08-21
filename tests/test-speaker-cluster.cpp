@@ -1,10 +1,10 @@
-// Unit tests for crispasr_agglomerative_cluster (#107 P3b).
+// Unit tests for stelnettts_agglomerative_cluster (#107 P3b).
 //
 // We drive the clusterer with synthetic L2-normalized embeddings whose
 // pairwise structure is known a priori, so the test is deterministic
 // and needs no model load / no audio.
 
-#include "../src/crispasr_speaker_cluster.h"
+#include "../src/stelnettts_speaker_cluster.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -69,7 +69,7 @@ constexpr int DIM = 8;
 
 TEST_CASE("cluster: single embedding -> cluster 0", "[unit][diarize][cluster]") {
     std::vector<float> emb = {1, 0, 0, 0, 0, 0, 0, 0};
-    auto labels = crispasr_agglomerative_cluster(emb, 1, DIM, 0.5f, 8);
+    auto labels = stelnettts_agglomerative_cluster(emb, 1, DIM, 0.5f, 8);
     REQUIRE(labels.size() == 1);
     REQUIRE(labels[0] == 0);
 }
@@ -81,7 +81,7 @@ TEST_CASE("cluster: two well-separated speakers -> 2 clusters", "[unit][diarize]
     auto b = make_cluster_around(center_b, 5, 0.05f, 7);
     auto all = concat({a, b});
 
-    auto labels = crispasr_agglomerative_cluster(all, 10, DIM, 0.5f, 8);
+    auto labels = stelnettts_agglomerative_cluster(all, 10, DIM, 0.5f, 8);
     REQUIRE(labels.size() == 10);
     REQUIRE(distinct_labels(labels) == 2);
     // Each block of 5 should share a label.
@@ -101,7 +101,7 @@ TEST_CASE("cluster: three speakers -> 3 clusters", "[unit][diarize][cluster]") {
     auto c = make_cluster_around(cc, 4, 0.05f, 33);
     auto all = concat({a, b, c});
 
-    auto labels = crispasr_agglomerative_cluster(all, 12, DIM, 0.5f, 8);
+    auto labels = stelnettts_agglomerative_cluster(all, 12, DIM, 0.5f, 8);
     REQUIRE(distinct_labels(labels) == 3);
     REQUIRE(labels[0] == labels[1]);
     REQUIRE(labels[4] == labels[5]);
@@ -121,7 +121,7 @@ TEST_CASE("cluster: max_speakers caps the cluster count", "[unit][diarize][clust
 
     // High threshold would normally yield 3 clusters; max_speakers=2
     // forces a merge.
-    auto labels = crispasr_agglomerative_cluster(all, 9, DIM, 0.5f, /*max_speakers=*/2);
+    auto labels = stelnettts_agglomerative_cluster(all, 9, DIM, 0.5f, /*max_speakers=*/2);
     REQUIRE(distinct_labels(labels) <= 2);
 }
 
@@ -136,9 +136,9 @@ TEST_CASE("cluster: low threshold merges noisy near-duplicates", "[unit][diarize
     auto all = concat({a, b});
 
     // High threshold: should keep 2 clusters.
-    auto labels_high = crispasr_agglomerative_cluster(all, 6, DIM, 0.95f, 8);
+    auto labels_high = stelnettts_agglomerative_cluster(all, 6, DIM, 0.95f, 8);
     // Low threshold: should merge.
-    auto labels_low = crispasr_agglomerative_cluster(all, 6, DIM, 0.5f, 8);
+    auto labels_low = stelnettts_agglomerative_cluster(all, 6, DIM, 0.5f, 8);
     REQUIRE(distinct_labels(labels_low) <= distinct_labels(labels_high));
 }
 
@@ -153,7 +153,7 @@ TEST_CASE("cluster: cluster IDs are first-appearance ordered", "[unit][diarize][
     auto b2 = make_cluster_around(cb, 1, 0.02f, 400);
     auto all = concat({a1, b1, a2, b2});
 
-    auto labels = crispasr_agglomerative_cluster(all, 4, DIM, 0.5f, 8);
+    auto labels = stelnettts_agglomerative_cluster(all, 4, DIM, 0.5f, 8);
     REQUIRE(labels[0] == 0);
     REQUIRE(labels[1] == 1);
     REQUIRE(labels[2] == 0); // back to speaker A
@@ -161,17 +161,17 @@ TEST_CASE("cluster: cluster IDs are first-appearance ordered", "[unit][diarize][
 }
 
 TEST_CASE("cluster: invalid inputs are no-ops", "[unit][diarize][cluster]") {
-    auto labels = crispasr_agglomerative_cluster({}, 0, DIM, 0.5f, 8);
+    auto labels = stelnettts_agglomerative_cluster({}, 0, DIM, 0.5f, 8);
     REQUIRE(labels.empty());
 
     std::vector<float> emb(DIM, 0.0f);
-    auto labels2 = crispasr_agglomerative_cluster(emb, 1, /*dim=*/0, 0.5f, 8);
+    auto labels2 = stelnettts_agglomerative_cluster(emb, 1, /*dim=*/0, 0.5f, 8);
     REQUIRE(labels2.size() == 1);
     REQUIRE(labels2[0] == -1); // bogus dim -> no cluster assigned
 
     // Mismatched embedding count vs declared n.
     std::vector<float> emb_short(DIM, 0.0f);
-    auto labels3 = crispasr_agglomerative_cluster(emb_short, 5, DIM, 0.5f, 8);
+    auto labels3 = stelnettts_agglomerative_cluster(emb_short, 5, DIM, 0.5f, 8);
     REQUIRE(labels3.size() == 5);
     // All -1 because the function bails early when sizes don't add up.
     for (int l : labels3)
@@ -193,7 +193,7 @@ TEST_CASE("centroids: mean of members, L2-normalized, K x dim", "[unit][diarize]
     push({0, 0, 1, 0.1f, 0, 0, 0, 0});  // cluster 1
     const std::vector<int> labels = {0, 0, 1};
 
-    auto c = crispasr_cluster_centroids(emb, labels, 3, DIM);
+    auto c = stelnettts_cluster_centroids(emb, labels, 3, DIM);
     REQUIRE(c.size() == (size_t)2 * DIM);
 
     // Unit norm per centroid.
@@ -216,11 +216,11 @@ TEST_CASE("centroids: negative labels are skipped, invalid inputs empty", "[unit
     emb[DIM + 1] = 1.0f; // labeled -1: must not contribute
     const std::vector<int> labels = {0, -1};
 
-    auto c = crispasr_cluster_centroids(emb, labels, 2, DIM);
+    auto c = stelnettts_cluster_centroids(emb, labels, 2, DIM);
     REQUIRE(c.size() == (size_t)DIM);
     REQUIRE(c[0] == 1.0f);
     REQUIRE(c[1] == 0.0f);
 
-    REQUIRE(crispasr_cluster_centroids({}, {}, 0, DIM).empty());
-    REQUIRE(crispasr_cluster_centroids(emb, labels, 2, 0).empty());
+    REQUIRE(stelnettts_cluster_centroids({}, {}, 0, DIM).empty());
+    REQUIRE(stelnettts_cluster_centroids(emb, labels, 2, 0).empty());
 }

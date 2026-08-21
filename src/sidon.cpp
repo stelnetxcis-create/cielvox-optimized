@@ -83,7 +83,7 @@ static constexpr int sidon_frontend_decim = 2;
 
 // Relative-position-bias formulation. All three are numerically equivalent;
 // they differ only in what the graph materialises. Selected by
-// CRISPASR_SIDON_RPE (expand | bucket | bucket-direct).
+// STELNETTTS_SIDON_RPE (expand | bucket | bucket-direct).
 enum class sidon_rpe_mode {
     expand,       // legacy: expand distance_w to [head_dim, T, T] before the dot product
     bucket,       // dot per bucket, head dimension of the gather index built via in-graph REPEAT
@@ -91,7 +91,7 @@ enum class sidon_rpe_mode {
 };
 
 static sidon_rpe_mode parse_rpe_mode() {
-    const char* e = getenv("CRISPASR_SIDON_RPE");
+    const char* e = getenv("STELNETTTS_SIDON_RPE");
     if (!e || !e[0])
         return sidon_rpe_mode::bucket_direct;
     if (std::strcmp(e, "expand") == 0)
@@ -100,7 +100,7 @@ static sidon_rpe_mode parse_rpe_mode() {
         return sidon_rpe_mode::bucket;
     if (std::strcmp(e, "bucket-direct") == 0)
         return sidon_rpe_mode::bucket_direct;
-    std::fprintf(stderr, "sidon: unknown CRISPASR_SIDON_RPE='%s' (expand|bucket|bucket-direct); using bucket-direct\n",
+    std::fprintf(stderr, "sidon: unknown STELNETTTS_SIDON_RPE='%s' (expand|bucket|bucket-direct); using bucket-direct\n",
                  e);
     return sidon_rpe_mode::bucket_direct;
 }
@@ -507,7 +507,7 @@ static ggml_cgraph* build_decoder_graph(sidon_context* ctx, ggml_context* c, int
 }
 
 static void prepare_fastconv(sidon_context* ctx) {
-    const char* env = std::getenv("CRISPASR_SIDON_FASTCONV");
+    const char* env = std::getenv("STELNETTTS_SIDON_FASTCONV");
     enum class mode { off, k1_f16, k1_f32, full } selected = mode::off;
     if (!env || !env[0]) {
         // CUDA A/B on a 5070 Ti: routing only the 15 pointwise residual
@@ -525,7 +525,7 @@ static void prepare_fastconv(sidon_context* ctx) {
     } else if (env[0] == '1' || std::strcmp(env, "full") == 0) {
         selected = mode::full;
     } else {
-        std::fprintf(stderr, "sidon: unknown CRISPASR_SIDON_FASTCONV='%s'; using off\n", env);
+        std::fprintf(stderr, "sidon: unknown STELNETTTS_SIDON_FASTCONV='%s'; using off\n", env);
     }
     if (selected == mode::off) {
         if (ctx->params.verbosity)
@@ -605,9 +605,9 @@ static ggml_backend_sched_t make_stage_scheduler(ggml_backend_t primary, ggml_ba
 // here: on Metal the compute buffers are MTLBuffers that the macOS footprint
 // accounting does not attribute to the process, so a graph-shape change can
 // look like a memory win or loss purely from where the bytes live. Gated by
-// CRISPASR_SIDON_DEBUG so it can be A/B'd without a rebuild.
+// STELNETTTS_SIDON_DEBUG so it can be A/B'd without a rebuild.
 static void report_workspace(sidon_context* ctx, ggml_backend_sched_t sched, const char* stage) {
-    const char* e = getenv("CRISPASR_SIDON_DEBUG");
+    const char* e = getenv("STELNETTTS_SIDON_DEBUG");
     if (!(e && e[0]) || !sched)
         return;
     ggml_backend_t backends[2] = {stage[0] == 'p' ? ctx->backend : ctx->decoder_backend, ctx->backend_cpu};
@@ -745,7 +745,7 @@ sidon_context_params sidon_context_default_params() {
 sidon_context* sidon_init_from_file(const char* path, sidon_context_params params) {
     sidon_context* ctx = new sidon_context();
     ctx->params = params;
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->predictor_vulkan = ci_starts_with(ggml_backend_name(ctx->backend), "Vulkan");
@@ -756,7 +756,7 @@ sidon_context* sidon_init_from_file(const char* path, sidon_context_params param
     // separate schedulers.
     ctx->decoder_backend = ctx->predictor_vulkan
                                ? ctx->backend
-                               : (params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init());
+                               : (params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init());
     if (!ctx->decoder_backend)
         ctx->decoder_backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -832,7 +832,7 @@ std::vector<float> sidon_restore(sidon_context* ctx, const float* samples, int n
     // the pre-padding reference dumps.
     int lead_frames = 1;
     int lookahead_samples = ctx->model.hp.input_rate * 3 / 2; // 1.5 s
-    if (const char* e = getenv("CRISPASR_SIDON_LOOKAHEAD"); e && e[0] && atoi(e) == 0) {
+    if (const char* e = getenv("STELNETTTS_SIDON_LOOKAHEAD"); e && e[0] && atoi(e) == 0) {
         lead_frames = 0;
         lookahead_samples = 0;
     }
@@ -854,7 +854,7 @@ std::vector<float> sidon_restore(sidon_context* ctx, const float* samples, int n
     // the default ~3000-frame cap permits ~58.5 s of user audio; override it
     // only when the selected backend has sufficient memory.
     int max_frames = 3000;
-    if (const char* e = getenv("CRISPASR_SIDON_MAX_FRAMES"); e && e[0]) {
+    if (const char* e = getenv("STELNETTTS_SIDON_MAX_FRAMES"); e && e[0]) {
         const int v = atoi(e);
         if (v > 0)
             max_frames = v;
@@ -862,7 +862,7 @@ std::vector<float> sidon_restore(sidon_context* ctx, const float* samples, int n
     if (T > max_frames) {
         fprintf(stderr,
                 "sidon: input too long — %d feature frames (~%.1f s) exceeds the %d-frame cap; "
-                "O(T^2) attention would OOM. Split the audio or raise CRISPASR_SIDON_MAX_FRAMES.\n",
+                "O(T^2) attention would OOM. Split the audio or raise STELNETTTS_SIDON_MAX_FRAMES.\n",
                 T, (double)T / 50.0, max_frames);
         return {};
     }
@@ -909,7 +909,7 @@ std::vector<float> sidon_restore(sidon_context* ctx, const float* samples, int n
     // reference (sidon-ref.gguf: predictor_feats) to localize any port
     // divergence to the predictor vs the DAC decoder. See
     // tools/reference_backends/sidon_ref_dump.py.
-    if (const char* dp = getenv("CRISPASR_SIDON_DUMP_HANDOFF"); dp && dp[0]) {
+    if (const char* dp = getenv("STELNETTTS_SIDON_DUMP_HANDOFF"); dp && dp[0]) {
         const int64_t ne0 = ctx->predictor_output->ne[0], ne1 = ctx->predictor_output->ne[1];
         if (FILE* f = fopen(dp, "wb")) {
             fwrite(predictor_features.data(), sizeof(float), predictor_features.size(), f);
@@ -939,7 +939,7 @@ std::vector<float> sidon_restore(sidon_context* ctx, const float* samples, int n
     // costs roughly 1.6 MiB per window frame). 0 means "one graph for the whole
     // utterance", which is what the parity test uses.
     int max_core_frames = 512;
-    if (const char* e = getenv("CRISPASR_SIDON_DECODER_CHUNK_FRAMES"); e && e[0]) {
+    if (const char* e = getenv("STELNETTTS_SIDON_DECODER_CHUNK_FRAMES"); e && e[0]) {
         const int v = atoi(e);
         max_core_frames = v > 0 ? v : T;
     }
@@ -967,7 +967,7 @@ std::vector<float> sidon_restore(sidon_context* ctx, const float* samples, int n
     // whole-utterance decode and dropped spectral correlation to the source from
     // 0.928 to 0.795 — and it bought nothing: with balanced cores the rebuild is
     // free (DAC 42234 ms rebuilding vs 42253 ms reusing). Do not "optimize" this
-    // back without a bit-exactness check against CRISPASR_SIDON_DECODER_CHUNK_FRAMES=0.
+    // back without a bit-exactness check against STELNETTTS_SIDON_DECODER_CHUNK_FRAMES=0.
     const int window_frames = std::min(T, core_frames + 2 * decoder_context_frames);
 
     std::vector<float> pcm;

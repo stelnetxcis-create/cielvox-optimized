@@ -220,8 +220,8 @@ std::string norm_word(const std::string& s) {
 // when a word is actually inserted.
 //
 // Deliberately NOT a reuse of the two #89 implementations
-// (examples/cli/crispasr_gap_fill.h's crispasr_gap_fill_slice; the
-// transcribe_ja_sliced lambda in crispasr_c_api.cpp): those are JA-only in
+// (examples/cli/stelnettts_gap_fill.h's stelnettts_gap_fill_slice; the
+// transcribe_ja_sliced lambda in stelnettts_c_api.cpp): those are JA-only in
 // practice (gated on vad_slice_cap / the legacy inline path), live above this
 // library layer on CLI/session segment types, and probe each gap as ONE window
 // via the full backend dispatch — re-entrant from here, and wrong for holes
@@ -232,16 +232,16 @@ std::string norm_word(const std::string& s) {
 // `min_gap_cs` is deliberately coarser than the #89 JA default (1 s): a 1-2 s
 // hole in a non-JA transcript is an ordinary pause far more often than a drop,
 // and handing the decoder a pause makes it invent a filler ("Um", "M"). The
-// spans this defect produces are whole sentences. CRISPASR_GAP_FILL_MIN_CS
-// overrides it; CRISPASR_GAP_FILL=0 turns the repair off entirely.
+// spans this defect produces are whole sentences. STELNETTTS_GAP_FILL_MIN_CS
+// overrides it; STELNETTTS_GAP_FILL=0 turns the repair off entirely.
 //
 // Returns the number of words recovered.
 int gap_fill_segments(parakeet_context* ctx, const float* samples, int n_samples, int64_t t_offset_cs,
                       std::vector<parakeet_seg>& segs, int repair_window_s, int64_t min_gap_cs, bool no_prints) {
     const int SR = 16000;
-    if (getenv("CRISPASR_GAP_FILL") && atoi(getenv("CRISPASR_GAP_FILL")) == 0)
+    if (getenv("STELNETTTS_GAP_FILL") && atoi(getenv("STELNETTTS_GAP_FILL")) == 0)
         return 0;
-    if (const char* e = getenv("CRISPASR_GAP_FILL_MIN_CS"))
+    if (const char* e = getenv("STELNETTTS_GAP_FILL_MIN_CS"))
         min_gap_cs = std::max((int64_t)30, (int64_t)atoi(e));
     // The repair reasons entirely in word timestamps, and rebuilds a changed
     // segment's text from its word list. A segment carrying text but no words
@@ -355,7 +355,7 @@ int gap_fill_segments(parakeet_context* ctx, const float* samples, int n_samples
             break;
         total += recovered;
         if (!no_prints)
-            fprintf(stderr, "crispasr[parakeet]: gap-fill recovered %d word(s) the first pass dropped\n", recovered);
+            fprintf(stderr, "stelnettts[parakeet]: gap-fill recovered %d word(s) the first pass dropped\n", recovered);
         // Re-sort and rebuild only the segments a word was inserted into. Text
         // is regenerated from the word list, so a segment nothing landed in
         // keeps the decoder's own detokenized string byte for byte.
@@ -444,7 +444,7 @@ void append_window_seg(parakeet_result* r, const lf_window& w, std::vector<parak
 // owns sched/compute_meta/cached_enc_*, the decoder owns pred_w/joint_w and
 // reads the model. That stops being true when the decoder is itself a ggml
 // graph on ctx->backend (CUDA/Vulkan default), so pipelining is disabled when
-// parakeet_decode_uses_backend() says so. CRISPASR_PARAKEET_PIPELINE=0/1
+// parakeet_decode_uses_backend() says so. STELNETTTS_PARAKEET_PIPELINE=0/1
 // forces it off/on.
 std::vector<parakeet_seg> transcribe_longform(parakeet_context* ctx, const float* samples, int n_samples,
                                               int64_t t_offset_cs, int cap_samples) {
@@ -454,7 +454,7 @@ std::vector<parakeet_seg> transcribe_longform(parakeet_context* ctx, const float
         return out;
 
     bool pipeline = plan.size() > 1 && parakeet_decode_uses_backend(ctx) == 0;
-    if (const char* e = getenv("CRISPASR_PARAKEET_PIPELINE"))
+    if (const char* e = getenv("STELNETTTS_PARAKEET_PIPELINE"))
         pipeline = atoi(e) != 0 && plan.size() > 1;
 
     if (!pipeline) {
@@ -528,15 +528,15 @@ resolved_strategy resolve_strategy(parakeet_context* ctx, int n_samples, bool is
     rs.stream_threshold_s = is_ja ? kParakeetBoundedWindowJaS : 300;
     bool longform_enabled = !is_ja;
     bool threshold_from_env = false;
-    if (const char* e = getenv("CRISPASR_PARAKEET_STREAM_THRESHOLD")) {
+    if (const char* e = getenv("STELNETTTS_PARAKEET_STREAM_THRESHOLD")) {
         rs.stream_threshold_s = std::max(0, atoi(e));
         threshold_from_env = true;
     }
-    if (const char* e = getenv("CRISPASR_PARAKEET_LONGFORM"))
+    if (const char* e = getenv("STELNETTTS_PARAKEET_LONGFORM"))
         longform_enabled = atoi(e) != 0;
-    if (const char* e = getenv("CRISPASR_PARAKEET_STREAM_CHUNK"))
+    if (const char* e = getenv("STELNETTTS_PARAKEET_STREAM_CHUNK"))
         rs.stream_chunk_s = std::max(2, atoi(e));
-    if (const char* e = getenv("CRISPASR_PARAKEET_STREAM_OVERLAP"))
+    if (const char* e = getenv("STELNETTTS_PARAKEET_STREAM_OVERLAP"))
         rs.stream_overlap_s = std::max(0, atoi(e));
 
     parakeet_strategy_in sin;
@@ -554,9 +554,9 @@ resolved_strategy resolve_strategy(parakeet_context* ctx, int n_samples, bool is
     sin.stream_threshold_s = rs.stream_threshold_s;
 
     // LONGFORM window — independent of the cap (see kParakeetLongformWindowS).
-    // Clamped to the effective cap so a lowered CRISPASR_PARAKEET_STREAM_THRESHOLD
+    // Clamped to the effective cap so a lowered STELNETTTS_PARAKEET_STREAM_THRESHOLD
     // still shrinks the windows exactly as it did before the two were split.
-    if (const char* e = getenv("CRISPASR_PARAKEET_LONGFORM_WINDOW"))
+    if (const char* e = getenv("STELNETTTS_PARAKEET_LONGFORM_WINDOW"))
         rs.longform_window_s = std::max(4, atoi(e));
     if (rs.stream_threshold_s > 0)
         rs.longform_window_s = std::min(rs.longform_window_s, rs.stream_threshold_s);
@@ -568,11 +568,11 @@ resolved_strategy resolve_strategy(parakeet_context* ctx, int n_samples, bool is
     // switch to the streamed (bounded-window) encoder BEFORE allocating —
     // instead of allocate → OOM → reactive fallback. Opt-in: default budget 0
     // = disabled → single-pass as before (the reactive fallback still backstops).
-    //   CRISPASR_PARAKEET_MEM_POLICY = auto (default) | off | single | streamed
-    //   CRISPASR_PARAKEET_VRAM_BUDGET_MB : budget (MiB); 0/unset = disabled
-    //   CRISPASR_PARAKEET_MEM_COEFF : O(T^2) estimate coefficient (default 8.0)
+    //   STELNETTTS_PARAKEET_MEM_POLICY = auto (default) | off | single | streamed
+    //   STELNETTTS_PARAKEET_VRAM_BUDGET_MB : budget (MiB); 0/unset = disabled
+    //   STELNETTTS_PARAKEET_MEM_COEFF : O(T^2) estimate coefficient (default 8.0)
     if (rs.strat == parakeet_strategy::SINGLE_PASS) {
-        const char* pol = getenv("CRISPASR_PARAKEET_MEM_POLICY");
+        const char* pol = getenv("STELNETTTS_PARAKEET_MEM_POLICY");
         const bool mode_off = pol && strcmp(pol, "off") == 0;
         const bool mode_force_single = pol && strcmp(pol, "single") == 0;
         const bool mode_force_streamed = pol && strcmp(pol, "streamed") == 0;
@@ -580,17 +580,17 @@ resolved_strategy resolve_strategy(parakeet_context* ctx, int n_samples, bool is
             rs.strat = parakeet_strategy::STREAMED;
         } else if (!mode_off && !mode_force_single) {
             double budget = 0.0, coeff = 8.0;
-            if (const char* e = getenv("CRISPASR_PARAKEET_VRAM_BUDGET_MB"))
+            if (const char* e = getenv("STELNETTTS_PARAKEET_VRAM_BUDGET_MB"))
                 budget = atof(e);
-            if (const char* e = getenv("CRISPASR_PARAKEET_MEM_COEFF"))
+            if (const char* e = getenv("STELNETTTS_PARAKEET_MEM_COEFF"))
                 coeff = atof(e);
             const int T_enc = parakeet_est_enc_frames(ctx, n_samples);
             const int H = parakeet_n_heads(ctx);
             if (!parakeet_singlepass_fits_budget(T_enc, H, budget, coeff)) {
                 if (!opts.no_prints && !quiet)
                     fprintf(stderr,
-                            "crispasr[parakeet]: single-pass est %.0f MiB > budget %.0f MiB (T=%d, H=%d); "
-                            "using streamed encoding (set CRISPASR_PARAKEET_MEM_POLICY=single to force)\n",
+                            "stelnettts[parakeet]: single-pass est %.0f MiB > budget %.0f MiB (T=%d, H=%d); "
+                            "using streamed encoding (set STELNETTTS_PARAKEET_MEM_POLICY=single to force)\n",
                             parakeet_est_singlepass_peak_mb(T_enc, H, coeff), budget, T_enc, H);
                 rs.strat = parakeet_strategy::STREAMED;
             }
@@ -617,7 +617,7 @@ bool parakeet_slice_is_single_pass(parakeet_context* ctx, int n_samples, bool is
         return false;
     // The simulated-OOM hook makes single-pass fail on purpose; the split path
     // has no streamed retry of its own, so leave those runs on transcribe().
-    if (getenv("CRISPASR_PARAKEET_SIMULATE_ENCODE_OOM"))
+    if (getenv("STELNETTTS_PARAKEET_SIMULATE_ENCODE_OOM"))
         return false;
     return resolve_strategy(ctx, n_samples, is_ja, opts, /*quiet=*/true).strat == parakeet_strategy::SINGLE_PASS;
 }
@@ -650,7 +650,7 @@ std::vector<parakeet_seg> parakeet_transcribe_segments(parakeet_context* ctx, co
     if (!is_ja && opts.chunk_seconds_explicit && opts.chunk_seconds > 0) {
         const int seg_seconds = std::max(2, opts.chunk_seconds);
         int enc_window = 0;
-        if (const char* e = getenv("CRISPASR_PARAKEET_STREAM_CHUNK"))
+        if (const char* e = getenv("STELNETTTS_PARAKEET_STREAM_CHUNK"))
             enc_window = std::max(2, atoi(e));
         const int ov = std::max(0, (int)(opts.chunk_overlap_seconds + 0.5f));
         parakeet_result* rc = parakeet_transcribe_streamed(ctx, samples, n_samples, t_offset_cs, enc_window, ov);
@@ -692,13 +692,13 @@ std::vector<parakeet_seg> parakeet_transcribe_segments(parakeet_context* ctx, co
         // Issue #257: single-pass full attention is O(T^2); a VRAM-limited GPU
         // can fail the encode alloc → null → empty transcript. Fall back to the
         // streamed (bounded-window) encoder. Simulate with
-        // CRISPASR_PARAKEET_SIMULATE_ENCODE_OOM=1.
-        const bool simulate_oom = getenv("CRISPASR_PARAKEET_SIMULATE_ENCODE_OOM") != nullptr;
+        // STELNETTTS_PARAKEET_SIMULATE_ENCODE_OOM=1.
+        const bool simulate_oom = getenv("STELNETTTS_PARAKEET_SIMULATE_ENCODE_OOM") != nullptr;
         r = simulate_oom ? nullptr : parakeet_transcribe_ex(ctx, samples, n_samples, t_offset_cs);
         if (!r) {
             if (!opts.no_prints)
                 fprintf(stderr,
-                        "crispasr[parakeet]: single-pass encode failed (likely VRAM OOM at %.0fs); "
+                        "stelnettts[parakeet]: single-pass encode failed (likely VRAM OOM at %.0fs); "
                         "falling back to streamed encoding — pass --chunk-seconds N for segmented "
                         "output or --att-context L,R for bounded-memory single-pass\n",
                         (double)n_samples / SR);

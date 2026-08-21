@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MioTTS reference dumper for the CrispASR diff harness.
+MioTTS reference dumper for the StelnetTTS diff harness.
 
 Runs the MioTTS-0.6B LLM (Qwen3ForCausalLM) to generate speech tokens from
 a text prompt, then runs MioCodec decode to produce a waveform. Dumps

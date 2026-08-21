@@ -1,6 +1,6 @@
 """#300: validate streaming speaker-diarization label passthrough on Kaggle.
 
-Follows the CrispASR harness regime: build the ACTUAL commits from source
+Follows the StelnetTTS harness regime: build the ACTUAL commits from source
 (no stale release binary), run the DECODED-OUTPUT roundtrip (HARD RULE #3),
 and prove the work rather than trusting exit codes (gotcha #24).
 
@@ -39,7 +39,7 @@ import traceback
 from pathlib import Path
 
 TEMP = Path("/kaggle/temp"); OUT = Path("/kaggle/working")
-REPO = TEMP / "CrispASR"; MODELS = TEMP / "models"
+REPO = TEMP / "StelnetTTS"; MODELS = TEMP / "models"
 for d in (TEMP, OUT, MODELS):
     d.mkdir(parents=True, exist_ok=True)
 
@@ -71,7 +71,7 @@ print(json.dumps({"step": "start"}), flush=True)
 # ── Clone (full enough to reach BASE) + submodules ───────────────────────────
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "15", "https://github.com/CrispStrobe/CrispASR.git",
+run(["git", "clone", "--depth", "15", "https://github.com/Cyna/StelnetTTS.git",
      str(REPO)], capture_output=False)
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive", "--depth", "1"],
     capture_output=False, timeout=1800)
@@ -103,14 +103,14 @@ def build_at(commit, bdir):
         kh.step(f"cfg.FAIL.{commit}")
         raise SystemExit(1)
     with kh.build_heartbeat(f"build.{commit}"):
-        r = run(["cmake", "--build", str(bdir), "--target", "crispasr-cli", "-j", JOBS],
+        r = run(["cmake", "--build", str(bdir), "--target", "stelnettts-cli", "-j", JOBS],
                 capture_output=False)
     if r.returncode:
         kh.step(f"build.FAIL.{commit}")
         raise SystemExit(1)
-    cli = bdir / "bin" / "crispasr"
+    cli = bdir / "bin" / "stelnettts"
     if not cli.exists():
-        c = [p for p in bdir.rglob("crispasr") if p.is_file() and os.access(p, os.X_OK)]
+        c = [p for p in bdir.rglob("stelnettts") if p.is_file() and os.access(p, os.X_OK)]
         cli = c[0] if c else None
     if cli is None:
         kh.step(f"MISSING.{commit}")
@@ -118,7 +118,7 @@ def build_at(commit, bdir):
     return cli
 
 
-# BASE first, then FIX (delta rebuild — only crispasr_run.cpp differs → fast).
+# BASE first, then FIX (delta rebuild — only stelnettts_run.cpp differs → fast).
 BASE_DIR = TEMP / "b-base"; FIX_DIR = TEMP / "b-fix"
 base_cli = build_at(BASE, BASE_DIR); kh.step("build.base.done", cli=str(base_cli))
 fix_cli = build_at(FIX, FIX_DIR); kh.step("build.fix.done", cli=str(fix_cli))
@@ -136,7 +136,7 @@ kh.step("pcm.ready", bytes=PCM.stat().st_size)
 from huggingface_hub import hf_hub_download  # noqa: E402
 
 kh.step("dl.moss.begin")
-MOSS = Path(hf_hub_download(repo_id="cstr/MOSS-Transcribe-Diarize-GGUF",
+MOSS = Path(hf_hub_download(repo_id="Xenna/MOSS-Transcribe-Diarize-GGUF",
                             filename="moss-transcribe-diarize-0.9b-q4_k.gguf",
                             local_dir=str(MODELS)))
 kh.step("dl.moss.done", gb=round(MOSS.stat().st_size / 1e9, 2))
@@ -222,7 +222,7 @@ try:
     remaining = 8 * 3600 - (time.time() - kh._T0 if hasattr(kh, "_T0") else 0)
     if free_gb >= 6.0:
         kh.step("dl.vibe.begin", free_gb=round(free_gb, 1))
-        VIBE = Path(hf_hub_download(repo_id="cstr/vibevoice-asr-GGUF",
+        VIBE = Path(hf_hub_download(repo_id="Xenna/vibevoice-asr-GGUF",
                                     filename="vibevoice-asr-q4_k.gguf", local_dir=str(MODELS)))
         kh.step("dl.vibe.done", gb=round(VIBE.stat().st_size / 1e9, 2))
         R["vibe_fix_file"] = run_file(fix_cli, FIX_DIR, "vibevoice", VIBE, timeout=2400)

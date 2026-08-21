@@ -1,7 +1,7 @@
 """Qwen3-TTS-Tokenizer-12Hz codec ENCODER reference dump.
 
 Hooks the PyTorch Qwen3TTSTokenizerV2Encoder forward at three points so
-crispasr-diff can verify the C++ encoder numerically against the
+stelnettts-diff can verify the C++ encoder numerically against the
 reference (the same diff-harness approach that took ECAPA from cos=0.74
 to 0.999999 and brought all 8 codec-decoder stages to PASS).
 
@@ -44,14 +44,14 @@ DEFAULT_STAGES = [
 def _load_clone_audio() -> np.ndarray:
     """Load a 24kHz mono float32 WAV.
 
-    Defaults to samples/qwen3_tts/clone.wav and trims to 3 seconds for speed.
+    Defaults to samples/cielvox2_tts/clone.wav and trims to 3 seconds for speed.
     Override with:
-      QWEN3_TTS_CENC_WAV=/path/to/file.wav
-      QWEN3_TTS_CENC_FULL=1   # keep full duration
+      CIELVOX2_TTS_CENC_WAV=/path/to/file.wav
+      CIELVOX2_TTS_CENC_FULL=1   # keep full duration
     """
     repo_root = Path(__file__).resolve().parents[2]
-    wav_override = os.environ.get("QWEN3_TTS_CENC_WAV", "").strip()
-    wav_path = Path(wav_override) if wav_override else (repo_root / "samples" / "qwen3_tts" / "clone.wav")
+    wav_override = os.environ.get("CIELVOX2_TTS_CENC_WAV", "").strip()
+    wav_path = Path(wav_override) if wav_override else (repo_root / "samples" / "cielvox2_tts" / "clone.wav")
     if not wav_path.exists():
         raise FileNotFoundError(f"clone.wav not at {wav_path}")
     # Read RIFF/WAVE — IEEE Float, mono, 24kHz
@@ -82,7 +82,7 @@ def _load_clone_audio() -> np.ndarray:
         pos += 8 + csz + (csz % 2)
     if samples is None or sr != 24000 or n_ch != 1:
         raise ValueError(f"expected 24kHz mono, got sr={sr} ch={n_ch}")
-    if os.environ.get("QWEN3_TTS_CENC_FULL", "") not in ("", "0"):
+    if os.environ.get("CIELVOX2_TTS_CENC_FULL", "") not in ("", "0"):
         return samples.astype(np.float32)
     # Default: take first 3 seconds (smaller diff = faster, frame count divisible by all strides)
     return samples[:24000 * 3].astype(np.float32)
@@ -96,7 +96,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     if ref_path.is_dir() and str(ref_path) not in sys.path:
         sys.path.insert(0, str(ref_path))
 
-    from qwen_tts.core.tokenizer_12hz.modeling_qwen3_tts_tokenizer_v2 import (
+    from qwen_tts.core.tokenizer_12hz.modeling_cielvox2_tts_tokenizer_v2 import (
         Qwen3TTSTokenizerV2Model,
     )
 

@@ -4,4 +4,4 @@ set -euo pipefail
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$dir"
 command -v kaggle >/dev/null 2>&1 || { echo "kaggle CLI not found" >&2; exit 1; }
 kaggle kernels push -p "$dir"
-echo "Monitor: kaggle kernels status chr1str/crispasr-im2col-occupancy-sweep-cuda"
+echo "Monitor: kaggle kernels status chr1str/stelnettts-im2col-occupancy-sweep-cuda"

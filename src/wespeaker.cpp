@@ -53,7 +53,7 @@
 #endif
 #include "gguf.h"
 
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/gguf_loader.h"
 #include "core/gpu_backend_pref.h"
 #include "core/kaldi_fbank.h"
@@ -77,7 +77,7 @@
 static bool wespeaker_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_WESPEAKER_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_WESPEAKER_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -86,7 +86,7 @@ static bool wespeaker_bench_enabled() {
 static bool wespeaker_debug_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_WESPEAKER_DEBUG");
+        const char* e = stelnettts_env::get("STELNETTTS_WESPEAKER_DEBUG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -513,7 +513,7 @@ extern "C" struct wespeaker_context* wespeaker_init_from_file(const char* path_m
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
     ctx->backend_cpu = core_cpu_backend::init();
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
     // n_threads used to be stored and never applied, so every context silently

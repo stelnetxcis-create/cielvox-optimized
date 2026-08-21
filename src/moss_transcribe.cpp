@@ -17,7 +17,7 @@
 
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
 #include "gguf.h"
@@ -44,9 +44,9 @@
 #include "core/attention.h"
 #include "core/mel.h"
 #include "core/bpe.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ngram_loop_fix.h"   // core_ngram::fix_loops (issue #218)
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -60,7 +60,7 @@
 static bool moss_transcribe_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MOSS_TRANSCRIBE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MOSS_TRANSCRIBE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -244,8 +244,8 @@ struct moss_transcribe_context {
     // buffers on the Vulkan backend. On Vulkan we fall back to the manual
     // mul_mat + soft_max_ext + mul_mat path (mathematically identical, the same
     // op sequence the LLM decode already runs safely on Vulkan). Overridable:
-    //   CRISPASR_MOSS_TRANSCRIBE_ENC_FLASH=1  → force flash_attn_ext everywhere
-    //   CRISPASR_MOSS_TRANSCRIBE_ENC_MANUAL=1 → force the manual path everywhere
+    //   STELNETTTS_MOSS_TRANSCRIBE_ENC_FLASH=1  → force flash_attn_ext everywhere
+    //   STELNETTTS_MOSS_TRANSCRIBE_ENC_MANUAL=1 → force the manual path everywhere
     bool enc_use_flash = true;
 };
 
@@ -578,7 +578,7 @@ extern "C" float* moss_transcribe_compute_mel(struct moss_transcribe_context* ct
 
     float* result = (float*)malloc(mel_out.size() * sizeof(float));
     memcpy(result, mel_out.data(), mel_out.size() * sizeof(float));
-    if (const char* dp = crispasr_env::get("CRISPASR_MOSS_TRANSCRIBE_MEL_DUMP")) {
+    if (const char* dp = stelnettts_env::get("STELNETTTS_MOSS_TRANSCRIBE_MEL_DUMP")) {
         FILE* f = fopen(dp, "wb");
         if (f) {
             fwrite(result, sizeof(float), mel_out.size(), f);
@@ -874,7 +874,7 @@ extern "C" float* moss_transcribe_run_encoder(struct moss_transcribe_context* ct
     ggml_tensor* eo = ggml_graph_get_tensor(gf, "encoder_output"); // (out_dim, T_enc)
     float* result = (float*)malloc((size_t)out_dim * T_enc * sizeof(float));
     ggml_backend_tensor_get(eo, result, 0, (size_t)out_dim * T_enc * sizeof(float));
-    if (const char* dp = crispasr_env::get("CRISPASR_MOSS_TRANSCRIBE_L0_DUMP")) {
+    if (const char* dp = stelnettts_env::get("STELNETTTS_MOSS_TRANSCRIBE_L0_DUMP")) {
         ggml_tensor* l0 = ggml_graph_get_tensor(gf, "enc_layer_0");
         if (l0) {
             std::vector<float> b((size_t)d * T_enc);
@@ -887,7 +887,7 @@ extern "C" float* moss_transcribe_run_encoder(struct moss_transcribe_context* ct
             }
         }
     }
-    if (const char* dp = crispasr_env::get("CRISPASR_MOSS_TRANSCRIBE_ENC_DUMP")) {
+    if (const char* dp = stelnettts_env::get("STELNETTTS_MOSS_TRANSCRIBE_ENC_DUMP")) {
         FILE* f = fopen(dp, "wb");
         if (f) {
             fwrite(result, sizeof(float), (size_t)out_dim * T_enc, f);
@@ -1496,10 +1496,10 @@ static char* moss_transcribe_impl(struct moss_transcribe_context* ctx, const flo
     // no post-process for this, so we clean the text here. The transform is a
     // no-op on non-degenerate transcripts (only immediate n-gram repeats beyond
     // the cap are trimmed), so it leaves clean slices byte-identical. Opt out
-    // with CRISPASR_MOSS_TRANSCRIBE_NO_LOOPFIX=1 for raw upstream-parity output
+    // with STELNETTTS_MOSS_TRANSCRIBE_NO_LOOPFIX=1 for raw upstream-parity output
     // (e.g. token/text diff-harness comparisons against the Python reference).
     {
-        const char* no_fix = std::getenv("CRISPASR_MOSS_TRANSCRIBE_NO_LOOPFIX");
+        const char* no_fix = std::getenv("STELNETTTS_MOSS_TRANSCRIBE_NO_LOOPFIX");
         if (!(no_fix && no_fix[0] == '1')) {
             std::string fixed = core_ngram::fix_loops(result);
             if (fixed != result && ctx->params.verbosity >= 1)
@@ -1544,7 +1544,7 @@ extern "C" struct moss_transcribe_context* moss_transcribe_init_from_file(
     ctx->n_threads = params.n_threads;
     ctx->model_path = path_model;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -1554,9 +1554,9 @@ extern "C" struct moss_transcribe_context* moss_transcribe_init_from_file(
     // #215 resolved: the native-Vulkan (RADV/NVIDIA) segfault was a use-after-free
     // in run_encoder's conv-stem graph cached across encoder invocations (see the
     // comment there); the GPU is the default again on all Vulkan drivers.
-    // CRISPASR_MOSS_TRANSCRIBE_FORCE_CPU=1 remains as an escape hatch.
+    // STELNETTTS_MOSS_TRANSCRIBE_FORCE_CPU=1 remains as an escape hatch.
     {
-        const char* force_cpu = std::getenv("CRISPASR_MOSS_TRANSCRIBE_FORCE_CPU");
+        const char* force_cpu = std::getenv("STELNETTTS_MOSS_TRANSCRIBE_FORCE_CPU");
         if (force_cpu && force_cpu[0] == '1')
             ctx->backend = ctx->backend_cpu;
     }
@@ -1567,8 +1567,8 @@ extern "C" struct moss_transcribe_context* moss_transcribe_init_from_file(
     // soft_max_ext attention rather than flash_attn_ext (avoids the FA split-k /
     // mask-opt resource path; it is the same op sequence the LM decode runs).
     {
-        const char* force_flash = std::getenv("CRISPASR_MOSS_TRANSCRIBE_ENC_FLASH");
-        const char* force_manual = std::getenv("CRISPASR_MOSS_TRANSCRIBE_ENC_MANUAL");
+        const char* force_flash = std::getenv("STELNETTTS_MOSS_TRANSCRIBE_ENC_FLASH");
+        const char* force_manual = std::getenv("STELNETTTS_MOSS_TRANSCRIBE_ENC_MANUAL");
         if (force_flash && force_flash[0] == '1') {
             ctx->enc_use_flash = true;
         } else if (force_manual && force_manual[0] == '1') {
@@ -1579,7 +1579,7 @@ extern "C" struct moss_transcribe_context* moss_transcribe_init_from_file(
         if (!ctx->enc_use_flash && backend_is_vulkan(ctx->backend)) {
             fprintf(stderr, "moss_transcribe: Vulkan backend detected — encoder using manual "
                             "soft_max_ext attention (flash_attn_ext segfaults on Vulkan, issue #215; "
-                            "set CRISPASR_MOSS_TRANSCRIBE_ENC_FLASH=1 to override)\n");
+                            "set STELNETTTS_MOSS_TRANSCRIBE_ENC_FLASH=1 to override)\n");
         }
     }
 
@@ -1596,7 +1596,7 @@ extern "C" struct moss_transcribe_context* moss_transcribe_init_from_file(
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
     return ctx;

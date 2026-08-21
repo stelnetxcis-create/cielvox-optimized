@@ -32,19 +32,19 @@ Prereqs on the VPS:
 
 ```bash
 # 1. Clone or pull the repo
-git clone https://github.com/CrispStrobe/CrispASR.git
-cd CrispASR
-# or: cd CrispASR && git pull
+git clone https://github.com/Cyna/StelnetTTS.git
+cd StelnetTTS
+# or: cd StelnetTTS && git pull
 
 # 2. Install tooling (first time only)
 pip install transformers huggingface_hub gguf
 
 # 3. Download the broken GGUF from HF
 #    (replace repo name if it changed)
-hf download --local-dir . CrispStrobe/vibevoice-asr-gguf \
+hf download --local-dir . Cyna/vibevoice-asr-gguf \
     vibevoice-asr-7b-q4_k.gguf
 # Or use the URL:
-# wget https://huggingface.co/CrispStrobe/vibevoice-asr-gguf/resolve/main/vibevoice-asr-7b-q4_k.gguf
+# wget https://huggingface.co/Cyna/vibevoice-asr-gguf/resolve/main/vibevoice-asr-7b-q4_k.gguf
 
 # 4. Splice in the Qwen2.5-7B tokenizer
 python tools/vibevoice_add_tokenizer.py \
@@ -62,19 +62,19 @@ print("n_tensors:", len(r.tensors))
 PY
 # Expect: has tokenizer: True / n_vocab_strings: 151665 / n_tensors: 901
 
-# 6. (Optional) smoke-test decode — only if you have a crispasr build
+# 6. (Optional) smoke-test decode — only if you have a stelnettts build
 #    with both decoder fixes (commit 02f1ac8 or later):
-#    build/bin/crispasr --backend vibevoice \
+#    build/bin/stelnettts --backend vibevoice \
 #        -m vibevoice-asr-7b-q4_k-fixed.gguf -f samples/jfk.wav \
 #        -d 3000 -n 96 -l en -np
 #    Expect the JFK JSON transcript.
 
 # 7. Upload the fixed file back to HF
-hf upload CrispStrobe/vibevoice-asr-gguf \
+hf upload Cyna/vibevoice-asr-gguf \
     vibevoice-asr-7b-q4_k-fixed.gguf \
     vibevoice-asr-7b-q4_k-fixed.gguf
 # Or replace the original name if you prefer — just remember downstream
-# users need a crispasr built from 02f1ac8 or later to get usable output.
+# users need a stelnettts built from 02f1ac8 or later to get usable output.
 ```
 
 The same procedure works for `vibevoice-asr-7b-f16.gguf` (just swap the
@@ -87,6 +87,6 @@ filenames in steps 3-7).
   key manually first.
 - Tensor data is not re-quantized. If the source quantization was wrong,
   this tool won't fix it — it only adds metadata.
-- The fixed GGUF is useless without a `crispasr` binary built from
+- The fixed GGUF is useless without a `stelnettts` binary built from
   commit `02f1ac8` or later. Both the GGUF and the code side need to be
   fresh.

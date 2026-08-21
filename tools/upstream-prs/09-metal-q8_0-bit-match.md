@@ -15,7 +15,7 @@ Without it, `GGML_PREC_F32` on Q8_0 weights routes through
 differs from CPU's `ggml_vec_dot_q8_0_q8_0_generic` (which quantises
 input to Q8_0 then computes an integer dot then scales) by ~1e-3 per
 element on Apple Silicon — enough to break apps that need bit-equiv
-GPU/CPU comparison (e.g. CrispASR's chatterbox T3 K-projection
+GPU/CPU comparison (e.g. StelnetTTS's chatterbox T3 K-projection
 diff-bisect workflow, which is the original motivation for the Q4_K
 variant).
 
@@ -53,7 +53,7 @@ buffer-allocator hook, 2 kernels).
 
 **Verification.** Run `test-backend-ops` mul_mat cases on Metal with
 GGML_PREC_F32 set on Q8_0 weights × F32 input — should match CPU
-output bit-for-bit. CrispASR's chatterbox-diff harness:
+output bit-for-bit. StelnetTTS's chatterbox-diff harness:
 `s3gen_mel cos_min=0.999...` with weight-residency CPU path; with
 this kernel and GPU residency, `cos_min` is dominated by other GPU
 op drift (separate issue), not the mul_mat output itself.

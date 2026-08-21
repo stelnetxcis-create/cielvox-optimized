@@ -416,54 +416,54 @@ def convert(input_dir: Path, out_path: Path) -> None:
 
     # ----- write GGUF -----
     print(f"Writing: {out_path}")
-    writer = gguf.GGUFWriter(str(out_path), arch="qwen3asr", use_temp_file=True)
+    writer = gguf.GGUFWriter(str(out_path), arch="cielvox2asr", use_temp_file=True)
 
     # Audio params
-    writer.add_uint32("qwen3asr.sample_rate", 16000)
-    writer.add_uint32("qwen3asr.n_mels", audio.get("num_mel_bins", 128))
-    writer.add_uint32("qwen3asr.n_fft", 400)
-    writer.add_uint32("qwen3asr.win_length", 400)
-    writer.add_uint32("qwen3asr.hop_length", 160)
-    writer.add_uint32("qwen3asr.audio.n_layers", audio.get("encoder_layers", 18))
-    writer.add_uint32("qwen3asr.audio.d_model", audio.get("d_model", 896))
+    writer.add_uint32("cielvox2asr.sample_rate", 16000)
+    writer.add_uint32("cielvox2asr.n_mels", audio.get("num_mel_bins", 128))
+    writer.add_uint32("cielvox2asr.n_fft", 400)
+    writer.add_uint32("cielvox2asr.win_length", 400)
+    writer.add_uint32("cielvox2asr.hop_length", 160)
+    writer.add_uint32("cielvox2asr.audio.n_layers", audio.get("encoder_layers", 18))
+    writer.add_uint32("cielvox2asr.audio.d_model", audio.get("d_model", 896))
     writer.add_uint32(
-        "qwen3asr.audio.n_heads", audio.get("encoder_attention_heads", 14)
+        "cielvox2asr.audio.n_heads", audio.get("encoder_attention_heads", 14)
     )
     writer.add_uint32(
-        "qwen3asr.audio.head_dim",
+        "cielvox2asr.audio.head_dim",
         audio.get("d_model", 896) // audio.get("encoder_attention_heads", 14),
     )
-    writer.add_uint32("qwen3asr.audio.ff_dim", audio.get("encoder_ffn_dim", 3584))
+    writer.add_uint32("cielvox2asr.audio.ff_dim", audio.get("encoder_ffn_dim", 3584))
     writer.add_uint32(
-        "qwen3asr.audio.conv_channels", audio.get("downsample_hidden_size", 480)
+        "cielvox2asr.audio.conv_channels", audio.get("downsample_hidden_size", 480)
     )
-    writer.add_uint32("qwen3asr.audio.proj_dim", audio.get("output_dim", 1024))
+    writer.add_uint32("cielvox2asr.audio.proj_dim", audio.get("output_dim", 1024))
     writer.add_uint32(
-        "qwen3asr.audio.max_source_pos", audio.get("max_source_positions", 1500)
+        "cielvox2asr.audio.max_source_pos", audio.get("max_source_positions", 1500)
     )
 
     # LLM params
-    writer.add_uint32("qwen3asr.llm.n_layers", text.get("num_hidden_layers", 28))
-    writer.add_uint32("qwen3asr.llm.d_model", text.get("hidden_size", 1024))
-    writer.add_uint32("qwen3asr.llm.n_heads", text.get("num_attention_heads", 16))
-    writer.add_uint32("qwen3asr.llm.n_kv_heads", text.get("num_key_value_heads", 8))
-    writer.add_uint32("qwen3asr.llm.head_dim", text.get("head_dim", 128))
-    writer.add_uint32("qwen3asr.llm.ff_dim", text.get("intermediate_size", 3072))
-    writer.add_float32("qwen3asr.llm.rope_theta", float(rope_theta))
+    writer.add_uint32("cielvox2asr.llm.n_layers", text.get("num_hidden_layers", 28))
+    writer.add_uint32("cielvox2asr.llm.d_model", text.get("hidden_size", 1024))
+    writer.add_uint32("cielvox2asr.llm.n_heads", text.get("num_attention_heads", 16))
+    writer.add_uint32("cielvox2asr.llm.n_kv_heads", text.get("num_key_value_heads", 8))
+    writer.add_uint32("cielvox2asr.llm.head_dim", text.get("head_dim", 128))
+    writer.add_uint32("cielvox2asr.llm.ff_dim", text.get("intermediate_size", 3072))
+    writer.add_float32("cielvox2asr.llm.rope_theta", float(rope_theta))
     writer.add_float32(
-        "qwen3asr.llm.rms_norm_eps", float(text.get("rms_norm_eps", 1e-6))
+        "cielvox2asr.llm.rms_norm_eps", float(text.get("rms_norm_eps", 1e-6))
     )
-    writer.add_uint32("qwen3asr.llm.vocab_size", vocab_size)
+    writer.add_uint32("cielvox2asr.llm.vocab_size", vocab_size)
     writer.add_uint32(
-        "qwen3asr.llm.max_pos", text.get("max_position_embeddings", 65536)
+        "cielvox2asr.llm.max_pos", text.get("max_position_embeddings", 65536)
     )
 
     # Special tokens
-    writer.add_uint32("qwen3asr.audio_start_token_id", audio_start_id)
-    writer.add_uint32("qwen3asr.audio_end_token_id", audio_end_id)
-    writer.add_uint32("qwen3asr.audio_pad_token_id", audio_pad_id)
-    writer.add_uint32("qwen3asr.eos_token_id", 151645)
-    writer.add_uint32("qwen3asr.pad_token_id", 151643)
+    writer.add_uint32("cielvox2asr.audio_start_token_id", audio_start_id)
+    writer.add_uint32("cielvox2asr.audio_end_token_id", audio_end_id)
+    writer.add_uint32("cielvox2asr.audio_pad_token_id", audio_pad_id)
+    writer.add_uint32("cielvox2asr.eos_token_id", 151645)
+    writer.add_uint32("cielvox2asr.pad_token_id", 151643)
 
     # Tokenizer
     writer.add_tokenizer_model("gpt2")

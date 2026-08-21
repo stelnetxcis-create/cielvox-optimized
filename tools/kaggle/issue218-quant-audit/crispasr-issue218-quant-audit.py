@@ -1,15 +1,15 @@
 """
-CrispASR — #218 encoder-quantization audit for cohere-transcribe + glm-asr
+StelnetTTS — #218 encoder-quantization audit for cohere-transcribe + glm-asr
 
-The qwen3-asr root cause (PLAN '#218 qwen3-asr long-audio root cause') was
+The cielvox2-asr root cause (PLAN '#218 cielvox2-asr long-audio root cause') was
 sub-8-bit quantization of the audio encoder compounding per-block drift until
 greedy decode flips into repetition loops. cohere-transcribe and glm-asr were
 also reported looping in #218 and have NO encoder carve-out in
-crispasr-quantize — this kernel measures whether the same mechanism applies,
+stelnettts-quantize — this kernel measures whether the same mechanism applies,
 WITHOUT assuming it transfers.
 
 Method (decoded-output level, the repo's acceptance metric):
-  - Build crispasr with CUDA (GPU kernel: internet + fast decode).
+  - Build stelnettts with CUDA (GPU kernel: internet + fast decode).
   - Fetch the reporter's canonical t32-145s.wav.
   - For each backend, run the SAME 145 s clip through the q4_k GGUF and the
     F16 GGUF with the n-gram loop-fix DISABLED, default dispatcher chunking.
@@ -30,7 +30,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path("/kaggle/working")
-REPO = ROOT / "CrispASR"
+REPO = ROOT / "StelnetTTS"
 BUILD = ROOT / "build"
 # Models go to /tmp (writable layer, ~70 GB) — /kaggle/working is capped 20 GB
 # and the four GGUFs alone are ~11.5 GB (kaggle_usage.md gotcha #18).
@@ -43,12 +43,12 @@ for d in (MODELS, AUDIO_DIR, OUT_DIR):
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-print(f"[clone] ref={CRISPASR_REF}", flush=True)
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+print(f"[clone] ref={STELNETTTS_REF}", flush=True)
 if not REPO.exists():
     _clone_cmd = (
-        f"git clone --depth 1 --branch {CRISPASR_REF} "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO}"
     )
 else:
     _clone_cmd = f"git -C {REPO} pull --ff-only"
@@ -80,7 +80,7 @@ cmake_cmd = " ".join(
     [
         f"cmake {REPO} -B{BUILD} -GNinja",
         "-DCMAKE_BUILD_TYPE=Release",
-        "-DCRISPASR_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -89,9 +89,9 @@ njobs = kh.safe_build_jobs(gpu=True)
 with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}")
-CRISPASR = BUILD / "bin" / "crispasr"
-assert CRISPASR.is_file(), f"crispasr binary missing at {CRISPASR}"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}")
+CRISPASR = BUILD / "bin" / "stelnettts"
+assert CRISPASR.is_file(), f"stelnettts binary missing at {CRISPASR}"
 kh.step("build.done", binary=str(CRISPASR), cuda_arch=arch)
 
 # ── Audio: the reporter's canonical 145 s clip (issue #218) ──────────────
@@ -115,10 +115,10 @@ kh.sh_with_progress("pip install -q huggingface_hub hf_transfer")
 from huggingface_hub import hf_hub_download  # noqa: E402
 
 CASES = [
-    ("cohere", "cstr/cohere-transcribe-03-2026-GGUF", "cohere-transcribe-q4_k.gguf", "q4_k"),
-    ("cohere", "cstr/cohere-transcribe-03-2026-GGUF", "cohere-transcribe.gguf", "f16"),
-    ("glm-asr", "cstr/glm-asr-nano-GGUF", "glm-asr-nano-q4_k.gguf", "q4_k"),
-    ("glm-asr", "cstr/glm-asr-nano-GGUF", "glm-asr-nano.gguf", "f16"),
+    ("cohere", "Xenna/cohere-transcribe-03-2026-GGUF", "cohere-transcribe-q4_k.gguf", "q4_k"),
+    ("cohere", "Xenna/cohere-transcribe-03-2026-GGUF", "cohere-transcribe.gguf", "f16"),
+    ("glm-asr", "Xenna/glm-asr-nano-GGUF", "glm-asr-nano-q4_k.gguf", "q4_k"),
+    ("glm-asr", "Xenna/glm-asr-nano-GGUF", "glm-asr-nano.gguf", "f16"),
 ]
 model_path = {}
 for backend, repo_id, fname, quant in CASES:
@@ -184,8 +184,8 @@ def run_one(backend: str, quant: str) -> dict:
     # Disable the shared n-gram collapse (global gate in
     # src/core/ngram_loop_fix.h) so we measure the RAW decode behaviour,
     # not the mitigation. Moss has a separate per-backend gate; covered too.
-    env["CRISPASR_NGRAM_LOOPFIX_OFF"] = "1"
-    env["CRISPASR_MOSS_TRANSCRIBE_NO_LOOPFIX"] = "1"
+    env["STELNETTTS_NGRAM_LOOPFIX_OFF"] = "1"
+    env["STELNETTTS_MOSS_TRANSCRIBE_NO_LOOPFIX"] = "1"
     kh.step(f"run.{backend}.{quant}.begin", model=model.name)
     t0 = time.time()
     try:
@@ -244,7 +244,7 @@ for backend, r in results.items():
 print("\nInterpretation:")
 for backend, v in verdicts.items():
     if v == "QUANT-DRIFT":
-        print(f"  {backend}: add encoder carve-out in crispasr-quantize + rebake (qwen3-asr pattern)")
+        print(f"  {backend}: add encoder carve-out in stelnettts-quantize + rebake (cielvox2-asr pattern)")
     elif v == "MODEL-LIMIT":
         print(f"  {backend}: loops are inherent at this quant AND f16 — fix_loops is the mitigation")
     elif v == "CLEAN":

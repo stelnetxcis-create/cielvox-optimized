@@ -29,8 +29,8 @@
 #include "core/gguf_loader.h"
 #include "core/attention.h"
 #include "core/snac.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -61,7 +61,7 @@ namespace {
 static bool orpheus_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_ORPHEUS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_ORPHEUS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -381,17 +381,17 @@ extern "C" struct orpheus_context* orpheus_init_from_file(const char* path_model
         return nullptr;
     }
     core_cpu_backend::set_n_threads(c->backend_cpu, c->n_threads);
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend) {
         c->backend = c->backend_cpu;
     }
 
     // Pass 2: weights.
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total layers,
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total layers,
     // route talker.blk.<il>.* with il >= N onto the CPU backend.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)c->hp.n_layers;
@@ -405,7 +405,7 @@ extern "C" struct orpheus_context* orpheus_init_from_file(const char* path_model
             delete c;
             return nullptr;
         }
-        fprintf(stderr, "orpheus: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "orpheus: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path_model, c->backend, "orpheus", wl)) {
@@ -542,8 +542,8 @@ static bool kv_alloc(orpheus_context* c, int max_ctx) {
     const int nl = (int)hp.n_layers;
     ggml_init_params kp = {ggml_tensor_overhead() * 4 + 1024, nullptr, true};
     c->kv_ctx = ggml_init(kp);
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("orpheus");
     c->kv_k = ggml_new_tensor_4d(c->kv_ctx, kv_pair.k, hd, max_ctx, n_kv, nl);
     c->kv_v = ggml_new_tensor_4d(c->kv_ctx, kv_pair.v, hd, max_ctx, n_kv, nl);
@@ -721,8 +721,8 @@ static float* run_talker_kv_bucket(orpheus_context* c, const float* embeds, int 
 static float* run_talker_kv(orpheus_context* c, const float* embeds, int n_tokens, int n_past) {
     // §176b: Lk-bucketed fast path for single-step decode.
     //
-    // OPT-IN via CRISPASR_ORPHEUS_BUCKET=1 (default OFF), mirroring parler's
-    // CRISPASR_PARLER_BUCKET. The bucket is now CORRECT on GPU (Metal + CUDA):
+    // OPT-IN via STELNETTTS_ORPHEUS_BUCKET=1 (default OFF), mirroring parler's
+    // STELNETTTS_PARLER_BUCKET. The bucket is now CORRECT on GPU (Metal + CUDA):
     // the §201/§213 SIGSEGV was its dedicated step-sched — that fresh sched's
     // first ggml_backend_sched_alloc_graph left the cross-backend input copies
     // (inputs_embeds/positions/causal_mask) unbacked, so the first decode step
@@ -736,7 +736,7 @@ static float* run_talker_kv(orpheus_context* c, const float* embeds, int n_token
     // GPU / CUDA where the non-bucket path's per-step host<->device KV traffic
     // dominates — hence kept available, not removed.
     static const bool bucket_enabled = []() {
-        const char* e = std::getenv("CRISPASR_ORPHEUS_BUCKET");
+        const char* e = std::getenv("STELNETTTS_ORPHEUS_BUCKET");
         return e && e[0] == '1';
     }();
     if (bucket_enabled && n_tokens == 1) {
@@ -952,7 +952,7 @@ static std::vector<int32_t> build_prompt_ids(orpheus_context* c, const std::stri
     // Diff-harness override: force the exact prompt token IDs from the Python
     // reference (avoids any C++/HF BPE tokenizer mismatch), mirroring
     // PARLER_PROMPT_IDS. Comma-separated full prompt (incl. control tokens).
-    if (const char* ov = crispasr_env::get("CRISPASR_ORPHEUS_PROMPT_IDS"); ov && *ov) {
+    if (const char* ov = stelnettts_env::get("STELNETTTS_ORPHEUS_PROMPT_IDS"); ov && *ov) {
         std::vector<int32_t> out;
         const char* p = ov;
         while (*p) {
@@ -1036,7 +1036,7 @@ extern "C" int32_t* orpheus_synthesize_codes(struct orpheus_context* ctx, const 
     std::vector<int32_t> custom_ids;
     custom_ids.reserve(max_audio);
     const int top_k = 50; // engine_class.py default sampling shape
-    const bool debug = ctx->params.verbosity >= 2 || crispasr_env::get("CRISPASR_ORPHEUS_DEBUG") != nullptr;
+    const bool debug = ctx->params.verbosity >= 2 || stelnettts_env::get("STELNETTTS_ORPHEUS_DEBUG") != nullptr;
     int n_dropped = 0;
     int first_tok = -1;
     int last_tok = -1;

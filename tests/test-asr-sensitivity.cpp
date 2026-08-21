@@ -1,7 +1,7 @@
 // test-asr-sensitivity.cpp — named decode-threshold bundles (PLAN.md §W7).
 //
 // The presets are only useful if they are COHERENT: the whisper fallback at
-// crispasr.cpp:8499 requires avg_logprob < logprob_thold AND no_speech_prob <
+// stelnettts.cpp:8499 requires avg_logprob < logprob_thold AND no_speech_prob <
 // no_speech_thold together, so moving one knob without the other produces a
 // combination that does not mean what its name says. These tests pin the
 // direction of each knob against `balanced`, which is what stops a later edit
@@ -29,7 +29,7 @@ TEST_CASE("balanced is exactly the shipped defaults", "[sensitivity]") {
     REQUIRE(b.temperature_inc == d.temperature_inc);
 
     // And those defaults are the ones the decoder actually ships
-    // (crispasr.cpp:6523-6526). A change there without a change here is the
+    // (stelnettts.cpp:6523-6526). A change there without a change here is the
     // drift this pins.
     REQUIRE(d.entropy_thold == 2.40f);
     REQUIRE(d.logprob_thold == -1.00f);

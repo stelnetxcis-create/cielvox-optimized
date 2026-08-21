@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-server-tts.sh — integration smoke for /v1/audio/speech + /v1/voices.
 #
-# Boots crispasr-server with a small qwen3-tts CustomVoice model, exercises
+# Boots stelnettts-server with a small cielvox2-tts CustomVoice model, exercises
 # every documented response code on the TTS routes, and validates response
 # bodies (WAV magic bytes, JSON error shape, etc.).
 #
@@ -9,9 +9,9 @@
 #   ./tests/test-server-tts.sh [--port N] [--keep-server]
 #
 # Requires:
-#   - build/bin/crispasr (or build-ninja-compile/bin/crispasr)
-#   - qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf in CRISPASR_MODELS dir
-#   - qwen3-tts-tokenizer-12hz.gguf in CRISPASR_MODELS dir
+#   - build/bin/stelnettts (or build-ninja-compile/bin/stelnettts)
+#   - cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf in STELNETTTS_MODELS dir
+#   - cielvox2-tts-tokenizer-12hz.gguf in STELNETTTS_MODELS dir
 #
 # Exit code: 0 if all pass, non-zero otherwise.
 
@@ -32,21 +32,21 @@ done
 # stale build-ninja-compile/ tree doesn't mask the freshly built binary
 # during local iteration.
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
 if [ -z "$CRISPASR" ]; then
-    echo "ERROR: crispasr binary not found. Build first."
+    echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
 
 # Locate models.
-MODELS_DIR="${CRISPASR_MODELS:-/Volumes/backups/ai/crispasr-models}"
-TALKER="$MODELS_DIR/qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf"
-CODEC="$MODELS_DIR/qwen3-tts-tokenizer-12hz.gguf"
+MODELS_DIR="${STELNETTTS_MODELS:-/Volumes/backups/ai/stelnettts-models}"
+TALKER="$MODELS_DIR/cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf"
+CODEC="$MODELS_DIR/cielvox2-tts-tokenizer-12hz.gguf"
 
 if [ ! -f "$TALKER" ]; then
-    echo "SKIP: $TALKER not found (set CRISPASR_MODELS to override)"
+    echo "SKIP: $TALKER not found (set STELNETTTS_MODELS to override)"
     exit 0
 fi
 if [ ! -f "$CODEC" ]; then
@@ -57,15 +57,15 @@ fi
 # Set up a voice-dir with a WAV + companion TXT (for Base resolution tests
 # that we can't run with the CustomVoice model loaded — kept here so the
 # /v1/voices listing has something to enumerate).
-VOICE_DIR=$(mktemp -d -t crispasr-voices.XXXXXX)
+VOICE_DIR=$(mktemp -d -t stelnettts-voices.XXXXXX)
 trap 'rm -rf "$VOICE_DIR"; if [ "$KEEP_SERVER" -eq 0 ] && [ -n "${SERVER_PID:-}" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi' EXIT
-cp samples/qwen3_tts/clone.wav "$VOICE_DIR/clone.wav"
+cp samples/cielvox2_tts/clone.wav "$VOICE_DIR/clone.wav"
 echo "This is a reference transcription for the cloned voice." > "$VOICE_DIR/clone.txt"
 
 # Boot the server.
-SERVER_LOG=$(mktemp -t crispasr-server.XXXXXX)
-echo "Starting crispasr-server on :$PORT (talker=qwen3-tts-customvoice 0.6B)…"
-"$CRISPASR" --server --backend qwen3-tts-customvoice \
+SERVER_LOG=$(mktemp -t stelnettts-server.XXXXXX)
+echo "Starting stelnettts-server on :$PORT (talker=cielvox2-tts-customvoice 0.6B)…"
+"$CRISPASR" --server --backend cielvox2-tts-customvoice \
     -m "$TALKER" --codec-model "$CODEC" \
     --voice-dir "$VOICE_DIR" \
     --cors-origin '*' \
@@ -157,7 +157,7 @@ resp=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/health")
 assert "GET /health → 200" "200" "$resp"
 
 body=$(curl -s "http://127.0.0.1:$PORT/backends")
-assert_contains "GET /backends contains 'qwen3-tts'" "qwen3-tts" "$body"
+assert_contains "GET /backends contains 'cielvox2-tts'" "cielvox2-tts" "$body"
 
 body=$(curl -s "http://127.0.0.1:$PORT/v1/models")
 assert_contains "GET /v1/models has 'id'" '"id"' "$body"
@@ -234,7 +234,7 @@ echo "=== POST /v1/audio/speech — happy path ==="
 # Default WAV output. For CustomVoice the default speaker is the first
 # in the registry; we don't pass a voice field, so the synth runs with
 # whatever was set at startup (first speaker fallback).
-TMPWAV=$(mktemp -t crispasr-out.XXXXXX.wav)
+TMPWAV=$(mktemp -t stelnettts-out.XXXXXX.wav)
 code=$(curl -s -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input":"This is a short test."}' \
@@ -248,13 +248,13 @@ if [ -s "$TMPWAV" ]; then
     assert "WAV starts with RIFF" "RIFF" "$head4"
     bytes89=$(dd if="$TMPWAV" bs=1 skip=8 count=4 2>/dev/null)
     assert "RIFF format is WAVE" "WAVE" "$bytes89"
-    # Sample-rate field (offset 24, 4 bytes LE). qwen3-tts emits at
+    # Sample-rate field (offset 24, 4 bytes LE). cielvox2-tts emits at
     # 24 kHz natively, so the WAV header must declare 24000. Pre-#122
     # the rate was hardcoded to 24000 at the call site, masking the
     # mismatch for non-24k backends — this assertion is the regression
-    # guard for the qwen3-tts default branch.
+    # guard for the cielvox2-tts default branch.
     rate=$(python3 -c "import struct,sys; f=open('$TMPWAV','rb'); f.seek(24); print(struct.unpack('<I', f.read(4))[0])")
-    assert "WAV sample_rate is 24000 (qwen3-tts native rate)" "24000" "$rate"
+    assert "WAV sample_rate is 24000 (cielvox2-tts native rate)" "24000" "$rate"
     # Byte-rate (offset 28) and block-align (offset 32) consistency.
     byte_rate=$(python3 -c "import struct,sys; f=open('$TMPWAV','rb'); f.seek(28); print(struct.unpack('<I', f.read(4))[0])")
     assert "WAV byte_rate = rate*2 (mono int16)" "48000" "$byte_rate"
@@ -276,7 +276,7 @@ rm -f "$TMPWAV"
 
 # OpenAI 'pcm' output: raw int16 LE, no header. Size should be exactly
 # 2 * n_samples (samples come from the synth at 24 kHz).
-TMPPCM=$(mktemp -t crispasr-out.XXXXXX.pcm)
+TMPPCM=$(mktemp -t stelnettts-out.XXXXXX.pcm)
 code=$(curl -s -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input":"openai pcm test","response_format":"pcm"}' \
@@ -305,8 +305,8 @@ rm -f "$TMPPCM"
 
 # Speed parameter — speed=2.0 should produce roughly half the samples
 # of speed=1.0 for the same input (linear-resampler post-synth).
-TMPS1=$(mktemp -t crispasr-s1.XXXXXX.f32)
-TMPS2=$(mktemp -t crispasr-s2.XXXXXX.f32)
+TMPS1=$(mktemp -t stelnettts-s1.XXXXXX.f32)
+TMPS2=$(mktemp -t stelnettts-s2.XXXXXX.f32)
 curl -s -X POST -H 'Content-Type: application/json' \
     -d '{"input":"speed test one","response_format":"f32","speed":1.0}' \
     -o "$TMPS1" "http://127.0.0.1:$PORT/v1/audio/speech" >/dev/null
@@ -317,7 +317,7 @@ S1=$(wc -c < "$TMPS1" | tr -d ' ')
 S2=$(wc -c < "$TMPS2" | tr -d ' ')
 RATIO=$(awk "BEGIN{print $S1/$S2}")
 # Tolerance: 1.7..2.3x. Synthesis isn't deterministic across runs of
-# qwen3-tts (sampling), so allow some slack — what we care about is
+# cielvox2-tts (sampling), so allow some slack — what we care about is
 # that speed=2.0 is meaningfully shorter than speed=1.0.
 if awk "BEGIN{exit !($S1 > $S2 * 1.7 && $S1 < $S2 * 2.3)}"; then
     echo "  ✓ speed=2.0 is ~half the samples of speed=1.0 (ratio=$RATIO)"
@@ -329,7 +329,7 @@ fi
 rm -f "$TMPS1" "$TMPS2"
 
 # OpenAI's 'model' field is accepted (not validated, just logged).
-TMPMODEL=$(mktemp -t crispasr-model.XXXXXX.wav)
+TMPMODEL=$(mktemp -t stelnettts-model.XXXXXX.wav)
 code=$(curl -s -X POST -H 'Content-Type: application/json' \
     -d '{"input":"model test","model":"tts-1"}' \
     -o "$TMPMODEL" -w "%{http_code}" \
@@ -338,7 +338,7 @@ assert "model field accepted → 200" "200" "$code"
 rm -f "$TMPMODEL"
 
 # instructions field is accepted (silently ignored on CustomVoice).
-TMPINST=$(mktemp -t crispasr-inst.XXXXXX.wav)
+TMPINST=$(mktemp -t stelnettts-inst.XXXXXX.wav)
 code=$(curl -s -X POST -H 'Content-Type: application/json' \
     -d '{"input":"instructions test","instructions":"speak warmly and slowly"}' \
     -o "$TMPINST" -w "%{http_code}" \
@@ -347,7 +347,7 @@ assert "instructions field accepted → 200" "200" "$code"
 rm -f "$TMPINST"
 
 # f32 output should be raw float32 PCM (no header).
-TMPF32=$(mktemp -t crispasr-out.XXXXXX.f32)
+TMPF32=$(mktemp -t stelnettts-out.XXXXXX.f32)
 code=$(curl -s -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input":"test","response_format":"f32"}' \
@@ -382,7 +382,7 @@ rm -f "$TMPF32"
 # Per-request voice switch — must use a name in the loaded model's
 # CustomVoice registry. The cstr 0.6B/1.7B Q8_0 builds carry:
 #   aiden, dylan, eric, ono_anna, ryan, serena, sohee, uncle_fu, vivian
-TMPVOICE=$(mktemp -t crispasr-voice.XXXXXX.wav)
+TMPVOICE=$(mktemp -t stelnettts-voice.XXXXXX.wav)
 code=$(curl -s -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input":"named voice test","voice":"vivian"}' \
@@ -394,7 +394,7 @@ rm -f "$TMPVOICE"
 # Different speaker — exercises voice-cache invalidation. The pre-fix
 # bug was that the second request would silently keep using the first
 # voice; after the last_voice_key_ rework this path actually re-loads.
-TMPVOICE=$(mktemp -t crispasr-voice2.XXXXXX.wav)
+TMPVOICE=$(mktemp -t stelnettts-voice2.XXXXXX.wav)
 code=$(curl -s -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input":"second voice test","voice":"ryan"}' \
@@ -407,8 +407,8 @@ rm -f "$TMPVOICE"
 # should produce a longer audio body than a single sentence (chunks
 # are concatenated with 200 ms silence between them). Server log
 # should report chunks=N>1.
-TMP_SHORT=$(mktemp -t crispasr-short.XXXXXX.wav)
-TMP_LONG=$(mktemp -t crispasr-long.XXXXXX.wav)
+TMP_SHORT=$(mktemp -t stelnettts-short.XXXXXX.wav)
+TMP_LONG=$(mktemp -t stelnettts-long.XXXXXX.wav)
 curl -s -X POST -H 'Content-Type: application/json' \
     -d '{"input":"This is one sentence."}' \
     -o "$TMP_SHORT" "http://127.0.0.1:$PORT/v1/audio/speech" >/dev/null
@@ -533,10 +533,10 @@ echo
 echo "=== POST /v1/audio/speech?stream — per-chunk PCM (CAP_STREAMING) ==="
 
 # stream=true with a PCM format → 200, raw int16 (no RIFF), non-trivial,
-# int16-aligned. qwen3-tts has CAP_STREAMING so this exercises the true
+# int16-aligned. cielvox2-tts has CAP_STREAMING so this exercises the true
 # per-chunk path (worker thread + chunked provider); other backends fall
 # back to whole-clip but still stream the bytes.
-TMPSTREAM=$(mktemp -t crispasr-stream.XXXXXX.pcm)
+TMPSTREAM=$(mktemp -t stelnettts-stream.XXXXXX.pcm)
 code=$(curl -s -N -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input":"Streaming first audio test. This is the second sentence.","response_format":"pcm","stream":true}' \
@@ -600,8 +600,8 @@ fi
 # regression guard that streaming stays a windowing of the same synthesis, not a
 # diverging path.
 SEQ_INPUT='{"input":"Stream equals whole clip equivalence check sentence.","response_format":"pcm","seed":4242'
-TMPNS=$(mktemp -t crispasr-ns.XXXXXX.pcm)
-TMPST=$(mktemp -t crispasr-st.XXXXXX.pcm)
+TMPNS=$(mktemp -t stelnettts-ns.XXXXXX.pcm)
+TMPST=$(mktemp -t stelnettts-st.XXXXXX.pcm)
 curl -s -X POST -H 'Content-Type: application/json' \
     -d "$SEQ_INPUT}" -o "$TMPNS" "http://127.0.0.1:$PORT/v1/audio/speech" >/dev/null
 curl -s -N -X POST -H 'Content-Type: application/json' \

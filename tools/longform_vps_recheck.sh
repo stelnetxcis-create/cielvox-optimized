@@ -3,7 +3,7 @@
 # (commits dc2295b2 cohere, 6fef8790 voxtral).
 set -uo pipefail
 
-CRISPASR=/mnt/akademie_storage/whisper.cpp/build/bin/crispasr
+CRISPASR=/mnt/akademie_storage/whisper.cpp/build/bin/stelnettts
 OUT_DIR=/mnt/akademie_storage/longform_results_recheck
 CLIPS_DIR=/mnt/akademie_storage
 mkdir -p "$OUT_DIR"

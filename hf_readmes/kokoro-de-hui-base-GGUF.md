@@ -14,13 +14,13 @@ tags:
 - multispeaker
 - hui-corpus
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Kokoro German — HUI Multispeaker Base — GGUF
 
-GGUF / ggml conversion of [`dida-80b/kokoro-german-hui-multispeaker-base`](https://huggingface.co/dida-80b/kokoro-german-hui-multispeaker-base) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`dida-80b/kokoro-german-hui-multispeaker-base`](https://huggingface.co/dida-80b/kokoro-german-hui-multispeaker-base) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 This is the **Stage-1 multispeaker base** of Kokoro-82M re-trained on the [HUI Audio Corpus German](https://github.com/iisys-hof/HUI-Audio-Corpus-German) (CC0, 51 speakers, ~51 h). Predictor + decoder + StyleEncoder were all trained on German, so prosody and timing on long German phrases sound native — unlike using the official English-trained Kokoro-82M with a foreign-language voice fallback, which collapses to silence on long German utterances.
 
@@ -37,20 +37,20 @@ Training repo: [semidark/kokoro-deutsch](https://github.com/semidark/kokoro-deut
 
 Q4_K is **not** published: it loses the trailing "-izers" suffix on "Phonemizers" and degrades into garbled output ("Guten A, dies ist ein S des Worten von links."). Q8_0 is the smallest safe quant for this backbone.
 
-## Auto-routing in CrispASR
+## Auto-routing in StelnetTTS
 
-When `kokoro-de-hui-base-f16.gguf` (or its Q8_0 sibling) sits in the same directory as `kokoro-82m-f16.gguf`, CrispASR silently swaps to the German backbone whenever the user passes `-l de` (or any `de_*` / `de-*` locale). Voice cascade for German: `df_victoria` → `df_eva` → `ff_siwis`. Explicit `--voice` always wins.
+When `kokoro-de-hui-base-f16.gguf` (or its Q8_0 sibling) sits in the same directory as `kokoro-82m-f16.gguf`, StelnetTTS silently swaps to the German backbone whenever the user passes `-l de` (or any `de_*` / `de-*` locale). Voice cascade for German: `df_victoria` → `df_eva` → `ff_siwis`. Explicit `--voice` always wins.
 
 ```bash
-./crispasr --backend kokoro \
+./stelnettts --backend kokoro \
     -m kokoro-82m-q8_0.gguf \
     -l de \
     --tts "Guten Tag, dies ist ein Test des deutschen Phonemizers." \
     --tts-output de.wav
-# crispasr silently picks kokoro-de-hui-base-q8_0.gguf + kokoro-voice-df_victoria.gguf
+# stelnettts silently picks kokoro-de-hui-base-q8_0.gguf + kokoro-voice-df_victoria.gguf
 ```
 
-The C ABI behind this routing is `crispasr_kokoro_resolve_model_for_lang_abi` and `crispasr_kokoro_resolve_fallback_voice_abi` (see `src/kokoro.h`). The Python wrapper exposes it as `crispasr.kokoro_resolve_for_lang(model, lang)`.
+The C ABI behind this routing is `stelnettts_kokoro_resolve_model_for_lang_abi` and `stelnettts_kokoro_resolve_fallback_voice_abi` (see `src/kokoro.h`). The Python wrapper exposes it as `stelnettts.kokoro_resolve_for_lang(model, lang)`.
 
 ## Quality verification
 
@@ -63,7 +63,7 @@ ASR roundtrip via `parakeet-tdt-0.6b-v3 -l de` on "Guten Tag, dies ist ein Test 
 | dida-80b + df_victoria | F16 | "Guten Tag, dies ist ein Tester des Deutschen Phonemizers." | 1 word-boundary err on "Test" |
 | dida-80b + dm_bernd | F16 | "Guten Tag, dies ist ein Test des deutschen Phonemetzers." | 1 phoneme err on "izers" |
 
-`crispasr-diff kokoro` against the PyTorch reference (after rewriting dida-80b's modern parametrize WeightNorm keys to legacy `weight_g/weight_v` so upstream `KModel` can load them):
+`stelnettts-diff kokoro` against the PyTorch reference (after rewriting dida-80b's modern parametrize WeightNorm keys to legacy `weight_g/weight_v` so upstream `KModel` can load them):
 
 | Stage (selection) | F16 cos_min | Q8_0 cos_min |
 |---|---:|---:|
@@ -76,7 +76,7 @@ F16 hits 14/16 PASS at cos≥0.999 (the 2 fails are RNG-divergent decoder stages
 
 ## Voice packs
 
-Use the sister repo [`cstr/kokoro-voices-GGUF`](https://huggingface.co/cstr/kokoro-voices-GGUF), which bundles:
+Use the sister repo [`Xenna/kokoro-voices-GGUF`](https://huggingface.co/Xenna/kokoro-voices-GGUF), which bundles:
 
 | Voice | Source | Tier |
 |---|---|---|
@@ -102,7 +102,7 @@ python models/convert-kokoro-to-gguf.py \
     --config /path/to/hexgrad/Kokoro-82M/config.json \
     --outtype f16
 
-build/bin/crispasr-quantize kokoro-de-hui-base-f16.gguf kokoro-de-hui-base-q8_0.gguf q8_0
+build/bin/stelnettts-quantize kokoro-de-hui-base-f16.gguf kokoro-de-hui-base-q8_0.gguf q8_0
 ```
 
 ## License
@@ -115,4 +115,4 @@ build/bin/crispasr-quantize kokoro-de-hui-base-f16.gguf kokoro-de-hui-base-q8_0.
 - Re-train: [`dida-80b/kokoro-german-hui-multispeaker-base`](https://huggingface.co/dida-80b/kokoro-german-hui-multispeaker-base) (Apache-2.0).
 - Recipe: [semidark/kokoro-deutsch](https://github.com/semidark/kokoro-deutsch) (Apache-2.0).
 - Base: [`hexgrad/Kokoro-82M`](https://huggingface.co/hexgrad/Kokoro-82M) (Apache-2.0).
-- GGUF runtime: [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- GGUF runtime: [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).

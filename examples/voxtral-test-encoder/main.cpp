@@ -4,9 +4,9 @@
 // Runs voxtral_run_encoder() on a reference mel spectrogram captured
 // from the HF PyTorch forward pass, and compares the result against
 // the PyTorch reference's projector output. Uses the shared
-// crispasr_diff::Ref harness so the inline NPY parser + per-row
+// stelnettts_diff::Ref harness so the inline NPY parser + per-row
 // cosine-similarity loop that this file used to carry
-// (examples/cli/crispasr_diff.{h,cpp}) lives in one place now.
+// (examples/cli/stelnettts_diff.{h,cpp}) lives in one place now.
 //
 // Reference archive is produced by:
 //
@@ -18,7 +18,7 @@
 // Usage:
 //   voxtral-test-encoder model.gguf /tmp/voxtral-ref.gguf
 
-#include "crispasr_diff.h"
+#include "stelnettts_diff.h"
 #include "voxtral.h"
 
 #include <cstdio>
@@ -37,7 +37,7 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
-    crispasr_diff::Ref ref;
+    stelnettts_diff::Ref ref;
     if (!ref.load(argv[2])) return 2;
 
     // Pull the reference mel spectrogram (shape (n_mels, T) in the
@@ -83,7 +83,7 @@ int main(int argc, char ** argv) {
     // is 'projector_output' in the voxtral reference backend; older
     // archives used 'proj2_out' from the legacy dump script, so try
     // both.
-    crispasr_diff::Report rep;
+    stelnettts_diff::Report rep;
     if (ref.has("projector_output")) {
         rep = ref.compare("projector_output", out, (size_t)N * pdim);
     } else if (ref.has("proj2_out")) {

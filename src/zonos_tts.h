@@ -95,7 +95,7 @@ void zonos_tts_codes_free(int32_t* codes);
 void zonos_tts_pcm_free(float* pcm);
 void zonos_tts_free(struct zonos_tts_context* ctx);
 
-// --- Diff-harness stage APIs (used by crispasr-diff) ---
+// --- Diff-harness stage APIs (used by stelnettts-diff) ---
 
 // Build the conditioning prefix for diff testing.
 // Runs the prefix conditioner on `text` and returns a float buffer of shape

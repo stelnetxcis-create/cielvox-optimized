@@ -12,7 +12,7 @@
 # Vulkan) to exercise the warmup path on that backend.
 #
 # Usage:
-#   ./tests/test-server-warmup.sh [--port N] [--binary path/to/crispasr]
+#   ./tests/test-server-warmup.sh [--port N] [--binary path/to/stelnettts]
 #
 # SKIPs (exit 0) if the binary is missing or the model can't be fetched.
 
@@ -21,9 +21,9 @@ cd "$(dirname "$0")/.."
 
 PORT=${PORT:-11461}
 CRISPASR=""
-# Optional model cache dir (env CRISPASR_TEST_CACHE or --cache-dir=). Useful when
-# the default cache (~/.cache/crispasr) is unwritable; the model is fetched here.
-CACHE_DIR="${CRISPASR_TEST_CACHE:-}"
+# Optional model cache dir (env STELNETTTS_TEST_CACHE or --cache-dir=). Useful when
+# the default cache (~/.cache/stelnettts) is unwritable; the model is fetched here.
+CACHE_DIR="${STELNETTTS_TEST_CACHE:-}"
 for arg in "$@"; do
     case "$arg" in
         --port=*) PORT="${arg#--port=}" ;;
@@ -35,12 +35,12 @@ CACHE_ARG=()
 [ -n "$CACHE_DIR" ] && CACHE_ARG=(--cache-dir "$CACHE_DIR")
 
 if [ -z "$CRISPASR" ]; then
-    for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+    for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
         if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
     done
 fi
 if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found (build first)"; exit 0
+    echo "SKIP: stelnettts binary not found (build first)"; exit 0
 fi
 
 SAMPLE="samples/jfk.wav"
@@ -62,7 +62,7 @@ trap cleanup EXIT
 # Returns 0 if ready, 1 if it never became ready (the #165 symptom).
 boot_server() {
     cleanup; SERVER_PID=""
-    SERVER_LOG=$(mktemp -t crispasr-warmup.XXXXXX)
+    SERVER_LOG=$(mktemp -t stelnettts-warmup.XXXXXX)
     "$CRISPASR" --server -m moonshine --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} \
         --host 127.0.0.1 --port "$PORT" "$@" \
         > "$SERVER_LOG" 2>&1 &

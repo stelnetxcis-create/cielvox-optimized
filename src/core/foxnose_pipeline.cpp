@@ -17,7 +17,7 @@ namespace core_foxnose {
 
 int windows_per_span() {
     static const int v = [] {
-        if (const char* e = std::getenv("CRISPASR_DIARIZE_SPAN_WINDOWS")) {
+        if (const char* e = std::getenv("STELNETTTS_DIARIZE_SPAN_WINDOWS")) {
             const int n = std::atoi(e);
             if (n > 0)
                 return n;

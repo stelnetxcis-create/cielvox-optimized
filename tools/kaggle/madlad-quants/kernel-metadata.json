@@ -1,7 +1,7 @@
 {
-  "id": "chr1str/crispasr-madlad-quants",
-  "title": "crispasr-madlad-quants",
-  "code_file": "crispasr-madlad-quants.py",
+  "id": "chr1str/stelnettts-madlad-quants",
+  "title": "stelnettts-madlad-quants",
+  "code_file": "stelnettts-madlad-quants.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
@@ -9,8 +9,8 @@
   "enable_internet": "true",
   "competition_sources": [],
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "kernel_sources": [],
   "model_sources": []

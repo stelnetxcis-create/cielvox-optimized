@@ -41,7 +41,7 @@ TEST_CASE("t5: a degenerate greedy cycle is detected, ordinary output is not", "
     // ⚠ This DEVIATES FROM THE BLUEPRINT DELIBERATELY. The PyTorch reference was
     // run on the same input and runs away identically (60 tokens, no EOS,
     // byte-identical string), so the port already matches — this is a product
-    // decision, not a parity fix, and CRISPASR_T5_REPEAT_BREAK=0 restores exact
+    // decision, not a parity fix, and STELNETTTS_T5_REPEAT_BREAK=0 restores exact
     // HF behaviour for anyone diffing against it.
     //
     // What must NOT trigger: real translations. Both of the sentences the

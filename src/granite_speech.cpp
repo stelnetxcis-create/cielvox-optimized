@@ -6,7 +6,7 @@
 //   3. 40-layer Granite 1B LLM (GQA 16/4, μP multipliers, RoPE)
 
 #include "granite_speech.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include <chrono>
 
 #ifndef M_PI
@@ -23,7 +23,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "gguf.h"
 
@@ -35,7 +35,7 @@
 static bool granite_force_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_GRANITE_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_GRANITE_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 
@@ -70,7 +70,7 @@ static bool granite_force_scalar() {
 static bool granite_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_GRANITE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_GRANITE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -315,7 +315,7 @@ struct granite_speech_context {
     ggml_gallocr_t dec_galloc = nullptr;    // for cached_dec_gf (logits)
     ggml_gallocr_t argmax_galloc = nullptr; // for cached_argmax_gf (greedy)
     int dec_use_gallocr = -1;               // -1 undecided, 0 sched, 1 gallocr
-    // Decode profiling accumulators (CRISPASR_GRANITE_DEC_PROFILE). Measure the
+    // Decode profiling accumulators (STELNETTTS_GRANITE_DEC_PROFILE). Measure the
     // per-step alloc vs compute split directly — deterministic, unlike noisy
     // end-to-end wall time on M1.
     int64_t dec_prof_alloc_us = 0;
@@ -373,7 +373,7 @@ struct granite_speech_context {
 // ===========================================================================
 
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -434,14 +434,14 @@ static bool granite_speech_load_model(granite_speech_model& model, const char* p
     }
 
     // Pass 2: tensor data via shared helper.
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total layers,
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total layers,
     // route LLM layers [N..total) onto the CPU backend. Encoder blocks
     // (`enc.blk.*`) stay on GPU — the shared predicate only matches
     // `blk.<N>.*` (the LLM naming), treating encoder tensors as
     // non-layered.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)model.hparams.llm_n_layers;
@@ -453,7 +453,7 @@ static bool granite_speech_load_model(granite_speech_model& model, const char* p
                                            "granite_speech", wl)) {
             return false;
         }
-        fprintf(stderr, "granite_speech: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "granite_speech: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path, backend, "granite_speech", wl)) {
@@ -692,7 +692,7 @@ extern "C" struct granite_speech_context* granite_speech_init_from_file(const ch
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -849,7 +849,7 @@ extern "C" struct granite_speech_context* granite_speech_init_from_file(const ch
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
@@ -1635,7 +1635,7 @@ extern "C" float* granite_speech_run_encoder(struct granite_speech_context* ctx,
     // the final encoder output. Set GRANITE_DISABLE_ENCODER_GRAPH=1 to
     // fall back to the CPU loop (slower but kept around for debugging).
     bool use_graph = true;
-    if (const char* e = crispasr_env::get("CRISPASR_GRANITE_DISABLE_ENCODER_GRAPH"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_GRANITE_DISABLE_ENCODER_GRAPH"))
         if (e[0] != '0' && e[0] != '\0')
             use_graph = false;
     if (use_graph) {
@@ -2131,7 +2131,7 @@ extern "C" bool granite_speech_kv_init(struct granite_speech_context* ctx, int m
         return false;
     // Idempotent: same per-chunk re-init pattern as voxtral4b (issue
     // #54). Without this guard, the per-transcribe call in
-    // crispasr_backend_granite leaks the entire KV backend buffer
+    // stelnettts_backend_granite leaks the entire KV backend buffer
     // every chunk.
     if (ctx->kv_k)
         return true;
@@ -2142,8 +2142,8 @@ extern "C" bool granite_speech_kv_init(struct granite_speech_context* ctx, int m
 
     ggml_init_params ip = {2 * ggml_tensor_overhead(), nullptr, true};
     ctx->kv_ctx = ggml_init(ip);
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("granite_speech");
     ctx->kv_k = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.k, hd, max_ctx, n_kv, nl);
     ctx->kv_v = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.v, hd, max_ctx, n_kv, nl);
@@ -2358,9 +2358,9 @@ extern "C" float* granite_speech_run_llm_kv(struct granite_speech_context* ctx, 
 // (no per-step sched reset+alloc) instead of the sched. Enabled when the whole
 // decode graph runs on a single GPU/CPU backend that has no CUDA-graph capture:
 //   - not CUDA/HIP (those want the sched so ggml-cuda capture engages)
-//   - no CPU layer split (CRISPASR_N_GPU_LAYERS) — a split graph spans two
+//   - no CPU layer split (STELNETTTS_N_GPU_LAYERS) — a split graph spans two
 //     backends and must go through the sched.
-// Override: CRISPASR_GRANITE_DEC_GALLOCR=0 forces the sched path, =1 forces the
+// Override: STELNETTTS_GRANITE_DEC_GALLOCR=0 forces the sched path, =1 forces the
 // gallocr path (debug/bench).
 static bool granite_dec_use_gallocr(granite_speech_context* ctx) {
     if (ctx->dec_use_gallocr >= 0)
@@ -2375,10 +2375,10 @@ static bool granite_dec_use_gallocr(granite_speech_context* ctx) {
         const bool split = ctx->model.buf_cpu != nullptr; // some weights on CPU
         use = !is_cuda && !split;
     }
-    if (const char* s = std::getenv("CRISPASR_GRANITE_DEC_GALLOCR"))
+    if (const char* s = std::getenv("STELNETTTS_GRANITE_DEC_GALLOCR"))
         use = (std::atoi(s) != 0);
     ctx->dec_use_gallocr = use ? 1 : 0;
-    if (std::getenv("CRISPASR_GRANITE_DEC_PROFILE"))
+    if (std::getenv("STELNETTTS_GRANITE_DEC_PROFILE"))
         fprintf(stderr, "[granite dec-profile] backend=%s split=%d -> gallocr=%d\n",
                 ctx->backend ? ggml_backend_name(ctx->backend) : "(null)", ctx->model.buf_cpu != nullptr ? 1 : 0, use);
     return use;
@@ -2723,10 +2723,10 @@ extern "C" int32_t* granite_speech_greedy_decode(struct granite_speech_context* 
     tokens.reserve((size_t)max_new_tokens);
     tokens.push_back(first_token);
 
-    // CRISPASR_GRANITE_DEC_PROFILE=1 → report decode-loop wall time + per-step
+    // STELNETTTS_GRANITE_DEC_PROFILE=1 → report decode-loop wall time + per-step
     // cost (isolates the decode path from the encoder; A/B the gallocr vs sched
-    // path with CRISPASR_GRANITE_DEC_GALLOCR).
-    const bool dec_profile = std::getenv("CRISPASR_GRANITE_DEC_PROFILE") != nullptr;
+    // path with STELNETTTS_GRANITE_DEC_GALLOCR).
+    const bool dec_profile = std::getenv("STELNETTTS_GRANITE_DEC_PROFILE") != nullptr;
     const int64_t prof_t0 = dec_profile ? ggml_time_us() : 0;
     ctx->dec_prof_alloc_us = 0;
     ctx->dec_prof_compute_us = 0;
@@ -2834,7 +2834,7 @@ extern "C" char* granite_speech_transcribe(struct granite_speech_context*, const
 // Control-token accessors
 //
 // Surface the audio placeholder / EOS / vocab size from hparams so the CLI
-// adapter (crispasr_backend_granite.cpp) can stop hardcoding granite-4.0-1b
+// adapter (stelnettts_backend_granite.cpp) can stop hardcoding granite-4.0-1b
 // specific constants. granite-3.x variants use a different tokenizer with
 // their own ids — querying at runtime lets a single backend host all four
 // model revisions with no per-version branching.

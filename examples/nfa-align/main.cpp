@@ -16,7 +16,7 @@
 //   nfa-align -m canary-ctc-aligner.gguf -f audio.wav -decode    # greedy CTC
 
 #include "canary_ctc.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 
 #include <cstdio>
 #include <cstdlib>

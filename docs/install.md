@@ -10,12 +10,12 @@ interchangeable, and the GPU ones cannot fall back to CPU.**
 
 | tarball | needs on the host | falls back to CPU? |
 |---|---|---|
-| `crispasr-linux-x86_64.tar.gz` | nothing beyond base glibc | n/a — it *is* the CPU build |
-| `crispasr-linux-x86_64-avx512.tar.gz` | an AVX-512 CPU | n/a |
-| `crispasr-linux-x86_64-cuda.tar.gz` | **NVIDIA driver** (`libcuda.so.1`) + CUDA 12 runtime (`libcudart.so.12`, `libcublas.so.12`) | **no** |
-| `crispasr-linux-x86_64-cuda13.tar.gz` | NVIDIA driver + CUDA 13 runtime | **no** |
-| `crispasr-linux-x86_64-hip.tar.gz` | ROCm runtime | **no** |
-| `crispasr-linux-x86_64-vulkan.tar.gz` | a Vulkan loader + ICD | **no** |
+| `stelnettts-linux-x86_64.tar.gz` | nothing beyond base glibc | n/a — it *is* the CPU build |
+| `stelnettts-linux-x86_64-avx512.tar.gz` | an AVX-512 CPU | n/a |
+| `stelnettts-linux-x86_64-cuda.tar.gz` | **NVIDIA driver** (`libcuda.so.1`) + CUDA 12 runtime (`libcudart.so.12`, `libcublas.so.12`) | **no** |
+| `stelnettts-linux-x86_64-cuda13.tar.gz` | NVIDIA driver + CUDA 13 runtime | **no** |
+| `stelnettts-linux-x86_64-hip.tar.gz` | ROCm runtime | **no** |
+| `stelnettts-linux-x86_64-vulkan.tar.gz` | a Vulkan loader + ICD | **no** |
 
 The GPU runtimes are deliberately **not** bundled — shipping a driver library
 would be wrong (it must match the kernel module) and redistributing the CUDA
@@ -26,27 +26,27 @@ reviewed decision rather than an oversight.
 The consequence is worth stating plainly, because it surprises people:
 
 ```
-$ ./crispasr --help
-./crispasr: error while loading shared libraries: libcuda.so.1:
+$ ./stelnettts --help
+./stelnettts: error while loading shared libraries: libcuda.so.1:
 cannot open shared object file: No such file or directory
 $ echo $?
 127
 ```
 
 Those libraries are hard `DT_NEEDED` entries, so **the dynamic loader fails
-before `main()` runs**. CrispASR's "auto-select the best backend, fall back to
+before `main()` runs**. StelnetTTS's "auto-select the best backend, fall back to
 CPU" logic lives inside `main()` and never gets the chance. A container that has
 the CUDA toolkit but no GPU passthrough, or a host whose driver was removed,
-will restart in a loop with exit 127 and no CrispASR output at all.
+will restart in a loop with exit 127 and no StelnetTTS output at all.
 
-**If you might run without a GPU, use `crispasr-linux-x86_64.tar.gz`.** It is
+**If you might run without a GPU, use `stelnettts-linux-x86_64.tar.gz`.** It is
 the same CLI; it just has no GPU backend compiled in. Shipping both and picking
 at startup is a reasonable pattern for images that must run on either.
 
 Verify what a given tarball actually requires before deploying it:
 
 ```bash
-readelf -d crispasr | grep NEEDED
+readelf -d stelnettts | grep NEEDED
 ```
 
 > **Can the GPU build degrade gracefully instead?** Yes, if you build it
@@ -70,15 +70,15 @@ So each release ships both forms:
 
 | asset | contains |
 |---|---|
-| `crispasr-windows-x86_64-cuda.zip` | CLI, self-contained |
-| `crispasr-windows-x86_64-cuda-non-cuda.zip` | CLI, **without** the three DLLs |
-| `libcrispasr-windows-x86_64-cuda.tar.gz` | shared libs + headers, self-contained |
-| `libcrispasr-windows-x86_64-cuda-non-cuda.tar.gz` | shared libs + headers, **without** the three DLLs |
+| `stelnettts-windows-x86_64-cuda.zip` | CLI, self-contained |
+| `stelnettts-windows-x86_64-cuda-non-cuda.zip` | CLI, **without** the three DLLs |
+| `libstelnettts-windows-x86_64-cuda.tar.gz` | shared libs + headers, self-contained |
+| `libstelnettts-windows-x86_64-cuda-non-cuda.tar.gz` | shared libs + headers, **without** the three DLLs |
 | `cudart64_*.dll`, `cublas64_*.dll`, `cublasLt64_*.dll` | the three DLLs, on their own |
-| `crispasr-windows-x86_64-cuda-runtime-sha256.txt` | SHA-256 of each of the three |
+| `stelnettts-windows-x86_64-cuda-runtime-sha256.txt` | SHA-256 of each of the three |
 
 To upgrade without re-downloading the runtime: take the `-non-cuda` archive,
-unpack it, and copy the three DLLs you already have next to `crispasr.exe`
+unpack it, and copy the three DLLs you already have next to `stelnettts.exe`
 (for the libs package, into `bin\`).
 
 The three DLLs are published **once** per release and shared by both packages —
@@ -96,11 +96,11 @@ a CUDA version bump changes the filenames, which is your signal to re-fetch.
 
 Optional:
 - `libavformat` / `libavcodec` / `libavutil` / `libswresample` for
-  Opus / M4A / WebM ingestion (`-DCRISPASR_FFMPEG=ON`).
+  Opus / M4A / WebM ingestion (`-DSTELNETTTS_FFMPEG=ON`).
 - `libopenblas` / MKL / Accelerate — speeds up CPU-side matmuls for
   Conformer-based encoders (parakeet, canary, cohere, granite,
   fastconformer-ctc). The ggml CPU backend picks BLAS up automatically
-  when present at build time; no CrispASR flag is needed.
+  when present at build time; no StelnetTTS flag is needed.
 - CUDA / Metal / Vulkan / MUSA / SYCL toolchains for GPU acceleration —
   enabled via ggml's standard flags (`-DGGML_CUDA=ON`,
   `-DGGML_METAL=ON`, `-DGGML_VULKAN=ON`, `-DGGML_MUSA=ON`,
@@ -115,8 +115,8 @@ No Python, PyTorch, or pip is required at runtime.
 ## Linux / macOS
 
 ```bash
-git clone --recursive https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone --recursive https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 # if you already cloned without --recursive:
 #   git submodule update --init --recursive
 
@@ -133,15 +133,15 @@ The default build produces every CLI target. Binaries land in
 
 | Binary | Purpose |
 |---|---|
-| `crispasr` | Main CLI (transcribe / TTS / server) |
-| `crispasr-quantize` | Re-quantize any GGUF model — see [quantize.md](quantize.md) |
-| `crispasr-diff` | Per-stage cosine-similarity diff vs Python reference |
+| `stelnettts` | Main CLI (transcribe / TTS / server) |
+| `stelnettts-quantize` | Re-quantize any GGUF model — see [quantize.md](quantize.md) |
+| `stelnettts-diff` | Per-stage cosine-similarity diff vs Python reference |
 
 To build only the library (faster CI builds), pass
-`--target crispasr-lib`:
+`--target stelnettts-lib`:
 
 ```bash
-cmake --build build -j$(nproc) --target crispasr-lib
+cmake --build build -j$(nproc) --target stelnettts-lib
 ```
 
 ### CMake presets
@@ -163,7 +163,7 @@ defaults (Ninja, ccache, OpenMP, mold linker on Linux):
 
 ```bash
 scripts/dev-build.sh                                  # default target
-scripts/dev-build.sh --target crispasr-quantize       # build a different target
+scripts/dev-build.sh --target stelnettts-quantize       # build a different target
 scripts/dev-build.sh --reconfigure -DGGML_VULKAN=ON   # extra cmake args
 ```
 
@@ -180,10 +180,10 @@ CMake + Ninja.
 build-windows.bat
 ```
 
-Produces `build\bin\crispasr.exe`. Extra CMake flags can be appended:
+Produces `build\bin\stelnettts.exe`. Extra CMake flags can be appended:
 
 ```cmd
-build-windows.bat -DCRISPASR_CURL=ON   :: enable libcurl fallback
+build-windows.bat -DSTELNETTTS_CURL=ON   :: enable libcurl fallback
 build-windows.bat -DGGML_CUDA=ON       :: NVIDIA GPU (CUDA must be installed)
 build-windows.bat -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=60  :: Tesla P100
 ```
@@ -197,7 +197,7 @@ What it does:
 2. Finds the latest VS 2022 installation that includes the VC++ toolchain.
 3. Calls `vcvars64.bat` to initialize the 64-bit MSVC environment.
 4. Runs `cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release [extra flags]`.
-5. Builds the `crispasr` target → `build\bin\crispasr.exe`.
+5. Builds the `stelnettts` target → `build\bin\stelnettts.exe`.
 
 ### `build-vulkan.bat` — Vulkan GPU build
 
@@ -205,7 +205,7 @@ What it does:
 build-vulkan.bat
 ```
 
-Produces `build-vulkan\bin\crispasr.exe` with the Vulkan compute backend
+Produces `build-vulkan\bin\stelnettts.exe` with the Vulkan compute backend
 enabled. In addition to the VS detection above, it:
 
 1. Checks `%VULKAN_SDK%`. If unset, scans `C:\VulkanSDK\` for the
@@ -224,7 +224,7 @@ set VULKAN_SDK=C:\VulkanSDK\1.4.304.1
 build-vulkan.bat
 
 :: Run on Vulkan, pinned to GPU 1 (NVIDIA on a hybrid laptop)
-build-vulkan\bin\crispasr.exe --gpu-backend vulkan -dev 1 -m model.gguf -f audio.wav
+build-vulkan\bin\stelnettts.exe --gpu-backend vulkan -dev 1 -m model.gguf -f audio.wav
 ```
 
 Important:
@@ -238,28 +238,28 @@ Important:
 Both scripts exit with a non-zero code and a `[ERROR]` message if any
 step fails (VS not found, CMake configure error, build error).
 
-### Consuming `libcrispasr` from a language binding (Rust / Go / …)
+### Consuming `libstelnettts` from a language binding (Rust / Go / …)
 
 These scripts build the **CLI**, but adding `-DBUILD_SHARED_LIBS=ON` also
-produces `libcrispasr` (`build\src\crispasr.lib` + the DLL). Three ways to link
+produces `libstelnettts` (`build\src\stelnettts.lib` + the DLL). Three ways to link
 it from a binding:
 
 - **This local build** — `build-windows.bat -DBUILD_SHARED_LIBS=ON [-DGGML_CUDA=ON]`,
-  then point the binding's `CRISPASR_SYS_LIB_DIR` at the `build\` dir (its
-  `build.rs` now finds the single-config `build\src\crispasr.lib`); put the
-  directory holding `crispasr.dll` on `PATH`.
-- **Prebuilt bundle** — download `libcrispasr-windows-x86_64[-cuda].tar.gz` from
-  [Releases](https://github.com/CrispStrobe/CrispASR/releases), extract, set
-  `CRISPASR_SYS_LIB_DIR` to the bundle root + put its `bin\` on `PATH`.
+  then point the binding's `STELNETTTS_SYS_LIB_DIR` at the `build\` dir (its
+  `build.rs` now finds the single-config `build\src\stelnettts.lib`); put the
+  directory holding `stelnettts.dll` on `PATH`.
+- **Prebuilt bundle** — download `libstelnettts-windows-x86_64[-cuda].tar.gz` from
+  [Releases](https://github.com/Cyna/StelnetTTS/releases), extract, set
+  `STELNETTTS_SYS_LIB_DIR` to the bundle root + put its `bin\` on `PATH`.
 - **git dependency** — the binding's `build.rs` runs cmake for you (needs VS 2022
   + CMake; honours the `cuda`/`vulkan` features).
 
 Exact per-OS environment is in the Rust
-[`crispasr-sys` README](../crispasr-sys/README.md#prebuilt-release-bundle-no-build).
+[`stelnettts-sys` README](../stelnettts-sys/README.md#prebuilt-release-bundle-no-build).
 
 ## GPU backends
 
-CrispASR builds against ggml's GPU backends. Pick the one matching
+StelnetTTS builds against ggml's GPU backends. Pick the one matching
 your hardware at configure time:
 
 ```bash
@@ -276,30 +276,30 @@ highest-priority compiled backend at runtime
 with `--gpu-backend <name>`, and pin a device with `-dev N`:
 
 ```bash
-crispasr --gpu-backend vulkan -dev 1 -m model.gguf -f audio.wav
-crispasr --gpu-backend cpu -m model.gguf -f audio.wav        # benchmarking
+stelnettts --gpu-backend vulkan -dev 1 -m model.gguf -f audio.wav
+stelnettts --gpu-backend cpu -m model.gguf -f audio.wav        # benchmarking
 ```
 
 ## Opus / AAC support (default, no ffmpeg, no libopus)
 
 `.opus` (Ogg/Opus, **including WebM/Matroska Opus**) and raw ADTS `.aac`
 (AAC-LC) decode natively through the in-tree clean-room
-[glint](https://github.com/CrispStrobe/glint) decoder — **no ffmpeg and no
-libopus needed** — via the library `crispasr_audio_load` API used by the
+[glint](https://github.com/Cyna/glint) decoder — **no ffmpeg and no
+libopus needed** — via the library `stelnettts_audio_load` API used by the
 bindings. glint is RFC-conformant for Opus (all 12 RFC 6716/8251 vectors), so
 this works on every platform including WASM, out of the box. A build with
-`-DCRISPASR_OPUS=OFF` (no libopus linked at all) still decodes `.opus` and
+`-DSTELNETTTS_OPUS=OFF` (no libopus linked at all) still decodes `.opus` and
 WebM/Opus.
 
 libopus + opusfile remains available as an optional Opus fallback, selected with
-`CRISPASR_OPUS_DECODER=libopus`. It's on by default (`CRISPASR_OPUS`) when the
+`STELNETTTS_OPUS_DECODER=libopus`. It's on by default (`STELNETTTS_OPUS`) when the
 system `opusfile` is found via pkg-config (e.g. `apt install libopusfile-dev`,
 `brew install opusfile`), but is no longer required for any input format. On
 platforms without system libs (Windows / iOS / Android / WASM), build it
 statically:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCRISPASR_OPUS_FETCH=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_OPUS_FETCH=ON
 ```
 
 Container AAC (`.m4a` / `.alac` / `.caf`) decodes natively on **Apple**
@@ -309,9 +309,9 @@ also no ffmpeg. See [cli.md](cli.md#audio-formats) for the full format matrix.
 ## AMR-NB / AMR-WB support (telephony + voicemail recordings)
 
 `.amr` (AMR-NB 8 kHz) and AMR-WB 16 kHz decode via
-[opencore-amr](https://github.com/CrispStrobe/opencore-amr) (Apache-2.0) — the
+[opencore-amr](https://github.com/Cyna/opencore-amr) (Apache-2.0) — the
 standard codecs for mobile voice recordings and voicemail. On by default
-(`CRISPASR_AMR`) when the system libraries are found via pkg-config
+(`STELNETTTS_AMR`) when the system libraries are found via pkg-config
 (`apt install libopencore-amrnb-dev libopencore-amrwb-dev`,
 `brew install opencore-amr`). Without them, AMR is simply skipped and the build
 succeeds — the CMake status line tells you which path was taken.
@@ -320,7 +320,7 @@ To build the decoder statically instead (no system packages — Windows, Android
 Termux, iOS, WASM):
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCRISPASR_AMR_FETCH=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_AMR_FETCH=ON
 ```
 
 > **`register` build errors on clang ≥ 16 (fixed in v0.8.24).** opencore-amr is
@@ -334,7 +334,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DCRISPASR_AMR_FETCH=ON
 >
 > v0.8.24 scopes `-Wno-register` (and clang's `-Wno-deprecated-register`) to the
 > two vendored codec targets, so no flag of your own is needed. On an older
-> CrispASR the workaround is `export CXXFLAGS="$CXXFLAGS -Wno-register"` —
+> StelnetTTS the workaround is `export CXXFLAGS="$CXXFLAGS -Wno-register"` —
 > effective, but it silences the same mistake in *your* code too, so prefer
 > upgrading.
 
@@ -347,12 +347,12 @@ libfdk-aac, WMA, exotic containers, …), build with the optional ffmpeg fallbac
 # Install ffmpeg dev libs first:
 #   apt install libavformat-dev libavcodec-dev libavutil-dev libswresample-dev
 
-cmake -B build-ffmpeg -DCMAKE_BUILD_TYPE=Release -DCRISPASR_FFMPEG=ON
-cmake --build build-ffmpeg -j$(nproc) --target crispasr-lib
+cmake -B build-ffmpeg -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_FFMPEG=ON
+cmake --build build-ffmpeg -j$(nproc) --target stelnettts-lib
 ```
 
 > **Upstream bug warning.** `.m4a` / `.mp4` / `.webm` containers
-> currently crash CrispASR's ffmpeg integration. For those formats,
+> currently crash StelnetTTS's ffmpeg integration. For those formats,
 > pre-convert to WAV (or, on Apple, `.m4a`/AAC work natively without ffmpeg):
 > ```bash
 > ffmpeg -i input.m4a -ar 16000 -ac 1 -c:a pcm_s16le -y /tmp/audio.wav
@@ -369,31 +369,31 @@ Ubuntu 22.04 (glibc 2.35) with:
     version 'GLIBC_2.38' not found
 ```
 
-The fix is to build from source — CrispASR has no glibc minimum
+The fix is to build from source — StelnetTTS has no glibc minimum
 version of its own, so it builds cleanly against whatever glibc your
 distro ships.
 
 ```bash
-git clone --recursive https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone --recursive https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
-ls build/bin/crispasr-quantize
+ls build/bin/stelnettts-quantize
 ```
 
 ## Android / Termux
 
-CrispASR builds natively under [Termux](https://termux.dev) on aarch64
+StelnetTTS builds natively under [Termux](https://termux.dev) on aarch64
 Android devices. Use a **static build** to avoid linker conflicts with
 system-installed `libggml.so` from the `whisper-cli` package (#137):
 
 ```bash
 pkg install build-essential cmake git
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_SHARED_LIBS=OFF \
-      -DCRISPASR_BUILD_TESTS=OFF
+      -DSTELNETTTS_BUILD_TESTS=OFF
 cmake --build build -j$(nproc)
 ```
 
@@ -406,11 +406,11 @@ into the binary, eliminating the conflict entirely.
 Strip debug symbols to reduce binary size:
 
 ```bash
-strip build/bin/crispasr*
+strip build/bin/stelnettts*
 ```
 
 **Termux clang is new enough to default to C++17**, which matters if you enable
-the statically-built AMR decoder (`-DCRISPASR_AMR_FETCH=ON`): the vendored
+the statically-built AMR decoder (`-DSTELNETTTS_AMR_FETCH=ON`): the vendored
 opencore-amr sources use the `register` storage class that C++17 removed. Fixed
 in v0.8.24 — see [AMR-NB / AMR-WB support](#amr-nb--amr-wb-support-telephony--voicemail-recordings)
 if you are building an older tag (#314).
@@ -418,7 +418,7 @@ if you are building an older tag (#314).
 ### Cross-compiling for Android (NDK)
 
 To cross-compile from a Linux or macOS host for Android deployment
-(e.g. embedding `libcrispasr.so` in an Android app), use the provided
+(e.g. embedding `libstelnettts.so` in an Android app), use the provided
 `build-android.sh` script. This requires the
 [Android NDK](https://developer.android.com/ndk) installed on the host:
 
@@ -429,7 +429,7 @@ export ANDROID_NDK_HOME=/path/to/android-ndk
 ./build-android.sh --vulkan             # with Vulkan GPU support
 ```
 
-Output lands in `build-android/<ABI>/src/libcrispasr.so`.
+Output lands in `build-android/<ABI>/src/libstelnettts.so`.
 
 **This is not the same as building inside Termux.** The NDK
 cross-compiler produces binaries linked against Android's bionic libc,
@@ -446,7 +446,7 @@ Three things blocked it, all now resolved:
 
 1. **CMake** — every per-model library linked `ggml-cuda` / `ggml-metal`
    explicitly (125 sites), and under DL those are `MODULE` targets that cannot
-   be linked. They now route through `crispasr_link_ggml_*` interface targets
+   be linked. They now route through `stelnettts_link_ggml_*` interface targets
    that are empty in a DL build and the real backend otherwise. ✅
 2. **CPU-backend symbols** — under DL even the CPU backend is a module, so
    `ggml_backend_cpu_init`, `ggml_backend_is_cpu`, `ggml_backend_cpu_set_n_threads`,

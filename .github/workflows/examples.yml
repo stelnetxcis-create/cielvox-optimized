@@ -5,13 +5,13 @@ on:
     branches: [main]
     paths:
       - examples/addon.node/**
-      - crispasr.h
+      - stelnettts.h
       - .github/workflows/examples.yml
   pull_request:
     branches: [main]
     paths:
       - examples/addon.node/**
-      - crispasr.h
+      - stelnettts.h
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

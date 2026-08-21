@@ -19,15 +19,15 @@ base_model: OpenMOSS-Team/MOSS-Transcribe-preview-2B
 
 # MOSS-Transcribe-preview-2B — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`OpenMOSS-Team/MOSS-Transcribe-preview-2B`](https://huggingface.co/OpenMOSS-Team/MOSS-Transcribe-preview-2B) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`OpenMOSS-Team/MOSS-Transcribe-preview-2B`](https://huggingface.co/OpenMOSS-Team/MOSS-Transcribe-preview-2B) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 MOSS-Transcribe is OpenMOSS's **speech-LLM** ASR model (~2.4 B params, Apache-2.0):
 
 - **Stock Qwen3-Omni-MoE audio encoder** (the full 1280-dim / 32-layer tower) feeds frames into a **Qwen3-1.7B LLM** via embedding splice in a ChatML prompt.
 - **4.87 % average WER** (reported by the authors).
-- Runs **on CPU or GPU** (Metal/CUDA) through the CrispASR runtime, with a persistent KV cache for O(1) per-token decode.
+- Runs **on CPU or GPU** (Metal/CUDA) through the StelnetTTS runtime, with a persistent KV cache for O(1) per-token decode.
 
-It is a close sibling of CrispASR's `moss-audio` backend (same author) but **ASR-dedicated**: no DeepStack, a `conv_out`/`proj1`/`proj2` encoder head, and a smaller 1.7 B decoder.
+It is a close sibling of StelnetTTS's `moss-audio` backend (same author) but **ASR-dedicated**: no DeepStack, a `conv_out`/`proj1`/`proj2` encoder head, and a smaller 1.7 B decoder.
 
 ## Files
 
@@ -48,17 +48,17 @@ All quantisations produce the correct transcript on `samples/jfk.wav`:
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr
+cmake --build build -j$(nproc) --target stelnettts
 
 # 2. Download a quantisation
-hf download cstr/MOSS-Transcribe-preview-2B-GGUF \
+hf download Xenna/MOSS-Transcribe-preview-2B-GGUF \
     moss-transcribe-preview-2b-q4_k.gguf --local-dir .
 
 # 3. Transcribe
-./build/bin/crispasr -m moss-transcribe-preview-2b-q4_k.gguf your-audio.wav
+./build/bin/stelnettts -m moss-transcribe-preview-2b-q4_k.gguf your-audio.wav
 ```
 
 Audio must be 16 kHz mono. Pre-convert with:
@@ -66,7 +66,7 @@ Audio must be 16 kHz mono. Pre-convert with:
 ffmpeg -i input.mp3 -ar 16000 -ac 1 -c:a pcm_s16le output.wav
 ```
 
-The CrispASR model registry also auto-downloads the Q4_K build on demand (`-m moss-transcribe`).
+The StelnetTTS model registry also auto-downloads the Q4_K build on demand (`-m moss-transcribe`).
 
 ## Architecture
 
@@ -85,7 +85,7 @@ The CrispASR model registry also auto-downloads the Q4_K build on demand (`-m mo
 
 ## Implementation notes (correctness)
 
-The C++ runtime is verified against the PyTorch reference at every architectural boundary on `samples/jfk.wav` via the `crispasr-diff` harness:
+The C++ runtime is verified against the PyTorch reference at every architectural boundary on `samples/jfk.wav` via the `stelnettts-diff` harness:
 
 | Stage | Diff metric | Result |
 | --- | --- | --- |

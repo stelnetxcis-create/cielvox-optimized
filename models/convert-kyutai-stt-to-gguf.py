@@ -126,7 +126,7 @@ def main():
     writer.add_uint32("kyutai.context", config["context"])  # 750
 
     # Languages the checkpoint was trained on (#366). Nothing in the weights
-    # says this, and CrispASR used to warn "English-only model" for every
+    # says this, and StelnetTTS used to warn "English-only model" for every
     # kyutai-stt GGUF — including stt-1b-en_fr, which is the DEFAULT model the
     # registry downloads and does support French. Write it down so the runtime
     # does not have to infer it from layer count.

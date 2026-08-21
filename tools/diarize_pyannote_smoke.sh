@@ -23,8 +23,8 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
 build_dir="${BUILD_DIR:-build-ninja-compile}"
-fixture_dir="${FIXTURE_DIR:-/Volumes/backups/ai/crispasr-test-fixtures}"
-model_dir="${MODEL_DIR:-/Volumes/backups/ai/crispasr-models/pyannote-seg-3.0}"
+fixture_dir="${FIXTURE_DIR:-/Volumes/backups/ai/stelnettts-test-fixtures}"
+model_dir="${MODEL_DIR:-/Volumes/backups/ai/stelnettts-models/pyannote-seg-3.0}"
 
 wav="${fixture_dir}/two-speakers-jfk-tts.wav"
 model="${model_dir}/pyannote-seg-3.0.gguf"
@@ -33,7 +33,7 @@ mkdir -p "$fixture_dir" "$model_dir"
 
 # 1) Synthesize the 2-speaker fixture if missing.
 if [[ ! -f "$wav" ]]; then
-    spk_b="${SPEAKER_B_WAV:-$HOME/.cache/crispasr/cb_baker_jfk.wav}"
+    spk_b="${SPEAKER_B_WAV:-$HOME/.cache/stelnettts/cb_baker_jfk.wav}"
     if [[ ! -f "$spk_b" ]]; then
         echo "ERROR: speaker-B sample not found at $spk_b" >&2
         echo "       set SPEAKER_B_WAV to any single-speaker mono WAV" >&2
@@ -69,24 +69,24 @@ fi
 if [[ ! -f "$model" ]]; then
     echo "[smoke] downloading pyannote-seg-3.0.gguf → $model"
     curl -fsSL -o "$model" \
-        "https://huggingface.co/cstr/pyannote-v3-segmentation-GGUF/resolve/main/pyannote-seg-3.0.gguf"
+        "https://huggingface.co/Xenna/pyannote-v3-segmentation-GGUF/resolve/main/pyannote-seg-3.0.gguf"
 fi
 
 # 3) Build the live test target + the CLI binary (the CLI is what the
 #    end-to-end embedder spawn-pass needs; the test-only target covers
 #    the library API path).
-echo "[smoke] building test-diarize-pyannote-live + crispasr"
-cmake --build "$build_dir" --target test-diarize-pyannote-live crispasr-cli >/dev/null
+echo "[smoke] building test-diarize-pyannote-live + stelnettts"
+cmake --build "$build_dir" --target test-diarize-pyannote-live stelnettts-cli >/dev/null
 
 # 4a) C++ live test (lib API + TitaNet clustering when its model is
 #     reachable). Two TEST_CASEs: pyannote-only and pyannote+TitaNet.
 #     The TitaNet variant pulls titanet-large.gguf via the standard
-#     crispasr cache.
-titanet_cache="${HOME}/.cache/crispasr/titanet-large.gguf"
+#     stelnettts cache.
+titanet_cache="${HOME}/.cache/stelnettts/titanet-large.gguf"
 echo "[smoke] running C++ live tests"
-CRISPASR_TEST_DIARIZE_WAV="$wav" \
-CRISPASR_TEST_DIARIZE_MODEL="$model" \
-CRISPASR_TEST_TITANET_MODEL="$titanet_cache" \
+STELNETTTS_TEST_DIARIZE_WAV="$wav" \
+STELNETTTS_TEST_DIARIZE_MODEL="$model" \
+STELNETTTS_TEST_TITANET_MODEL="$titanet_cache" \
     "$build_dir/bin/test-diarize-pyannote-live" --success
 
 # 4b) CLI spawn smoke. Two passes against the same fixture so we
@@ -101,10 +101,10 @@ CRISPASR_TEST_TITANET_MODEL="$titanet_cache" \
 #     We use cohere as the ASR backend because it produces word
 #     timestamps (which the segment-splitting step needs), runs
 #     fast on M1, and ships in the auto-download cache.
-backend_model="${HOME}/.cache/crispasr/cohere-transcribe-q4_k.gguf"
+backend_model="${HOME}/.cache/stelnettts/cohere-transcribe-q4_k.gguf"
 if [[ ! -f "$backend_model" ]]; then
     echo "[smoke] WARNING: $backend_model missing — skipping CLI spawn smoke"
-    echo "[smoke] (run \`crispasr --backend cohere -m auto ...\` once to populate it)"
+    echo "[smoke] (run \`stelnettts --backend cohere -m auto ...\` once to populate it)"
     exit 0
 fi
 
@@ -113,7 +113,7 @@ run_cli_and_check() {
     shift
     local out_prefix="${TMPDIR:-/tmp}/diarize-smoke-${label}"
     rm -f "${out_prefix}.json"
-    "$build_dir/bin/crispasr" --backend cohere -m "$backend_model" -f "$wav" \
+    "$build_dir/bin/stelnettts" --backend cohere -m "$backend_model" -f "$wav" \
         --diarize --diarize-method pyannote --sherpa-segment-model auto \
         "$@" -ojf -of "$out_prefix" >/dev/null 2>&1
     local n_distinct

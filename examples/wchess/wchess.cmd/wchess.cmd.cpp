@@ -230,13 +230,13 @@ int main(int argc, char** argv) {
 
     // init audio
 
-    if (!g_audio.init(params.capture_id, CRISPASR_SAMPLE_RATE)) {
+    if (!g_audio.init(params.capture_id, STELNETTTS_SAMPLE_RATE)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }
 
     struct whisper_full_params wparams =
-        whisper_full_default_params(whisper_sampling_strategy::CRISPASR_SAMPLING_GREEDY);
+        whisper_full_default_params(whisper_sampling_strategy::STELNETTTS_SAMPLING_GREEDY);
     wparams.offset_ms = 0;
     wparams.translate = false;
     wparams.no_context = true;

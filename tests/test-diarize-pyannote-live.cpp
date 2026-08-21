@@ -9,15 +9,15 @@
 // The test is opt-in: it skips cleanly when either env var is unset,
 // so CI without the model/audio fixtures still runs.
 //
-//   CRISPASR_TEST_DIARIZE_WAV=/path/to/multispeaker.wav         (required)
-//   CRISPASR_TEST_DIARIZE_MODEL=/path/to/pyannote-seg-3.0.gguf  (required)
+//   STELNETTTS_TEST_DIARIZE_WAV=/path/to/multispeaker.wav         (required)
+//   STELNETTTS_TEST_DIARIZE_MODEL=/path/to/pyannote-seg-3.0.gguf  (required)
 //
-// The wav must be 16 kHz mono PCM s16le (the format crispasr feeds the
+// The wav must be 16 kHz mono PCM s16le (the format stelnettts feeds the
 // pyannote front-end). Standard sample: any clip with ≥2 speakers,
 // e.g. a podcast snippet, an interview, or a sherpa-onnx demo file.
 
-#include "../src/crispasr_speaker_cluster.h"
-#include "../src/crispasr_diarize.h"
+#include "../src/stelnettts_speaker_cluster.h"
+#include "../src/stelnettts_diarize.h"
 #include "../src/speaker_db.h"
 #include "../src/titanet.h"
 
@@ -112,7 +112,7 @@ const char* getenv_or_null(const char* name) {
 }
 
 // Scratch dir for the speaker-db enrollment test below. Same pattern as
-// tests/test-speaker-db.cpp: honor CRISPASR_SCRATCH_DIR when set (worktree
+// tests/test-speaker-db.cpp: honor STELNETTTS_SCRATCH_DIR when set (worktree
 // convention), fall back to a local .scratch dir. Not cleaned up afterward,
 // matching the unit-test precedent.
 #ifdef _WIN32
@@ -122,16 +122,16 @@ std::string make_temp_dir() {
     std::string base = buf;
     if (!base.empty() && (base.back() == '\\' || base.back() == '/'))
         base.pop_back();
-    std::string dir = base + "/crispasr_spkdb_live_" + std::to_string(_getpid());
+    std::string dir = base + "/stelnettts_spkdb_live_" + std::to_string(_getpid());
     _mkdir(dir.c_str());
     return dir;
 }
 #else
 std::string make_temp_dir() {
-    const char* env = std::getenv("CRISPASR_SCRATCH_DIR");
+    const char* env = std::getenv("STELNETTTS_SCRATCH_DIR");
     std::string base = (env && *env) ? env : ".scratch";
     mkdir(base.c_str(), 0755);
-    std::string pattern = base + "/crispasr_spkdb_live_XXXXXX";
+    std::string pattern = base + "/stelnettts_spkdb_live_XXXXXX";
     std::string writable = pattern;
     char* buf = writable.data();
     return mkdtemp(buf) ? std::string(buf) : base;
@@ -141,10 +141,10 @@ std::string make_temp_dir() {
 } // namespace
 
 TEST_CASE("apply_pyannote live: multi-speaker WAV yields ≥2 distinct speaker labels", "[live][diarize][pyannote]") {
-    const char* wav_path = getenv_or_null("CRISPASR_TEST_DIARIZE_WAV");
-    const char* model_path = getenv_or_null("CRISPASR_TEST_DIARIZE_MODEL");
+    const char* wav_path = getenv_or_null("STELNETTTS_TEST_DIARIZE_WAV");
+    const char* model_path = getenv_or_null("STELNETTTS_TEST_DIARIZE_MODEL");
     if (!wav_path || !model_path) {
-        SKIP("set CRISPASR_TEST_DIARIZE_WAV + CRISPASR_TEST_DIARIZE_MODEL "
+        SKIP("set STELNETTTS_TEST_DIARIZE_WAV + STELNETTTS_TEST_DIARIZE_MODEL "
              "to a multi-speaker 16-bit PCM WAV and a pyannote-seg-3.0 GGUF "
              "to run this live test");
     }
@@ -169,7 +169,7 @@ TEST_CASE("apply_pyannote live: multi-speaker WAV yields ≥2 distinct speaker l
     opts.n_threads = 4;
     opts.slice_t0_cs = 0;
 
-    const bool ok = crispasr_diarize_segments(mono.data(), mono.data(), (int)mono.size(),
+    const bool ok = stelnettts_diarize_segments(mono.data(), mono.data(), (int)mono.size(),
                                               /*is_stereo=*/false, segs, opts);
     REQUIRE(ok);
 
@@ -211,17 +211,17 @@ TEST_CASE("apply_pyannote live: multi-speaker WAV yields ≥2 distinct speaker l
 // stability" check that complements the pyannote-local test above.
 //
 // Run with three env vars:
-//   CRISPASR_TEST_DIARIZE_WAV    - the same 2-speaker WAV as above
-//   CRISPASR_TEST_DIARIZE_MODEL  - pyannote-seg-3.0 GGUF (unused here
+//   STELNETTTS_TEST_DIARIZE_WAV    - the same 2-speaker WAV as above
+//   STELNETTTS_TEST_DIARIZE_MODEL  - pyannote-seg-3.0 GGUF (unused here
 //                                  but kept consistent with the
 //                                  pyannote-only test so a single
 //                                  setup runs both cases)
-//   CRISPASR_TEST_TITANET_MODEL  - titanet-large GGUF
+//   STELNETTTS_TEST_TITANET_MODEL  - titanet-large GGUF
 TEST_CASE("apply_embedder live: TitaNet clusters fixture JFK vs TTS regions", "[live][diarize][pyannote][embedder]") {
-    const char* wav_path = getenv_or_null("CRISPASR_TEST_DIARIZE_WAV");
-    const char* titanet_path = getenv_or_null("CRISPASR_TEST_TITANET_MODEL");
+    const char* wav_path = getenv_or_null("STELNETTTS_TEST_DIARIZE_WAV");
+    const char* titanet_path = getenv_or_null("STELNETTTS_TEST_TITANET_MODEL");
     if (!wav_path || !titanet_path) {
-        SKIP("set CRISPASR_TEST_DIARIZE_WAV + CRISPASR_TEST_TITANET_MODEL to run this "
+        SKIP("set STELNETTTS_TEST_DIARIZE_WAV + STELNETTTS_TEST_TITANET_MODEL to run this "
              "live test (TitaNet clustering on a multi-speaker WAV)");
     }
 
@@ -271,7 +271,7 @@ TEST_CASE("apply_embedder live: TitaNet clusters fixture JFK vs TTS regions", "[
     REQUIRE(kept_indices.size() >= 5);
 
     // Cluster with the same settings the CLI uses by default.
-    std::vector<int> labels = crispasr_agglomerative_cluster(embeddings, (int)kept_indices.size(), DIM,
+    std::vector<int> labels = stelnettts_agglomerative_cluster(embeddings, (int)kept_indices.size(), DIM,
                                                              /*merge_threshold=*/0.5f,
                                                              /*max_speakers=*/8);
     REQUIRE(labels.size() == kept_indices.size());
@@ -334,28 +334,28 @@ TEST_CASE("apply_embedder live: TitaNet clusters fixture JFK vs TTS regions", "[
 // ----------------------------------------------------------------------
 // Speaker-db identification live test (issue #266, PLAN F3).
 // ----------------------------------------------------------------------
-// Mirrors the real pipeline (crispasr_apply_global_speaker_stages() in
-// examples/cli/crispasr_run.cpp): cluster the fixture's embeddings exactly
+// Mirrors the real pipeline (stelnettts_apply_global_speaker_stages() in
+// examples/cli/stelnettts_run.cpp): cluster the fixture's embeddings exactly
 // like the embedder test above, enroll a clean single-speaker span as a
 // named profile (consent attested, synthetic/local use), narrow the loaded
 // db to that one claimed name, then match each cluster CENTROID against it
-// via speaker_db_match — the same call crispasr_identify_speaker_clusters()
+// via speaker_db_match — the same call stelnettts_identify_speaker_clusters()
 // makes. Asserts the named cluster (JFK region) matches while the other
 // physical speaker (TTS-baker region) stays unmatched, i.e. named and
 // anonymous clusters coexist on one recording — the target #266 behavior.
 //
-//   CRISPASR_TEST_DIARIZE_WAV     - the same 2-speaker WAV as above
-//   CRISPASR_TEST_TITANET_MODEL   - titanet-large GGUF
+//   STELNETTTS_TEST_DIARIZE_WAV     - the same 2-speaker WAV as above
+//   STELNETTTS_TEST_TITANET_MODEL   - titanet-large GGUF
 //
 // Enrollment writes to a throwaway temp dir created by this test (see
 // make_temp_dir() above) — the consent attestation is this test's own, for
 // a synthetic/local fixture, not a real enrolled person.
 TEST_CASE("speaker-db identify live: named + anonymous clusters coexist on multi-speaker WAV",
           "[live][diarize][speaker-db]") {
-    const char* wav_path = getenv_or_null("CRISPASR_TEST_DIARIZE_WAV");
-    const char* titanet_path = getenv_or_null("CRISPASR_TEST_TITANET_MODEL");
+    const char* wav_path = getenv_or_null("STELNETTTS_TEST_DIARIZE_WAV");
+    const char* titanet_path = getenv_or_null("STELNETTTS_TEST_TITANET_MODEL");
     if (!wav_path || !titanet_path) {
-        SKIP("set CRISPASR_TEST_DIARIZE_WAV + CRISPASR_TEST_TITANET_MODEL to run this "
+        SKIP("set STELNETTTS_TEST_DIARIZE_WAV + STELNETTTS_TEST_TITANET_MODEL to run this "
              "live test (speaker-db identification on a multi-speaker WAV)");
     }
 
@@ -401,7 +401,7 @@ TEST_CASE("speaker-db identify live: named + anonymous clusters coexist on multi
 
     // Same clustering settings the CLI uses by default (--diarize-cluster-
     // threshold 0.5, --diarize-max-speakers 8).
-    std::vector<int> labels = crispasr_agglomerative_cluster(embeddings, (int)kept_indices.size(), DIM,
+    std::vector<int> labels = stelnettts_agglomerative_cluster(embeddings, (int)kept_indices.size(), DIM,
                                                              /*merge_threshold=*/0.5f,
                                                              /*max_speakers=*/8);
     REQUIRE(labels.size() == kept_indices.size());
@@ -444,7 +444,7 @@ TEST_CASE("speaker-db identify live: named + anonymous clusters coexist on multi
     REQUIRE(speaker_db_count(db) == 1);
     REQUIRE(speaker_db_retain(db, "F3Speaker") == 1); // closed-roster narrowing (#266)
 
-    const auto centroids = crispasr_cluster_centroids(embeddings, labels, (int)kept_indices.size(), DIM);
+    const auto centroids = stelnettts_cluster_centroids(embeddings, labels, (int)kept_indices.size(), DIM);
     REQUIRE((int)centroids.size() == n_clusters * DIM);
 
     int n_named = 0, n_unmatched = 0;

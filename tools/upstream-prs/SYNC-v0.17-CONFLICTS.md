@@ -1,10 +1,10 @@
 # ggml sync v0.10.2 → v0.17.0 — resolution record (2026-07-29)
 
-Merge: `CrispStrobe/ggml` `crispstrobe-ops` (bfe8ea22 + 2 SVE cherry-picks)
+Merge: `Cyna/ggml` `crispstrobe-ops` (bfe8ea22 + 2 SVE cherry-picks)
 ← `ggml-org/ggml` master (9be31331). **435 commits, 19 conflicted files, 53 hunks.**
 
-Branch: `sync/upstream-v0.17` on `CrispStrobe/ggml`.
-CrispASR's submodule pin moves to `a0f7289d` — see "Pin decision" at the end
+Branch: `sync/upstream-v0.17` on `Cyna/ggml`.
+StelnetTTS's submodule pin moves to `a0f7289d` — see "Pin decision" at the end
 for what backs that.
 
 An earlier revision of this file was an inventory written mid-merge that stopped
@@ -30,7 +30,7 @@ only way to express the asymmetric causal crop (`crop_left=0`,
 
 This was the right shape of change because the blast radius is one function:
 20 decoder callsites use `convt1d_decomp`, and `convt1d_decomp_tf` just
-delegates to it. Nothing else in CrispASR calls `ggml_col2im_1d`.
+delegates to it. Nothing else in StelnetTTS calls `ggml_col2im_1d`.
 
 ### `GGML_OP_*` enum — rebuilt by hand
 
@@ -50,7 +50,7 @@ they were compile errors, but only in backends nobody had compiled:
 | `ggml-vulkan/ggml-vulkan.cpp` | duplicate `pipeline_col2im_1d_f32` member; duplicate **brace-truncated** `vk_op_col2im_1d_push_constants`; duplicate pipeline creation; duplicate `GGML_OP_COL2IM_1D` case |
 
 Two of my own conflict resolutions also dropped code — a keep-both concatenation
-lost a closing brace (`crispasr_metal_pipeline_cache_flush`), and two "theirs"
+lost a closing brace (`stelnettts_metal_pipeline_cache_flush`), and two "theirs"
 resolutions dropped our function bodies (`get_pipeline_aa_snake_beta`,
 `ggml_metal_op_aa_snake_beta`, the latter surfacing only as a link error). Both
 recovered from `crispstrobe-ops`.
@@ -102,7 +102,7 @@ exactly why the symmetric case is in the suite.
 
 Upstream's `ci.yml` runs CUDA/Vulkan/Metal on **self-hosted** runners this fork
 does not have, so those backends were never built on our branches at all.
-`.github/workflows/crispasr-ops.yml` builds cpu (x64 + arm64), Metal, Vulkan
+`.github/workflows/stelnettts-ops.yml` builds cpu (x64 + arm64), Metal, Vulkan
 (executed against lavapipe, not just compiled) and CUDA (compile-only) on hosted
 runners. First run:
 
@@ -143,7 +143,7 @@ only when `ne11 == ne12 == 1` (embedding lookups, what it was written for) and
 wrong for any broadcast — which upstream has since added and now tests. Fixed to
 mirror `k_get_rows_float`'s indexing exactly.
 
-`ci/check-crispasr-patches.sh` + `ci/crispasr-patches.txt` turn the 37
+`ci/check-stelnettts-patches.sh` + `ci/stelnettts-patches.txt` turn the 37
 "MUST RE-APPLY after ggml bump" comments into an executable check over 23 named
 patches. A merge that resolves a hunk as "theirs" drops one of our patches with
 no compile error and no test failure — this is the only thing that catches that.
@@ -200,8 +200,8 @@ The pin moves to `a0f7289d`. What backs it:
     fork CI, both branches   6/6 — cpu x64+arm64, Metal, Vulkan (lavapipe,
                              executed), CUDA, carried-patch guard
     Kaggle P100 (sm_60)      12863 ops OK, 0 failures on real hardware
-    CrispASR unit tier       1210/1210 passed
-    full crispasr-cli        builds clean (560 targets)
+    StelnetTTS unit tier       1210/1210 passed
+    full stelnettts-cli        builds clean (560 targets)
     TTS A/B                  no attributable differences
 
 The pin bump and the `conv.h` rewrite are **coupled** — each is wrong against the

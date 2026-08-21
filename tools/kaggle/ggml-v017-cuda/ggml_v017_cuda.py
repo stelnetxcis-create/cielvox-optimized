@@ -2,10 +2,10 @@
 """
 ggml v0.17 sync — CUDA EXECUTION validation on a real GPU.
 
-The v0.10.2 -> v0.17.0 merge of CrispStrobe/ggml is validated on CPU and Metal
+The v0.10.2 -> v0.17.0 merge of Cyna/ggml is validated on CPU and Metal
 (full test-backend-ops green on an M1), and the new fork CI compiles CUDA — but
 GitHub-hosted runners have no GPU, so no CUDA kernel has actually *run*. That is
-the last gap before CrispASR's submodule pin can move, and it matters here
+the last gap before StelnetTTS's submodule pin can move, and it matters here
 specifically because the merge touched CUDA col2im_1d, conv_transpose_1d and the
 mul_mat/cuBLAS path:
 
@@ -16,7 +16,7 @@ mul_mat/cuBLAS path:
     lines upstream had deleted, and our #38/#125 F16-accumulation fix was
     re-applied at upstream's new compute_type decision point.
 
-This kernel builds ggml standalone (not CrispASR — nothing here needs models or
+This kernel builds ggml standalone (not StelnetTTS — nothing here needs models or
 weights) with CUDA for the T4, then runs test-backend-ops on the GPU. It reports
 the conv/col2im families explicitly, since those are what the merge changed.
 
@@ -29,15 +29,15 @@ WORK = Path("/kaggle/working")
 TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "ggml_v017_cuda_results.json"
 
-GGML_URL = "https://github.com/CrispStrobe/ggml.git"
+GGML_URL = "https://github.com/Cyna/ggml.git"
 BRANCH = "sync/upstream-v0.17"
 GGML = TMP / "ggml"
 
-# The harness lives in CrispASR, so clone that too (shallow) just for the import.
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CLONE = TMP / "CrispASR"
+# The harness lives in StelnetTTS, so clone that too (shallow) just for the import.
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+CLONE = TMP / "StelnetTTS"
 if not CLONE.exists():
-    subprocess.run(["git", "clone", "--depth", "1", CRISPASR_URL, str(CLONE)],
+    subprocess.run(["git", "clone", "--depth", "1", STELNETTTS_URL, str(CLONE)],
                    check=False, timeout=1200)
 # Prefer the harness from the clone; fall back to the copy bundled beside this
 # script (kaggle_usage.md, "MUST follow") — a CPU-only worker has no internet and
@@ -80,7 +80,7 @@ kh.install_build_toolchain()
 # The carried-patch guard runs here too: it is cheap and this is a fresh clone,
 # so it also proves the branch on GitHub (not just the local tree) is intact.
 kh.step("patch.guard")
-rc, out = sh("./ci/check-crispasr-patches.sh", cwd=GGML)
+rc, out = sh("./ci/check-stelnettts-patches.sh", cwd=GGML)
 results["patch_guard"] = {"rc": rc, "out": out.strip()[-500:]}
 print(out, flush=True)
 

@@ -4,14 +4,14 @@
 the reference voice, WITHOUT the reference-language accent.
 
 subof reported CV3 cross-lingual clones sound heavily accented. Root cause:
-CrispASR always ran zero-shot (`text_ids = tokenize(voice.prompt_text) +
+StelnetTTS always ran zero-shot (`text_ids = tokenize(voice.prompt_text) +
 tokenize(target_text)`), prepending the reference's own transcript (its
 language) → phonetic bias. Fix (branch fix/304-cosyvoice3-se): when a target
 language (`-l`/`-tl`) differs from the reference voice's language, drop the
 reference TRANSCRIPT (keep the "helpful assistant" framing + the reference SPEECH
 tokens for timbre) so the target text drives the phonetics.
 
-This kernel builds crispasr from the branch with CUDA (CV3 runs natively+correct
+This kernel builds stelnettts from the branch with CUDA (CV3 runs natively+correct
 on CUDA — only Vulkan CPU-routes), then synthesizes:
   1. zeroshot_en_de : voice fleurs-en, GERMAN text, NO -l   (accented baseline)
   2. crossling_en_de: voice fleurs-en, GERMAN text, -l de   (should drop ref text)
@@ -34,13 +34,13 @@ MODELS = Path("/kaggle/temp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "crosslingual_results.json"
 
 HERE = Path(__file__).resolve().parent
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 BRANCH = "fix/304-cosyvoice3-se"
-CLONE = Path("/kaggle/temp/CrispASR")
+CLONE = Path("/kaggle/temp/StelnetTTS")
 if not CLONE.exists():
     try:
         subprocess.run(["git", "clone", "--depth", "1", "--branch", BRANCH,
-                        "--recurse-submodules", CRISPASR_URL, str(CLONE)],
+                        "--recurse-submodules", STELNETTTS_URL, str(CLONE)],
                        check=True, timeout=1200)
     except Exception as e:
         print(f"clone failed: {e}", flush=True)
@@ -62,7 +62,7 @@ HF_TOKEN = kh.resolve_hf_token()
 step("hf.token", present=bool(HF_TOKEN))
 from huggingface_hub import hf_hub_download
 
-CV3_REPO = "cstr/cosyvoice3-0.5b-2512-GGUF"
+CV3_REPO = "Xenna/cosyvoice3-0.5b-2512-GGUF"
 CV3_FILES = ["cosyvoice3-llm-q4_k.gguf", "cosyvoice3-flow-q8_0.gguf", "cosyvoice3-hift-f16.gguf",
              "cosyvoice3-s3tok-f16.gguf", "cosyvoice3-campplus-f16.gguf", "cosyvoice3-voices.gguf"]
 WHISPER_REPO, WHISPER_FILE = "ggerganov/whisper.cpp", "ggml-large-v3-turbo.bin"
@@ -78,13 +78,13 @@ CASES = [
 ]
 
 
-def build_crispasr():
+def build_stelnettts():
     kh.install_build_toolchain()
     src = CLONE
     if not (src / "ggml" / "CMakeLists.txt").exists():
         sh(f"cd {src} && git submodule update --init ggml", timeout=900)
     flags = (["-DCMAKE_BUILD_TYPE=Release", "-DGGML_NATIVE=OFF", "-DGGML_AVX2=ON",
-              "-DGGML_FMA=ON", "-DGGML_F16C=ON", "-DCRISPASR_OPUS_FETCH=ON"]
+              "-DGGML_FMA=ON", "-DGGML_F16C=ON", "-DSTELNETTTS_OPUS_FETCH=ON"]
              + kh.cuda_build_flags() + kh.cache_and_link_flags())
     step("build.configure", arch=kh.detect_cuda_arch())
     with kh.build_heartbeat("build.cmake", 30):
@@ -96,13 +96,13 @@ def build_crispasr():
     step("build.compile", jobs=jobs)
     with kh.build_heartbeat("build.ninja", 30):
         try:
-            kh.sh_with_progress(f"cmake --build build-cuda -j{jobs} --target crispasr", cwd=str(src))
+            kh.sh_with_progress(f"cmake --build build-cuda -j{jobs} --target stelnettts", cwd=str(src))
         except Exception as e:
             step("build.compile_FAILED", err=str(e)[-2000:])
             raise
-    binp = src / "build-cuda" / "bin" / "crispasr"
+    binp = src / "build-cuda" / "bin" / "stelnettts"
     if not binp.exists():
-        raise RuntimeError("crispasr binary not produced")
+        raise RuntimeError("stelnettts binary not produced")
     os.environ["LD_LIBRARY_PATH"] = str(binp.parent) + ":" + os.environ.get("LD_LIBRARY_PATH", "")
     ver = sh(f"{binp} --version")
     step("build.ready", backends=[l.split(":")[-1].strip() for l in ver.stdout.splitlines() if "backends" in l])
@@ -146,7 +146,7 @@ def asr_autodetect(binp, whisp, wav):
 
 
 def main():
-    binp = build_crispasr()
+    binp = build_stelnettts()
     llm, whisp = fetch_models()
     results = {"cases": {}}
     for label, voice, text, langflag, expect_xl in CASES:

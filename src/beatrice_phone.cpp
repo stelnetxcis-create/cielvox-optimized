@@ -286,7 +286,7 @@ beatrice_phone_context* beatrice_phone_init_from_file(const char* model_path, be
         return nullptr;
     }
 
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!c->backend)
         c->backend = core_cpu_backend::init();
 

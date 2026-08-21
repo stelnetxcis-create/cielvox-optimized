@@ -1,5 +1,5 @@
 """
-CrispASR -- Issue #183: GQA_NATIVE + chunked codec decode + scratch sched reset
+StelnetTTS -- Issue #183: GQA_NATIVE + chunked codec decode + scratch sched reset
 
 Tests the three changes from issue #183 on CUDA (Kaggle P100/T4):
   1. GQA_NATIVE: verify TTS still produces correct audio (ASR roundtrip).
@@ -7,7 +7,7 @@ Tests the three changes from issue #183 on CUDA (Kaggle P100/T4):
   3. Scratch sched reset: check VRAM doesn't grow across repeated requests.
   4. Scaling test: short vs long text to verify O(N) slope (not O(N^2)).
 
-Build from the feature branch, run qwen3-tts synthesis, ASR roundtrip.
+Build from the feature branch, run cielvox2-tts synthesis, ASR roundtrip.
 """
 
 import os
@@ -45,14 +45,14 @@ def _excepthook(exc_type, exc_val, exc_tb):
 sys.excepthook = _excepthook
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "worktree-issue-183-gqa-native")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "worktree-issue-183-gqa-native")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 
 SHORT_TEXT = "Please call Stella. Ask her to bring these things with her from the store."
@@ -92,7 +92,7 @@ def run(cmd, check=True, env=None, timeout=None):
 
 
 # -- Clone + CUDA build -------------------------------------------------
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 print(f"  disk: {shutil.disk_usage('/kaggle/working')}", flush=True)
 Path("/kaggle/working/started.txt").write_text("started\n")
 
@@ -100,15 +100,15 @@ if REPO.exists():
     shutil.rmtree(REPO)
 # Clone: try branch directly first, fall back to clone main + fetch branch
 r = subprocess.run([
-    "git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-    CRISPASR_REPO, str(REPO),
+    "git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+    STELNETTTS_REPO, str(REPO),
 ])
 if r.returncode != 0:
     print(f"  direct branch clone failed, trying main + fetch...", flush=True)
     if REPO.exists():
         shutil.rmtree(REPO)
-    run(["git", "clone", "--depth", "1", CRISPASR_REPO, str(REPO)])
-    run(["git", "-C", str(REPO), "fetch", "origin", CRISPASR_REF])
+    run(["git", "clone", "--depth", "1", STELNETTTS_REPO, str(REPO)])
+    run(["git", "-C", str(REPO), "fetch", "origin", STELNETTTS_REF])
     run(["git", "-C", str(REPO), "checkout", "FETCH_HEAD"])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
@@ -124,7 +124,7 @@ kh.resolve_hf_token()
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
 ).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 gpu_name = subprocess.check_output(
@@ -141,8 +141,8 @@ cmake_args = (
     [
         "cmake", "-S", str(REPO), "-B", str(BUILD),
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-        "-DCRISPASR_BUILD_TESTS=OFF",
-        "-DCRISPASR_AMR=OFF",  # opencore-amr FetchContent fails on Kaggle
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_AMR=OFF",  # opencore-amr FetchContent fails on Kaggle
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -151,17 +151,17 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
     cands = [
-        c for c in BUILD.rglob("crispasr")
+        c for c in BUILD.rglob("stelnettts")
         if c.is_file() and os.access(c, os.X_OK)
     ]
-    assert cands, "crispasr binary not found after build"
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -185,17 +185,17 @@ MODELS.mkdir(exist_ok=True)
 
 # 0.6B customvoice model (has built-in voices, no --voice ref needed)
 tts_model = Path(hf_hub_download(
-    "cstr/qwen3-tts-0.6b-customvoice-GGUF",
-    "qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf",
+    "Xenna/cielvox2-tts-0.6b-customvoice-GGUF",
+    "cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 tts_codec = Path(hf_hub_download(
-    "cstr/qwen3-tts-tokenizer-12hz-GGUF",
-    "qwen3-tts-tokenizer-12hz.gguf",
+    "Xenna/cielvox2-tts-tokenizer-12hz-GGUF",
+    "cielvox2-tts-tokenizer-12hz.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 asr_model = Path(hf_hub_download(
-    "cstr/parakeet-tdt-0.6b-v2-GGUF",
+    "Xenna/parakeet-tdt-0.6b-v2-GGUF",
     "parakeet-tdt-0.6b-v2-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
@@ -219,20 +219,20 @@ def gpu_mem_mb():
 
 # -- Helper: run TTS synthesis -------------------------------------------
 def run_tts(label, text, extra_env=None, timeout=600):
-    """Run qwen3-tts synthesis and return dict with results."""
+    """Run cielvox2-tts synthesis and return dict with results."""
     kh.step(f"{label}.start")
     out_wav = WORK / f"tts-{label}.wav"
     if out_wav.exists():
         out_wav.unlink()
 
     env = {
-        "QWEN3_TTS_BENCH": "1",
+        "CIELVOX2_TTS_BENCH": "1",
     }
     if extra_env:
         env.update(extra_env)
 
     cmd = [
-        str(CLI), "--backend", "qwen3-tts-customvoice",
+        str(CLI), "--backend", "cielvox2-tts-customvoice",
         "-m", str(tts_model),
         "--codec-model", str(tts_codec),
         "--tts", text,
@@ -269,7 +269,7 @@ def run_tts(label, text, extra_env=None, timeout=600):
 
     # Extract perf line
     perf_match = re.search(
-        r"qwen3_tts: perf.*?total=([\d.]+)\s+ms.*?audio=([\d.]+)\s+s.*?rtf=([\d.]+)",
+        r"cielvox2_tts: perf.*?total=([\d.]+)\s+ms.*?audio=([\d.]+)\s+s.*?rtf=([\d.]+)",
         combined,
     )
     total_ms = float(perf_match.group(1)) if perf_match else None
@@ -378,7 +378,7 @@ print("=" * 64, flush=True)
 
 # Re-run short text with chunking disabled to compare output
 nochunk = run_tts("nochunk", SHORT_TEXT,
-                  extra_env={"QWEN3_TTS_CODEC_CHUNK": "0"})
+                  extra_env={"CIELVOX2_TTS_CODEC_CHUNK": "0"})
 
 # Compare WAV sizes (should be identical since same codes, just different decode path)
 if short["wav_ok"] and nochunk["wav_ok"]:

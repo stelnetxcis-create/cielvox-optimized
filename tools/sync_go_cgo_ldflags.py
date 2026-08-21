@@ -3,7 +3,7 @@
 the CMake dependency graph.
 
 Usage:
-    python tools/sync_go_cgo_ldflags.py [--check] [--dot /path/to/crispasr.dot]
+    python tools/sync_go_cgo_ldflags.py [--check] [--dot /path/to/stelnettts.dot]
 
 Without --dot, runs cmake --graphviz to generate a fresh dot file.
 With --check, exits non-zero if whisper.go would change (CI drift check).
@@ -34,25 +34,25 @@ DARWIN_EXTRA_LIBS = ["-lggml-metal", "-lggml-blas"]
 EXCLUDE_LIBS = {"common", "ggml-metal", "ggml-blas"}
 
 # CMake target names that differ from their OUTPUT_NAME. The linker
-# sees the output filename (libcrispasr.a), not the cmake target name
-# (crispasr-lib). Map target → output name here.
-LIB_NAME_MAP = {"crispasr-lib": "crispasr"}
+# sees the output filename (libstelnettts.a), not the cmake target name
+# (stelnettts-lib). Map target → output name here.
+LIB_NAME_MAP = {"stelnettts-lib": "stelnettts"}
 
 
 def generate_dot(dot_path):
     """Run cmake --graphviz to produce the dependency dot file."""
-    build_dir = os.path.join(tempfile.gettempdir(), "crispasr_graphviz_build")
+    build_dir = os.path.join(tempfile.gettempdir(), "stelnettts_graphviz_build")
     cmd = [
         "cmake",
         "-S", REPO_ROOT,
         "-B", build_dir,
         "--graphviz", dot_path,
         "-DBUILD_SHARED_LIBS=OFF",
-        "-DCRISPASR_BUILD_TESTS=OFF",
-        "-DCRISPASR_BUILD_EXAMPLES=OFF",
-        "-DCRISPASR_BUILD_SERVER=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_BUILD_EXAMPLES=OFF",
+        "-DSTELNETTTS_BUILD_SERVER=OFF",
         "-DGGML_CUDA=OFF",
-        "-DCRISPASR_OPUS_FETCH=ON",
+        "-DSTELNETTTS_OPUS_FETCH=ON",
     ]
     subprocess.run(cmd, check=True, capture_output=True)
 
@@ -62,7 +62,7 @@ def get_libs(dot_path):
     sys.path.insert(0, SCRIPT_DIR)
     from cmake_graphviz_targets import get_static_libs
 
-    libs = get_static_libs(dot_path, ["crispasr-lib"])
+    libs = get_static_libs(dot_path, ["stelnettts-lib"])
     return [LIB_NAME_MAP.get(lib, lib) for lib in libs if lib not in EXCLUDE_LIBS]
 
 
@@ -92,7 +92,7 @@ RE_DARWIN_LIBS = re.compile(
 
 def sync(dot_path=None, check=False):
     if dot_path is None:
-        dot_path = os.path.join(tempfile.gettempdir(), "crispasr_sync.dot")
+        dot_path = os.path.join(tempfile.gettempdir(), "stelnettts_sync.dot")
         print(f"Generating dot file at {dot_path} ...", file=sys.stderr)
         generate_dot(dot_path)
 

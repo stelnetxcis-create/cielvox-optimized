@@ -1,11 +1,11 @@
-# CrispASR — MOSS-TTS-Local-Transformer-v1.5 (4B) Kaggle validation (#249, P5)
+# StelnetTTS — MOSS-TTS-Local-Transformer-v1.5 (4B) Kaggle validation (#249, P5)
 #
 # Rebuilt on the proven harness regime (kaggle_usage.md + gemma4-e4b-convert):
-#   - kh.init_progress() mirrors progress.jsonl to HF cstr/crispasr-kaggle-progress
+#   - kh.init_progress() mirrors progress.jsonl to HF Xenna/stelnettts-kaggle-progress
 #     (requires os.environ["HF_TOKEN"] so the push fires) -> externally watchable.
 #   - kh.step() at EVERY phase; kh.build_heartbeat() around the build.
 #   - hf_transfer for downloads (no http_get CLOSE_WAIT hang).
-#   - ccache warmed from chr1s4/crispasr-ccache, MOVED off /kaggle/working (§22).
+#   - ccache warmed from chr1s4/stelnettts-ccache, MOVED off /kaggle/working (§22).
 #   - everything large under /kaggle/temp (or /tmp), /kaggle/working stays small.
 #
 # Acceptance (HARD RULE #3): the decoded ASR round-trip. All fixes in place:
@@ -27,18 +27,18 @@ os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"  # hf_transfer re-fetches from 0 (
 
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
 WORK = Path("/kaggle/working")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TEMP / "moss-local-models"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 MODELS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-local-4b")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-local-4b")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 HF_MODEL = os.environ.get("MOSS_MODEL", "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5")
 HF_CODEC = os.environ.get("MOSS_CODEC", "OpenMOSS-Team/MOSS-Audio-Tokenizer-v2")
-GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "cstr/moss-tts-local-v1.5-GGUF")
+GGUF_REPO = os.environ.get("MOSS_GGUF_REPO", "Xenna/moss-tts-local-v1.5-GGUF")
 DO_UPLOAD = os.environ.get("MOSS_UPLOAD", "1") == "1"
 
 SHORT_TEXT = "Hello world."
@@ -75,14 +75,14 @@ def asr_roundtrip(cli, wav, timeout=900):
                            timeout=timeout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         (RESULTS / f"{wav.stem}.asr.log").write_text(r.stdout)
         lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
-        return " ".join(ln for ln in lines if not ln.startswith(("[", "whisper", "ggml", "load", "crispasr")))
+        return " ".join(ln for ln in lines if not ln.startswith(("[", "whisper", "ggml", "load", "stelnettts")))
     except Exception as ex:  # noqa: BLE001
         return f"<asr-error: {type(ex).__name__}>"
 
 
 def synth(cli, backbone, codec, text, out_wav, timeout=2400):
     env = os.environ.copy()
-    env["CRISPASR_MOSS_TTS_LOCAL_DEBUG"] = "1"
+    env["STELNETTTS_MOSS_TTS_LOCAL_DEBUG"] = "1"
     t0 = time.time()
     try:
         r = subprocess.run([str(cli), "--backend", "moss-tts-local", "-m", backbone, "--codec-model", codec,
@@ -122,18 +122,18 @@ def word_overlap(asr_text, ref_text):
 def main():
     # ── harness + progress mirror ──────────────────────────────────────────
     if not REPO.exists():
-        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-                               CRISPASR_REPO, str(REPO)])
+        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+                               STELNETTTS_REPO, str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     if str(REPO / "tools" / "kaggle") not in sys.path:
         sys.path.insert(0, str(Path(__file__).resolve().parent))  # bundled fallback
     import kaggle_harness as kh
-    kh.init_progress()  # mirrors to HF cstr/crispasr-kaggle-progress once HF_TOKEN is set
+    kh.init_progress()  # mirrors to HF Xenna/stelnettts-kaggle-progress once HF_TOKEN is set
     # Fixed, identifiable HF progress path (the default is <ts>-batch-unknown.jsonl,
-    # indistinguishable from every other CrispASR kernel on the shared mirror).
+    # indistinguishable from every other StelnetTTS kernel on the shared mirror).
     kh._HF_PROGRESS_PATH = "runs/moss-tts-local-validate-live.jsonl"
     kh._HF_PUSH_INTERVAL_S = 15.0
-    summary = {"ref": CRISPASR_REF, "gates": {}, "roundtrip": {}, "phases": {}}
+    summary = {"ref": STELNETTTS_REF, "gates": {}, "roundtrip": {}, "phases": {}}
     summary["sha"] = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
     kh.step("cloned", sha=summary["sha"][:10])
 
@@ -165,11 +165,11 @@ def main():
                    + list(kh.cache_and_link_flags()) + list(kh.cuda_build_flags(arch)),
                    check=True, timeout=300)
     with kh.build_heartbeat("cmake.build"):
-        kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli crispasr-quantize "
+        kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli stelnettts-quantize "
                             f"-j{kh.safe_build_jobs(gpu=True)}")
-    cli = next((c for c in [BUILD / "bin" / "crispasr"] + list(BUILD.rglob("crispasr"))
+    cli = next((c for c in [BUILD / "bin" / "stelnettts"] + list(BUILD.rglob("stelnettts"))
                 if c.is_file() and os.access(c, os.X_OK)), None)
-    quant = next((c for c in [BUILD / "bin" / "crispasr-quantize"] + list(BUILD.rglob("crispasr-quantize"))
+    quant = next((c for c in [BUILD / "bin" / "stelnettts-quantize"] + list(BUILD.rglob("stelnettts-quantize"))
                   if c.is_file() and os.access(c, os.X_OK)), None)
     if not cli or not quant:
         raise SystemExit(f"binaries missing cli={cli} quant={quant}")

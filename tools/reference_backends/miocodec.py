@@ -1,4 +1,4 @@
-"""MioCodec v2 reference backend — per-stage dumper for crispasr-diff.
+"""MioCodec v2 reference backend — per-stage dumper for stelnettts-diff.
 
 Model: Aratako/MioCodec-25Hz-44.1kHz-v2 (MIT, 133M params).
 Architecture: WavLM encoder → FSQ quantizer → wave decoder (Transformer + AdaLN-Zero + iSTFT).

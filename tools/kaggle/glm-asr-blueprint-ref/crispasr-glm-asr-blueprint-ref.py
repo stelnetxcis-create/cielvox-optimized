@@ -1,5 +1,5 @@
 """
-CrispASR — GLM-ASR-Nano HF-blueprint ground truth for #218 long-form parity
+StelnetTTS — GLM-ASR-Nano HF-blueprint ground truth for #218 long-form parity
 
 Runs the REAL `GlmAsrForConditionalGeneration` (transformers >= 5) on the
 canonical 145 s clip and on jfk.wav, greedy, bf16, and dumps:
@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path("/kaggle/working")
 # Repo goes to /tmp so kernels_output stays small (results/ + progress only).
-REPO = Path("/tmp/CrispASR")
+REPO = Path("/tmp/StelnetTTS")
 AUDIO_DIR = ROOT / "audio"
 OUT_DIR = ROOT / "results"
 for d in (AUDIO_DIR, OUT_DIR):
@@ -33,11 +33,11 @@ for d in (AUDIO_DIR, OUT_DIR):
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 if not REPO.exists():
     subprocess.run(
-        f"git clone --depth 1 --branch {CRISPASR_REF} "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO}",
+        f"git clone --depth 1 --branch {STELNETTTS_REF} "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO}",
         shell=True, check=True,
     )
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))

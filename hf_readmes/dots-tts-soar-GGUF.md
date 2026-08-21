@@ -3,7 +3,7 @@ license: apache-2.0
 language:
   - en
   - zh
-library_name: crispasr
+library_name: stelnettts
 pipeline_tag: text-to-speech
 tags:
   - text-to-speech
@@ -11,15 +11,15 @@ tags:
   - gguf
   - dots-tts
   - flow-matching
-  - crispasr
+  - stelnettts
 base_model: dots/dots.tts-soar
 ---
 
-# dots.tts-soar — GGUF (CrispASR)
+# dots.tts-soar — GGUF (StelnetTTS)
 
 GGUF conversions of [**dots.tts-soar**](https://huggingface.co/dots/dots.tts-soar),
 a continuous-latent autoregressive text-to-speech model, for use with
-[**CrispASR**](https://github.com/CrispStrobe/CrispASR) — a portable
+[**StelnetTTS**](https://github.com/Cyna/StelnetTTS) — a portable
 C/C++ speech engine built on `ggml`. No Python or PyTorch needed at
 inference time; runs on CPU (Metal/CUDA/Vulkan optional).
 
@@ -54,11 +54,11 @@ projections, embeddings and denormalization statistics at source precision.
 Result: `q8_0` and `q4_k` are ASR-roundtrip-verbatim against F16, at a
 fraction of the size. **Do not re-quantize the DiT yourself.**
 
-## Usage (CrispASR)
+## Usage (StelnetTTS)
 
 ```bash
-# Build CrispASR (see repo README), then:
-./build/bin/crispasr --backend dots-tts \
+# Build StelnetTTS (see repo README), then:
+./build/bin/stelnettts --backend dots-tts \
   -m dots-tts-soar-q8_0.gguf \
   --tts "Hello world." \
   --tts-output out.wav
@@ -79,9 +79,9 @@ automatically with `-m auto --backend dots-tts`.
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `CRISPASR_DOTS_MAX_PATCHES`   | 256 | Hard cap on generated audio patches |
-| `CRISPASR_DOTS_ODE_STEPS`     | 16  | Flow-matching Euler steps (quality vs speed) |
-| `CRISPASR_DOTS_EOS_THRESHOLD` | 0.8 | End-of-speech probability threshold |
+| `STELNETTTS_DOTS_MAX_PATCHES`   | 256 | Hard cap on generated audio patches |
+| `STELNETTTS_DOTS_ODE_STEPS`     | 16  | Flow-matching Euler steps (quality vs speed) |
+| `STELNETTTS_DOTS_EOS_THRESHOLD` | 0.8 | End-of-speech probability threshold |
 
 ## Architecture
 
@@ -104,6 +104,6 @@ Apache-2.0, inherited from the upstream
 ## Conversion
 
 Converted and validated stage-by-stage (per-component cosine against the
-PyTorch reference) with the CrispASR diff harness. Mixed-quant produced by
-`crispasr-quantize`, which automatically preserves the DiT and all
+PyTorch reference) with the StelnetTTS diff harness. Mixed-quant produced by
+`stelnettts-quantize`, which automatically preserves the DiT and all
 sampling-critical tensors at F16.

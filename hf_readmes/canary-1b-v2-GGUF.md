@@ -44,7 +44,7 @@ base_model: nvidia/canary-1b-v2
 
 # Canary 1B v2 — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2) for use with the `canary-main` CLI from **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**.
+GGUF / ggml conversions of [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2) for use with the `canary-main` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.
 
 Canary 1B v2 is NVIDIA's 978 M-parameter multilingual ASR + speech translation model:
 
@@ -53,7 +53,7 @@ Canary 1B v2 is NVIDIA's 978 M-parameter multilingual ASR + speech translation m
 - **7.15% avg WER** on the HuggingFace Open ASR Leaderboard (English) — competitive with Whisper-large-v3 at 1/1.6× the size
 - **CC-BY-4.0** licence
 
-This is the encoder–decoder companion to **[`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF)**, which is the same FastConformer encoder family but with a TDT decoder for ASR-only. Both share the runtime and were ported in the same fork.
+This is the encoder–decoder companion to **[`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF)**, which is the same FastConformer encoder family but with a TDT decoder for ASR-only. Both share the runtime and were ported in the same fork.
 
 ## Files
 
@@ -68,13 +68,13 @@ This is the encoder–decoder companion to **[`cstr/parakeet-tdt-0.6b-v3-GGUF`](
 
 ```bash
 # 1. Build the runtime
-git clone -b parakeet https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone -b parakeet https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target canary-main
 
 # 2. Download a quantisation
-huggingface-cli download cstr/canary-1b-v2-GGUF \
+huggingface-cli download Xenna/canary-1b-v2-GGUF \
     canary-1b-v2-q4_k.gguf --local-dir .
 
 # 3. ASR (English → English)
@@ -105,7 +105,7 @@ huggingface-cli download cstr/canary-1b-v2-GGUF \
 
 ## Why explicit language tokens?
 
-Auto-detect language ID can misfire on accented or noisy speech. We tested parakeet (which has no `-l` flag and relies on auto-detect) on the same German clips and it picked **Russian** for Angela Merkel and **code-switched into English** on Sarma's recording. Canary's `-sl LANG` removes that whole class of failures by telling the decoder explicitly what language to expect — see [`test_german.md`](https://github.com/CrispStrobe/CrispASR/blob/parakeet/test_german.md) in the runtime repo.
+Auto-detect language ID can misfire on accented or noisy speech. We tested parakeet (which has no `-l` flag and relies on auto-detect) on the same German clips and it picked **Russian** for Angela Merkel and **code-switched into English** on Sarma's recording. Canary's `-sl LANG` removes that whole class of failures by telling the decoder explicitly what language to expect — see [`test_german.md`](https://github.com/Cyna/StelnetTTS/blob/parakeet/test_german.md) in the runtime repo.
 
 ## Supported languages
 
@@ -135,9 +135,9 @@ The mel filterbank and Hann window are baked into the GGUF (`preprocessor.fb` an
 ## How this was made
 
 1. **Inspect** the `.nemo` tarball: 1510 tensors total — encoder (1294), `transf_decoder` (214), `log_softmax` head (2), preprocessor (2). Skipped the auxiliary `timestamps_asr_model_weights.ckpt` which is the separate Parakeet CTC model used by NeMo Forced Aligner for segment-level timestamps.
-2. **Convert** with [`models/convert-canary-to-gguf.py`](https://github.com/CrispStrobe/CrispASR/blob/parakeet/models/convert-canary-to-gguf.py): remap NeMo state-dict keys (`transf_decoder._embedding.token_embedding` → `decoder.embed`, `first_sub_layer.query_net` → `sa_q`, etc.) and write 1478 tensors as F16 (matmul) + F32 (norms / biases / mel filterbank). 1.97 GB GGUF.
-3. **C++ runtime** in [`src/canary.{h,cpp}`](https://github.com/CrispStrobe/CrispASR/blob/parakeet/src/canary.cpp): mmap the GGUF, fold BN into the depthwise conv at load time, build the encoder graph (32-layer FastConformer with biases), build the decoder graph per step (with self-attention KV cache + pre-computed cross-K/V), greedy decode with task-token prompt, detokenise via SentencePiece.
-4. **Quantise** with [`crispasr-quantize`](https://github.com/CrispStrobe/CrispASR/blob/parakeet/examples/cohere-main/crispasr-quantize.cpp): same llama.cpp-style quantiser used for the other GGUFs in this family.
+2. **Convert** with [`models/convert-canary-to-gguf.py`](https://github.com/Cyna/StelnetTTS/blob/parakeet/models/convert-canary-to-gguf.py): remap NeMo state-dict keys (`transf_decoder._embedding.token_embedding` → `decoder.embed`, `first_sub_layer.query_net` → `sa_q`, etc.) and write 1478 tensors as F16 (matmul) + F32 (norms / biases / mel filterbank). 1.97 GB GGUF.
+3. **C++ runtime** in [`src/canary.{h,cpp}`](https://github.com/Cyna/StelnetTTS/blob/parakeet/src/canary.cpp): mmap the GGUF, fold BN into the depthwise conv at load time, build the encoder graph (32-layer FastConformer with biases), build the decoder graph per step (with self-attention KV cache + pre-computed cross-K/V), greedy decode with task-token prompt, detokenise via SentencePiece.
+4. **Quantise** with [`stelnettts-quantize`](https://github.com/Cyna/StelnetTTS/blob/parakeet/examples/cohere-main/stelnettts-quantize.cpp): same llama.cpp-style quantiser used for the other GGUFs in this family.
 
 ## Comparison with Parakeet TDT 0.6B v3
 
@@ -155,16 +155,16 @@ The mel filterbank and Hann window are baked into the GGUF (`preprocessor.fb` an
 ## Attribution
 
 - **Original model:** [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2) (CC-BY-4.0). NVIDIA NeMo team. See the [Canary-1B-v2 & Parakeet-TDT-0.6B-v3 technical report](https://arxiv.org/abs/2509.14128).
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR@parakeet`](https://github.com/CrispStrobe/CrispASR/tree/parakeet). The decoder structure was cross-checked against NeMo's `transformer_decoders.py` and `transformer_modules.py` source.
-- **Encoder graph patterns:** shared between cohere/parakeet/canary in the same fork, originally adapted for the [CrispASR ggml branch](https://github.com/CrispStrobe/CrispASR/tree/ggml).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS@parakeet`](https://github.com/Cyna/StelnetTTS/tree/parakeet). The decoder structure was cross-checked against NeMo's `transformer_decoders.py` and `transformer_modules.py` source.
+- **Encoder graph patterns:** shared between cohere/parakeet/canary in the same fork, originally adapted for the [StelnetTTS ggml branch](https://github.com/Cyna/StelnetTTS/tree/ggml).
 
 ## Related
 
-- C++ runtime: **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**
-- Sister model (ASR-only, smaller, with word timestamps): [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF)
-- Sister runtime (Cohere Transcribe, lowest English WER): [`cstr/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF)
-- ONNX INT4 (Cohere): [`cstr/cohere-transcribe-onnx-int4`](https://huggingface.co/cstr/cohere-transcribe-onnx-int4)
-- ONNX INT8 (Cohere): [`cstr/cohere-transcribe-onnx-int8`](https://huggingface.co/cstr/cohere-transcribe-onnx-int8)
+- C++ runtime: **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**
+- Sister model (ASR-only, smaller, with word timestamps): [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF)
+- Sister runtime (Cohere Transcribe, lowest English WER): [`Xenna/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF)
+- ONNX INT4 (Cohere): [`Xenna/cohere-transcribe-onnx-int4`](https://huggingface.co/Xenna/cohere-transcribe-onnx-int4)
+- ONNX INT8 (Cohere): [`Xenna/cohere-transcribe-onnx-int8`](https://huggingface.co/Xenna/cohere-transcribe-onnx-int8)
 
 ## License
 

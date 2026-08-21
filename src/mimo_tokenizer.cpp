@@ -23,7 +23,7 @@
 // Notes:
 // - The graph is CPU-pinned by default for the encoder (the conv stem is
 //   the same shape that hit the M1 `kernel_conv_transpose_1d` watchdog
-//   on qwen3-tts; this is forward conv, not transpose, but we start
+//   on cielvox2-tts; this is forward conv, not transpose, but we start
 //   conservative until validated against the Python ref dumper).
 // - The 16 → 24 kHz resampler is a simple polyphase sinc (Hann window,
 //   lowpass_filter_width=6) approximating torchaudio's default
@@ -39,7 +39,7 @@
 #include "core/gguf_loader.h"
 #include "core/mel.h"
 #include "core/rvq.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
 #if defined(GGML_USE_CUDA)
@@ -428,7 +428,7 @@ extern "C" struct mimo_tokenizer_context* mimo_tokenizer_init_from_file(const ch
         return nullptr;
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -438,9 +438,9 @@ extern "C" struct mimo_tokenizer_context* mimo_tokenizer_init_from_file(const ch
     // resolution (CPU-buffer weights now pin their ops to CPU), which made
     // the whole encoder silently CPU-only on GPU builds (§224e). All weight
     // reads here go through ggml_backend_tensor_get (device-safe), so full
-    // GPU residency is fine. CRISPASR_MIMO_TOK_CPU=1 forces CPU weights.
+    // GPU residency is fine. STELNETTTS_MIMO_TOK_CPU=1 forces CPU weights.
     ggml_backend_t weights_be = ctx->backend;
-    if (const char* e = std::getenv("CRISPASR_MIMO_TOK_CPU"); e && *e && *e != '0')
+    if (const char* e = std::getenv("STELNETTTS_MIMO_TOK_CPU"); e && *e && *e != '0')
         weights_be = ctx->backend_cpu;
 #if defined(GGML_USE_CUDA)
     ctx->cuda_rvq_available = weights_be == ctx->backend && ggml_backend_is_cuda(ctx->backend);
@@ -588,7 +588,7 @@ extern "C" void mimo_tokenizer_set_n_threads(struct mimo_tokenizer_context* ctx,
 // ===========================================================================
 
 static bool mimo_tok_gpu_rvq_enabled(const mimo_tokenizer_context* ctx) {
-    const char* force_cpu = std::getenv("CRISPASR_MIMO_TOK_CPU_RVQ");
+    const char* force_cpu = std::getenv("STELNETTTS_MIMO_TOK_CPU_RVQ");
     return ctx && ctx->cuda_rvq_available && !(force_cpu && *force_cpu && *force_cpu != '0');
 }
 

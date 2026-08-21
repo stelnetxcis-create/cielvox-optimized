@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Live regression tests for session beam_size wiring (PLAN #90).
 
-Verifies that crispasr_session_set_beam_size > 1 produces non-empty
+Verifies that stelnettts_session_set_beam_size > 1 produces non-empty
 transcription from the three backends newly wired in commit 0c24178e:
-  - qwen3-asr
+  - cielvox2-asr
   - granite / granite-4.1
   - voxtral
 
@@ -12,20 +12,20 @@ absent, so this file stays green in any partial build environment.
 
 Two test classes:
 
-  TestBeamSizeSymbol   — static: crispasr_session_set_beam_size is
+  TestBeamSizeSymbol   — static: stelnettts_session_set_beam_size is
                          exported from the shared library and returns
                          -1 on a null handle.  No model, no network.
 
   TestBeamSizeLive     — live: opens a session for each backend with
                          beam_size=2, transcribes samples/jfk.wav,
                          asserts non-empty output.  Model files are
-                         resolved via CRISPASR_{BACKEND}_MODEL env
+                         resolved via STELNETTTS_{BACKEND}_MODEL env
                          vars or well-known local paths.
 
 Run:
   python tests/test_beam_size_live.py
   pytest tests/test_beam_size_live.py -v
-  CRISPASR_QWEN3_MODEL=/path/to/qwen3-asr.gguf pytest tests/test_beam_size_live.py -v
+  STELNETTTS_QWEN3_MODEL=/path/to/cielvox2-asr.gguf pytest tests/test_beam_size_live.py -v
 """
 
 import ctypes
@@ -45,12 +45,12 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "python"))
 
 BIN = os.environ.get(
-    "CRISPASR_BIN",
-    str(REPO / "build-ninja-compile" / "bin" / "crispasr"),
+    "STELNETTTS_BIN",
+    str(REPO / "build-ninja-compile" / "bin" / "stelnettts"),
 )
 SAMPLE = str(REPO / "samples" / "jfk.wav")
 
-_MODEL_DIR = Path("/Volumes/backups/ai/crispasr")
+_MODEL_DIR = Path("/Volumes/backups/ai/stelnettts")
 
 # Per-backend model resolution: env var > well-known path > None (skip).
 def _model(env_var: str, filename: str) -> str:
@@ -63,12 +63,12 @@ def _model(env_var: str, filename: str) -> str:
     return ""
 
 
-QWEN3_MODEL = _model("CRISPASR_QWEN3_MODEL", "qwen3-asr-0.6b-q4_k.gguf")
-GRANITE_MODEL = _model("CRISPASR_GRANITE_MODEL", "granite-speech-4.1-2b-q4_k.gguf")
-VOXTRAL_MODEL = _model("CRISPASR_VOXTRAL_MODEL", "voxtral-mini-3b-2507-q4_k.gguf")
+QWEN3_MODEL = _model("STELNETTTS_QWEN3_MODEL", "cielvox2-asr-0.6b-q4_k.gguf")
+GRANITE_MODEL = _model("STELNETTTS_GRANITE_MODEL", "granite-speech-4.1-2b-q4_k.gguf")
+VOXTRAL_MODEL = _model("STELNETTTS_VOXTRAL_MODEL", "voxtral-mini-3b-2507-q4_k.gguf")
 
 # Shared library path (same resolution as test_session_setters.py).
-LIB_PATH = os.environ.get("CRISPASR_LIB")
+LIB_PATH = os.environ.get("STELNETTTS_LIB")
 if not LIB_PATH:
     for _candidate in [
         REPO / "build-ninja-compile" / "src" / "libwhisper.dylib",
@@ -86,9 +86,9 @@ if not LIB_PATH:
 # ---------------------------------------------------------------------------
 
 
-@unittest.skipUnless(LIB_PATH, "libcrispasr not built — set CRISPASR_LIB or build first")
+@unittest.skipUnless(LIB_PATH, "libstelnettts not built — set STELNETTTS_LIB or build first")
 class TestBeamSizeSymbol(unittest.TestCase):
-    """crispasr_session_set_beam_size must be exported and return -1 on null."""
+    """stelnettts_session_set_beam_size must be exported and return -1 on null."""
 
     @classmethod
     def setUpClass(cls):
@@ -96,18 +96,18 @@ class TestBeamSizeSymbol(unittest.TestCase):
 
     def test_symbol_exported(self):
         self.assertTrue(
-            hasattr(self.lib, "crispasr_session_set_beam_size"),
-            "crispasr_session_set_beam_size not found in shared library",
+            hasattr(self.lib, "stelnettts_session_set_beam_size"),
+            "stelnettts_session_set_beam_size not found in shared library",
         )
 
     def test_null_handle_returns_neg1(self):
-        fn = self.lib.crispasr_session_set_beam_size
+        fn = self.lib.stelnettts_session_set_beam_size
         fn.argtypes = [ctypes.c_void_p, ctypes.c_int]
         fn.restype = ctypes.c_int
         self.assertEqual(fn(None, 2), -1)
 
     def test_beam_size_1_returns_neg1_on_null(self):
-        fn = self.lib.crispasr_session_set_beam_size
+        fn = self.lib.stelnettts_session_set_beam_size
         fn.argtypes = [ctypes.c_void_p, ctypes.c_int]
         fn.restype = ctypes.c_int
         self.assertEqual(fn(None, 1), -1)
@@ -118,7 +118,7 @@ class TestBeamSizeSymbol(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@unittest.skipUnless(os.path.exists(BIN), f"crispasr binary not found at {BIN}")
+@unittest.skipUnless(os.path.exists(BIN), f"stelnettts binary not found at {BIN}")
 @unittest.skipUnless(os.path.exists(SAMPLE), f"sample not found: {SAMPLE}")
 class TestBeamSizeLiveCLI(unittest.TestCase):
     """CLI-level smoke test: --beam-size 2 does not crash and produces output."""
@@ -127,20 +127,20 @@ class TestBeamSizeLiveCLI(unittest.TestCase):
         cmd = [BIN, "--backend", backend, "-m", model,
                "--beam-size", "2", SAMPLE] + list(extra_args)
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        self.assertEqual(r.returncode, 0, f"crispasr failed:\n{r.stderr}")
+        self.assertEqual(r.returncode, 0, f"stelnettts failed:\n{r.stderr}")
         return (r.stdout + r.stderr).strip()
 
-    @unittest.skipUnless(QWEN3_MODEL, "qwen3-asr model not found — set CRISPASR_QWEN3_MODEL")
-    def test_qwen3_asr_beam2(self):
+    @unittest.skipUnless(QWEN3_MODEL, "cielvox2-asr model not found — set STELNETTTS_QWEN3_MODEL")
+    def test_cielvox2_asr_beam2(self):
         out = self._run("qwen3", QWEN3_MODEL)
-        self.assertTrue(len(out) > 0, "qwen3-asr beam=2 produced no output")
+        self.assertTrue(len(out) > 0, "cielvox2-asr beam=2 produced no output")
 
-    @unittest.skipUnless(GRANITE_MODEL, "granite model not found — set CRISPASR_GRANITE_MODEL")
+    @unittest.skipUnless(GRANITE_MODEL, "granite model not found — set STELNETTTS_GRANITE_MODEL")
     def test_granite_beam2(self):
         out = self._run("granite-4.1", GRANITE_MODEL)
         self.assertTrue(len(out) > 0, "granite beam=2 produced no output")
 
-    @unittest.skipUnless(VOXTRAL_MODEL, "voxtral model not found — set CRISPASR_VOXTRAL_MODEL")
+    @unittest.skipUnless(VOXTRAL_MODEL, "voxtral model not found — set STELNETTTS_VOXTRAL_MODEL")
     def test_voxtral_beam2(self):
         out = self._run("voxtral", VOXTRAL_MODEL)
         self.assertTrue(len(out) > 0, "voxtral beam=2 produced no output")
@@ -151,10 +151,10 @@ class TestBeamSizeLivePython(unittest.TestCase):
 
     def setUp(self):
         try:
-            from crispasr import Session  # noqa: F401
+            from stelnettts import Session  # noqa: F401
             self._Session = Session
         except ImportError as exc:
-            self.skipTest(f"crispasr Python package not importable: {exc}")
+            self.skipTest(f"stelnettts Python package not importable: {exc}")
         if not os.path.exists(SAMPLE):
             self.skipTest(f"sample not found: {SAMPLE}")
 
@@ -174,10 +174,10 @@ class TestBeamSizeLivePython(unittest.TestCase):
         finally:
             s.close()
 
-    @unittest.skipUnless(QWEN3_MODEL, "qwen3-asr model not found")
-    def test_qwen3_asr_beam2_python(self):
+    @unittest.skipUnless(QWEN3_MODEL, "cielvox2-asr model not found")
+    def test_cielvox2_asr_beam2_python(self):
         text = self._transcribe_with_beam(QWEN3_MODEL, "qwen3")
-        self.assertTrue(len(text) > 0, f"qwen3-asr beam=2 returned empty text (got {text!r})")
+        self.assertTrue(len(text) > 0, f"cielvox2-asr beam=2 returned empty text (got {text!r})")
 
     @unittest.skipUnless(GRANITE_MODEL, "granite model not found")
     def test_granite_beam2_python(self):

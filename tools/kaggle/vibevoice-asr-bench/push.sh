@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-jupytext --to ipynb "$DIR/crispasr-vibevoice-asr-bench.py" \
-    --output "$DIR/crispasr-vibevoice-asr-bench.ipynb"
-python - <<'PY' "$DIR/crispasr-vibevoice-asr-bench.ipynb"
+jupytext --to ipynb "$DIR/stelnettts-vibevoice-asr-bench.py" \
+    --output "$DIR/stelnettts-vibevoice-asr-bench.ipynb"
+python - <<'PY' "$DIR/stelnettts-vibevoice-asr-bench.ipynb"
 import json, sys
 nb = json.load(open(sys.argv[1]))
 nb["metadata"]["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}

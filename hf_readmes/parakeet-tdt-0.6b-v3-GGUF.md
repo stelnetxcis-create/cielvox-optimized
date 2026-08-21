@@ -43,7 +43,7 @@ base_model: nvidia/parakeet-tdt-0.6b-v3
 
 # Parakeet TDT 0.6B v3 — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`nvidia/parakeet-tdt-0.6b-v3`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) for use with the `parakeet-main` CLI from **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**.
+GGUF / ggml conversions of [`nvidia/parakeet-tdt-0.6b-v3`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) for use with the `parakeet-main` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.
 
 Parakeet TDT 0.6B v3 is NVIDIA's 600 M-parameter multilingual ASR model:
 
@@ -52,7 +52,7 @@ Parakeet TDT 0.6B v3 is NVIDIA's 600 M-parameter multilingual ASR model:
 - **6.34 % avg WER** on the HuggingFace Open ASR Leaderboard
 - **CC-BY-4.0** licence (friendlier than most ASR models)
 
-This repo provides four quantisations, all converted from the same `.nemo` checkpoint via the streaming `convert-parakeet-to-gguf.py` script and quantised with `crispasr-quantize`.
+This repo provides four quantisations, all converted from the same `.nemo` checkpoint via the streaming `convert-parakeet-to-gguf.py` script and quantised with `stelnettts-quantize`.
 
 ## Files
 
@@ -70,13 +70,13 @@ All quantisations produce identical text on `samples/jfk.wav`:
 
 ```bash
 # 1. Build the runtime
-git clone -b parakeet https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone -b parakeet https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target parakeet-main
 
 # 2. Download a quantisation
-huggingface-cli download cstr/parakeet-tdt-0.6b-v3-GGUF \
+huggingface-cli download Xenna/parakeet-tdt-0.6b-v3-GGUF \
     parakeet-tdt-0.6b-v3-q4_k.gguf --local-dir .
 
 # 3. Transcribe
@@ -122,7 +122,7 @@ The mel filterbank and Hann window are baked directly into the GGUF (`preprocess
 ## How this was made
 
 1. The `.nemo` checkpoint was unpacked, NeMo state-dict keys were remapped to ggml-friendly names, and weights were written to GGUF F16 (matmul tensors) + F32 (norms / biases / mel filterbank). A synthetic zero `conv.dw.bias` is added per encoder layer so the runtime BN-fold pass has somewhere to write the absorbed bias shift.
-2. Quantised variants are produced by `crispasr-quantize` (the same llama.cpp-style quantiser used for the other GGUF releases).
+2. Quantised variants are produced by `stelnettts-quantize` (the same llama.cpp-style quantiser used for the other GGUF releases).
 3. Inference is implemented in `src/parakeet.{h,cpp}`: the FastConformer encoder runs as a single ggml graph (BN folded out), the LSTM predictor and joint head run as manual F32 CPU loops, and the TDT greedy decode loop alternates "advance encoder frame" / "emit token + advance predictor" using the duration head's argmax.
 
 ## Supported languages
@@ -134,13 +134,13 @@ The model auto-detects the language at inference time. No prompt prefix or `-l` 
 ## Attribution
 
 - **Original model:** [`nvidia/parakeet-tdt-0.6b-v3`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (CC-BY-4.0). NVIDIA NeMo team.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR@parakeet`](https://github.com/CrispStrobe/CrispASR/tree/parakeet) — community contribution. Encoder graph borrows the dw_striding subsampling + Conformer block patterns from the same fork's `cohere.cpp`.
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS@parakeet`](https://github.com/Cyna/StelnetTTS/tree/parakeet) — community contribution. Encoder graph borrows the dw_striding subsampling + Conformer block patterns from the same fork's `cohere.cpp`.
 - **Reference inference:** [`istupakov/onnx-asr`](https://github.com/istupakov/onnx-asr) was the cross-check for the joint head + TDT greedy loop.
 
 ## Related
 
-- C++ runtime: **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**
-- Sister repo (Cohere Transcribe): [`cstr/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF)
+- C++ runtime: **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**
+- Sister repo (Cohere Transcribe): [`Xenna/cohere-transcribe-03-2026-GGUF`](https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF)
 
 ## License
 

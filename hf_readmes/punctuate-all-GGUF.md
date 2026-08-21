@@ -26,7 +26,7 @@ pipeline_tag: token-classification
 
 # Punctuate-All (GGUF)
 
-GGUF conversion of [kredor/punctuate-all](https://huggingface.co/kredor/punctuate-all) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [kredor/punctuate-all](https://huggingface.co/kredor/punctuate-all) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 Adds punctuation to unpunctuated ASR output. **12 languages** with ASCII punctuation output. Smaller and faster alternative to fullstop-punc-multilang (base vs large).
 
@@ -41,10 +41,10 @@ Adds punctuation to unpunctuated ASR output. **12 languages** with ASCII punctua
 - **Languages**: en, de, fr, es, bg, it, pl, nl, cs, pt, sk, sl
 - **License**: MIT
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-crispasr --backend wav2vec2 -m wav2vec2.gguf --punc-model punctuate-all-q4_k.gguf -f audio.wav
+stelnettts --backend wav2vec2 -m wav2vec2.gguf --punc-model punctuate-all-q4_k.gguf -f audio.wav
 ```
 
 ## Available Files

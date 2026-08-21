@@ -13,11 +13,11 @@
 #include "pcs.h"
 
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 
-// pcs.cpp is byte-shared with CrispEmbed (which has an imatrix collector). Feature-
-// detect so the SAME source compiles in both: CrispEmbed provides imatrix.h and
-// the hook fires; CrispASR lacks it and the hook compiles out. Do NOT let this
+// pcs.cpp is byte-shared with StelnetEmbed (which has an imatrix collector). Feature-
+// detect so the SAME source compiles in both: StelnetEmbed provides imatrix.h and
+// the hook fires; StelnetTTS lacks it and the hook compiles out. Do NOT let this
 // file diverge between the two repos — keep the __has_include guard intact.
 #if __has_include("imatrix.h")
 #include "imatrix.h"
@@ -307,7 +307,7 @@ static bool pcs_load(pcs_context& ctx, const char* path) {
 
     // Load weights. PCS_FORCE_CPU pins the CPU backend (diff-harness parity: match
     // the ONNX/onnxruntime CPU reference without GPU float-noise on borderline logits).
-    ctx.backend = std::getenv("PCS_FORCE_CPU") ? nullptr : crispasr_init_gpu_backend();
+    ctx.backend = std::getenv("PCS_FORCE_CPU") ? nullptr : stelnettts_init_gpu_backend();
     if (!ctx.backend)
         ctx.backend = core_cpu_backend::init();
     ctx.backend_cpu = core_cpu_backend::init();
@@ -625,7 +625,7 @@ static PCSResult pcs_run(pcs_context& ctx, const std::vector<int>& token_ids) {
         // Diff harness: append per-token post-punc logits to $PCS_DUMP_LOGITS so a
         // quant A/B can measure the pre-argmax distribution (prob-cosine/KL), not
         // just the thresholded restored string. Plain fprintf — no imatrix dep, so
-        // it stays identical in the CrispEmbed copy.
+        // it stays identical in the StelnetEmbed copy.
         if (const char* dp = std::getenv("PCS_DUMP_LOGITS")) {
             if (FILE* fp = fopen(dp, "a")) {
                 for (int t = 0; t < N; t++) {

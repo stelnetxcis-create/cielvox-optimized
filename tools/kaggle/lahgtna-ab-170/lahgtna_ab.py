@@ -1,4 +1,4 @@
-"""lahgtna-chatterbox A/B: Python reference vs CrispASR GGUF (#170).
+"""lahgtna-chatterbox A/B: Python reference vs StelnetTTS GGUF (#170).
 
 Compare speech token sequences and audio from the original Python
 ChatterboxMultilingualTTS vs our re-converted GGUF on Arabic text.
@@ -103,24 +103,24 @@ for i, (lang, text) in enumerate(TEST_SENTENCES):
         print(f"  Token capture failed: {e}")
         py_tokens.append({"lang": lang, "text": text, "error": str(e)})
 
-# Free GPU memory before CrispASR build
+# Free GPU memory before StelnetTTS build
 del model
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
 import gc; gc.collect()
 
 # ═══════════════════════════════════════════════════════════════════
-# Part 2: CrispASR GGUF
+# Part 2: StelnetTTS GGUF
 # ═══════════════════════════════════════════════════════════════════
 
-step("Clone + build CrispASR")
-CRISPASR_DIR = WORK / "CrispASR"
-if not CRISPASR_DIR.exists():
+step("Clone + build StelnetTTS")
+STELNETTTS_DIR = WORK / "StelnetTTS"
+if not STELNETTTS_DIR.exists():
     subprocess.check_call(["git", "clone", "--depth", "1",
-                           "https://github.com/CrispStrobe/CrispASR.git",
-                           str(CRISPASR_DIR)])
+                           "https://github.com/Cyna/StelnetTTS.git",
+                           str(STELNETTTS_DIR)])
 
-sys.path.insert(0, str(CRISPASR_DIR / "tools" / "kaggle"))
+sys.path.insert(0, str(STELNETTTS_DIR / "tools" / "kaggle"))
 try:
     import kaggle_harness as kh
     # Full harness regime: authenticate HF pulls from the attached token
@@ -135,15 +135,15 @@ except Exception as e:
     subprocess.run("apt-get update -qq && apt-get install -y --no-install-recommends cmake ninja-build g++ ccache",
                    shell=True, capture_output=True)
 
-build_dir = CRISPASR_DIR / "build"
+build_dir = STELNETTTS_DIR / "build"
 os.makedirs(build_dir, exist_ok=True)
 
 subprocess.check_call([
     "cmake", "-G", "Ninja", "-B", str(build_dir),
-    "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON",
+    "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON",
     "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
     "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
-], cwd=str(CRISPASR_DIR),
+], cwd=str(STELNETTTS_DIR),
    env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")})
 
 try:
@@ -156,7 +156,7 @@ except:
         ["cmake", "--build", str(build_dir), "-j4"],
         env={**os.environ, "CCACHE_DIR": str(WORK / ".ccache")})
 
-CLI = str(build_dir / "bin" / "crispasr")
+CLI = str(build_dir / "bin" / "stelnettts")
 
 step("Download GGUF models")
 # T3 (lahgtna, re-converted with mtl tokenizer)
@@ -166,7 +166,7 @@ subprocess.run([CLI, "--backend", "lahgtna-chatterbox", "-m", "auto",
                capture_output=True, timeout=300)
 print("Models downloaded/cached", flush=True)
 
-step("Generate CrispASR GGUF audio")
+step("Generate StelnetTTS GGUF audio")
 gguf_results = []
 for i, (lang, text) in enumerate(TEST_SENTENCES):
     print(f"\n--- GGUF: [{lang}] {text} ---", flush=True)

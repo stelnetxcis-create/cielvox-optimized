@@ -13,7 +13,7 @@ TEST_CASE("vibevoice_params: default values are sensible", "[unit][vibevoice]") 
 }
 
 // Defaults-audit / config-parity guard (motivated by #192/#197 — a knob silently
-// drifting from its upstream value is invisible to crispasr-diff, which pins a
+// drifting from its upstream value is invisible to stelnettts-diff, which pins a
 // non-default deterministic mode). Pin the shipped value knobs exactly so any
 // future change to the default has to update this test on purpose. Values are the
 // documented contract in vibevoice.h + upstream microsoft/VibeVoice.

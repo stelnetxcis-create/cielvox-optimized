@@ -6,11 +6,11 @@
 #   1. the tiron decode grammar emits per-window speaker attribution, and
 #   2. the cross-window linker promotes it to global SPEAKER_NN.
 #
-# Usage:  bash tests/test-tiron-live.sh <crispasr-binary>
+# Usage:  bash tests/test-tiron-live.sh <stelnettts-binary>
 #
 # Inputs (all optional — SKIPs cleanly when prerequisites are missing):
-#   CRISPASR_MODEL_TIRON  tiron GGML model (default: -m auto / auto-download)
-#   CRISPASR_TEST_AUDIO   multi-speaker 16 kHz mono wav (default: samples/multispeaker.wav)
+#   STELNETTTS_MODEL_TIRON  tiron GGML model (default: -m auto / auto-download)
+#   STELNETTTS_TEST_AUDIO   multi-speaker 16 kHz mono wav (default: samples/multispeaker.wav)
 #
 # The tiron model + TitaNet embedder auto-download on first use; the test SKIPs
 # if resolution fails (e.g. offline), so only real regressions FAIL.
@@ -18,24 +18,24 @@
 set -u
 
 CRISPASR="${1:-${CRISPASR:-}}"
-[ -z "$CRISPASR" ] && CRISPASR="$(command -v crispasr || true)"
+[ -z "$CRISPASR" ] && CRISPASR="$(command -v stelnettts || true)"
 if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not provided/executable"
+    echo "SKIP: stelnettts binary not provided/executable"
     exit 0
 fi
 
-AUDIO="${CRISPASR_TEST_AUDIO:-}"
+AUDIO="${STELNETTTS_TEST_AUDIO:-}"
 if [ -z "$AUDIO" ]; then
     for c in samples/multispeaker.wav ./multispeaker.wav "$(dirname "$0")/../samples/multispeaker.wav"; do
         [ -f "$c" ] && AUDIO="$c" && break
     done
 fi
 if [ -z "$AUDIO" ] || [ ! -f "$AUDIO" ]; then
-    echo "SKIP: no multi-speaker test audio (set CRISPASR_TEST_AUDIO=<16k wav>)"
+    echo "SKIP: no multi-speaker test audio (set STELNETTTS_TEST_AUDIO=<16k wav>)"
     exit 0
 fi
 
-MODEL="${CRISPASR_MODEL_TIRON:-auto}"
+MODEL="${STELNETTTS_MODEL_TIRON:-auto}"
 OUT="$(mktemp)"
 
 run() {

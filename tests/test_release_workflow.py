@@ -144,9 +144,9 @@ class TestReleaseWorkflow(unittest.TestCase):
         job = jobs.get("build-linux-x86_64-vulkan", {})
         steps_text = str(job.get("steps", []))
         self.assertIn(
-            "crispasr-linux-x86_64-vulkan.tar.gz",
+            "stelnettts-linux-x86_64-vulkan.tar.gz",
             steps_text,
-            "Vulkan job must produce crispasr-linux-x86_64-vulkan.tar.gz",
+            "Vulkan job must produce stelnettts-linux-x86_64-vulkan.tar.gz",
         )
 
     def test_windows_cuda_publishes_complete_and_split_assets(self):
@@ -157,12 +157,12 @@ class TestReleaseWorkflow(unittest.TestCase):
         self.assertTrue(job, "build-windows-cuda job must exist")
         steps_text = str(job.get("steps", []))
         for asset in (
-            "crispasr-windows-x86_64-cuda.zip",
-            "crispasr-windows-x86_64-cuda-non-cuda.zip",
+            "stelnettts-windows-x86_64-cuda.zip",
+            "stelnettts-windows-x86_64-cuda-non-cuda.zip",
             "cudart64_*.dll",
             "cublas64_*.dll",
             "cublasLt64_*.dll",
-            "crispasr-windows-x86_64-cuda-runtime-sha256.txt",
+            "stelnettts-windows-x86_64-cuda-runtime-sha256.txt",
         ):
             with self.subTest(asset=asset):
                 self.assertIn(asset, steps_text)
@@ -195,7 +195,7 @@ class TestReleaseWorkflow(unittest.TestCase):
                 )
                 self.assertIsNotNone(match, f"release job {job_name} must exist")
                 self.assertNotIn(
-                    "-DCRISPASR_PORTABLE_CPU=ON",
+                    "-DSTELNETTTS_PORTABLE_CPU=ON",
                     match.group("body"),
                     f"{job_name} must retain its optimized CPU helper",
                 )
@@ -210,12 +210,12 @@ class TestReleaseWorkflow(unittest.TestCase):
                 self.text,
             )
             self.assertIsNotNone(match, f"release job {job_name} must exist")
-            self.assertIn("-DCRISPASR_PORTABLE_CPU=ON", match.group("body"))
+            self.assertIn("-DSTELNETTTS_PORTABLE_CPU=ON", match.group("body"))
 
         portable_docker = (REPO / ".devops" / "main-cuda-portable.Dockerfile").read_text()
-        self.assertIn("-DCRISPASR_PORTABLE_CPU=ON", portable_docker)
+        self.assertIn("-DSTELNETTTS_PORTABLE_CPU=ON", portable_docker)
         cuda_smoke = (REPO / ".github" / "workflows" / "win-cuda-smoke.yml").read_text()
-        self.assertNotIn("-DCRISPASR_PORTABLE_CPU=ON", cuda_smoke)
+        self.assertNotIn("-DSTELNETTTS_PORTABLE_CPU=ON", cuda_smoke)
         self.assertIn("ggml-cpu ^", cuda_smoke)
 
     def test_ue4m3_lut_is_lazy_with_explicit_eager_ab_switch(self):

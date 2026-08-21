@@ -8,7 +8,7 @@
 //
 // The pool logic (blocking acquire, RAII release, exhaustion) is unit-tested
 // independently of the server (test-worker-pool); the server just parameterizes
-// it with `CRISPASR_SERVER_WORKERS`.
+// it with `STELNETTTS_SERVER_WORKERS`.
 #pragma once
 
 #include <condition_variable>

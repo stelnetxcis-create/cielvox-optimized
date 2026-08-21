@@ -41,8 +41,8 @@
 #include "core/fft.h"
 #include "core/mel.h"
 #include "core/wav_reader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "core/tts_lang.h" // #329 cross-lingual language tags + reference LID
 #include "chatterbox_campplus.h"
 #include "ggml-alloc.h"
@@ -85,7 +85,7 @@ namespace {
 static bool cosyvoice3_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_COSYVOICE3_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_COSYVOICE3_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -401,7 +401,7 @@ struct cosyvoice3_tts_context {
     std::string target_language;
     // #329: the language the REFERENCE clip is spoken in, when the caller knows
     // it (CLI --source-lang, server "source_lang",
-    // crispasr_session_set_source_language). Outranks the detector below — a
+    // stelnettts_session_set_source_language). Outranks the detector below — a
     // human statement about their own recording beats anything we can infer,
     // and it is the only way to reach cross-lingual mode from a reference whose
     // transcript is too short to identify.
@@ -420,7 +420,7 @@ struct cosyvoice3_tts_context {
     // synthesis, #304). When running natively on Vulkan we instead dispatch
     // every graph through a single-backend gallocr on `backend` (all weights +
     // KV are GPU-resident, so no cross-backend copy is needed), bypassing the
-    // scheduler entirely. Opt-in via CRISPASR_COSYVOICE3_VULKAN_NATIVE=1.
+    // scheduler entirely. Opt-in via STELNETTTS_COSYVOICE3_VULKAN_NATIVE=1.
     ggml_gallocr_t gpu_gallocr = nullptr;
     bool use_gpu_gallocr = false;
     // §304 HYBRID native-Vulkan: the LM + flow (DiT-CFM) compute correctly on
@@ -526,7 +526,7 @@ inline ggml_status cv3_sched_compute(cosyvoice3_tts_context* ctx, ggml_cgraph* g
 }
 
 inline bool cv3_env_true(const char* name) {
-    const char* v = crispasr_env::get(name);
+    const char* v = stelnettts_env::get(name);
     return v && v[0] == '1';
 }
 
@@ -578,7 +578,7 @@ bool cv3_kv_init(cosyvoice3_tts_context* ctx, int max_ctx) {
     // and these KV rows are head_dim wide (128), so each q8_0 tensor needs
     // 408 bytes more than nbytes — the hand-sized buffer came up short and
     // ggml_backend_tensor_alloc aborted. f16 is not quantized, so this only
-    // ever fired with CRISPASR_KV_QUANT set, and only on CUDA.
+    // ever fired with STELNETTTS_KV_QUANT set, and only on CUDA.
     ctx->kv_buf = ggml_backend_alloc_ctx_tensors(ctx->kv_ctx, kv_backend);
     if (!ctx->kv_buf) {
         fprintf(stderr, "cosyvoice3_tts: failed to alloc KV buffer (%zu bytes)\n", kbytes + vbytes);
@@ -686,7 +686,7 @@ ggml_cgraph* cv3_build_lm_graph(cosyvoice3_tts_context* ctx, int n_tokens, int n
     cur = ggml_mul(ctx0, cur, m.output_norm_w);
 
     // For T>1 the AR head only needs the last position. The convention
-    // matches qwen3_tts.cpp build_graph_talker_kv: slice at T-1 to keep
+    // matches cielvox2_tts.cpp build_graph_talker_kv: slice at T-1 to keep
     // the head matmul small.
     if (T > 1) {
         cur = ggml_view_2d(ctx0, cur, d, 1, cur->nb[1], (size_t)(T - 1) * cur->nb[1]);
@@ -1071,7 +1071,7 @@ extern "C" struct cosyvoice3_tts_context* cosyvoice3_tts_init_from_file(const ch
     // CUDA machines.  All stages use the shared backend scheduler below and
     // can therefore follow their GPU-resident weights, with CPU retained as
     // the fallback for unsupported operations.
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend) {
         if (params.use_gpu && params.verbosity >= 1) {
             fprintf(stderr, "cosyvoice3_tts: GPU backend unavailable, falling back to CPU\n");
@@ -1089,13 +1089,13 @@ extern "C" struct cosyvoice3_tts_context* cosyvoice3_tts_init_from_file(const ch
     // Metal + CUDA render correctly. Run the whole pipeline on CPU when the GPU
     // backend is Vulkan (identical to the verified-good --no-gpu path); opt back
     // into the native Vulkan path for debugging with
-    // CRISPASR_COSYVOICE3_VULKAN_NATIVE=1.
+    // STELNETTTS_COSYVOICE3_VULKAN_NATIVE=1.
     if (ctx->backend != ctx->backend_cpu && std::strstr(ggml_backend_name(ctx->backend), "Vulkan")) {
-        const char* keep = crispasr_env::get("CRISPASR_COSYVOICE3_VULKAN_NATIVE");
+        const char* keep = stelnettts_env::get("STELNETTTS_COSYVOICE3_VULKAN_NATIVE");
         if (!(keep && keep[0] == '1')) {
             if (params.verbosity >= 1) {
                 fprintf(stderr, "cosyvoice3_tts: Vulkan backend detected — running on CPU (#304 Vulkan "
-                                "miscompute; set CRISPASR_COSYVOICE3_VULKAN_NATIVE=1 to override)\n");
+                                "miscompute; set STELNETTTS_COSYVOICE3_VULKAN_NATIVE=1 to override)\n");
             }
             ggml_backend_free(ctx->backend);
             ctx->backend = ctx->backend_cpu;
@@ -1178,7 +1178,7 @@ extern "C" struct cosyvoice3_tts_context* cosyvoice3_tts_init_from_file(const ch
     }
     // §304: on native Vulkan, dispatch every graph through a single-backend
     // gallocr (see the struct comment) instead of the scheduler. Reaching here
-    // with a Vulkan GPU backend means CRISPASR_COSYVOICE3_VULKAN_NATIVE=1 kept
+    // with a Vulkan GPU backend means STELNETTTS_COSYVOICE3_VULKAN_NATIVE=1 kept
     // it (the default routes Vulkan → CPU above).
     if (ctx->backend != ctx->backend_cpu && std::strstr(ggml_backend_name(ctx->backend), "Vulkan") != nullptr) {
         ctx->gpu_gallocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(ctx->backend));
@@ -1187,8 +1187,8 @@ extern "C" struct cosyvoice3_tts_context* cosyvoice3_tts_init_from_file(const ch
         // conv graphs miscompute there (P100-verified). Keep the heavy flow on
         // the GPU and route only HiFT to the CPU: load its weights on the CPU
         // backend (init_hift) and dispatch its graphs via cpu_gallocr. Disable
-        // by also setting CRISPASR_COSYVOICE3_HIFT_ON_GPU=1 (for op-bisection).
-        const char* hift_gpu = crispasr_env::get("CRISPASR_COSYVOICE3_HIFT_ON_GPU");
+        // by also setting STELNETTTS_COSYVOICE3_HIFT_ON_GPU=1 (for op-bisection).
+        const char* hift_gpu = stelnettts_env::get("STELNETTTS_COSYVOICE3_HIFT_ON_GPU");
         if (ctx->use_gpu_gallocr && ctx->backend_cpu && !(hift_gpu && hift_gpu[0] == '1')) {
             ctx->cpu_gallocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(ctx->backend_cpu));
             ctx->hift_on_cpu = ctx->cpu_gallocr != nullptr;
@@ -1201,7 +1201,7 @@ extern "C" struct cosyvoice3_tts_context* cosyvoice3_tts_init_from_file(const ch
     // §304 DIAGNOSTIC: force the single-backend gallocr dispatch on ANY backend
     // (incl. CPU/Metal) so gallocr-vs-scheduler can be A/B'd on a known-good
     // backend — isolates a gallocr-dispatch bug from a Vulkan op miscompute.
-    if (!ctx->use_gpu_gallocr && cv3_env_true("CRISPASR_COSYVOICE3_FORCE_GALLOCR")) {
+    if (!ctx->use_gpu_gallocr && cv3_env_true("STELNETTTS_COSYVOICE3_FORCE_GALLOCR")) {
         ctx->gpu_gallocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(ctx->backend));
         ctx->use_gpu_gallocr = ctx->gpu_gallocr != nullptr;
         if (params.verbosity >= 1)
@@ -1477,7 +1477,7 @@ extern "C" float* cosyvoice3_tts_step_speech(struct cosyvoice3_tts_context* ctx,
     // 256-token bucket to the T=1 attention graph. The graph is rebuilt when
     // generation crosses a bucket boundary; short requests avoid attending
     // over the entire (normally 512-token) CLI budget on every step.
-    const char* kv_bucket_env = crispasr_env::get("CRISPASR_COSYVOICE3_KV_BUCKET");
+    const char* kv_bucket_env = stelnettts_env::get("STELNETTTS_COSYVOICE3_KV_BUCKET");
     const bool use_kv_bucket = !kv_bucket_env || strcmp(kv_bucket_env, "0") != 0;
     const int kv_bucket = ((n_past + 1 + 255) / 256) * 256;
     const int fixed_kv = use_kv_bucket ? std::min(ctx->kv_max_ctx, kv_bucket) : ctx->kv_max_ctx;
@@ -1699,7 +1699,7 @@ extern "C" int32_t* cosyvoice3_tts_generate_tokens_from_embeds(struct cosyvoice3
 
     std::vector<int32_t> out;
     out.reserve((size_t)max_steps);
-    const bool greedy = !(ctx->params.temperature > 0.0f) || cv3_env_true("CRISPASR_COSYVOICE3_GREEDY");
+    const bool greedy = !(ctx->params.temperature > 0.0f) || cv3_env_true("STELNETTTS_COSYVOICE3_GREEDY");
 
     int n_past = n_tokens;
     for (int step = 0; step < max_steps; step++) {
@@ -3645,7 +3645,7 @@ float* cv3_run_solve_euler(cosyvoice3_tts_context* ctx, const float* mu, int T_m
     std::vector<float> mu_zero(mel_n, 0.0f);
     std::vector<float> cond_zero(mel_n, 0.0f);
     std::vector<float> spks_zero((size_t)spk_out, 0.0f);
-    const char* cfg_batch_env = crispasr_env::get("CRISPASR_COSYVOICE3_CFG_BATCH");
+    const char* cfg_batch_env = stelnettts_env::get("STELNETTTS_COSYVOICE3_CFG_BATCH");
     bool use_cfg_batch = !cfg_batch_env || strcmp(cfg_batch_env, "0") != 0;
 
     // Interval-CFG (opt-in, APPROXIMATE — mirrors OMNIVOICE_CFG_INTERVAL): recompute
@@ -3656,9 +3656,9 @@ float* cv3_run_solve_euler(cosyvoice3_tts_context* ctx, const float* mu, int T_m
     // 2-forward path — the batched path (COSYVOICE3_CFG_BATCH) fuses cond+uncond into
     // one graph, so there is no uncond forward to skip; K>1 therefore forces separate
     // forwards. Only active when K>1 && cfg_rate!=0, so at the default the legacy path
-    // below is byte-for-byte unchanged. Gated CRISPASR_COSYVOICE3_CFG_INTERVAL.
+    // below is byte-for-byte unchanged. Gated STELNETTTS_COSYVOICE3_CFG_INTERVAL.
     const int cfg_interval = [] {
-        const char* e = std::getenv("CRISPASR_COSYVOICE3_CFG_INTERVAL");
+        const char* e = std::getenv("STELNETTTS_COSYVOICE3_CFG_INTERVAL");
         const int k = e ? atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
@@ -3666,7 +3666,7 @@ float* cv3_run_solve_euler(cosyvoice3_tts_context* ctx, const float* mu, int T_m
     if (interval_on)
         use_cfg_batch = false;       // interval needs the standalone uncond forward to skip
     std::vector<float> uncond_cache; // last computed uncond dphi [mel_n]; reused between recomputes
-    if (interval_on && std::getenv("CRISPASR_COSYVOICE3_CFG_INTERVAL_DEBUG"))
+    if (interval_on && std::getenv("STELNETTTS_COSYVOICE3_CFG_INTERVAL_DEBUG"))
         fprintf(stderr, "cosyvoice3_tts: interval-CFG K=%d (uncond recomputed every %d steps; first+last always)\n",
                 cfg_interval, cfg_interval);
 
@@ -4633,7 +4633,7 @@ float* cv3_extract_hift_inference(cosyvoice3_tts_context* ctx, const float* mel,
     // s_stft carries the F0-graph (GPU) + source-path (CPU) result; the decode
     // stages are the GPU conv stack. A garbage s_stft => F0 graph is the
     // breaker; a healthy s_stft with garbage decode stages => decode graph.
-    if (crispasr_env::get("CRISPASR_COSYVOICE3_DUMP_HIFT")) {
+    if (stelnettts_env::get("STELNETTTS_COSYVOICE3_DUMP_HIFT")) {
         auto stat = [](const char* nm, const float* p, int n) {
             if (!p || n <= 0) {
                 fprintf(stderr, "  HIFT %-26s <null>\n", nm);
@@ -4839,9 +4839,9 @@ extern "C" int cosyvoice3_tts_init_hift_from_file(struct cosyvoice3_tts_context*
     // `.ups` exclusion). The 2D linears (m_source.l_linear, f0.classifier) and
     // the 1D biases/alphas are not conv kernels and are left untouched (the CPU
     // source path reads l_linear as raw F32 — must not be swapped).
-    // Gated CRISPASR_COSYVOICE3_FASTCONV (default on — numerically equivalent).
+    // Gated STELNETTTS_COSYVOICE3_FASTCONV (default on — numerically equivalent).
     {
-        const char* env = getenv("CRISPASR_COSYVOICE3_FASTCONV");
+        const char* env = getenv("STELNETTTS_COSYVOICE3_FASTCONV");
         const bool fc_on = !env || env[0] != '0';
         std::vector<ggml_tensor**> fields;
         fields.push_back(&hf.conv_pre_w);
@@ -4878,7 +4878,7 @@ extern "C" int cosyvoice3_tts_init_hift_from_file(struct cosyvoice3_tts_context*
                 swapped++;
             }
         }
-        if (getenv("CRISPASR_COSYVOICE3_FASTCONV_DEBUG")) {
+        if (getenv("STELNETTTS_COSYVOICE3_FASTCONV_DEBUG")) {
             int f16 = 0;
             for (ggml_tensor* k : kernels)
                 if (k && k->type == GGML_TYPE_F16)
@@ -5449,7 +5449,7 @@ bool cv3_extract_native_runtime_voice(cosyvoice3_tts_context* ctx, const char* w
 
     std::vector<float> pcm;
     int sr = 0;
-    if (!crispasr::core::read_wav_mono_pcm16(wav_path, pcm, sr))
+    if (!stelnettts::core::read_wav_mono_pcm16(wav_path, pcm, sr))
         return false;
 
     std::vector<float> pcm16 = pcm;
@@ -5635,10 +5635,10 @@ std::vector<int32_t> cv3_generate_tokens_with_stop_floor(cosyvoice3_tts_context*
     // id at step 0, yielding "AR decode produced 0 tokens". Short of a total
     // failure the same gap yields an utterance with far fewer speech tokens
     // than the text needs, i.e. speech that is rushed and pitched up.
-    // CRISPASR_COSYVOICE3_NO_MIN_LEN=1 restores the pre-#334 behaviour (no
+    // STELNETTTS_COSYVOICE3_NO_MIN_LEN=1 restores the pre-#334 behaviour (no
     // floor) — kept as the A/B lever for the guard.
     const int min_len =
-        cv3_env_true("CRISPASR_COSYVOICE3_NO_MIN_LEN") ? 0 : cosyvoice3_policy::clamp_min_tokens(min_tokens, max_steps);
+        cv3_env_true("STELNETTTS_COSYVOICE3_NO_MIN_LEN") ? 0 : cosyvoice3_policy::clamp_min_tokens(min_tokens, max_steps);
 
     // Right-size the fixed-shape T=1 graph to this request.  This preserves
     // graph reuse while avoiding attention over thousands of unused KV slots.
@@ -5649,7 +5649,7 @@ std::vector<int32_t> cv3_generate_tokens_with_stop_floor(cosyvoice3_tts_context*
     if (!logits)
         return out;
 
-    const bool greedy = !(ctx->params.temperature > 0.0f) || cv3_env_true("CRISPASR_COSYVOICE3_GREEDY");
+    const bool greedy = !(ctx->params.temperature > 0.0f) || cv3_env_true("STELNETTTS_COSYVOICE3_GREEDY");
     int n_past = n_tokens;
     std::vector<float> masked; // scratch for the ignore-stop window
     for (int step = 0; step < max_steps; step++) {
@@ -5897,7 +5897,7 @@ float* cv3_synth_with_voice(cosyvoice3_tts_context* ctx, const char* text, const
     // (#334 — a resampled reference decoded to 0 tokens while the same audio
     // at 16 kHz decoded fine, and the prompt token ids were the only way to
     // tell the two prompts apart).
-    if (const char* dump = crispasr_env::get("CRISPASR_COSYVOICE3_DUMP_TOKENS")) {
+    if (const char* dump = stelnettts_env::get("STELNETTTS_COSYVOICE3_DUMP_TOKENS")) {
         // Append, not truncate: one `--tts` run synthesises once per sentence
         // chunk plus once more for the spoken AI disclaimer, and a truncating
         // dump kept only the LAST of those — the disclaimer — hiding the very
@@ -5973,7 +5973,7 @@ float* cv3_synth_with_voice(cosyvoice3_tts_context* ctx, const char* text, const
     // min() also respects a model GGUF that ships fewer steps. Override with
     // COSYVOICE3_FLOW_STEPS.
     int flow_steps = std::min((int)ctx->flow.hp.cfm_n_steps, 6);
-    if (const char* env_steps = crispasr_env::get("CRISPASR_COSYVOICE3_FLOW_STEPS")) {
+    if (const char* env_steps = stelnettts_env::get("STELNETTTS_COSYVOICE3_FLOW_STEPS")) {
         char* end = nullptr;
         const long parsed = std::strtol(env_steps, &end, 10);
         if (end != env_steps && *end == '\0' && parsed >= 1 && parsed <= 100) {
@@ -6001,7 +6001,7 @@ float* cv3_synth_with_voice(cosyvoice3_tts_context* ctx, const char* text, const
 
     // #304 debug: dump the pre-HiFT mel (raw f32 [T_mel_out, mel]) + stats so
     // the flow (mel gen) can be isolated from HiFT (vocoder) across backends.
-    if (const char* dm = crispasr_env::get("CRISPASR_COSYVOICE3_DUMP_MEL")) {
+    if (const char* dm = stelnettts_env::get("STELNETTTS_COSYVOICE3_DUMP_MEL")) {
         double mn = 1e30, mx = -1e30, sum = 0, sq = 0;
         size_t nnan = 0, N = mel_out.size();
         for (float v : mel_out) {
@@ -6043,9 +6043,9 @@ float* cv3_synth_with_voice(cosyvoice3_tts_context* ctx, const char* text, const
 std::string cv3_clone_cache_key(const char* wav_path, const char* ref_text) {
     if (!wav_path || !*wav_path)
         return {};
-    // CRISPASR_COSYVOICE3_NO_CLONE_CACHE=1 forces the re-extract-every-call
+    // STELNETTTS_COSYVOICE3_NO_CLONE_CACHE=1 forces the re-extract-every-call
     // path back on — the A/B lever, and the bisection escape hatch.
-    if (cv3_env_true("CRISPASR_COSYVOICE3_NO_CLONE_CACHE"))
+    if (cv3_env_true("STELNETTTS_COSYVOICE3_NO_CLONE_CACHE"))
         return {};
     struct stat st {};
     if (stat(wav_path, &st) != 0)
@@ -6158,7 +6158,7 @@ extern "C" int32_t* cosyvoice3_tts_extract_speech_tokens(struct cosyvoice3_tts_c
     if (ctx->s3tok.loaded) {
         std::vector<float> pcm;
         int sr = 0;
-        if (!crispasr::core::read_wav_mono_pcm16(wav_path, pcm, sr))
+        if (!stelnettts::core::read_wav_mono_pcm16(wav_path, pcm, sr))
             return nullptr;
         if (sr != 16000) {
             pcm = core_audio::resample_polyphase(pcm.data(), (int)pcm.size(), sr, 16000);
@@ -6192,7 +6192,7 @@ extern "C" int cosyvoice3_tts_extract_spk_emb(struct cosyvoice3_tts_context* ctx
     if (ctx->campplus.loaded) {
         std::vector<float> pcm;
         int sr = 0;
-        if (!crispasr::core::read_wav_mono_pcm16(wav_path, pcm, sr))
+        if (!stelnettts::core::read_wav_mono_pcm16(wav_path, pcm, sr))
             return -1;
         if (sr != 16000)
             pcm = core_audio::resample_polyphase(pcm.data(), (int)pcm.size(), sr, 16000);
@@ -6219,7 +6219,7 @@ extern "C" float* cosyvoice3_tts_extract_ref_mel(struct cosyvoice3_tts_context* 
     (void)ref_text;
     std::vector<float> pcm;
     int sr = 0;
-    if (!crispasr::core::read_wav_mono_pcm16(wav_path, pcm, sr))
+    if (!stelnettts::core::read_wav_mono_pcm16(wav_path, pcm, sr))
         return nullptr;
     if (sr != 24000) {
         pcm = core_audio::resample_polyphase(pcm.data(), (int)pcm.size(), sr, 24000);

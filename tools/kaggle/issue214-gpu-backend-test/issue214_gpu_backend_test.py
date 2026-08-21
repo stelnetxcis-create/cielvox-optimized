@@ -1,5 +1,5 @@
 """
-CrispASR Issue #214 — --gpu-backend selection regression test
+StelnetTTS Issue #214 — --gpu-backend selection regression test
 
 Tests that --gpu-backend actually routes inference to the specified
 backend instead of silently falling back to CUDA.
@@ -13,7 +13,7 @@ Test matrix:
      transcripts between GPU backends to detect routing issues.
 
 Also runs a broad backend smoke test (6 backends x JFK) to check
-that the ggml_backend_init_best() -> crispasr_init_gpu_backend()
+that the ggml_backend_init_best() -> stelnettts_init_gpu_backend()
 migration didn't break any backend's init path.
 
 chr1s4 account, T4/P100 GPU.
@@ -30,7 +30,7 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
@@ -69,8 +69,8 @@ def download_model(repo, filename, token=None):
     return Path(hf_hub_download(repo, filename, cache_dir=str(MODELS), token=token))
 
 
-def run_crispasr(args, env_extra=None, timeout=300):
-    """Run crispasr CLI, return (rc, stdout, stderr, elapsed_s)."""
+def run_stelnettts(args, env_extra=None, timeout=300):
+    """Run stelnettts CLI, return (rc, stdout, stderr, elapsed_s)."""
     e = os.environ.copy()
     if env_extra:
         e.update(env_extra)
@@ -103,7 +103,7 @@ Path("/kaggle/working/started.txt").write_text("started\n")
 if REPO.exists():
     shutil.rmtree(REPO)
 run(["git", "clone", "--depth", "1", "--recursive",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 try:
@@ -138,7 +138,7 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = (
     ["cmake", "-S", str(REPO), "-B", str(BUILD),
      "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-     "-DCRISPASR_BUILD_TESTS=OFF"]
+     "-DSTELNETTTS_BUILD_TESTS=OFF"]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
 )
@@ -146,15 +146,15 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr")
+    cands = [c for c in BUILD.rglob("stelnettts")
              if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found"
+    assert cands, "stelnettts binary not found"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -186,29 +186,29 @@ kh.step("test1.start")
 try:
     # Use sensevoice-small for the routing test — single GGUF, no companion
     # files needed, small (~129 MB Q4_K), fast inference, reliable.
-    route_model = download_model("cstr/sensevoice-small-GGUF",
+    route_model = download_model("Xenna/sensevoice-small-GGUF",
                                  "sensevoice-small-q4_k.gguf", token)
     kh.step("test1.model_downloaded")
 
     # A: default (auto — should pick CUDA)
-    rc_a, out_a, err_a, el_a = run_crispasr([
+    rc_a, out_a, err_a, el_a = run_stelnettts([
         "-m", str(route_model), "-f", str(jfk_wav), "-v",
     ], timeout=120)
 
     # B: --gpu-backend cuda (explicit — should use CUDA)
-    rc_b, out_b, err_b, el_b = run_crispasr([
+    rc_b, out_b, err_b, el_b = run_stelnettts([
         "-m", str(route_model), "-f", str(jfk_wav),
         "--gpu-backend", "cuda", "-v",
     ], timeout=120)
 
     # C: --gpu-backend cpu (should NOT touch CUDA at all)
-    rc_c, out_c, err_c, el_c = run_crispasr([
+    rc_c, out_c, err_c, el_c = run_stelnettts([
         "-m", str(route_model), "-f", str(jfk_wav),
         "--gpu-backend", "cpu", "-v",
     ], timeout=120)
 
     # D: --no-gpu (baseline CPU)
-    rc_d, out_d, err_d, el_d = run_crispasr([
+    rc_d, out_d, err_d, el_d = run_stelnettts([
         "-m", str(route_model), "-f", str(jfk_wav),
         "--no-gpu", "-v",
     ], timeout=120)
@@ -292,19 +292,19 @@ print("=" * 70, flush=True)
 kh.step("test2.start")
 
 SMOKE_BACKENDS = [
-    ("firered-asr", "cstr/firered-asr2-aed-GGUF",    "firered-asr2-aed-q4_k.gguf",   []),
-    ("parakeet",    "cstr/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q4_k.gguf", []),
-    ("sensevoice",  "cstr/sensevoice-small-GGUF",     "sensevoice-small-q4_k.gguf",   []),
-    ("qwen3",       "cstr/qwen3-asr-0.6b-GGUF",      "qwen3-asr-0.6b-q4_k.gguf",    []),
-    ("glm-asr",     "cstr/glm-asr-nano-GGUF",        "glm-asr-nano-q4_k.gguf",      []),
-    ("fastconformer-ctc", "cstr/stt-en-fastconformer-ctc-large-GGUF",
+    ("firered-asr", "Xenna/firered-asr2-aed-GGUF",    "firered-asr2-aed-q4_k.gguf",   []),
+    ("parakeet",    "Xenna/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q4_k.gguf", []),
+    ("sensevoice",  "Xenna/sensevoice-small-GGUF",     "sensevoice-small-q4_k.gguf",   []),
+    ("qwen3",       "Xenna/cielvox2-asr-0.6b-GGUF",      "cielvox2-asr-0.6b-q4_k.gguf",    []),
+    ("glm-asr",     "Xenna/glm-asr-nano-GGUF",        "glm-asr-nano-q4_k.gguf",      []),
+    ("fastconformer-ctc", "Xenna/stt-en-fastconformer-ctc-large-GGUF",
      "stt-en-fastconformer-ctc-large-q4_k.gguf", []),
 ]
 
 # Moonshine needs tokenizer.bin in the same dir as the model GGUF.
 # hf_hub_download puts files in a snapshot dir, so downloading both
 # from the same repo lands them together.
-MOONSHINE_REPO = "cstr/moonshine-tiny-GGUF"
+MOONSHINE_REPO = "Xenna/moonshine-tiny-GGUF"
 MOONSHINE_MODEL = "moonshine-tiny-q4_k.gguf"
 MOONSHINE_TOK = "tokenizer.bin"
 
@@ -317,7 +317,7 @@ kh.step("test2.moonshine.start")
 try:
     moon_model = download_model(MOONSHINE_REPO, MOONSHINE_MODEL, token)
     download_model(MOONSHINE_REPO, MOONSHINE_TOK, token)  # lands next to model
-    rc, out, err, elapsed = run_crispasr(
+    rc, out, err, elapsed = run_stelnettts(
         ["-m", str(moon_model), "-f", str(jfk_wav)], timeout=180
     )
     transcript = out
@@ -339,7 +339,7 @@ for backend_name, repo, fname, extra_args in SMOKE_BACKENDS:
     kh.step(f"test2.{backend_name}.start")
     try:
         model_path = download_model(repo, fname, token)
-        rc, out, err, elapsed = run_crispasr(
+        rc, out, err, elapsed = run_stelnettts(
             ["-m", str(model_path), "-f", str(jfk_wav)] + extra_args,
             timeout=180
         )
@@ -376,20 +376,20 @@ print("=" * 70, flush=True)
 kh.step("test3.start")
 
 TTS_BACKENDS = [
-    ("piper",       "cstr/piper-en_US-lessac-medium-GGUF",
+    ("piper",       "Xenna/piper-en_US-lessac-medium-GGUF",
      "piper-en_US-lessac-medium-f16.gguf",
      ["--tts", "Hello world, testing GPU backend selection."],
      None, None),  # no companion
-    ("fastpitch",   "cstr/fastpitch-en-GGUF",
+    ("fastpitch",   "Xenna/fastpitch-en-GGUF",
      "fastpitch-en-q8_0.gguf",
      ["--tts", "Hello world, testing GPU backend selection."],
      None, None),
 ]
 
 # Kokoro needs a voice pack companion — download both
-KOKORO_REPO = "cstr/kokoro-82m-GGUF"
+KOKORO_REPO = "Xenna/kokoro-82m-GGUF"
 KOKORO_MODEL = "kokoro-82m-q8_0.gguf"
-KOKORO_VOICE_REPO = "cstr/kokoro-voices-GGUF"
+KOKORO_VOICE_REPO = "Xenna/kokoro-voices-GGUF"
 KOKORO_VOICE = "kokoro-voice-af_heart.gguf"
 
 tts_results = {}
@@ -402,7 +402,7 @@ try:
     # Voice file must sit next to model GGUF — download to same dir
     kokoro_voice = download_model(KOKORO_VOICE_REPO, KOKORO_VOICE, token)
     outfile = RESULTS / "kokoro_out.wav"
-    rc, out, err, elapsed = run_crispasr(
+    rc, out, err, elapsed = run_stelnettts(
         ["-m", str(kokoro_model), "--companion", str(kokoro_voice),
          "-of", str(outfile), "--tts", "Hello world, testing GPU backend selection."],
         timeout=180
@@ -428,7 +428,7 @@ for backend_name, repo, fname, extra_args, _, _ in TTS_BACKENDS:
     try:
         model_path = download_model(repo, fname, token)
         outfile = RESULTS / f"{backend_name}_out.wav"
-        rc, out, err, elapsed = run_crispasr(
+        rc, out, err, elapsed = run_stelnettts(
             ["-m", str(model_path), "-of", str(outfile)] + extra_args,
             timeout=180
         )

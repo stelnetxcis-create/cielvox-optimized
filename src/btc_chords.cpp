@@ -137,18 +137,18 @@ static bool btc_forward_block(btc_chords_context* ctx, const float* feat, int T,
 static bool btc_debug() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_BTC_DEBUG");
+        const char* e = getenv("STELNETTTS_BTC_DEBUG");
         v = (e && atoi(e) != 0) ? 1 : 0;
     }
     return v != 0;
 }
 
-// Reduce the 170-class output to maj/min. Opt-in via CRISPASR_BTC_MAJ_MIN=1;
+// Reduce the 170-class output to maj/min. Opt-in via STELNETTTS_BTC_MAJ_MIN=1;
 // the richer vocabulary is the default (see voca_to_maj_min).
 static bool btc_maj_min() {
     static int v = -1;
     if (v < 0) {
-        const char* e = getenv("CRISPASR_BTC_MAJ_MIN");
+        const char* e = getenv("STELNETTTS_BTC_MAJ_MIN");
         v = (e && atoi(e) != 0) ? 1 : 0;
     }
     return v != 0;
@@ -306,7 +306,7 @@ btc_chords_context* btc_chords_init_from_file(const char* model_path, btc_chords
     hp.inst_len_sec = core_gguf::kv_f32(meta, "btc.inst_len_sec", 10.0f);
     gguf_free(meta);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
 
@@ -539,7 +539,7 @@ btc_chords_result* btc_chords_recognize(btc_chords_context* ctx, const float* pc
     for (auto& v : mag)
         v = std::log(v + 1e-6f);
 
-    if (const char* dp = getenv("CRISPASR_BTC_DUMP_FEAT")) {
+    if (const char* dp = getenv("STELNETTTS_BTC_DUMP_FEAT")) {
         // Front-end comparison hook: the per-stage diff replays the reference's
         // own input_feat by design, so it cannot catch a CQT mismatch. This
         // dumps what the front end actually produced, to be scored against

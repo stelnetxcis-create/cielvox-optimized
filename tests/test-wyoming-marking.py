@@ -8,7 +8,7 @@ from the list in docs/eu-ai-act.md §6.1, and Wyoming was never on it. A Home
 Assistant client sending {"voice":{"name":"x"}} got back unmarked, undisclosed
 cloned speech.
 
-crispasr_marking::decide_raw_surface() pins the POLICY in the unit tier
+stelnettts_marking::decide_raw_surface() pins the POLICY in the unit tier
 (tests/test-marking-policy.cpp). This file pins the thing a unit test cannot
 reach: that the synthesize handler actually CALLS it. The original bug was a
 missing call, not a wrong rule — a green policy test would have stayed green
@@ -41,7 +41,7 @@ SKIPs (exit 0) when no model or binary is found. No third-party deps.
 
 Usage:
   python tests/test-wyoming-marking.py [--cache-dir DIR]
-  CRISPASR_MODELS_DIR=/path/to/models python tests/test-wyoming-marking.py
+  STELNETTTS_MODELS_DIR=/path/to/models python tests/test-wyoming-marking.py
 """
 import array
 import json
@@ -74,8 +74,8 @@ WM_THRESHOLD = 0.65
 
 
 def find_binary():
-    for rel in ["build/bin/crispasr", "build/bin/Release/crispasr.exe",
-                "build-ninja-compile/bin/crispasr", "bin/crispasr", "bin/crispasr.exe"]:
+    for rel in ["build/bin/stelnettts", "build/bin/Release/stelnettts.exe",
+                "build-ninja-compile/bin/stelnettts", "bin/stelnettts", "bin/stelnettts.exe"]:
         p = os.path.join(ROOT, rel)
         if os.path.isfile(p) and os.access(p, os.X_OK):
             return p
@@ -85,9 +85,9 @@ def find_binary():
 def find_tts_model(cache_dir):
     """A kokoro backbone GGUF — small, CPU-fast, and ships preset voices."""
     for d in [cache_dir,
-              os.environ.get("CRISPASR_TEST_CACHE"),
-              os.environ.get("CRISPASR_MODELS_DIR"),
-              os.path.expanduser("~/.cache/crispasr")]:
+              os.environ.get("STELNETTTS_TEST_CACHE"),
+              os.environ.get("STELNETTTS_MODELS_DIR"),
+              os.path.expanduser("~/.cache/stelnettts")]:
         if d and os.path.isdir(d):
             for f in sorted(os.listdir(d)):
                 if f.startswith("kokoro-") and f.endswith(".gguf") and "voice" not in f:
@@ -229,7 +229,7 @@ def unmarked_baseline(binary, model, out_wav):
 
 
 def stamped_clone_pack(binary, model, path):
-    """A voice pack carrying crispasr.voice.cloned_from_recording=true.
+    """A voice pack carrying stelnettts.voice.cloned_from_recording=true.
 
     Built by hand rather than by a baker so this test needs no cloning backend:
     the gate reads provenance from GGUF metadata, so a stamped preset is
@@ -252,7 +252,7 @@ def stamped_clone_pack(binary, model, path):
     w = gguf.GGUFWriter(path, arch)
     for t in r.tensors:
         w.add_tensor(t.name, np.array(t.data))
-    w.add_bool("crispasr.voice.cloned_from_recording", True)
+    w.add_bool("stelnettts.voice.cloned_from_recording", True)
     w.write_header_to_file()
     w.write_kv_data_to_file()
     w.write_tensors_to_file()
@@ -261,7 +261,7 @@ def stamped_clone_pack(binary, model, path):
 
 
 def main():
-    cache_dir = os.environ.get("CRISPASR_TEST_CACHE", "")
+    cache_dir = os.environ.get("STELNETTTS_TEST_CACHE", "")
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg == "--cache-dir" and i < len(sys.argv):
             cache_dir = sys.argv[i]
@@ -270,11 +270,11 @@ def main():
 
     binary = find_binary()
     if not binary:
-        print("SKIP: crispasr binary not found")
+        print("SKIP: stelnettts binary not found")
         return 0
     model = find_tts_model(cache_dir)
     if not model:
-        print("SKIP: no kokoro-*.gguf found (set CRISPASR_MODELS_DIR)")
+        print("SKIP: no kokoro-*.gguf found (set STELNETTTS_MODELS_DIR)")
         return 0
     print(f"Binary: {binary}\nModel:  {model}")
 

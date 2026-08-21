@@ -6,14 +6,14 @@ tags:
   - demucs
   - htdemucs
   - gguf
-  - crispasr
+  - stelnettts
 base_model: facebook/htdemucs
 pipeline_tag: audio-to-audio
 ---
 
 # HTDemucs — GGUF
 
-GGUF conversions of [Meta's HTDemucs](https://github.com/facebookresearch/demucs) (Hybrid Transformer Demucs) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversions of [Meta's HTDemucs](https://github.com/facebookresearch/demucs) (Hybrid Transformer Demucs) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 HTDemucs is a state-of-the-art music source separation model that splits audio into 4 stems: **drums**, **bass**, **other**, and **vocals**.
 
@@ -27,24 +27,24 @@ HTDemucs is a state-of-the-art music source separation model that splits audio i
 
 40 of 533 tensors are quantized (the CrossTransformer attention/FFN projections). Encoder/decoder conv weights remain at F16 (required by the ggml Conv2d kernel). Norms, biases, LayerScale, and frequency embeddings stay at F32.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Separate audio into stems
-crispasr --separate -m htdemucs-f16.gguf -f input.wav
+stelnettts --separate -m htdemucs-f16.gguf -f input.wav
 
 # Auto-download
-crispasr --separate --backend htdemucs --auto-download -f input.wav
+stelnettts --separate --backend htdemucs --auto-download -f input.wav
 
 # Select specific stems
-crispasr --separate -m htdemucs-f16.gguf --stems vocals,drums -f input.wav
+stelnettts --separate -m htdemucs-f16.gguf --stems vocals,drums -f input.wav
 ```
 
 ## Python
 
 ```python
-import crispasr
-s = crispasr.Session("htdemucs-f16.gguf", backend="htdemucs")
+import stelnettts
+s = stelnettts.Session("htdemucs-f16.gguf", backend="htdemucs")
 stems = s.separate(stereo_pcm_44100hz)
 # stems = {"drums": array, "bass": array, "other": array, "vocals": array}
 ```
@@ -72,6 +72,6 @@ stems = s.separate(stereo_pcm_44100hz)
 Converted from the official `htdemucs` pretrained model using:
 ```bash
 python models/convert-htdemucs-to-gguf.py --model htdemucs --output htdemucs-f16.gguf --dtype f16
-crispasr-quantize htdemucs-f16.gguf htdemucs-q8_0.gguf q8_0
-crispasr-quantize htdemucs-f16.gguf htdemucs-q4_k.gguf q4_k
+stelnettts-quantize htdemucs-f16.gguf htdemucs-q8_0.gguf q8_0
+stelnettts-quantize htdemucs-f16.gguf htdemucs-q4_k.gguf q4_k
 ```

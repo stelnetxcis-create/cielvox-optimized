@@ -1,16 +1,16 @@
 // BTC chord recognition integration test.
 //
-// Requires CRISPASR_MODEL_BTC_CHORDS pointing at a btc GGUF. SKIPs cleanly
+// Requires STELNETTTS_MODEL_BTC_CHORDS pointing at a btc GGUF. SKIPs cleanly
 // when unset.
 //
 // This drives the SESSION C-ABI, not btc_chords.h directly. The CLI adapter
-// already has coverage via crispasr-diff; the session arm is the surface that
+// already has coverage via stelnettts-diff; the session arm is the surface that
 // silently rots when a backend is added to one dispatcher and not the others
 // (see docs/multi-surface dispatch notes), so it is the one worth a live test.
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_session.h"
+#include "stelnettts_session.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -41,40 +41,40 @@ std::vector<float> triad_pair() {
     return pcm;
 }
 
-crispasr_session* open_session(const char* model) {
-    return crispasr_session_open_explicit(model, "btc-chords", 2);
+stelnettts_session* open_session(const char* model) {
+    return stelnettts_session_open_explicit(model, "btc-chords", 2);
 }
 
 } // namespace
 
 TEST_CASE("btc-chords session opens and reports a vocabulary", "[integration][btc-chords]") {
-    const char* model = std::getenv("CRISPASR_MODEL_BTC_CHORDS");
+    const char* model = std::getenv("STELNETTTS_MODEL_BTC_CHORDS");
     if (!model || !*model)
-        SKIP("CRISPASR_MODEL_BTC_CHORDS not set");
+        SKIP("STELNETTTS_MODEL_BTC_CHORDS not set");
 
-    crispasr_session* s = open_session(model);
+    stelnettts_session* s = open_session(model);
     REQUIRE(s != nullptr);
     // 25 (maj/min + N) or 170 (full quality set) — nothing else is a BTC head.
-    const int vocab = crispasr_session_chords_vocab_size(s);
+    const int vocab = stelnettts_session_chords_vocab_size(s);
     REQUIRE((vocab == 25 || vocab == 170));
-    crispasr_session_close(s);
+    stelnettts_session_close(s);
 }
 
 TEST_CASE("btc-chords recognises a chord timeline", "[integration][btc-chords]") {
-    const char* model = std::getenv("CRISPASR_MODEL_BTC_CHORDS");
+    const char* model = std::getenv("STELNETTTS_MODEL_BTC_CHORDS");
     if (!model || !*model)
-        SKIP("CRISPASR_MODEL_BTC_CHORDS not set");
+        SKIP("STELNETTTS_MODEL_BTC_CHORDS not set");
 
-    crispasr_session* s = open_session(model);
+    stelnettts_session* s = open_session(model);
     REQUIRE(s != nullptr);
 
     const std::vector<float> pcm = triad_pair();
-    const int n = crispasr_session_chords(s, pcm.data(), (int)pcm.size(), kSampleRate);
+    const int n = stelnettts_session_chords(s, pcm.data(), (int)pcm.size(), kSampleRate);
     REQUIRE(n > 0);
-    REQUIRE(crispasr_session_chords_n_spans(s) == n);
+    REQUIRE(stelnettts_session_chords_n_spans(s) == n);
 
     int n_flat = 0;
-    const float* flat = crispasr_session_chords_spans(s, &n_flat);
+    const float* flat = stelnettts_session_chords_spans(s, &n_flat);
     REQUIRE(flat != nullptr);
     REQUIRE(n_flat == n);
 
@@ -93,11 +93,11 @@ TEST_CASE("btc-chords recognises a chord timeline", "[integration][btc-chords]")
         prev_end = end;
 
         REQUIRE(label >= 0.0f);
-        REQUIRE(label < (float)crispasr_session_chords_vocab_size(s));
+        REQUIRE(label < (float)stelnettts_session_chords_vocab_size(s));
         REQUIRE(conf > 0.0f);
         REQUIRE(conf <= 1.0f);
 
-        const char* name = crispasr_session_chords_span_name(s, i);
+        const char* name = stelnettts_session_chords_span_name(s, i);
         REQUIRE(name != nullptr);
         REQUIRE(std::strlen(name) > 0);
         if (std::strcmp(name, "N") != 0)
@@ -111,29 +111,29 @@ TEST_CASE("btc-chords recognises a chord timeline", "[integration][btc-chords]")
     REQUIRE(any_chord);
 
     // Out-of-range name lookups return NULL rather than reading past the end.
-    REQUIRE(crispasr_session_chords_span_name(s, n) == nullptr);
-    REQUIRE(crispasr_session_chords_span_name(s, -1) == nullptr);
+    REQUIRE(stelnettts_session_chords_span_name(s, n) == nullptr);
+    REQUIRE(stelnettts_session_chords_span_name(s, -1) == nullptr);
 
-    crispasr_session_close(s);
+    stelnettts_session_close(s);
 }
 
 TEST_CASE("btc-chords rejects bad arguments", "[integration][btc-chords]") {
-    const char* model = std::getenv("CRISPASR_MODEL_BTC_CHORDS");
+    const char* model = std::getenv("STELNETTTS_MODEL_BTC_CHORDS");
     if (!model || !*model)
-        SKIP("CRISPASR_MODEL_BTC_CHORDS not set");
+        SKIP("STELNETTTS_MODEL_BTC_CHORDS not set");
 
-    crispasr_session* s = open_session(model);
+    stelnettts_session* s = open_session(model);
     REQUIRE(s != nullptr);
 
     const std::vector<float> pcm(1024, 0.0f);
-    REQUIRE(crispasr_session_chords(s, nullptr, 1024, kSampleRate) == -1);
-    REQUIRE(crispasr_session_chords(s, pcm.data(), 0, kSampleRate) == -1);
-    REQUIRE(crispasr_session_chords(s, pcm.data(), (int)pcm.size(), 0) == -1);
-    REQUIRE(crispasr_session_chords(nullptr, pcm.data(), (int)pcm.size(), kSampleRate) == -1);
+    REQUIRE(stelnettts_session_chords(s, nullptr, 1024, kSampleRate) == -1);
+    REQUIRE(stelnettts_session_chords(s, pcm.data(), 0, kSampleRate) == -1);
+    REQUIRE(stelnettts_session_chords(s, pcm.data(), (int)pcm.size(), 0) == -1);
+    REQUIRE(stelnettts_session_chords(nullptr, pcm.data(), (int)pcm.size(), kSampleRate) == -1);
 
     // A session with no chord arm must report "no spans", not crash.
-    REQUIRE(crispasr_session_chords_n_spans(nullptr) == 0);
-    REQUIRE(crispasr_session_chords_spans(nullptr, nullptr) == nullptr);
+    REQUIRE(stelnettts_session_chords_n_spans(nullptr) == 0);
+    REQUIRE(stelnettts_session_chords_spans(nullptr, nullptr) == nullptr);
 
-    crispasr_session_close(s);
+    stelnettts_session_close(s);
 }

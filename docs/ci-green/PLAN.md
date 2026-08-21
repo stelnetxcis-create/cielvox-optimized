@@ -38,8 +38,8 @@ Branch `fix/ci-green`. Goal: every GitHub Actions workflow green.
   weak.
 
 - **Nightly mass-failure (07-17) was a build break, not model regressions.**
-  Every one of the ~30 jobs failed because they all build crispasr first, and
-  `crispasr_vad.h` was missing `#include <string>` (compiles on macOS/clang,
+  Every one of the ~30 jobs failed because they all build stelnettts first, and
+  `stelnettts_vad.h` was missing `#include <string>` (compiles on macOS/clang,
   breaks Linux/gcc). Introduced by dddc8f478 (#227). ALREADY FIXED on main by a
   parallel session (6c8d857); CI green on the current tip. The weeks-long reds
   (07-10→07-16) were purely parakeet-ja + bark-small — confirmed via the 07-16

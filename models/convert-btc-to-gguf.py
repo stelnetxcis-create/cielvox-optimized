@@ -10,7 +10,7 @@ Two variants ship upstream and differ ONLY in the classifier width:
 
 LICENCE. The upstream code is MIT, but these checkpoints were trained on
 Isophonics / Robbie Williams / UsPop2002 annotations, which are CC BY-NC-SA.
-The GGUF therefore carries `general.license = cc-by-nc-sa-4.0` so CrispASR's
+The GGUF therefore carries `general.license = cc-by-nc-sa-4.0` so StelnetTTS's
 acceptance gate refuses to download it without --accept-license. See
 docs/music-transcription/PLAN.md.
 

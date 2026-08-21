@@ -1,8 +1,8 @@
 /*
- * test-audio-formats.cpp — Catch2 tests for crispasr_audio_load with
+ * test-audio-formats.cpp — Catch2 tests for stelnettts_audio_load with
  * extended format support: AU/SND (µ-law), AMR-NB, WebM (Opus).
  *
- * Each format is decoded via the crispasr_audio_load C ABI and compared
+ * Each format is decoded via the stelnettts_audio_load C ABI and compared
  * against the WAV reference (jfk.wav) decoded through the same path.
  * Lossy codecs won't be bit-exact; we check length similarity, non-silence,
  * and cross-correlation above a threshold.
@@ -18,15 +18,15 @@
 #include <string>
 #include <vector>
 
-// The C ABI under test — declared in crispasr.h, but we forward-declare to
+// The C ABI under test — declared in stelnettts.h, but we forward-declare to
 // avoid pulling the full header into a test TU that doesn't need it.
-extern "C" int crispasr_audio_load(const char* path, float** out_pcm, int* out_samples, int* out_sample_rate);
-extern "C" int crispasr_audio_load_stereo(const char* path, float** out_left, float** out_right, int* out_samples,
+extern "C" int stelnettts_audio_load(const char* path, float** out_pcm, int* out_samples, int* out_sample_rate);
+extern "C" int stelnettts_audio_load_stereo(const char* path, float** out_left, float** out_right, int* out_samples,
                                           int* out_sample_rate, int* out_channels);
-extern "C" void crispasr_audio_free(float* pcm);
+extern "C" void stelnettts_audio_free(float* pcm);
 
 // Header-only WAV reader used directly by the indextts/voxcpm2 --voice paths
-// (crispasr_audio_load routes WAV through miniaudio, not this), so its own
+// (stelnettts_audio_load routes WAV through miniaudio, not this), so its own
 // malicious-size clamp needs a direct test.
 #include "core/wav_reader.h"
 
@@ -91,13 +91,13 @@ struct AudioRef {
 
     ~AudioRef() {
         if (pcm)
-            crispasr_audio_free(pcm);
+            stelnettts_audio_free(pcm);
     }
 };
 
 static AudioRef load_ref() {
     AudioRef ref;
-    int rc = crispasr_audio_load(sample("jfk.wav").c_str(), &ref.pcm, &ref.samples, &ref.sample_rate);
+    int rc = stelnettts_audio_load(sample("jfk.wav").c_str(), &ref.pcm, &ref.samples, &ref.sample_rate);
     REQUIRE(rc == 0);
     REQUIRE(ref.pcm != nullptr);
     REQUIRE(ref.samples > 100000); // ~11s at 16kHz
@@ -107,17 +107,17 @@ static AudioRef load_ref() {
 
 // ── test cases ───────────────────────────────────────────────────────
 
-TEST_CASE("crispasr_audio_load decodes WAV reference", "[audio][unit]") {
+TEST_CASE("stelnettts_audio_load decodes WAV reference", "[audio][unit]") {
     auto ref = load_ref();
     REQUIRE(has_energy(ref.pcm, ref.samples));
 }
 
-TEST_CASE("crispasr_audio_load decodes AU (µ-law)", "[audio][unit][au]") {
+TEST_CASE("stelnettts_audio_load decodes AU (µ-law)", "[audio][unit][au]") {
     auto ref = load_ref();
 
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk.au").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk.au").c_str(), &pcm, &samples, &rate);
     REQUIRE(rc == 0);
     REQUIRE(pcm != nullptr);
     REQUIRE(rate == 16000);
@@ -134,16 +134,16 @@ TEST_CASE("crispasr_audio_load decodes AU (µ-law)", "[audio][unit][au]") {
     INFO("AU cross-correlation: " << cc);
     REQUIRE(cc > 0.70);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
 // Regression: a crafted Sun-AU header must not drive an unbounded allocation
-// or an out-of-bounds read. crispasr_au_decode now clamps data_size to the
+// or an out-of-bounds read. stelnettts_au_decode now clamps data_size to the
 // real file size and rejects a data_offset past EOF. Pre-fix, section 1
 // allocated ~4 GB from the untrusted data_size (DoS / unhandled bad_alloc)
 // and section 2 underflowed end-cur into a huge size_t. We only require the
 // process to survive and behave sanely — under ASan this also proves no OOB.
-TEST_CASE("crispasr_audio_load rejects malicious AU sizes without over-allocating", "[audio][unit][au]") {
+TEST_CASE("stelnettts_audio_load rejects malicious AU sizes without over-allocating", "[audio][unit][au]") {
     auto put_be32 = [](std::vector<uint8_t>& b, uint32_t v) {
         b.push_back((uint8_t)(v >> 24));
         b.push_back((uint8_t)(v >> 16));
@@ -156,7 +156,7 @@ TEST_CASE("crispasr_audio_load rejects malicious AU sizes without over-allocatin
         std::fwrite(bytes.data(), 1, bytes.size(), f);
         std::fclose(f);
     };
-    const char* path = "crispasr_au_regression_tmp.au";
+    const char* path = "stelnettts_au_regression_tmp.au";
 
     SECTION("data_size claims ~4 GB in a tiny file") {
         std::vector<uint8_t> b;
@@ -173,10 +173,10 @@ TEST_CASE("crispasr_audio_load rejects malicious AU sizes without over-allocatin
         float* pcm = nullptr;
         int samples = 0, rate = 0;
         // Must return without a 4 GB allocation; result is a tiny clip or an error.
-        int rc = crispasr_audio_load(path, &pcm, &samples, &rate);
+        int rc = stelnettts_audio_load(path, &pcm, &samples, &rate);
         if (rc == 0) {
             CHECK(samples < 1000);
-            crispasr_audio_free(pcm);
+            stelnettts_audio_free(pcm);
         }
     }
 
@@ -194,7 +194,7 @@ TEST_CASE("crispasr_audio_load rejects malicious AU sizes without over-allocatin
 
         float* pcm = nullptr;
         int samples = 0, rate = 0;
-        int rc = crispasr_audio_load(path, &pcm, &samples, &rate);
+        int rc = stelnettts_audio_load(path, &pcm, &samples, &rate);
         CHECK(rc != 0); // offset past EOF → clean rejection, no underflow
     }
 
@@ -233,7 +233,7 @@ TEST_CASE("read_wav_mono_pcm16 clamps malicious data_size without over-allocatin
     le32(0x7FFFFFFEu); // claims ~2 GB
     for (int i = 0; i < 8; i++)
         w.push_back(0x11); // but only 8 real bytes
-    const char* path = "crispasr_wav_regression_tmp.wav";
+    const char* path = "stelnettts_wav_regression_tmp.wav";
     {
         FILE* f = std::fopen(path, "wb");
         REQUIRE(f != nullptr);
@@ -243,18 +243,18 @@ TEST_CASE("read_wav_mono_pcm16 clamps malicious data_size without over-allocatin
 
     std::vector<float> pcm;
     int rate = 0;
-    bool ok = crispasr::core::read_wav_mono_pcm16(path, pcm, rate);
+    bool ok = stelnettts::core::read_wav_mono_pcm16(path, pcm, rate);
     if (ok)
         CHECK(pcm.size() < 1000);
     std::remove(path);
 }
 
 // Reachability regression: a crafted MP4 whose stsz box claims a ~4 billion
-// sample count must flow through crispasr_audio_load -> crispasr_m4a_decode
+// sample count must flow through stelnettts_audio_load -> stelnettts_m4a_decode
 // (reached after AudioToolbox/AU/AMR/WebM reject it) without the multi-GB
 // resize() (now clamped to box bytes). Builds the minimal
 // ftyp + moov{trak{mdia{minf{stbl{stsz}}}}} nesting the box parser walks.
-TEST_CASE("crispasr_audio_load survives a malicious MP4 stsz count", "[audio][unit]") {
+TEST_CASE("stelnettts_audio_load survives a malicious MP4 stsz count", "[audio][unit]") {
     auto box = [](const char* type, const std::vector<uint8_t>& payload) {
         std::vector<uint8_t> b;
         uint32_t size = 8u + (uint32_t)payload.size();
@@ -282,7 +282,7 @@ TEST_CASE("crispasr_audio_load survives a malicious MP4 stsz count", "[audio][un
     file.insert(file.end(), ftyp.begin(), ftyp.end());
     file.insert(file.end(), moov.begin(), moov.end());
 
-    const char* path = "crispasr_mp4_regression_tmp.m4a";
+    const char* path = "stelnettts_mp4_regression_tmp.m4a";
     {
         FILE* f = std::fopen(path, "wb");
         REQUIRE(f != nullptr);
@@ -293,22 +293,22 @@ TEST_CASE("crispasr_audio_load survives a malicious MP4 stsz count", "[audio][un
     float* pcm = nullptr;
     int n = 0, sr = 0;
     // Must return (no ~16 GB resize / crash). Result is an error (no audio data).
-    int rc = crispasr_audio_load(path, &pcm, &n, &sr);
+    int rc = stelnettts_audio_load(path, &pcm, &n, &sr);
     if (rc == 0)
-        crispasr_audio_free(pcm);
+        stelnettts_audio_free(pcm);
     SUCCEED("survived malicious MP4 stsz without over-allocating");
     std::remove(path);
 }
 
-TEST_CASE("crispasr_audio_load decodes AMR-NB", "[audio][unit][amr]") {
+TEST_CASE("stelnettts_audio_load decodes AMR-NB", "[audio][unit][amr]") {
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk.amr").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk.amr").c_str(), &pcm, &samples, &rate);
 
-    // AMR support is optional (CRISPASR_HAVE_AMR). If the build doesn't
+    // AMR support is optional (STELNETTTS_HAVE_AMR). If the build doesn't
     // include it, rc will be -2 and we skip the test gracefully.
     if (rc == -2) {
-        WARN("AMR decoder not available (CRISPASR_HAVE_AMR not set) — skipping");
+        WARN("AMR decoder not available (STELNETTTS_HAVE_AMR not set) — skipping");
         return;
     }
     REQUIRE(rc == 0);
@@ -329,15 +329,15 @@ TEST_CASE("crispasr_audio_load decodes AMR-NB", "[audio][unit][amr]") {
     INFO("AMR cross-correlation: " << cc);
     REQUIRE(cc > 0.50);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
-TEST_CASE("crispasr_audio_load decodes WebM (Opus)", "[audio][unit][webm]") {
+TEST_CASE("stelnettts_audio_load decodes WebM (Opus)", "[audio][unit][webm]") {
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk.webm").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk.webm").c_str(), &pcm, &samples, &rate);
 
-    // WebM/Opus requires CRISPASR_HAVE_OPUS. The Opus custom backend might
+    // WebM/Opus requires STELNETTTS_HAVE_OPUS. The Opus custom backend might
     // handle it via miniaudio, or our EBML demuxer fallback kicks in.
     if (rc == -2) {
         WARN("WebM decoder not available — skipping");
@@ -361,13 +361,13 @@ TEST_CASE("crispasr_audio_load decodes WebM (Opus)", "[audio][unit][webm]") {
     INFO("WebM cross-correlation: " << cc);
     REQUIRE(cc > 0.80);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
-TEST_CASE("crispasr_audio_load decodes WebM (Vorbis)", "[audio][unit][webm]") {
+TEST_CASE("stelnettts_audio_load decodes WebM (Vorbis)", "[audio][unit][webm]") {
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk-vorbis.webm").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk-vorbis.webm").c_str(), &pcm, &samples, &rate);
 
     if (rc == -2) {
         WARN("WebM/Vorbis decoder not available — skipping");
@@ -389,15 +389,15 @@ TEST_CASE("crispasr_audio_load decodes WebM (Vorbis)", "[audio][unit][webm]") {
     INFO("WebM/Vorbis cross-correlation: " << cc);
     REQUIRE(cc > 0.70);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
-TEST_CASE("crispasr_audio_load decodes M4A (AAC)", "[audio][unit][m4a]") {
+TEST_CASE("stelnettts_audio_load decodes M4A (AAC)", "[audio][unit][m4a]") {
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk.m4a").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk.m4a").c_str(), &pcm, &samples, &rate);
 
-    // M4A/AAC requires either CRISPASR_HAVE_FDK_AAC (Linux) or Apple AudioToolbox
+    // M4A/AAC requires either STELNETTTS_HAVE_FDK_AAC (Linux) or Apple AudioToolbox
     if (rc == -2) {
         WARN("M4A/AAC decoder not available — skipping");
         return;
@@ -421,17 +421,17 @@ TEST_CASE("crispasr_audio_load decodes M4A (AAC)", "[audio][unit][m4a]") {
     INFO("M4A cross-correlation: " << cc);
     REQUIRE(cc > 0.85);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
-TEST_CASE("crispasr_audio_load decodes ADTS AAC (glint)", "[audio][unit][aac]") {
+TEST_CASE("stelnettts_audio_load decodes ADTS AAC (glint)", "[audio][unit][aac]") {
     // Raw ADTS .aac (ffmpeg-encoded AAC-LC) decoded by the in-tree glint
     // decoder — cross-platform and always available (no runtime lib), so unlike
     // M4A this must succeed everywhere. ffmpeg-encoded -> glint-decoded is the
     // cross-reference roundtrip (HARD RULE #3).
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk.aac").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk.aac").c_str(), &pcm, &samples, &rate);
     REQUIRE(rc == 0);
     REQUIRE(pcm != nullptr);
     REQUIRE(rate == 16000);
@@ -451,17 +451,17 @@ TEST_CASE("crispasr_audio_load decodes ADTS AAC (glint)", "[audio][unit][aac]") 
     INFO("ADTS AAC cross-correlation: " << cc);
     REQUIRE(cc > 0.85);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
-TEST_CASE("crispasr_audio_load decodes Ogg Opus (glint)", "[audio][unit][opus]") {
+TEST_CASE("stelnettts_audio_load decodes Ogg Opus (glint)", "[audio][unit][opus]") {
     // Real libopus-encoded .opus decoded by the in-tree glint decoder (default
     // for Ogg Opus; RFC-conformant). libopus-encode -> glint-decode is the
     // cross-encoder validation (HARD RULE #3); glint is always available, so
     // unlike WebM this must succeed everywhere.
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load(sample("jfk.opus").c_str(), &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load(sample("jfk.opus").c_str(), &pcm, &samples, &rate);
     REQUIRE(rc == 0);
     REQUIRE(pcm != nullptr);
     REQUIRE(rate == 16000);
@@ -480,17 +480,17 @@ TEST_CASE("crispasr_audio_load decodes Ogg Opus (glint)", "[audio][unit][opus]")
     INFO("Ogg Opus cross-correlation: " << cc);
     REQUIRE(cc > 0.80);
 
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 }
 
-TEST_CASE("crispasr_audio_load_stereo decodes Ogg Opus (glint, stereo path)", "[audio][unit][opus]") {
+TEST_CASE("stelnettts_audio_load_stereo decodes Ogg Opus (glint, stereo path)", "[audio][unit][opus]") {
     // The stereo loader routes Ogg Opus through glint too (stereo-preserving).
     // jfk.opus is mono, so we expect 1 channel with L == R; the point is to
     // exercise the stereo loader's glint interception and its resample path.
     float* left = nullptr;
     float* right = nullptr;
     int samples = 0, rate = 0, channels = 0;
-    int rc = crispasr_audio_load_stereo(sample("jfk.opus").c_str(), &left, &right, &samples, &rate, &channels);
+    int rc = stelnettts_audio_load_stereo(sample("jfk.opus").c_str(), &left, &right, &samples, &rate, &channels);
     REQUIRE(rc == 0);
     REQUIRE(left != nullptr);
     REQUIRE(right != nullptr);
@@ -503,22 +503,22 @@ TEST_CASE("crispasr_audio_load_stereo decodes Ogg Opus (glint, stereo path)", "[
     INFO("stereo Ogg Opus (L) cross-correlation: " << cc);
     REQUIRE(cc > 0.80);
 
-    crispasr_audio_free(left);
-    crispasr_audio_free(right);
+    stelnettts_audio_free(left);
+    stelnettts_audio_free(right);
 }
 
-TEST_CASE("crispasr_audio_load rejects missing file", "[audio][unit]") {
+TEST_CASE("stelnettts_audio_load rejects missing file", "[audio][unit]") {
     float* pcm = nullptr;
     int samples = 0, rate = 0;
-    int rc = crispasr_audio_load("/nonexistent/file.wav", &pcm, &samples, &rate);
+    int rc = stelnettts_audio_load("/nonexistent/file.wav", &pcm, &samples, &rate);
     REQUIRE(rc < 0);
     REQUIRE(pcm == nullptr);
 }
 
-TEST_CASE("crispasr_audio_load rejects null args", "[audio][unit]") {
+TEST_CASE("stelnettts_audio_load rejects null args", "[audio][unit]") {
     float* pcm = nullptr;
     int samples = 0;
-    REQUIRE(crispasr_audio_load(nullptr, &pcm, &samples, nullptr) == -1);
-    REQUIRE(crispasr_audio_load("test.wav", nullptr, &samples, nullptr) == -1);
-    REQUIRE(crispasr_audio_load("test.wav", &pcm, nullptr, nullptr) == -1);
+    REQUIRE(stelnettts_audio_load(nullptr, &pcm, &samples, nullptr) == -1);
+    REQUIRE(stelnettts_audio_load("test.wav", nullptr, &samples, nullptr) == -1);
+    REQUIRE(stelnettts_audio_load("test.wav", &pcm, nullptr, nullptr) == -1);
 }

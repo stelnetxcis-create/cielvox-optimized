@@ -4,8 +4,8 @@
 //
 #include "common-sdl.h"
 #include "common.h"
-#include "common-crispasr.h"
-#include "crispasr.h"
+#include "common-stelnettts.h"
+#include "stelnettts.h"
 
 #include <chrono>
 #include <cstdio>
@@ -161,10 +161,10 @@ int main(int argc, char** argv) {
     params.keep_ms = std::min(params.keep_ms, params.step_ms);
     params.length_ms = std::max(params.length_ms, params.step_ms);
 
-    const int n_samples_step = (1e-3 * params.step_ms) * CRISPASR_SAMPLE_RATE;
-    const int n_samples_len = (1e-3 * params.length_ms) * CRISPASR_SAMPLE_RATE;
-    const int n_samples_keep = (1e-3 * params.keep_ms) * CRISPASR_SAMPLE_RATE;
-    const int n_samples_30s = (1e-3 * 30000.0) * CRISPASR_SAMPLE_RATE;
+    const int n_samples_step = (1e-3 * params.step_ms) * STELNETTTS_SAMPLE_RATE;
+    const int n_samples_len = (1e-3 * params.length_ms) * STELNETTTS_SAMPLE_RATE;
+    const int n_samples_keep = (1e-3 * params.keep_ms) * STELNETTTS_SAMPLE_RATE;
+    const int n_samples_30s = (1e-3 * 30000.0) * STELNETTTS_SAMPLE_RATE;
 
     const bool use_vad = n_samples_step <= 0; // sliding window mode uses VAD
 
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
     // init audio
 
     audio_async audio(params.length_ms);
-    if (!audio.init(params.capture_id, CRISPASR_SAMPLE_RATE)) {
+    if (!audio.init(params.capture_id, STELNETTTS_SAMPLE_RATE)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }
@@ -223,8 +223,8 @@ int main(int argc, char** argv) {
         fprintf(stderr,
                 "%s: processing %d samples (step = %.1f sec / len = %.1f sec / keep = %.1f sec), %d threads, lang = "
                 "%s, task = %s, timestamps = %d ...\n",
-                __func__, n_samples_step, float(n_samples_step) / CRISPASR_SAMPLE_RATE,
-                float(n_samples_len) / CRISPASR_SAMPLE_RATE, float(n_samples_keep) / CRISPASR_SAMPLE_RATE,
+                __func__, n_samples_step, float(n_samples_step) / STELNETTTS_SAMPLE_RATE,
+                float(n_samples_len) / STELNETTTS_SAMPLE_RATE, float(n_samples_keep) / STELNETTTS_SAMPLE_RATE,
                 params.n_threads, params.language.c_str(), params.translate ? "translate" : "transcribe",
                 params.no_timestamps ? 0 : 1);
 
@@ -259,7 +259,7 @@ int main(int argc, char** argv) {
         strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", localtime(&now));
         std::string filename = std::string(buffer) + ".wav";
 
-        wavWriter.open(filename, CRISPASR_SAMPLE_RATE, 16, 1);
+        wavWriter.open(filename, STELNETTTS_SAMPLE_RATE, 16, 1);
     }
     printf("[Start speaking]\n");
     fflush(stdout);
@@ -334,7 +334,7 @@ int main(int argc, char** argv) {
 
             audio.get(2000, pcmf32_new);
 
-            if (::vad_simple(pcmf32_new, CRISPASR_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, false)) {
+            if (::vad_simple(pcmf32_new, STELNETTTS_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, false)) {
                 audio.get(params.length_ms, pcmf32);
             } else {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -348,7 +348,7 @@ int main(int argc, char** argv) {
         // run the inference
         {
             whisper_full_params wparams = whisper_full_default_params(
-                params.beam_size > 1 ? CRISPASR_SAMPLING_BEAM_SEARCH : CRISPASR_SAMPLING_GREEDY);
+                params.beam_size > 1 ? STELNETTTS_SAMPLING_BEAM_SEARCH : STELNETTTS_SAMPLING_GREEDY);
 
             wparams.print_progress = false;
             wparams.print_special = params.print_special;
@@ -388,7 +388,7 @@ int main(int argc, char** argv) {
                     printf("\33[2K\r");
                 } else {
                     const int64_t t1 = (t_last - t_start).count() / 1000000;
-                    const int64_t t0 = std::max(0.0, t1 - pcmf32.size() * 1000.0 / CRISPASR_SAMPLE_RATE);
+                    const int64_t t0 = std::max(0.0, t1 - pcmf32.size() * 1000.0 / STELNETTTS_SAMPLE_RATE);
 
                     printf("\n");
                     printf("### Transcription %d START | t0 = %d ms | t1 = %d ms\n", n_iter, (int)t0, (int)t1);

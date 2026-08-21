@@ -3,13 +3,13 @@
 Decode an Irodori-TTS raw latent file using the DACVAE decoder (Python).
 
 Usage:
-    # First generate latent with CrispASR:
-    crispasr --backend irodori-tts -m model.gguf --tts "テスト" --tts-output out.wav
+    # First generate latent with StelnetTTS:
+    stelnettts --backend irodori-tts -m model.gguf --tts "テスト" --tts-output out.wav
 
     # Then decode with this script (for validation):
     python tools/irodori_decode_latent.py --latent out.latent --output decoded.wav
 
-The .latent file is written by irodori_tts when CRISPASR_IRODORI_DUMP_LATENT=1.
+The .latent file is written by irodori_tts when STELNETTTS_IRODORI_DUMP_LATENT=1.
 Format: raw float32, shape (T_frames, 32).
 """
 

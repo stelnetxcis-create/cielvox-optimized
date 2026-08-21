@@ -28,16 +28,16 @@ TMP = Path("/kaggle/temp/convtest"); TMP.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "convtest_results.json"
 
 HERE = Path(__file__).resolve().parent
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 BRANCH = "fix/304-cosyvoice3-se"
-CLONE = Path("/kaggle/temp/CrispASR")
+CLONE = Path("/kaggle/temp/StelnetTTS")
 _cloned = CLONE.exists()
 if not _cloned:
     try:
         # ggml submodule pinned to a SHA that's usually not the branch tip, so a
         # full (non-shallow) submodule clone is required.
         subprocess.run(["git", "clone", "--depth", "1", "--branch", BRANCH,
-                        "--recurse-submodules", CRISPASR_URL, str(CLONE)],
+                        "--recurse-submodules", STELNETTTS_URL, str(CLONE)],
                        check=True, timeout=1200)
         _cloned = True
     except Exception as e:

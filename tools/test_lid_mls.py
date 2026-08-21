@@ -13,7 +13,7 @@ MLS_LANGS = {
 
 N = 2
 
-SCRATCH_ROOT = os.environ.get("CRISPASR_SCRATCH_DIR") or os.environ.get("CRISP_SCRATCH_DIR") or ".scratch"
+SCRATCH_ROOT = os.environ.get("STELNETTTS_SCRATCH_DIR") or os.environ.get("CRISP_SCRATCH_DIR") or ".scratch"
 
 def run_lid(model_path, cli, wav_path):
     try:
@@ -28,11 +28,11 @@ def run_lid(model_path, cli, wav_path):
 def main():
     models = sys.argv[1:]
     if not models:
-        default_model = os.environ.get("CRISPASR_LID_MODEL")
+        default_model = os.environ.get("STELNETTTS_LID_MODEL")
         if not default_model:
             raise SystemExit("Usage: tools/test_lid_mls.py MODEL.gguf [MODEL2.gguf ...]")
         models = [default_model]
-    cli = "./build/bin/crispasr"
+    cli = "./build/bin/stelnettts"
 
     for model_path in models:
         sz = os.path.getsize(model_path) / 1e6

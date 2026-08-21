@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CrispASR — All-backends regression test.
+StelnetTTS — All-backends regression test.
 
 Sister to `tools/macbook-benchmark-all-backends.py` (which is a perf
 benchmark). This is a **regression gate**: pass/fail per backend per
@@ -31,15 +31,15 @@ Selection (subset of backends):
 
 Model resolution:
 
-  default --models = /Volumes/backups/ai/crispasr-models on macOS,
-  ~/.cache/crispasr elsewhere. CRISPASR_MODELS_DIR env overrides.
+  default --models = /Volumes/backups/ai/stelnettts-models on macOS,
+  ~/.cache/stelnettts elsewhere. STELNETTTS_MODELS_DIR env overrides.
   Missing models trigger huggingface_hub.hf_hub_download with HF_TOKEN
   picked up automatically; --skip-missing turns the download off.
 
 Pre-download disk-space check uses each backend's approx_size_mb hint
 plus a 2 GB safety margin against shutil.disk_usage(dir).free.
 
-Auto-detects crispasr binary in build-ninja-compile/, build/,
+Auto-detects stelnettts binary in build-ninja-compile/, build/,
 build-release/, or PATH (macOS + Ubuntu both work).
 
 Exit code: 0 if all selected tests PASS or are SKIP, non-zero on FAIL.
@@ -75,7 +75,7 @@ JFK_REF = (
 
 @dataclass
 class Backend:
-    name: str            # crispasr --backend value
+    name: str            # stelnettts --backend value
     display: str         # human label
     local_file: str      # filename to look for in --models
     hf_repo: str         # HF repo id for download fallback
@@ -87,7 +87,7 @@ class Backend:
     approx_size_mb: int | None = None
     # TTS-specific extras (only needed for tts-roundtrip capability)
     voice_file: str | None = None     # e.g. kokoro-voice-af_heart.gguf
-    codec_model: str | None = None    # e.g. qwen3-tts-tokenizer-12hz-q8_0.gguf
+    codec_model: str | None = None    # e.g. cielvox2-tts-tokenizer-12hz-q8_0.gguf
     tts_extra_args: tuple[str, ...] = ()
     # Reference / shared models — never auto-deleted in --cache-mode=ephemeral.
     # Used by other backends as ground truth (parakeet for TTS roundtrip;
@@ -106,136 +106,136 @@ CAPABILITIES_KNOWN = (
 
 REGISTRY: tuple[Backend, ...] = (
     Backend("whisper",    "Whisper (tiny)",      "ggml-tiny.bin",
-            "ggerganov/crispasr", "ggml-tiny.bin",
+            "ggerganov/stelnettts", "ggml-tiny.bin",
             timeout_s=60, approx_size_mb=80,
             capabilities=("transcribe", "json-output", "stream", "lid", "vad",
                           "beam", "word-timestamps", "temperature", "translate"),
             # Pinned: every other backend triggers LID via this model.
             is_reference=True),
     Backend("parakeet",   "Parakeet TDT 0.6B",   "parakeet-tdt-0.6b-v3-q4_k.gguf",
-            "cstr/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf",
+            "Xenna/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf",
             timeout_s=60, approx_size_mb=420,
             capabilities=("transcribe", "json-output", "word-timestamps",
                           "temperature", "punctuation"),
             # Pinned: TTS-roundtrip uses parakeet ASR as ground truth.
             is_reference=True),
     Backend("moonshine",  "Moonshine Tiny",      "moonshine-tiny-q4_k.gguf",
-            "cstr/moonshine-tiny-GGUF", "moonshine-tiny-q4_k.gguf",
+            "Xenna/moonshine-tiny-GGUF", "moonshine-tiny-q4_k.gguf",
             timeout_s=30, approx_size_mb=30,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation"),
-            extra_files=(("tokenizer.bin", "cstr/moonshine-tiny-GGUF", "tokenizer.bin"),)),
+            extra_files=(("tokenizer.bin", "Xenna/moonshine-tiny-GGUF", "tokenizer.bin"),)),
     Backend("moonshine-de", "Moonshine Base DE (fidoriel)",
             "moonshine-base-de-fidoriel-q4_k.gguf",
-            "cstr/moonshine-base-de-fidoriel-GGUF", "moonshine-base-de-fidoriel-q4_k.gguf",
+            "Xenna/moonshine-base-de-fidoriel-GGUF", "moonshine-base-de-fidoriel-q4_k.gguf",
             timeout_s=30, approx_size_mb=39,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation"),
-            extra_files=(("tokenizer.bin", "cstr/moonshine-base-de-fidoriel-GGUF", "tokenizer.bin"),)),
+            extra_files=(("tokenizer.bin", "Xenna/moonshine-base-de-fidoriel-GGUF", "tokenizer.bin"),)),
     Backend("moonshine-tiny-de", "Moonshine Tiny DE (fidoriel)",
             "moonshine-tiny-de-fidoriel-q4_k.gguf",
-            "cstr/moonshine-tiny-de-fidoriel-GGUF", "moonshine-tiny-de-fidoriel-q4_k.gguf",
+            "Xenna/moonshine-tiny-de-fidoriel-GGUF", "moonshine-tiny-de-fidoriel-q4_k.gguf",
             timeout_s=30, approx_size_mb=17,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation"),
-            extra_files=(("tokenizer.bin", "cstr/moonshine-tiny-de-fidoriel-GGUF", "tokenizer.bin"),)),
+            extra_files=(("tokenizer.bin", "Xenna/moonshine-tiny-de-fidoriel-GGUF", "tokenizer.bin"),)),
     Backend("moonshine-streaming", "Moonshine Streaming Tiny",
             "moonshine-streaming-tiny-q4_k.gguf",
-            "cstr/moonshine-streaming-tiny-GGUF", "moonshine-streaming-tiny-q4_k.gguf",
+            "Xenna/moonshine-streaming-tiny-GGUF", "moonshine-streaming-tiny-q4_k.gguf",
             timeout_s=60, approx_size_mb=35,
             capabilities=("transcribe", "stream", "json-output", "word-timestamps"),
-            extra_files=(("tokenizer.bin", "cstr/moonshine-streaming-tiny-GGUF", "tokenizer.bin"),)),
+            extra_files=(("tokenizer.bin", "Xenna/moonshine-streaming-tiny-GGUF", "tokenizer.bin"),)),
     Backend("wav2vec2",   "Wav2Vec2 XLSR-EN",    "wav2vec2-xlsr-en-q4_k.gguf",
-            "cstr/wav2vec2-large-xlsr-53-english-GGUF",
+            "Xenna/wav2vec2-large-xlsr-53-english-GGUF",
             "wav2vec2-xlsr-en-q4_k.gguf",
             timeout_s=60, approx_size_mb=200,
             capabilities=("transcribe", "json-output", "word-timestamps")),
     Backend("fastconformer-ctc", "FastConformer CTC Large",
             "stt-en-fastconformer-ctc-large-q4_k.gguf",
-            "cstr/stt-en-fastconformer-ctc-large-GGUF",
+            "Xenna/stt-en-fastconformer-ctc-large-GGUF",
             "stt-en-fastconformer-ctc-large-q4_k.gguf",
             timeout_s=30, approx_size_mb=80,
             capabilities=("transcribe", "json-output", "word-timestamps")),
     Backend("canary",     "Canary 1B",           "canary-1b-v2-q4_k.gguf",
-            "cstr/canary-1b-v2-GGUF", "canary-1b-v2-q4_k.gguf",
+            "Xenna/canary-1b-v2-GGUF", "canary-1b-v2-q4_k.gguf",
             timeout_s=120, approx_size_mb=620,
             capabilities=("transcribe", "json-output", "temperature",
                           "word-timestamps", "punctuation", "translate")),
     Backend("cohere",     "Cohere Transcribe",   "cohere-transcribe-q4_k.gguf",
-            "cstr/cohere-transcribe-03-2026-GGUF", "cohere-transcribe-q4_k.gguf",
+            "Xenna/cohere-transcribe-03-2026-GGUF", "cohere-transcribe-q4_k.gguf",
             timeout_s=120, approx_size_mb=1300,
             capabilities=("transcribe", "json-output", "temperature",
                           "word-timestamps", "punctuation")),
-    Backend("qwen3",      "Qwen3 ASR 0.6B",      "qwen3-asr-0.6b-q4_k.gguf",
-            "cstr/qwen3-asr-0.6b-GGUF", "qwen3-asr-0.6b-q4_k.gguf",
+    Backend("qwen3",      "Qwen3 ASR 0.6B",      "cielvox2-asr-0.6b-q4_k.gguf",
+            "Xenna/cielvox2-asr-0.6b-GGUF", "cielvox2-asr-0.6b-q4_k.gguf",
             timeout_s=120, approx_size_mb=400,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation",
                           "translate")),
     # OmniASR CTC Q4_K now uses mixed quantization (head=4 encoder layers
-    # at F16, rest at Q4_K) by default in crispasr-quantize. Recovers
+    # at F16, rest at Q4_K) by default in stelnettts-quantize. Recovers
     # nearly all of Q8_0's quality (5% WER on JFK from 1-word "americas"→
     # "americans" diff that omniasr-llm shares; uniform Q4_K had 22.7%)
     # at 658 MB vs Q8_0's 1.0 GB. See LEARNINGS "Q4_K is too lossy as
     # the default for CTC-decoded ASR" + "head=4 sweep on omniasr-ctc"
     # for the full diagnosis. To override (full quant, smaller, ~22% WER):
-    # CRISPASR_OMNIASR_QUANT_ALL=1 crispasr-quantize ...
+    # STELNETTTS_OMNIASR_QUANT_ALL=1 stelnettts-quantize ...
     Backend("omniasr",    "OmniASR CTC 1B v2",   "omniasr-ctc-1b-v2-q4_k.gguf",
-            "cstr/omniASR-CTC-1B-v2-GGUF", "omniasr-ctc-1b-v2-q4_k.gguf",
+            "Xenna/omniASR-CTC-1B-v2-GGUF", "omniasr-ctc-1b-v2-q4_k.gguf",
             timeout_s=120, approx_size_mb=660,
             capabilities=("transcribe", "json-output", "temperature", "beam",
                           "word-timestamps")),
     Backend("omniasr-llm", "OmniASR LLM 300M",   "omniasr-llm-300m-v2-q4_k.gguf",
-            "cstr/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf",
+            "Xenna/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf",
             timeout_s=300, approx_size_mb=1100,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps")),
     Backend("glm-asr",    "GLM ASR Nano",        "glm-asr-nano-q4_k.gguf",
-            "cstr/glm-asr-nano-GGUF", "glm-asr-nano-q4_k.gguf",
+            "Xenna/glm-asr-nano-GGUF", "glm-asr-nano-q4_k.gguf",
             timeout_s=300, approx_size_mb=900,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "punctuation", "word-timestamps")),
     Backend("firered-asr", "FireRed ASR2 AED",   "firered-asr2-aed-q4_k.gguf",
-            "cstr/firered-asr2-aed-GGUF", "firered-asr2-aed-q4_k.gguf",
+            "Xenna/firered-asr2-aed-GGUF", "firered-asr2-aed-q4_k.gguf",
             timeout_s=300, approx_size_mb=600,
             capabilities=("transcribe", "json-output", "beam", "word-timestamps")),
     Backend("kyutai-stt", "Kyutai STT 1B",       "kyutai-stt-1b-q4_k.gguf",
-            "cstr/kyutai-stt-1b-GGUF", "kyutai-stt-1b-q4_k.gguf",
+            "Xenna/kyutai-stt-1b-GGUF", "kyutai-stt-1b-q4_k.gguf",
             timeout_s=90, approx_size_mb=700,
             capabilities=("transcribe", "json-output", "stream", "beam",
                           "temperature", "word-timestamps", "punctuation")),
     Backend("granite",    "Granite Speech 1B",   "granite-speech-4.0-1b-q4_k.gguf",
-            "cstr/granite-speech-4.0-1b-GGUF", "granite-speech-4.0-1b-q4_k.gguf",
+            "Xenna/granite-speech-4.0-1b-GGUF", "granite-speech-4.0-1b-q4_k.gguf",
             timeout_s=300, approx_size_mb=1700,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation",
                           "translate")),
     Backend("granite-4.1", "Granite Speech 4.1 2B", "granite-speech-4.1-2b-q4_k.gguf",
-            "cstr/granite-speech-4.1-2b-GGUF", "granite-speech-4.1-2b-q4_k.gguf",
+            "Xenna/granite-speech-4.1-2b-GGUF", "granite-speech-4.1-2b-q4_k.gguf",
             timeout_s=300, approx_size_mb=1500,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation",
                           "translate")),
     Backend("vibevoice",  "VibeVoice ASR",       "vibevoice-asr-7b-q4_k-fixed.gguf",
-            "cstr/vibevoice-asr-GGUF", "vibevoice-asr-q4_k.gguf",
+            "Xenna/vibevoice-asr-GGUF", "vibevoice-asr-q4_k.gguf",
             timeout_s=600, approx_size_mb=4500,
             capabilities=("transcribe", "json-output", "temperature",
                           "word-timestamps", "tts-roundtrip")),
     # vibevoice-1.5b: base VibeVoice TTS model with WAV cloning. Larger
     # than the ASR-optimised vibevoice; produces higher-fidelity TTS.
     Backend("vibevoice-1.5b", "VibeVoice 1.5B TTS", "vibevoice-1.5b-tts-q4_k.gguf",
-            "cstr/vibevoice-1.5b-GGUF", "vibevoice-1.5b-tts-q4_k.gguf",
+            "Xenna/vibevoice-1.5b-GGUF", "vibevoice-1.5b-tts-q4_k.gguf",
             timeout_s=600, approx_size_mb=1600,
             capabilities=("tts-roundtrip", "temperature", "voice-cloning")),
     Backend("voxtral",    "Voxtral Mini 3B",     "voxtral-mini-3b-2507-q4_k.gguf",
-            "cstr/voxtral-mini-3b-2507-GGUF", "voxtral-mini-3b-2507-q4_k.gguf",
+            "Xenna/voxtral-mini-3b-2507-GGUF", "voxtral-mini-3b-2507-q4_k.gguf",
             timeout_s=300, approx_size_mb=1900,
             capabilities=("transcribe", "json-output", "temperature",
                           "beam", "word-timestamps", "punctuation",
                           "translate")),
 
     Backend("gemma4-e2b", "Gemma4 E2B IT",       "gemma4-e2b-it-q4_k.gguf",
-            "cstr/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf",
+            "Xenna/gemma4-e2b-it-GGUF", "gemma4-e2b-it-q4_k.gguf",
             timeout_s=300, approx_size_mb=2500,
             capabilities=("transcribe", "temperature", "lid", "word-timestamps")),
 
@@ -244,20 +244,20 @@ REGISTRY: tuple[Backend, ...] = (
     # --list-backends-json. Run tools/audit-backend-capabilities.py to
     # check for further drift after backend changes.
     Backend("voxtral4b", "Voxtral Mini 4B Realtime", "voxtral-mini-4b-realtime-q4_k.gguf",
-            "cstr/voxtral-mini-4b-realtime-GGUF", "voxtral-mini-4b-realtime-q4_k.gguf",
+            "Xenna/voxtral-mini-4b-realtime-GGUF", "voxtral-mini-4b-realtime-q4_k.gguf",
             timeout_s=600, approx_size_mb=2500,
             capabilities=("transcribe", "json-output", "temperature",
                           "word-timestamps", "punctuation", "stream")),
     Backend("mimo-asr",  "MiMo-V2.5-ASR (Q4_K)",   "mimo-asr-q4_k.gguf",
-            "cstr/mimo-asr-GGUF", "mimo-asr-q4_k.gguf",
+            "Xenna/mimo-asr-GGUF", "mimo-asr-q4_k.gguf",
             timeout_s=600, approx_size_mb=4200,
             capabilities=("transcribe", "json-output", "temperature",
                           "word-timestamps")),
 
-    # mega-asr: Qwen3-1.7B variant with robustness LoRA. Same qwen3-asr
+    # mega-asr: Qwen3-1.7B variant with robustness LoRA. Same cielvox2-asr
     # runtime; ships as a separate GGUF with the LoRA baked in.
     Backend("mega-asr",  "Mega-ASR 1.7B",           "mega-asr-1.7b-q4_k.gguf",
-            "cstr/mega-asr-GGUF", "mega-asr-1.7b-q4_k.gguf",
+            "Xenna/mega-asr-GGUF", "mega-asr-1.7b-q4_k.gguf",
             timeout_s=300, approx_size_mb=1300,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation")),
@@ -268,23 +268,23 @@ REGISTRY: tuple[Backend, ...] = (
     # never landed in this registry, so the !-loop regression in v0.6.10
     # shipped silent (issue #125 reports 01/07/08/09).
     Backend("funasr",     "FunASR Nano 2512",        "funasr-nano-2512-f16.gguf",
-            "cstr/funasr-nano-GGUF", "funasr-nano-2512-f16.gguf",
+            "Xenna/funasr-nano-GGUF", "funasr-nano-2512-f16.gguf",
             timeout_s=120, approx_size_mb=1980,
             capabilities=("transcribe", "json-output")),
     Backend("fun-asr-mlt-nano", "FunASR MLT-Nano 2512",
             "funasr-mlt-nano-2512-f16.gguf",
-            "cstr/funasr-mlt-nano-GGUF", "funasr-mlt-nano-2512-f16.gguf",
+            "Xenna/funasr-mlt-nano-GGUF", "funasr-mlt-nano-2512-f16.gguf",
             timeout_s=120, approx_size_mb=1980,
             capabilities=("transcribe", "json-output")),
     # SenseVoice + paraformer-zh share the SANM block helper with funasr
     # but ship as encoder-only / NAR backends. Missing from the registry
     # in parallel with funasr; same coverage gap.
     Backend("sensevoice", "SenseVoice Small (CTC)", "sensevoice-small-q4_k.gguf",
-            "cstr/sensevoice-small-GGUF", "sensevoice-small-q4_k.gguf",
+            "Xenna/sensevoice-small-GGUF", "sensevoice-small-q4_k.gguf",
             timeout_s=60, approx_size_mb=470,
             capabilities=("transcribe", "json-output", "lid")),
     Backend("paraformer", "Paraformer-zh (NAR)",     "paraformer-zh-q4_k.gguf",
-            "cstr/paraformer-zh-GGUF", "paraformer-zh-q4_k.gguf",
+            "Xenna/paraformer-zh-GGUF", "paraformer-zh-q4_k.gguf",
             timeout_s=60, approx_size_mb=130,
             capabilities=("transcribe", "json-output")),
 
@@ -292,7 +292,7 @@ REGISTRY: tuple[Backend, ...] = (
     # Same runtime path as granite-4.1; -plus adds bigger LM head + extra
     # capability declarations (translate, src-tgt-language).
     Backend("granite-4.1-plus", "Granite Speech 4.1 2B Plus", "granite-speech-4.1-2b-plus-q4_k.gguf",
-            "cstr/granite-speech-4.1-2b-plus-GGUF", "granite-speech-4.1-2b-plus-q4_k.gguf",
+            "Xenna/granite-speech-4.1-2b-plus-GGUF", "granite-speech-4.1-2b-plus-q4_k.gguf",
             timeout_s=300, approx_size_mb=2960,
             capabilities=("transcribe", "json-output", "beam",
                           "temperature", "word-timestamps", "punctuation",
@@ -301,72 +301,72 @@ REGISTRY: tuple[Backend, ...] = (
     # only, no LLM decode). Smaller capability surface — no beam, no
     # temperature; CTC-style decoding.
     Backend("granite-4.1-nar", "Granite Speech 4.1 2B NAR", "granite-speech-4.1-2b-nar-q4_k.gguf",
-            "cstr/granite-speech-4.1-2b-nar-GGUF", "granite-speech-4.1-2b-nar-q4_k.gguf",
+            "Xenna/granite-speech-4.1-2b-nar-GGUF", "granite-speech-4.1-2b-nar-q4_k.gguf",
             timeout_s=300, approx_size_mb=3200,
             capabilities=("transcribe", "json-output", "word-timestamps")),
     # hubert: HuBERT-large CTC ASR. wav2vec2-family runtime, ~200 MB.
     Backend("hubert",    "HuBERT Large LS960-FT",  "hubert-large-ls960-ft-q4_k.gguf",
-            "cstr/hubert-large-ls960-ft-GGUF", "hubert-large-ls960-ft-q4_k.gguf",
+            "Xenna/hubert-large-ls960-ft-GGUF", "hubert-large-ls960-ft-q4_k.gguf",
             timeout_s=120, approx_size_mb=200,
             capabilities=("transcribe", "json-output", "word-timestamps")),
     # data2vec: data2vec-audio CTC ASR, smallest (~60 MB) of the
     # wav2vec2-family backends.
     Backend("data2vec",  "Data2Vec Audio Base 960h", "data2vec-audio-base-960h-q4_k.gguf",
-            "cstr/data2vec-audio-960h-GGUF", "data2vec-audio-base-960h-q4_k.gguf",
+            "Xenna/data2vec-audio-960h-GGUF", "data2vec-audio-base-960h-q4_k.gguf",
             timeout_s=120, approx_size_mb=60,
             capabilities=("transcribe", "json-output", "word-timestamps")),
 
     # ---- TTS backends (tts-roundtrip capability) ----
     Backend("kokoro",     "Kokoro 82M (TTS)",    "kokoro-82m-q8_0.gguf",
-            "cstr/kokoro-82m-GGUF", "kokoro-82m-q8_0.gguf",
+            "Xenna/kokoro-82m-GGUF", "kokoro-82m-q8_0.gguf",
             timeout_s=120, approx_size_mb=90,
             capabilities=("tts-roundtrip",),
             voice_file="kokoro-voice-af_heart.gguf",
             extra_files=(("kokoro-voice-af_heart.gguf",
-                          "cstr/kokoro-82m-GGUF",
+                          "Xenna/kokoro-82m-GGUF",
                           "kokoro-voice-af_heart.gguf"),)),
-    # qwen3-tts: speech-LLM with separate talker + 12 Hz codec models.
+    # cielvox2-tts: speech-LLM with separate talker + 12 Hz codec models.
     # Auto-download pulls both. -m auto resolves the talker; the codec is
     # picked up via the registry entry's companion-file field.
-    Backend("qwen3-tts", "Qwen3-TTS 0.6B (TTS)", "qwen3-tts-12hz-0.6b-base-q8_0.gguf",
-            "cstr/qwen3-tts-0.6b-base-GGUF", "qwen3-tts-12hz-0.6b-base-q8_0.gguf",
+    Backend("cielvox2-tts", "Qwen3-TTS 0.6B (TTS)", "cielvox2-tts-12hz-0.6b-base-q8_0.gguf",
+            "Xenna/cielvox2-tts-0.6b-base-GGUF", "cielvox2-tts-12hz-0.6b-base-q8_0.gguf",
             timeout_s=300, approx_size_mb=1300,
             capabilities=("tts-roundtrip", "temperature")),
-    # qwen3-tts-customvoice: 0.6B fixed-speaker fine-tune (9 baked
+    # cielvox2-tts-customvoice: 0.6B fixed-speaker fine-tune (9 baked
     # speakers via --voice <name>); same 12 Hz codec.
-    Backend("qwen3-tts-customvoice", "Qwen3-TTS 0.6B CustomVoice (TTS)",
-            "qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf",
-            "cstr/qwen3-tts-0.6b-customvoice-GGUF",
-            "qwen3-tts-12hz-0.6b-customvoice-q8_0.gguf",
+    Backend("cielvox2-tts-customvoice", "Qwen3-TTS 0.6B CustomVoice (TTS)",
+            "cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf",
+            "Xenna/cielvox2-tts-0.6b-customvoice-GGUF",
+            "cielvox2-tts-12hz-0.6b-customvoice-q8_0.gguf",
             timeout_s=300, approx_size_mb=1280,
             capabilities=("tts-roundtrip", "temperature")),
-    # qwen3-tts-1.7b-base: larger talker (~1.9 GB Q8_0); same ICL
+    # cielvox2-tts-1.7b-base: larger talker (~1.9 GB Q8_0); same ICL
     # voice-clone path as 0.6B-Base.
-    Backend("qwen3-tts-1.7b-base", "Qwen3-TTS 1.7B (TTS)",
-            "qwen3-tts-12hz-1.7b-base-q8_0.gguf",
-            "cstr/qwen3-tts-1.7b-base-GGUF",
-            "qwen3-tts-12hz-1.7b-base-q8_0.gguf",
+    Backend("cielvox2-tts-1.7b-base", "Qwen3-TTS 1.7B (TTS)",
+            "cielvox2-tts-12hz-1.7b-base-q8_0.gguf",
+            "Xenna/cielvox2-tts-1.7b-base-GGUF",
+            "cielvox2-tts-12hz-1.7b-base-q8_0.gguf",
             timeout_s=600, approx_size_mb=2200,
             capabilities=("tts-roundtrip", "temperature")),
-    # qwen3-tts-1.7b-customvoice: 9 baked speakers on the 1.7B talker.
-    Backend("qwen3-tts-1.7b-customvoice", "Qwen3-TTS 1.7B CustomVoice (TTS)",
-            "qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf",
-            "cstr/qwen3-tts-1.7b-customvoice-GGUF",
-            "qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf",
+    # cielvox2-tts-1.7b-customvoice: 9 baked speakers on the 1.7B talker.
+    Backend("cielvox2-tts-1.7b-customvoice", "Qwen3-TTS 1.7B CustomVoice (TTS)",
+            "cielvox2-tts-12hz-1.7b-customvoice-q8_0.gguf",
+            "Xenna/cielvox2-tts-1.7b-customvoice-GGUF",
+            "cielvox2-tts-12hz-1.7b-customvoice-q8_0.gguf",
             timeout_s=600, approx_size_mb=2300,
             capabilities=("tts-roundtrip", "temperature")),
-    # qwen3-tts-1.7b-voicedesign: instruct-tuned variant; pick voice via
+    # cielvox2-tts-1.7b-voicedesign: instruct-tuned variant; pick voice via
     # natural-language --instruct (no reference WAV, no preset speaker).
-    Backend("qwen3-tts-1.7b-voicedesign", "Qwen3-TTS 1.7B VoiceDesign (TTS)",
-            "qwen3-tts-12hz-1.7b-voicedesign-q8_0.gguf",
-            "cstr/qwen3-tts-1.7b-voicedesign-GGUF",
-            "qwen3-tts-12hz-1.7b-voicedesign-q8_0.gguf",
+    Backend("cielvox2-tts-1.7b-voicedesign", "Qwen3-TTS 1.7B VoiceDesign (TTS)",
+            "cielvox2-tts-12hz-1.7b-voicedesign-q8_0.gguf",
+            "Xenna/cielvox2-tts-1.7b-voicedesign-GGUF",
+            "cielvox2-tts-12hz-1.7b-voicedesign-q8_0.gguf",
             timeout_s=600, approx_size_mb=2200,
             capabilities=("tts-roundtrip", "temperature")),
     # orpheus: Llama-3.2-3B talker + SNAC 24 kHz codec. Auto-download
     # pulls both. --voice tara is the default English speaker.
     Backend("orpheus",   "Orpheus 3B-FT (TTS)",  "orpheus-3b-0.1-ft-q8_0.gguf",
-            "cstr/orpheus-3b-0.1-ft-GGUF", "orpheus-3b-0.1-ft-q8_0.gguf",
+            "Xenna/orpheus-3b-0.1-ft-GGUF", "orpheus-3b-0.1-ft-q8_0.gguf",
             timeout_s=600, approx_size_mb=3500,
             capabilities=("tts-roundtrip", "temperature")),
     # lex-au-orpheus-de: lex-au's German fine-tune of Orpheus-3B.
@@ -382,7 +382,7 @@ REGISTRY: tuple[Backend, ...] = (
     # ASR-roundtrip word-exact via parakeet-v3 -l de (per README).
     Backend("kartoffel-orpheus-de-natural", "Kartoffel-Orpheus 3B DE Natural (TTS)",
             "kartoffel-orpheus-de-natural-q8_0.gguf",
-            "cstr/kartoffel-orpheus-3b-german-natural-GGUF",
+            "Xenna/kartoffel-orpheus-3b-german-natural-GGUF",
             "kartoffel-orpheus-de-natural-q8_0.gguf",
             timeout_s=600, approx_size_mb=3500,
             capabilities=("tts-roundtrip", "temperature")),
@@ -390,7 +390,7 @@ REGISTRY: tuple[Backend, ...] = (
     # outburst control via "{Speaker} - {Emotion}: {text}" syntax.
     Backend("kartoffel-orpheus-de-synthetic", "Kartoffel-Orpheus 3B DE Synthetic (TTS)",
             "kartoffel-orpheus-de-synthetic-q8_0.gguf",
-            "cstr/kartoffel-orpheus-3b-german-synthetic-GGUF",
+            "Xenna/kartoffel-orpheus-3b-german-synthetic-GGUF",
             "kartoffel-orpheus-de-synthetic-q8_0.gguf",
             timeout_s=600, approx_size_mb=3500,
             capabilities=("tts-roundtrip", "temperature")),
@@ -404,120 +404,120 @@ REGISTRY: tuple[Backend, ...] = (
     # (the test runner's tts-roundtrip tier picks up backend tuples but
     # `--tts-roundtrip=full` is opt-in).
     Backend("chatterbox", "Chatterbox (TTS)",     "chatterbox-t3-q8_0.gguf",
-            "cstr/chatterbox-GGUF", "chatterbox-t3-q8_0.gguf",
+            "Xenna/chatterbox-GGUF", "chatterbox-t3-q8_0.gguf",
             timeout_s=600, approx_size_mb=900,
             capabilities=("tts-roundtrip", "temperature", "voice-cloning")),
     Backend("chatterbox-turbo", "Chatterbox-Turbo (TTS)", "chatterbox-turbo-t3-f16.gguf",
-            "cstr/chatterbox-turbo-GGUF", "chatterbox-turbo-t3-f16.gguf",
+            "Xenna/chatterbox-turbo-GGUF", "chatterbox-turbo-t3-f16.gguf",
             timeout_s=600, approx_size_mb=1600,
             capabilities=("tts-roundtrip", "temperature", "voice-cloning")),
     Backend("kartoffelbox-turbo", "Kartoffelbox-Turbo (TTS, DE)", "kartoffelbox-turbo-t3-q8_0.gguf",
-            "cstr/kartoffelbox-turbo-GGUF", "kartoffelbox-turbo-t3-q8_0.gguf",
+            "Xenna/kartoffelbox-turbo-GGUF", "kartoffelbox-turbo-t3-q8_0.gguf",
             timeout_s=600, approx_size_mb=1280,
             capabilities=("tts-roundtrip", "temperature", "voice-cloning")),
     Backend("lahgtna-chatterbox", "Lahgtna Chatterbox v1 (TTS, AR)", "chatterbox-t3-f16.gguf",
-            "cstr/lahgtna-chatterbox-v1-GGUF", "chatterbox-t3-f16.gguf",
+            "Xenna/lahgtna-chatterbox-v1-GGUF", "chatterbox-t3-f16.gguf",
             timeout_s=600, approx_size_mb=1400,
             capabilities=("tts-roundtrip", "temperature", "voice-cloning")),
     # indextts: IndexTTS-1.5 GPT-2 AR mel-code generator + BigVGAN vocoder.
     # Voice cloning via Conformer+Perceiver on reference audio. Two GGUFs.
     Backend("indextts",  "IndexTTS 1.5 (TTS)",  "indextts-gpt-q8_0.gguf",
-            "cstr/indextts-1.5-GGUF", "indextts-gpt-q8_0.gguf",
+            "Xenna/indextts-1.5-GGUF", "indextts-gpt-q8_0.gguf",
             timeout_s=600, approx_size_mb=870,
             capabilities=("tts-roundtrip", "temperature", "voice-cloning"),
             extra_files=(("indextts-bigvgan.gguf",
-                          "cstr/indextts-1.5-GGUF",
+                          "Xenna/indextts-1.5-GGUF",
                           "indextts-bigvgan.gguf"),)),
     # voxcpm2-tts: VoxCPM2 diffusion AR TTS, 30 languages, 48 kHz.
     Backend("voxcpm2-tts", "VoxCPM2 TTS",       "voxcpm2-q4_k.gguf",
-            "cstr/voxcpm2-GGUF", "voxcpm2-q4_k.gguf",
+            "Xenna/voxcpm2-GGUF", "voxcpm2-q4_k.gguf",
             timeout_s=600, approx_size_mb=1600,
             capabilities=("tts-roundtrip", "temperature")),
     # cosyvoice3-tts: CosyVoice3 0.5B streaming multilingual TTS. Three-
     # stage pipeline (LLM AR -> flow Euler -> HiFT vocoder). Multiple
     # GGUFs: LLM + flow + HiFT + campplus + s3tok + voices.
     Backend("cosyvoice3-tts", "CosyVoice3 0.5B (TTS)", "cosyvoice3-llm-q4_k.gguf",
-            "cstr/cosyvoice3-0.5b-2512-GGUF", "cosyvoice3-llm-q4_k.gguf",
+            "Xenna/cosyvoice3-0.5b-2512-GGUF", "cosyvoice3-llm-q4_k.gguf",
             timeout_s=600, approx_size_mb=1200,
             capabilities=("tts-roundtrip", "temperature"),
             extra_files=(("cosyvoice3-flow-q8_0.gguf",
-                          "cstr/cosyvoice3-0.5b-2512-GGUF",
+                          "Xenna/cosyvoice3-0.5b-2512-GGUF",
                           "cosyvoice3-flow-q8_0.gguf"),
                          ("cosyvoice3-hift-f16.gguf",
-                          "cstr/cosyvoice3-0.5b-2512-GGUF",
+                          "Xenna/cosyvoice3-0.5b-2512-GGUF",
                           "cosyvoice3-hift-f16.gguf"),
                          ("cosyvoice3-campplus-f16.gguf",
-                          "cstr/cosyvoice3-0.5b-2512-GGUF",
+                          "Xenna/cosyvoice3-0.5b-2512-GGUF",
                           "cosyvoice3-campplus-f16.gguf"),
                          ("cosyvoice3-s3tok-f16.gguf",
-                          "cstr/cosyvoice3-0.5b-2512-GGUF",
+                          "Xenna/cosyvoice3-0.5b-2512-GGUF",
                           "cosyvoice3-s3tok-f16.gguf"),
                          ("cosyvoice3-voices.gguf",
-                          "cstr/cosyvoice3-0.5b-2512-GGUF",
+                          "Xenna/cosyvoice3-0.5b-2512-GGUF",
                           "cosyvoice3-voices.gguf"),)),
     # f5-tts: DiT-based flow-matching TTS with zero-shot voice cloning.
     # Single GGUF containing DiT + Vocos vocoder. Character-level tokenizer.
     Backend("f5-tts",    "F5-TTS v1 Base (TTS)", "f5-tts-v1-base-f16.gguf",
-            "cstr/f5-tts-GGUF", "f5-tts-v1-base-f16.gguf",
+            "Xenna/f5-tts-GGUF", "f5-tts-v1-base-f16.gguf",
             timeout_s=600, approx_size_mb=953,
             capabilities=("tts-roundtrip", "temperature")),
     # outetts: OuteTTS 0.3 1B — OLMo-1B LLM + WavTokenizer VQ-GAN. Two
     # GGUFs: talker + WavTokenizer decoder.
     Backend("outetts",   "OuteTTS 0.3 1B (TTS)", "outetts-0.3-1b-q8_0.gguf",
-            "cstr/outetts-0.3-1b-GGUF", "outetts-0.3-1b-q8_0.gguf",
+            "Xenna/outetts-0.3-1b-GGUF", "outetts-0.3-1b-q8_0.gguf",
             timeout_s=600, approx_size_mb=2500,
             capabilities=("tts-roundtrip", "temperature"),
             extra_files=(("wavtokenizer-decoder-f16.gguf",
-                          "cstr/outetts-0.3-1b-GGUF",
+                          "Xenna/outetts-0.3-1b-GGUF",
                           "wavtokenizer-decoder-f16.gguf"),)),
     # csm: Sesame CSM-1B conversational TTS. Llama-3.2 1B backbone + depth
     # decoder + Mimi codec, all in one GGUF.
     Backend("csm",       "CSM-1B (TTS)",         "csm-1b-q4_k.gguf",
-            "cstr/csm-1b-GGUF", "csm-1b-q4_k.gguf",
+            "Xenna/csm-1b-GGUF", "csm-1b-q4_k.gguf",
             timeout_s=600, approx_size_mb=1400,
             capabilities=("tts-roundtrip", "temperature")),
     # dia: Nari Labs Dia-1.6B. Byte-level text encoder + AR audio decoder
     # emitting 9 interleaved DAC codebooks. DAC 44.1 kHz codec companion.
     Backend("dia",       "Dia 1.6B (TTS)",       "dia-1.6b-f16.gguf",
-            "cstr/dia-1.6b-GGUF", "dia-1.6b-f16.gguf",
+            "Xenna/dia-1.6b-GGUF", "dia-1.6b-f16.gguf",
             timeout_s=600, approx_size_mb=3000,
             capabilities=("tts-roundtrip", "temperature"),
             extra_files=(("dac-44khz.gguf",
-                          "cstr/dia-1.6b-GGUF",
+                          "Xenna/dia-1.6b-GGUF",
                           "dac-44khz.gguf"),)),
     # speecht5: SpeechT5 TTS — 80M param AR mel decoder + HiFi-GAN vocoder.
     # Deterministic (no sampling). Needs 512-d x-vector for speaker
     # conditioning via --voice <xvector.bin>.
     Backend("speecht5",  "SpeechT5 TTS",         "speecht5-tts-f16.gguf",
-            "cstr/speecht5-tts-GGUF", "speecht5-tts-f16.gguf",
+            "Xenna/speecht5-tts-GGUF", "speecht5-tts-f16.gguf",
             timeout_s=120, approx_size_mb=300,
             capabilities=("tts-roundtrip",)),
     # piper: Piper VITS TTS. Deterministic, ~30 MB. No auto-download yet
     # (community voices on rhasspy/piper, not HuggingFace GGUF).
     Backend("piper",     "Piper VITS (TTS)",     "piper-en_US-lessac-medium-f16.gguf",
-            "cstr/piper-en_US-lessac-medium-GGUF", "piper-en_US-lessac-medium-f16.gguf",
+            "Xenna/piper-en_US-lessac-medium-GGUF", "piper-en_US-lessac-medium-f16.gguf",
             timeout_s=120, approx_size_mb=30,
             capabilities=("tts-roundtrip",)),
     # pocket-tts: Kyutai Pocket TTS 100M. Continuous-latent AR TTS at 12.5 Hz,
     # decoded by Mimi VAE to 24 kHz PCM. Single GGUF, no codec companion.
     Backend("pocket-tts", "Pocket TTS (TTS)",    "pocket-tts-english-novc-f16.gguf",
-            "cstr/pocket-tts-GGUF", "pocket-tts-english-novc-f16.gguf",
+            "Xenna/pocket-tts-GGUF", "pocket-tts-english-novc-f16.gguf",
             timeout_s=300, approx_size_mb=200,
             capabilities=("tts-roundtrip", "temperature")),
     # bark: Suno Bark small — 3-stage hierarchical TTS (semantic + coarse +
     # fine GPT-2) + EnCodec decoder. Single GGUF.
     Backend("bark",      "Bark Small (TTS)",     "bark-small-q8_0.gguf",
-            "cstr/bark-small-GGUF", "bark-small-q8_0.gguf",
+            "Xenna/bark-small-GGUF", "bark-small-q8_0.gguf",
             timeout_s=600, approx_size_mb=500,
             capabilities=("tts-roundtrip", "temperature")),
     # parler-tts: Parler TTS Mini v1.1 — T5 encoder + DAC-based AR decoder.
     # 44.1 kHz output. Voice described via natural-language --instruct.
     Backend("parler-tts", "Parler TTS Mini v1.1 (TTS)", "parler-tts-mini-v1.1-q8_0.gguf",
-            "cstr/parler-tts-mini-v1.1-GGUF", "parler-tts-mini-v1.1-q8_0.gguf",
+            "Xenna/parler-tts-mini-v1.1-GGUF", "parler-tts-mini-v1.1-q8_0.gguf",
             timeout_s=600, approx_size_mb=1000,
             capabilities=("tts-roundtrip", "temperature")),
     # zonos: Zyphra Zonos v0.1 — GGUF repo not yet uploaded to HF.
-    # TODO: add entry once cstr/zonos-v0.1-transformer-GGUF is created.
+    # TODO: add entry once Xenna/zonos-v0.1-transformer-GGUF is created.
     # M2M-100 multilingual text-to-text translation (facebook/m2m100_418M).
     # NOT an ASR or TTS backend — input is text, not audio. The test
     # script's test_translate runs `--translate -tl de samples/jfk.wav`
@@ -525,10 +525,10 @@ REGISTRY: tuple[Backend, ...] = (
     # not supported"). Empty capability tuple keeps the backend tracked
     # by the audit (so drift is zero) without scheduling any audio-based
     # test against it. Standalone-text-translate is exposed via
-    # crispasr_session_translate_text in the C ABI today; a CLI flag
+    # stelnettts_session_translate_text in the C ABI today; a CLI flag
     # is a follow-up.
     Backend("m2m100",   "M2M-100 418M (translate)", "m2m100-418m-q8_0.gguf",
-            "cstr/m2m100-418m-GGUF", "m2m100-418m-q8_0.gguf",
+            "Xenna/m2m100-418m-GGUF", "m2m100-418m-q8_0.gguf",
             timeout_s=120, approx_size_mb=502,
             capabilities=()),
     # WMT21 dense-24-wide-en-x — same m2m100 runtime, scaled to 4.7B,
@@ -537,7 +537,7 @@ REGISTRY: tuple[Backend, ...] = (
     # drift at zero.
     Backend("m2m100-wmt21", "M2M-100 WMT21 4.7B (translate)",
             "wmt21-dense-24-wide-en-x-q4_k.gguf",
-            "cstr/wmt21-dense-24-wide-en-x-GGUF",
+            "Xenna/wmt21-dense-24-wide-en-x-GGUF",
             "wmt21-dense-24-wide-en-x-q4_k.gguf",
             timeout_s=300, approx_size_mb=2543,
             capabilities=()),
@@ -549,41 +549,41 @@ REGISTRY: tuple[Backend, ...] = (
     # production-ready yet. Track the rel-pos debugging in PLAN.
     Backend("madlad",   "MADLAD-400 3B-mt (translate, WIP)",
             "madlad400-3b-mt-q4_k.gguf",
-            "cstr/madlad400-3b-mt-GGUF", "madlad400-3b-mt-q4_k.gguf",
+            "Xenna/madlad400-3b-mt-GGUF", "madlad400-3b-mt-q4_k.gguf",
             timeout_s=300, approx_size_mb=1900,
             capabilities=()),
 )
 
 
 # ---------------------------------------------------------------------------
-# crispasr binary + model resolution
+# stelnettts binary + model resolution
 # ---------------------------------------------------------------------------
 
 
-def find_crispasr() -> Path | None:
-    for rel in ("build-ninja-compile/bin/crispasr",
-                "build/bin/crispasr",
-                "build-release/bin/crispasr"):
+def find_stelnettts() -> Path | None:
+    for rel in ("build-ninja-compile/bin/stelnettts",
+                "build/bin/stelnettts",
+                "build-release/bin/stelnettts"):
         p = REPO_ROOT / rel
         if p.is_file():
             return p
-    found = shutil.which("crispasr")
+    found = shutil.which("stelnettts")
     return Path(found) if found else None
 
 
 # Cache of binary-declared caps per backend (populated lazily on first use).
-# Read via `crispasr --list-backends-json`. Used by tests that need to
+# Read via `stelnettts --list-backends-json`. Used by tests that need to
 # distinguish native capability from a post-step shim — e.g. word-timestamps
 # is native on whisper/parakeet/canary/cohere/kyutai-stt but requires a CTC
 # aligner (-am) on moonshine, wav2vec2, qwen3, granite, voxtral, etc.
 _BACKEND_CAPS_CACHE: dict[str, set[str]] | None = None
 
 
-def get_backend_caps(crispasr: Path, backend_name: str) -> set[str]:
+def get_backend_caps(stelnettts: Path, backend_name: str) -> set[str]:
     global _BACKEND_CAPS_CACHE
     if _BACKEND_CAPS_CACHE is None:
         try:
-            out = subprocess.check_output([str(crispasr), "--list-backends-json"],
+            out = subprocess.check_output([str(stelnettts), "--list-backends-json"],
                                           stderr=subprocess.DEVNULL)
             data = _json.loads(out)
             _BACKEND_CAPS_CACHE = {b["name"]: set(b["caps"]) for b in data["backends"]}
@@ -760,16 +760,16 @@ def wer(ref: str, hyp: str) -> float | None:
     return compute_wer(r, h)
 
 
-def _run_cli(crispasr: Path, b: Backend, model: Path, audio: Path,
+def _run_cli(stelnettts: Path, b: Backend, model: Path, audio: Path,
              extra_args: list[str], use_gpu: bool,
              timeout_override: int | None = None,
              quiet: bool = True) -> tuple[int, str, str, float]:
     # Most tests want --no-prints to keep output predictable. test_lid
     # is the exception: the framework's LID line + the qwen3 native-LID
     # line are gated on `!no_prints`, so the test would never see them
-    # (whisper's LID uses CRISPASR_LOG_INFO and ignores the gate, which
+    # (whisper's LID uses STELNETTTS_LOG_INFO and ignores the gate, which
     # is why we got away with --no-prints for whisper-only LID before).
-    base = [str(crispasr), "--backend", b.name, "-m", str(model),
+    base = [str(stelnettts), "--backend", b.name, "-m", str(model),
             "-f", str(audio)]
     if quiet:
         base.append("--no-prints")
@@ -793,10 +793,10 @@ def parse_transcript(stdout: str) -> str:
 
 
 def test_transcribe(b: Backend, tier: str, ctx: dict) -> TestOutcome:
-    crispasr, model, audio, use_gpu, threshold = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"],
+    stelnettts, model, audio, use_gpu, threshold = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"],
         ctx["wer_threshold"])
-    rc, out, err, w = _run_cli(crispasr, b, model, audio, [], use_gpu)
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio, [], use_gpu)
     if rc < 0:
         return TestOutcome(b.name, "transcribe", tier, "TIMEOUT", err, w)
     if rc != 0:
@@ -833,9 +833,9 @@ def test_transcribe(b: Backend, tier: str, ctx: dict) -> TestOutcome:
 
 
 def test_json_output(b: Backend, tier: str, ctx: dict) -> TestOutcome:
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
-    rc, out, err, w = _run_cli(crispasr, b, model, audio, ["-oj"], use_gpu)
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio, ["-oj"], use_gpu)
     if rc < 0:
         return TestOutcome(b.name, "json-output", tier, "TIMEOUT", err, w)
     if rc != 0:
@@ -879,14 +879,14 @@ def test_json_output(b: Backend, tier: str, ctx: dict) -> TestOutcome:
 
 def test_temperature(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     """T=0 should be deterministic across two runs."""
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
-    rc1, out1, err1, w1 = _run_cli(crispasr, b, model, audio,
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    rc1, out1, err1, w1 = _run_cli(stelnettts, b, model, audio,
                                    ["-tp", "0"], use_gpu)
     if rc1 != 0:
         return TestOutcome(b.name, "temperature", tier, "CRASH",
                            f"T=0 run failed: {(err1 or '')[-200:]}", w1)
-    rc2, out2, err2, w2 = _run_cli(crispasr, b, model, audio,
+    rc2, out2, err2, w2 = _run_cli(stelnettts, b, model, audio,
                                    ["-tp", "0"], use_gpu)
     if rc2 != 0:
         return TestOutcome(b.name, "temperature", tier, "CRASH",
@@ -905,7 +905,7 @@ def test_temperature(b: Backend, tier: str, ctx: dict) -> TestOutcome:
 
 _STREAM_PY = """
 import sys, wave, numpy as np
-from crispasr import Session
+from stelnettts import Session
 backend = sys.argv[1]
 model = sys.argv[2]
 wav = sys.argv[3]
@@ -933,15 +933,15 @@ sys.stdout.write(f'{n_decodes}|{out}')
 
 
 def test_stream(b: Backend, tier: str, ctx: dict) -> TestOutcome:
-    crispasr, model, audio = ctx["crispasr"], ctx["model"], ctx["audio"]
-    # Locate libcrispasr next to the binary.
-    libdir = crispasr.parent.parent / "src"
-    libname = "libcrispasr.dylib" if platform.system() == "Darwin" else "libcrispasr.so"
+    stelnettts, model, audio = ctx["stelnettts"], ctx["model"], ctx["audio"]
+    # Locate libstelnettts next to the binary.
+    libdir = stelnettts.parent.parent / "src"
+    libname = "libstelnettts.dylib" if platform.system() == "Darwin" else "libstelnettts.so"
     libpath = libdir / libname
     if not libpath.is_file():
         return TestOutcome(b.name, "stream", tier, "SKIP",
-                           f"libcrispasr not found at {libpath} (Python wrapper needs it)")
-    env = {**os.environ, "CRISPASR_LIB_PATH": str(libpath),
+                           f"libstelnettts not found at {libpath} (Python wrapper needs it)")
+    env = {**os.environ, "STELNETTTS_LIB_PATH": str(libpath),
            "PYTHONPATH": str(REPO_ROOT / "python")}
     cmd = [sys.executable, "-c", _STREAM_PY, b.name, str(model), str(audio)]
     t0 = time.time()
@@ -999,9 +999,9 @@ def test_beam(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     bounded WER. Full: beam transcript matches greedy or differs by
     at most 1 word edit (JFK is too clean to expect strict WER<).
     """
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
-    rc, out, err, w = _run_cli(crispasr, b, model, audio, ["-bs", "4"], use_gpu)
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio, ["-bs", "4"], use_gpu)
     if rc < 0:
         return TestOutcome(b.name, "beam", tier, "TIMEOUT", err, w)
     if rc != 0:
@@ -1026,11 +1026,11 @@ def test_beam(b: Backend, tier: str, ctx: dict) -> TestOutcome:
 
 def test_best_of_n(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     """Smoke: -bo 4 doesn't crash, produces transcript with bounded WER."""
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
     # best-of-N typically requires temperature > 0 to actually diversify
     # candidates. Some backends accept -bo with -tp 0 as a no-op.
-    rc, out, err, w = _run_cli(crispasr, b, model, audio,
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio,
                                ["-bo", "4", "-tp", "0.3"], use_gpu)
     if rc < 0:
         return TestOutcome(b.name, "best-of-n", tier, "TIMEOUT", err, w)
@@ -1062,13 +1062,13 @@ def test_punctuation(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     With: at least one punctuation char in transcript.
     Without: zero punctuation chars in transcript.
     """
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
-    rc1, out1, err1, w1 = _run_cli(crispasr, b, model, audio, [], use_gpu)
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    rc1, out1, err1, w1 = _run_cli(stelnettts, b, model, audio, [], use_gpu)
     if rc1 != 0:
         return TestOutcome(b.name, "punctuation", tier, "CRASH",
                            f"with-punct run failed: {(err1 or '')[-200:]}", w1)
-    rc2, out2, err2, w2 = _run_cli(crispasr, b, model, audio,
+    rc2, out2, err2, w2 = _run_cli(stelnettts, b, model, audio,
                                    ["--no-punctuation"], use_gpu)
     if rc2 != 0:
         return TestOutcome(b.name, "punctuation", tier, "CRASH",
@@ -1126,13 +1126,13 @@ def test_word_timestamps(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     (tools/audit-backend-capabilities.py) still treats both caps as
     served by this test for drift purposes.
     """
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
-    caps = get_backend_caps(crispasr, b.name)
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    caps = get_backend_caps(stelnettts, b.name)
     if "word-timestamps" not in caps and "timestamps-ctc" in caps:
         return TestOutcome(b.name, "word-timestamps", tier, "SKIP",
                            "needs -am <aligner> (CTC post-step); not yet wired in test runner")
-    rc, out, err, w = _run_cli(crispasr, b, model, audio, ["-ojf"], use_gpu)
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio, ["-ojf"], use_gpu)
     if rc != 0:
         return TestOutcome(b.name, "word-timestamps", tier, "CRASH",
                            (err or "")[-200:], w)
@@ -1187,10 +1187,10 @@ def test_word_timestamps(b: Backend, tier: str, ctx: dict) -> TestOutcome:
 def _find_silero(models_dir: Path) -> Path | None:
     for cand in (
         models_dir / "ggml-silero-v6.2.0.bin",
-        Path.home() / ".cache" / "crispasr" / "ggml-silero-v6.2.0.bin",
+        Path.home() / ".cache" / "stelnettts" / "ggml-silero-v6.2.0.bin",
         models_dir / "for-tests-silero-v6.2.0-ggml.bin",
         models_dir / "ggml-silero-v5.1.2.bin",
-        Path.home() / ".cache" / "crispasr" / "ggml-silero-v5.1.2.bin",
+        Path.home() / ".cache" / "stelnettts" / "ggml-silero-v5.1.2.bin",
     ):
         if cand.is_file():
             return cand
@@ -1209,14 +1209,14 @@ def test_vad(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     Counts come from silero's 'Final speech segments after filtering:
     N' log line.
     """
-    crispasr, model, audio, use_gpu, models_dir = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"],
+    stelnettts, model, audio, use_gpu, models_dir = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"],
         ctx["models_dir"])
     silero = _find_silero(models_dir)
     if not silero:
         return TestOutcome(b.name, "vad", tier, "SKIP",
                            "silero VAD model not found in --models or "
-                           "~/.cache/crispasr/ — download "
+                           "~/.cache/stelnettts/ — download "
                            "ggml-silero-v6.2.0.bin from ggml-org/whisper-vad")
     if tier == "full":
         try:
@@ -1227,7 +1227,7 @@ def test_vad(b: Backend, tier: str, ctx: dict) -> TestOutcome:
         expected_lo, expected_hi = 3, 5  # 4 ± 1 tolerance
     else:
         expected_lo, expected_hi = 1, 8
-    rc, out, err, w = _run_cli(crispasr, b, model, audio,
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio,
                                ["--vad", "-vm", str(silero)], use_gpu)
     if rc != 0:
         return TestOutcome(b.name, "vad", tier, "CRASH",
@@ -1258,22 +1258,22 @@ def test_lid(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     --detect-language; whisper auto-detects when language is empty.
     Always pass -dl so both paths are exercised.
     """
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
-    rc, out, err, w = _run_cli(crispasr, b, model, audio, ["-dl"], use_gpu,
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    rc, out, err, w = _run_cli(stelnettts, b, model, audio, ["-dl"], use_gpu,
                                quiet=False)
     if rc != 0:
         return TestOutcome(b.name, "lid", tier, "CRASH",
                            (err or "")[-200:], w)
     # Four log line shapes we accept:
     #   whisper:               "auto-detected language: en (p = 0.976672)"
-    #   crispasr LID helper:   "crispasr[lid]: detected 'en' (p=0.977) via whisper"
-    #   framework pre-step:    "crispasr: LID -> language = 'en' (..., p=0.977)"
-    #   qwen3 native LID:      "crispasr[qwen3]: detected 'en' (p=1.000) via model output"
+    #   stelnettts LID helper:   "stelnettts[lid]: detected 'en' (p=0.977) via whisper"
+    #   framework pre-step:    "stelnettts: LID -> language = 'en' (..., p=0.977)"
+    #   qwen3 native LID:      "stelnettts[qwen3]: detected 'en' (p=1.000) via model output"
     m = re.search(
         r"(?:auto-detected language:\s*|"
-        r"crispasr\[lid\][^\n]*detected\s*['\"]?|"
-        r"crispasr:\s*LID\s*->\s*language\s*=\s*['\"]?)"
+        r"stelnettts\[lid\][^\n]*detected\s*['\"]?|"
+        r"stelnettts:\s*LID\s*->\s*language\s*=\s*['\"]?)"
         r"([a-z]{2,3})['\"]?[^\n]*?p\s*=\s*([\d.]+)",
         err or "", re.IGNORECASE)
     if not m:
@@ -1311,12 +1311,12 @@ def test_translate(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     sample bench would belong with the regression-matrix's
     transcribe=full tier on a non-English clip.
     """
-    crispasr, model, audio, use_gpu = (
-        ctx["crispasr"], ctx["model"], ctx["audio"], ctx["use_gpu"])
+    stelnettts, model, audio, use_gpu = (
+        ctx["stelnettts"], ctx["model"], ctx["audio"], ctx["use_gpu"])
     # Pass `-tl de` for AST-style backends (canary, granite-4.1, qwen3
     # honor it); whisper/voxtral ignore -tl and translate to English.
     rc, out, err, w = _run_cli(
-        crispasr, b, model, audio,
+        stelnettts, b, model, audio,
         ["--translate", "-tl", "de", "-l", "en"],
         use_gpu, quiet=True,
     )
@@ -1331,7 +1331,7 @@ def test_translate(b: Backend, tier: str, ctx: dict) -> TestOutcome:
         # silently ignores --translate produces identical output;
         # honouring backends produce something different.
         rc_b, out_b, _err_b, _w_b = _run_cli(
-            crispasr, b, model, audio, ["-l", "en"], use_gpu, quiet=True)
+            stelnettts, b, model, audio, ["-l", "en"], use_gpu, quiet=True)
         if rc_b == 0 and out_b.strip() == out.strip():
             return TestOutcome(b.name, "translate", tier, "FAIL",
                                "translate output identical to baseline "
@@ -1350,7 +1350,7 @@ RUNNERS["translate"] = test_translate
 # Reference parakeet model — TTS roundtrip uses parakeet as the ASR
 # ground truth. Kept in sync with the parakeet entry in REGISTRY.
 _PARAKEET_REF = ("parakeet-tdt-0.6b-v3-q4_k.gguf",
-                 "cstr/parakeet-tdt-0.6b-v3-GGUF",
+                 "Xenna/parakeet-tdt-0.6b-v3-GGUF",
                  "parakeet-tdt-0.6b-v3-q4_k.gguf")
 
 # Fixed phrase — pangram with clean word boundaries, no proper nouns or
@@ -1382,8 +1382,8 @@ def test_tts_roundtrip(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     Full: WER <= 0.10 — tighter, only acceptable if TTS is high-fidelity
     and the test phrase is a clean pangram.
     """
-    crispasr, model, models_dir, use_gpu, skip_missing = (
-        ctx["crispasr"], ctx["model"], ctx["models_dir"], ctx["use_gpu"],
+    stelnettts, model, models_dir, use_gpu, skip_missing = (
+        ctx["stelnettts"], ctx["model"], ctx["models_dir"], ctx["use_gpu"],
         ctx["skip_missing"])
     if not b.voice_file:
         return TestOutcome(b.name, "tts-roundtrip", tier, "FAIL",
@@ -1401,7 +1401,7 @@ def test_tts_roundtrip(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     out_wav.parent.mkdir(parents=True, exist_ok=True)
     # Step 1: synthesize
     syn_cmd = [
-        str(crispasr), "-m", str(model),
+        str(stelnettts), "-m", str(model),
         "--voice", str(voice_path),
         "--tts", _TTS_PHRASE,
         "--tts-output", str(out_wav),
@@ -1433,7 +1433,7 @@ def test_tts_roundtrip(b: Backend, tier: str, ctx: dict) -> TestOutcome:
                            f"TTS produced no usable output ({out_wav})",
                            syn_elapsed)
     # Step 2: parakeet ASR roundtrip
-    asr_cmd = [str(crispasr), "--backend", "parakeet", "-m", str(parakeet),
+    asr_cmd = [str(stelnettts), "--backend", "parakeet", "-m", str(parakeet),
                "-f", str(out_wav), "--no-prints"]
     if not use_gpu:
         asr_cmd.append("-ng")
@@ -1481,16 +1481,16 @@ def test_voice_cloning(b: Backend, tier: str, ctx: dict) -> TestOutcome:
     distinct from `tts-roundtrip` which only exercises the built-in
     voice. Backends that advertise this cap accept a reference WAV
     through `--voice <path>` (chatterbox via VoiceEncoder + CAMPPlus
-    today; see crispasr_backend.h CAP_VOICE_CLONING).
+    today; see stelnettts_backend.h CAP_VOICE_CLONING).
     """
-    crispasr, model, use_gpu = (ctx["crispasr"], ctx["model"], ctx["use_gpu"])
+    stelnettts, model, use_gpu = (ctx["stelnettts"], ctx["model"], ctx["use_gpu"])
     ref_wav = REPO_ROOT / "samples" / "jfk.wav"
     if not ref_wav.is_file():
         return TestOutcome(b.name, "voice-cloning", tier, "SKIP",
                            f"reference WAV missing: {ref_wav}")
     out_wav = REPO_ROOT / "build" / "test-fixtures" / f"vc_{b.name}.wav"
     out_wav.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [str(crispasr), "--backend", b.name, "-m", str(model),
+    cmd = [str(stelnettts), "--backend", b.name, "-m", str(model),
            "--voice", str(ref_wav),
            "--tts", _TTS_PHRASE,
            "--tts-output", str(out_wav),
@@ -1582,9 +1582,9 @@ def select_backends(args) -> list[Backend]:
 
 def main() -> int:
     default_models = os.environ.get(
-        "CRISPASR_MODELS_DIR",
-        "/Volumes/backups/ai/crispasr-models" if platform.system() == "Darwin"
-        else str(Path.home() / ".cache" / "crispasr"),
+        "STELNETTTS_MODELS_DIR",
+        "/Volumes/backups/ai/stelnettts-models" if platform.system() == "Darwin"
+        else str(Path.home() / ".cache" / "stelnettts"),
     )
     ap = argparse.ArgumentParser(
         description=__doc__.split("\n\n")[0],
@@ -1626,9 +1626,9 @@ def main() -> int:
                         help=f"Override tier for {c} capability")
     args = ap.parse_args()
 
-    crispasr = find_crispasr()
-    if not crispasr:
-        print("ERROR: crispasr binary not found in build-ninja-compile/, build/, "
+    stelnettts = find_stelnettts()
+    if not stelnettts:
+        print("ERROR: stelnettts binary not found in build-ninja-compile/, build/, "
               "build-release/, or PATH. Build it first.", file=sys.stderr)
         return 2
     audio = Path(args.audio)
@@ -1649,7 +1649,7 @@ def main() -> int:
     tiers = resolve_tier_per_capability(args)
     active_caps = [c for c, t in tiers.items() if t != "ignore"]
 
-    print(f"crispasr:     {crispasr}")
+    print(f"stelnettts:     {stelnettts}")
     print(f"models:       {models_dir}  ({free_mb(models_dir)} MB free)")
     if audio_duration:
         print(f"audio:        {audio.name} ({audio_duration:.1f}s)")
@@ -1679,7 +1679,7 @@ def main() -> int:
         print(f"    model: {model.name} ({os.path.getsize(model)/1024/1024:.0f} MB)",
               flush=True)
         ctx = {
-            "crispasr": crispasr, "model": model, "audio": audio,
+            "stelnettts": stelnettts, "model": model, "audio": audio,
             "audio_duration": audio_duration, "models_dir": models_dir,
             "use_gpu": not args.cpu, "wer_threshold": args.wer_threshold,
             "skip_missing": args.skip_missing,

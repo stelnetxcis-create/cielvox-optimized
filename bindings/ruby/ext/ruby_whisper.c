@@ -173,21 +173,21 @@ void Init_whisper() {
     rb_define_const(mWhisper, "LOG_LEVEL_DEBUG", INT2NUM(GGML_LOG_LEVEL_DEBUG));
     rb_define_const(mWhisper, "LOG_LEVEL_CONT", INT2NUM(GGML_LOG_LEVEL_CONT));
 
-    rb_define_const(mWhisper, "AHEADS_NONE", INT2NUM(CRISPASR_AHEADS_NONE));
-    rb_define_const(mWhisper, "AHEADS_N_TOP_MOST", INT2NUM(CRISPASR_AHEADS_N_TOP_MOST));
-    rb_define_const(mWhisper, "AHEADS_CUSTOM", INT2NUM(CRISPASR_AHEADS_CUSTOM));
-    rb_define_const(mWhisper, "AHEADS_TINY_EN", INT2NUM(CRISPASR_AHEADS_TINY_EN));
-    rb_define_const(mWhisper, "AHEADS_TINY", INT2NUM(CRISPASR_AHEADS_TINY));
-    rb_define_const(mWhisper, "AHEADS_BASE_EN", INT2NUM(CRISPASR_AHEADS_BASE_EN));
-    rb_define_const(mWhisper, "AHEADS_BASE", INT2NUM(CRISPASR_AHEADS_BASE));
-    rb_define_const(mWhisper, "AHEADS_SMALL_EN", INT2NUM(CRISPASR_AHEADS_SMALL_EN));
-    rb_define_const(mWhisper, "AHEADS_SMALL", INT2NUM(CRISPASR_AHEADS_SMALL));
-    rb_define_const(mWhisper, "AHEADS_MEDIUM_EN", INT2NUM(CRISPASR_AHEADS_MEDIUM_EN));
-    rb_define_const(mWhisper, "AHEADS_MEDIUM", INT2NUM(CRISPASR_AHEADS_MEDIUM));
-    rb_define_const(mWhisper, "AHEADS_LARGE_V1", INT2NUM(CRISPASR_AHEADS_LARGE_V1));
-    rb_define_const(mWhisper, "AHEADS_LARGE_V2", INT2NUM(CRISPASR_AHEADS_LARGE_V2));
-    rb_define_const(mWhisper, "AHEADS_LARGE_V3", INT2NUM(CRISPASR_AHEADS_LARGE_V3));
-    rb_define_const(mWhisper, "AHEADS_LARGE_V3_TURBO", INT2NUM(CRISPASR_AHEADS_LARGE_V3_TURBO));
+    rb_define_const(mWhisper, "AHEADS_NONE", INT2NUM(STELNETTTS_AHEADS_NONE));
+    rb_define_const(mWhisper, "AHEADS_N_TOP_MOST", INT2NUM(STELNETTTS_AHEADS_N_TOP_MOST));
+    rb_define_const(mWhisper, "AHEADS_CUSTOM", INT2NUM(STELNETTTS_AHEADS_CUSTOM));
+    rb_define_const(mWhisper, "AHEADS_TINY_EN", INT2NUM(STELNETTTS_AHEADS_TINY_EN));
+    rb_define_const(mWhisper, "AHEADS_TINY", INT2NUM(STELNETTTS_AHEADS_TINY));
+    rb_define_const(mWhisper, "AHEADS_BASE_EN", INT2NUM(STELNETTTS_AHEADS_BASE_EN));
+    rb_define_const(mWhisper, "AHEADS_BASE", INT2NUM(STELNETTTS_AHEADS_BASE));
+    rb_define_const(mWhisper, "AHEADS_SMALL_EN", INT2NUM(STELNETTTS_AHEADS_SMALL_EN));
+    rb_define_const(mWhisper, "AHEADS_SMALL", INT2NUM(STELNETTTS_AHEADS_SMALL));
+    rb_define_const(mWhisper, "AHEADS_MEDIUM_EN", INT2NUM(STELNETTTS_AHEADS_MEDIUM_EN));
+    rb_define_const(mWhisper, "AHEADS_MEDIUM", INT2NUM(STELNETTTS_AHEADS_MEDIUM));
+    rb_define_const(mWhisper, "AHEADS_LARGE_V1", INT2NUM(STELNETTTS_AHEADS_LARGE_V1));
+    rb_define_const(mWhisper, "AHEADS_LARGE_V2", INT2NUM(STELNETTTS_AHEADS_LARGE_V2));
+    rb_define_const(mWhisper, "AHEADS_LARGE_V3", INT2NUM(STELNETTTS_AHEADS_LARGE_V3));
+    rb_define_const(mWhisper, "AHEADS_LARGE_V3_TURBO", INT2NUM(STELNETTTS_AHEADS_LARGE_V3_TURBO));
 
     rb_define_singleton_method(mWhisper, "lang_max_id", ruby_whisper_s_lang_max_id, 0);
     rb_define_singleton_method(mWhisper, "lang_id", ruby_whisper_s_lang_id, 1);
@@ -210,8 +210,8 @@ void Init_whisper() {
     init_ruby_whisper_vad_segments(&mVAD);
     init_ruby_whisper_vad_context(&mVAD);
 
-    extern void init_ruby_crispasr_session(VALUE* mWhisper);
-    init_ruby_crispasr_session(&mWhisper);
+    extern void init_ruby_stelnettts_session(VALUE* mWhisper);
+    init_ruby_stelnettts_session(&mWhisper);
 
     rb_require("whisper/context");
     rb_require("whisper/segment");

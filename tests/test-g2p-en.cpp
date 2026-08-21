@@ -211,16 +211,16 @@ TEST_CASE("neural G2P JSON loading", "[g2p][neural]") {
     }
 
     SECTION("file loading from path") {
-        const char* env = std::getenv("CRISPASR_G2P_MODEL_PATH");
+        const char* env = std::getenv("STELNETTTS_G2P_MODEL_PATH");
         std::string path = env ? env : "";
         if (path.empty()) {
             // Try cache dir
             const char* home = std::getenv("HOME");
             if (home)
-                path = std::string(home) + "/.cache/crispasr/g2p_en.json";
+                path = std::string(home) + "/.cache/stelnettts/g2p_en.json";
         }
         if (path.empty() || !g2p_en::load_neural_g2p_file(nm, path)) {
-            SKIP("g2p_en.json not available — set CRISPASR_G2P_MODEL_PATH");
+            SKIP("g2p_en.json not available — set STELNETTTS_G2P_MODEL_PATH");
         }
         REQUIRE(nm.loaded);
         CHECK(nm.graphemes.size() == 29);
@@ -324,19 +324,19 @@ TEST_CASE("filter_to_inventory strips unmapped chars", "[phonemizer][inventory]"
                                    "ɪ", "ɛ", "ɔ", "ʊ", "ə", "ˈ", "ˌ", "ː", "ŋ"};
 
     SECTION("passes valid IPA through") {
-        std::string filtered = crispasr::filter_to_inventory("tʃaɪ", valid);
+        std::string filtered = stelnettts::filter_to_inventory("tʃaɪ", valid);
         CHECK(filtered == "tʃaɪ");
     }
 
     SECTION("strips unknown combining marks") {
         // U+0361 combining tie should be stripped if not in valid set
         std::string with_tie = "t\xCD\xA1s"; // t͡s
-        std::string filtered = crispasr::filter_to_inventory(with_tie, valid);
+        std::string filtered = stelnettts::filter_to_inventory(with_tie, valid);
         CHECK(filtered == "ts");
     }
 
     SECTION("preserves spaces") {
-        std::string filtered = crispasr::filter_to_inventory("a e", valid);
+        std::string filtered = stelnettts::filter_to_inventory("a e", valid);
         CHECK(filtered == "a e");
     }
 }
@@ -347,24 +347,24 @@ TEST_CASE("phonemizer builtin_en works without espeak", "[phonemizer]") {
     std::string out;
 
     SECTION("English text produces IPA") {
-        bool ok = crispasr::phonemize_builtin_en("en-us", "hello world", out);
+        bool ok = stelnettts::phonemize_builtin_en("en-us", "hello world", out);
         CHECK(ok);
         CHECK(!out.empty());
     }
 
     SECTION("auto language works") {
-        bool ok = crispasr::phonemize_builtin_en("auto", "hello", out);
+        bool ok = stelnettts::phonemize_builtin_en("auto", "hello", out);
         CHECK(ok);
         CHECK(!out.empty());
     }
 
     SECTION("empty language works") {
-        bool ok = crispasr::phonemize_builtin_en("", "hello", out);
+        bool ok = stelnettts::phonemize_builtin_en("", "hello", out);
         CHECK(ok);
     }
 
     SECTION("non-English returns false") {
-        bool ok = crispasr::phonemize_builtin_en("de", "hallo", out);
+        bool ok = stelnettts::phonemize_builtin_en("de", "hallo", out);
         CHECK(!ok);
     }
 }
@@ -372,7 +372,7 @@ TEST_CASE("phonemizer builtin_en works without espeak", "[phonemizer]") {
 TEST_CASE("phonemize() cascade works", "[phonemizer]") {
     std::string out;
     // Even without espeak, the built-in English G2P should produce output
-    bool ok = crispasr::phonemize("en-us", "The quick brown fox", out);
+    bool ok = stelnettts::phonemize("en-us", "The quick brown fox", out);
     CHECK(ok);
     CHECK(!out.empty());
     // Should contain IPA characters
@@ -389,7 +389,7 @@ TEST_CASE("phonemize() cascade works", "[phonemizer]") {
 // ── espeak language-marker stripping (#169) ─────────────────────────
 
 TEST_CASE("strip espeak language markers", "[phonemizer][espeak]") {
-    using crispasr::strip_espeak_lang_markers;
+    using stelnettts::strip_espeak_lang_markers;
 
     SECTION("basic (en) and (it) markers") {
         std::string s = "lassistɛnte vokʈale dɪ (en)wˈeɪ(it)";

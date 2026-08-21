@@ -1,9 +1,9 @@
-"""Gradio UI wrapper for the CrispASR HTTP server.
+"""Gradio UI wrapper for the StelnetTTS HTTP server.
 
 Surfaces multiple capability areas of the C++ engine inside one Space:
   * Transcribe — 9 ASR backends, hot-swapped through POST /load.
   * Speak     — Kokoro TTS through POST /v1/audio/speech.
-  * Detect    — text language identification via the crispasr-lid binary.
+  * Detect    — text language identification via the stelnettts-lid binary.
   * Backends  — capability snapshot from /backends + /health.
 """
 
@@ -24,16 +24,16 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 
 
-SERVER_URL = os.environ.get("CRISPASR_SERVER_URL", "http://127.0.0.1:8080").rstrip("/")
-SPACE_TITLE = os.environ.get("CRISPASR_SPACE_TITLE", "CrispASR")
-DEFAULT_LANGUAGE = os.environ.get("CRISPASR_LANGUAGE", "auto")
+SERVER_URL = os.environ.get("STELNETTTS_SERVER_URL", "http://127.0.0.1:8080").rstrip("/")
+SPACE_TITLE = os.environ.get("STELNETTTS_SPACE_TITLE", "StelnetTTS")
+DEFAULT_LANGUAGE = os.environ.get("STELNETTTS_LANGUAGE", "auto")
 API_KEY = next(
-    (k.strip() for k in os.environ.get("CRISPASR_API_KEYS", "").split(",") if k.strip()),
+    (k.strip() for k in os.environ.get("STELNETTTS_API_KEYS", "").split(",") if k.strip()),
     "",
 )
-CACHE_DIR = Path(os.environ.get("CRISPASR_CACHE_DIR", "/cache"))
-SAMPLES_DIR = Path(os.environ.get("CRISPASR_SAMPLES_DIR", "/space/samples"))
-CRISPASR_LID_BIN = shutil.which("crispasr-lid") or "crispasr-lid"
+CACHE_DIR = Path(os.environ.get("STELNETTTS_CACHE_DIR", "/cache"))
+SAMPLES_DIR = Path(os.environ.get("STELNETTTS_SAMPLES_DIR", "/space/samples"))
+STELNETTTS_LID_BIN = shutil.which("stelnettts-lid") or "stelnettts-lid"
 
 # (display, backend, model_arg, default_language, approx_size, blurb)
 ASR_MODELS = [
@@ -95,7 +95,7 @@ NMT_MODELS = [
      "Google T5-based. Widest language coverage. Output inherits CC-BY-SA."),
 ]
 
-CRISPASR_CLI_BIN = shutil.which("crispasr-cli") or shutil.which("crispasr") or "crispasr-cli"
+STELNETTTS_CLI_BIN = shutil.which("stelnettts-cli") or shutil.which("stelnettts") or "stelnettts-cli"
 
 
 def log(msg: str) -> None:
@@ -289,9 +289,9 @@ def detect_text_language(text, model_choice, top_k):
         raise gr.Error("Paste some text first.")
     spec = _spec_by_label(LID_MODELS, model_choice) or LID_MODELS[0]
     _, model_arg, _ = spec
-    cmd = [CRISPASR_LID_BIN, "-m", model_arg, "--text", text, "-k", str(int(top_k)), "--quiet"]
+    cmd = [STELNETTTS_LID_BIN, "-m", model_arg, "--text", text, "-k", str(int(top_k)), "--quiet"]
     log(f"lid: cmd={cmd[:5]} k={top_k}")
-    env = {**os.environ, "CRISPASR_CACHE_DIR": str(CACHE_DIR)}
+    env = {**os.environ, "STELNETTTS_CACHE_DIR": str(CACHE_DIR)}
     try:
         proc = subprocess.run(
             cmd,
@@ -301,10 +301,10 @@ def detect_text_language(text, model_choice, top_k):
             env=env,
         )
     except FileNotFoundError:
-        raise gr.Error(f"crispasr-lid not found at '{CRISPASR_LID_BIN}'.")
+        raise gr.Error(f"stelnettts-lid not found at '{STELNETTTS_LID_BIN}'.")
     if proc.returncode != 0:
         raise gr.Error(
-            f"crispasr-lid exited {proc.returncode}: {(proc.stderr or '').strip()[:400]}"
+            f"stelnettts-lid exited {proc.returncode}: {(proc.stderr or '').strip()[:400]}"
         )
     rows = []
     for line in proc.stdout.splitlines():
@@ -334,7 +334,7 @@ def translate_text(text, model_choice, src_lang, tgt_lang):
     src = (src_lang or "en").strip()
     tgt = (tgt_lang or "de").strip()
     cmd = [
-        CRISPASR_CLI_BIN,
+        STELNETTTS_CLI_BIN,
         "--backend", backend,
         "-m", model_arg,
         "--auto-download",
@@ -344,7 +344,7 @@ def translate_text(text, model_choice, src_lang, tgt_lang):
         "-tl", tgt,
     ]
     log(f"translate: backend={backend} {src}→{tgt} chars={len(text)}")
-    env = {**os.environ, "CRISPASR_CACHE_DIR": str(CACHE_DIR)}
+    env = {**os.environ, "STELNETTTS_CACHE_DIR": str(CACHE_DIR)}
     try:
         proc = subprocess.run(
             cmd,
@@ -354,7 +354,7 @@ def translate_text(text, model_choice, src_lang, tgt_lang):
             env=env,
         )
     except FileNotFoundError:
-        raise gr.Error(f"crispasr not found at '{CRISPASR_CLI_BIN}'.")
+        raise gr.Error(f"stelnettts not found at '{STELNETTTS_CLI_BIN}'.")
     if proc.returncode != 0:
         raise gr.Error(
             f"Translation failed (exit {proc.returncode}): {(proc.stderr or '').strip()[:400]}"
@@ -428,17 +428,17 @@ CAPABILITY_TABLE_MD = """### Free-tier ASR backends in this Space
 
 ### Why not the big speech-LLMs?
 Voxtral (2.5 GB), MiMo-V2.5-ASR (4.5 GB), Granite-4.1 (3 GB), Qwen3-TTS (1.5 GB),
-IndexTTS (2 GB), CosyVoice3 (1.5 GB), and VoxCPM2-TTS (2 GB) all run in CrispASR
+IndexTTS (2 GB), CosyVoice3 (1.5 GB), and VoxCPM2-TTS (2 GB) all run in StelnetTTS
 but exceed the free-tier 16 GB ceiling. Run them locally:
 
 ```bash
-docker build -f hf-space/Dockerfile -t crispasr-hf-space .
+docker build -f hf-space/Dockerfile -t stelnettts-hf-space .
 docker run --rm -p 7860:7860 -p 8080:8080 \\
-    -e CRISPASR_BACKEND=voxtral -e CRISPASR_AUTO_DOWNLOAD=1 \\
-    crispasr-hf-space
+    -e STELNETTTS_BACKEND=voxtral -e STELNETTTS_AUTO_DOWNLOAD=1 \\
+    stelnettts-hf-space
 ```
 
-The full backend list, GPU options, and language bindings are documented in the [CrispASR README](https://github.com/CrispStrobe/CrispASR) and the live feature matrix at [`docs/feature-matrix.md`](https://github.com/CrispStrobe/CrispASR/blob/main/docs/feature-matrix.md).
+The full backend list, GPU options, and language bindings are documented in the [StelnetTTS README](https://github.com/Cyna/StelnetTTS) and the live feature matrix at [`docs/feature-matrix.md`](https://github.com/Cyna/StelnetTTS/blob/main/docs/feature-matrix.md).
 """
 
 
@@ -446,7 +446,7 @@ with gr.Blocks(title=SPACE_TITLE, theme=gr.themes.Soft()) as demo:
     gr.Markdown(
         f"""# {SPACE_TITLE}
 
-CPU-only demo of [CrispASR](https://github.com/CrispStrobe/CrispASR) — one C++ binary, 24+ ASR backends and 8 TTS engines, no Python at inference time.
+CPU-only demo of [StelnetTTS](https://github.com/Cyna/StelnetTTS) — one C++ binary, 24+ ASR backends and 8 TTS engines, no Python at inference time.
 
 Each tab loads its own backend through the server's `/load` endpoint; the server holds **one** model in memory, so switching tabs may trigger a model hot-swap (download + load on first use, instant thereafter).
 
@@ -521,7 +521,7 @@ Each tab loads its own backend through the server's `/load` endpoint; the server
                 "> ⚠️ **Audio produced here is AI-generated.** Every clip is watermarked and carries "
                 "[C2PA Content Credentials](https://c2pa.org/) identifying it as synthetic — the marking survives "
                 "download. If you republish it, say that it is AI-generated "
-                "([EU AI Act Art. 50](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md)). "
+                "([EU AI Act Art. 50](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md)). "
                 "Voice cloning is not enabled in this Space."
             )
             with gr.Row():
@@ -540,7 +540,7 @@ Each tab loads its own backend through the server's `/load` endpoint; the server
                 with gr.Column():
                     tts_text = gr.Textbox(
                         value=(
-                            "Hello world. CrispASR is one binary, twenty-four ASR backends, "
+                            "Hello world. StelnetTTS is one binary, twenty-four ASR backends, "
                             "and eight TTS engines — running offline on this Space."
                         ),
                         label="Text to synthesize",
@@ -562,7 +562,7 @@ Each tab loads its own backend through the server's `/load` endpoint; the server
         # --- Text LID --------------------------------------------------
         with gr.Tab("Detect language (text)"):
             gr.Markdown(
-                "Identify the language of pasted text via the standalone `crispasr-lid` binary "
+                "Identify the language of pasted text via the standalone `stelnettts-lid` binary "
                 "(routes between CLD3, GlotLID-V3, and LID-176 by GGUF architecture)."
             )
             with gr.Row():
@@ -588,7 +588,7 @@ Each tab loads its own backend through the server's `/load` endpoint; the server
         with gr.Tab("Translate text (NMT)"):
             gr.Markdown(
                 "Text → text translation via M2M-100, WMT21, or MADLAD-400 NMT backends. "
-                "Uses the `crispasr` CLI's `--text` mode — the model downloads on first use."
+                "Uses the `stelnettts` CLI's `--text` mode — the model downloads on first use."
             )
             with gr.Row():
                 nmt_choice = gr.Dropdown(
@@ -648,11 +648,11 @@ Each tab loads its own backend through the server's `/load` endpoint; the server
 
 # ── OpenAI-compatible REST proxy in front of Gradio ──────────────────
 # HF Spaces only route the public port (7860) to the Gradio app, so the
-# CrispASR HTTP server's OpenAI-compatible API on :8080 was unreachable
+# StelnetTTS HTTP server's OpenAI-compatible API on :8080 was unreachable
 # from outside the container — `/v1/*`, `/health`, `/backends`, `/load`
 # all 404'd publicly. Mount a thin reverse proxy so those endpoints are
 # served on the public URL (with CORS), for HTTP API consumers like the
-# CrisperWeaver web/PWA app. The Gradio UI stays mounted at "/".
+# StelnetWeaver web/PWA app. The Gradio UI stays mounted at "/".
 
 _PROXY_TIMEOUT = httpx.Timeout(900.0, connect=15.0)
 _HOP_BY_HOP = {
@@ -671,8 +671,8 @@ def _cors(headers: dict) -> dict:
 
 
 def _build_app():
-    """FastAPI reverse proxy for the CrispASR server, with Gradio at '/'."""
-    api = FastAPI(title="CrispASR API proxy", docs_url=None, redoc_url=None)
+    """FastAPI reverse proxy for the StelnetTTS server, with Gradio at '/'."""
+    api = FastAPI(title="StelnetTTS API proxy", docs_url=None, redoc_url=None)
     client = httpx.AsyncClient(timeout=_PROXY_TIMEOUT)
 
     async def _forward(request: Request, path: str) -> Response:
@@ -733,7 +733,7 @@ app = _build_app()
 if __name__ == "__main__":
     log(
         f"launch: server_url={SERVER_URL} samples={SAMPLES_DIR} "
-        f"lid_bin={CRISPASR_LID_BIN} cache={CACHE_DIR}"
+        f"lid_bin={STELNETTTS_LID_BIN} cache={CACHE_DIR}"
     )
     uvicorn.run(
         app,

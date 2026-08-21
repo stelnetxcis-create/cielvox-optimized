@@ -1,4 +1,4 @@
-# CrispASR — TODO
+# StelnetTTS — TODO
 
 **Live work tracking moved to `PLAN.md`** (priority table + per-item
 sections). Historical milestones: `HISTORY.md`. Technical deep-dives:
@@ -35,7 +35,7 @@ from the old tracker was verified shipped or superseded).
 - **tools/reference_backends/voxtral.py** — LLM-half reference so
   `voxtral-test-llm` stops reporting `[SKIP]`.
 - **tests/CMakeLists.txt** — migrate test target references to
-  `$<TARGET_FILE:crispasr>`.
+  `$<TARGET_FILE:stelnettts>`.
 
 ## Upstream (see UPSTREAM.md)
 

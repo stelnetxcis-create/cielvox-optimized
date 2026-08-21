@@ -129,11 +129,11 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     # (encoder.layers.N.norm_self_att / norm_conv / norm_feed_forward1, ...).
     # Left as zeros they null those Conformer sub-layers -> the decoder emits a
     # 🎵/repetition loop instead of a transcript. Patch them from a known-good
-    # GGUF given by CRISPASR_COHERE_NORM_PATCH_GGUF (the corrected converter's
+    # GGUF given by STELNETTTS_COHERE_NORM_PATCH_GGUF (the corrected converter's
     # output, whose norms are non-zero). Verified: patching only these 10 makes
     # both this Python reference and the C++ port transcribe correctly.
     import torch as _torch
-    _patch_gguf = os.environ.get("CRISPASR_COHERE_NORM_PATCH_GGUF")
+    _patch_gguf = os.environ.get("STELNETTTS_COHERE_NORM_PATCH_GGUF")
     if _patch_gguf and Path(_patch_gguf).exists():
         import torch.nn as _nn
         from gguf import GGUFReader as _GR, dequantize as _dq
@@ -161,7 +161,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     # decoder prompt is overridable (Arabic model needs "ar", not "en").
     inputs = processor(
         audio, sampling_rate=16000, return_tensors="pt",
-        language=os.environ.get("CRISPASR_COHERE_REF_LANG", "en"))
+        language=os.environ.get("STELNETTTS_COHERE_REF_LANG", "en"))
     # Cast to the same dtype as the model to match the rust reference's
     # bf16→f32 path (we load in f32 here so this is a no-op).
     if "input_features" in inputs:

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Kaggle kernel: convert efwkjn/whisper-ja-anime-v0.3 to CrispASR GGML.
+"""Kaggle kernel: convert efwkjn/whisper-ja-anime-v0.3 to StelnetTTS GGML.
 
 Pipeline:
-  1. clone a CrispASR ref with custom Whisper vocab support
+  1. clone a StelnetTTS ref with custom Whisper vocab support
   2. download the HF model + OpenAI Whisper mel assets
   3. convert to F16 legacy GGML .bin using models/convert-h5-to-ggml.py
-  4. build crispasr-legacy-quantize
+  4. build stelnettts-legacy-quantize
   5. produce q8_0 and q4_k quantizations
-  6. upload all artifacts to cstr/whisper-ja-anime-v0.3-GGML
+  6. upload all artifacts to Xenna/whisper-ja-anime-v0.3-GGML
 """
 
 import os
@@ -17,12 +17,12 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 SRC_REPO = "efwkjn/whisper-ja-anime-v0.3"
-HF_REPO = "cstr/whisper-ja-anime-v0.3-GGML"
+HF_REPO = "Xenna/whisper-ja-anime-v0.3-GGML"
 NAME = "whisper-ja-anime-v0.3"
 
 os.environ["PYTHONUNBUFFERED"] = "1"
@@ -30,11 +30,11 @@ os.environ["USE_TF"] = "0"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
 os.environ["TMPDIR"] = str(TEMP)
 
-print("=== Phase 0: clone CrispASR ref ===", flush=True)
+print("=== Phase 0: clone StelnetTTS ref ===", flush=True)
 if not REPO.exists():
     subprocess.check_call([
-        "git", "clone", "--recursive", "--depth", "1", "-b", CRISPASR_REF,
-        CRISPASR_URL, str(REPO),
+        "git", "clone", "--recursive", "--depth", "1", "-b", STELNETTTS_REF,
+        STELNETTTS_URL, str(REPO),
     ])
 
 if str(REPO / "tools" / "kaggle") not in sys.path:
@@ -44,9 +44,9 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 
 import kaggle_harness as kh  # noqa: E402
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 kh._HF_PUSH_INTERVAL_S = 0.0
-kh.step("script.start", src=SRC_REPO, out=HF_REPO, ref=CRISPASR_REF)
+kh.step("script.start", src=SRC_REPO, out=HF_REPO, ref=STELNETTTS_REF)
 
 kh.step("install.deps")
 kh.sh_with_progress(
@@ -128,13 +128,13 @@ tags:
 - automatic-speech-recognition
 - whisper
 - japanese
-- crispasr
+- stelnettts
 - ggml
 ---
 
-# {NAME} GGML for CrispASR
+# {NAME} GGML for StelnetTTS
 
-Converted from `{SRC_REPO}` for CrispASR issue #258.
+Converted from `{SRC_REPO}` for StelnetTTS issue #258.
 
 The source model currently does not publish license metadata on Hugging Face.
 This repository is created private by the conversion kernel unless a maintainer
@@ -142,7 +142,7 @@ explicitly changes visibility after verifying redistribution terms.
 
 This conversion preserves the model's custom 20,480-token Whisper vocabulary by
 serializing `added_tokens.json` into the GGML tokenizer table. It requires a
-CrispASR build with custom Whisper special-token loading support.
+StelnetTTS build with custom Whisper special-token loading support.
 
 Files:
 
@@ -163,9 +163,9 @@ kh.sh_with_progress(
 )
 with kh.build_heartbeat("build.quantizer"):
     kh.sh_with_progress(
-        f"cmake --build {build} -j{kh.safe_build_jobs(gpu=False)} --target crispasr-legacy-quantize"
+        f"cmake --build {build} -j{kh.safe_build_jobs(gpu=False)} --target stelnettts-legacy-quantize"
     )
-quantize_bin = build / "bin" / "crispasr-legacy-quantize"
+quantize_bin = build / "bin" / "stelnettts-legacy-quantize"
 if not quantize_bin.exists():
     raise RuntimeError(f"missing quantizer: {quantize_bin}")
 
@@ -185,7 +185,7 @@ api.upload_file(
     path_in_repo="README.md",
     repo_id=HF_REPO,
     repo_type="model",
-    commit_message="Add model card for CrispASR GGML conversion",
+    commit_message="Add model card for StelnetTTS GGML conversion",
 )
 for path in produced:
     if path.name == "README.md":

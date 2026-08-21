@@ -130,7 +130,7 @@ int estimate_speakers_eigengap(const float* affinity, int n, int min_k, int max_
                                std::vector<float>* out_eigenvalues = nullptr);
 
 // Which speaker-count estimator cluster_speakers() uses.
-// CRISPASR_DIARIZE_COUNT=bic|eigengap|nme-sc. DEFAULT IS BIC (the upstream
+// STELNETTTS_DIARIZE_COUNT=bic|eigengap|nme-sc. DEFAULT IS BIC (the upstream
 // estimator) — eigengap wins on synthetic data but under-counts on real
 // speech and scores materially worse on VoxConverse. See the measurements at
 // count_method_from_env() before changing this.

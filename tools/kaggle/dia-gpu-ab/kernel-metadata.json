@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-dia-gpu-ab",
-  "title": "crispasr-dia-gpu-ab",
-  "code_file": "crispasr-dia-gpu-ab.py",
+  "id": "chr1str/stelnettts-dia-gpu-ab",
+  "title": "stelnettts-dia-gpu-ab",
+  "code_file": "stelnettts-dia-gpu-ab.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

@@ -1,14 +1,14 @@
 {
-  "id": "chr1str/crispasr-regression-suite",
-  "title": "CrispASR \u2014 regression suite",
-  "code_file": "crispasr-regression.py",
+  "id": "chr1str/stelnettts-regression-suite",
+  "title": "StelnetTTS \u2014 regression suite",
+  "code_file": "stelnettts-regression.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token"
+    "chr1str/stelnettts-hf-token"
   ],
   "competition_sources": [],
   "kernel_sources": [],

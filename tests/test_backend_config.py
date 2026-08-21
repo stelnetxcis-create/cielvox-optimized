@@ -12,28 +12,28 @@ def read(relpath: str) -> str:
 
 class TestBackendConfig(unittest.TestCase):
     def test_backend_gpu_helper_exists(self) -> None:
-        text = read("examples/cli/crispasr_backend_utils.h")
-        self.assertIn("inline bool crispasr_backend_should_use_gpu", text)
+        text = read("examples/cli/stelnettts_backend_utils.h")
+        self.assertIn("inline bool stelnettts_backend_should_use_gpu", text)
         self.assertIn('params.gpu_backend != "cpu"', text)
 
     def test_wrappers_use_shared_gpu_helper(self) -> None:
         wrappers = [
-            "examples/cli/crispasr_backend_canary.cpp",
-            "examples/cli/crispasr_backend_cohere.cpp",
-            "examples/cli/crispasr_backend_firered_asr.cpp",
-            "examples/cli/crispasr_backend_glm_asr.cpp",
-            "examples/cli/crispasr_backend_granite.cpp",
-            "examples/cli/crispasr_backend_kyutai_stt.cpp",
-            "examples/cli/crispasr_backend_omniasr.cpp",
-            "examples/cli/crispasr_backend_parakeet.cpp",
-            "examples/cli/crispasr_backend_qwen3.cpp",
-            "examples/cli/crispasr_backend_voxtral.cpp",
-            "examples/cli/crispasr_backend_voxtral4b.cpp",
+            "examples/cli/stelnettts_backend_canary.cpp",
+            "examples/cli/stelnettts_backend_cohere.cpp",
+            "examples/cli/stelnettts_backend_firered_asr.cpp",
+            "examples/cli/stelnettts_backend_glm_asr.cpp",
+            "examples/cli/stelnettts_backend_granite.cpp",
+            "examples/cli/stelnettts_backend_kyutai_stt.cpp",
+            "examples/cli/stelnettts_backend_omniasr.cpp",
+            "examples/cli/stelnettts_backend_parakeet.cpp",
+            "examples/cli/stelnettts_backend_qwen3.cpp",
+            "examples/cli/stelnettts_backend_voxtral.cpp",
+            "examples/cli/stelnettts_backend_voxtral4b.cpp",
         ]
         for relpath in wrappers:
             text = read(relpath)
-            self.assertIn('#include "crispasr_backend_utils.h"', text, relpath)
-            self.assertIn("crispasr_backend_should_use_gpu(", text, relpath)
+            self.assertIn('#include "stelnettts_backend_utils.h"', text, relpath)
+            self.assertIn("stelnettts_backend_should_use_gpu(", text, relpath)
             self.assertNotIn('use_gpu && p.gpu_backend != "cpu"', text, relpath)
             self.assertNotIn('use_gpu && params.gpu_backend != "cpu"', text, relpath)
 
@@ -109,7 +109,7 @@ class TestBackendConfig(unittest.TestCase):
             "src/kyutai_stt.cpp": "/*use_gpu=*/true",
             "src/omniasr.cpp": "p.use_gpu = true;",
             "src/parakeet.cpp": "p.use_gpu = true;",
-            "src/qwen3_asr.cpp": "p.use_gpu = true;",
+            "src/cielvox2_asr.cpp": "p.use_gpu = true;",
             "src/voxtral.cpp": "p.use_gpu = true;",
             "src/voxtral4b.cpp": "/*use_gpu=*/true",
         }

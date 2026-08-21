@@ -14,7 +14,7 @@ document is about what we have to BUILD.
 
 Both findings below are answered; recorded here so the doc reads as settled.
 
-- **Finding 1 — CrispASR owns all three** (`enc_p` + `flow` + `dec`). The frozen
+- **Finding 1 — StelnetTTS owns all three** (`enc_p` + `flow` + `dec`). The frozen
   contract stands: they send ContentVec features + F0 (Hz, 100 Hz) + speaker id,
   **not `z`**. Their reasoning is performance and it is sound: their pure-Dart
   `rvc.dart` already runs all three at **152x slower than real time**, with the
@@ -319,7 +319,7 @@ SVC_RECORD_SHAPES derives from `pipeline.window = 160`.
 
 ## 3c. ggml port — DONE for the graph, 47 stages at cos 1.00000000
 
-`crispasr-diff rvc <model.gguf> <ref.gguf> <any.wav>` compares enc_p (per
+`stelnettts-diff rvc <model.gguf> <ref.gguf> <any.wav>` compares enc_p (per
 sublayer + attention internals), all 4 flow coupling blocks, every dec upsample
 and noise-conv stage, and **output_audio at max_abs 1.5e-08**.
 
@@ -378,7 +378,7 @@ reported cos ≈ 0 on a *correct* graph because the comparison was wrong:
   NOTHING — the worst possible failure mode. Wrap the bound method instead.
 
 Both were found in one bisect step each once per-stage intermediates existed in
-a registered `crispasr-diff` branch. Before that, with only endpoints and an
+a registered `stelnettts-diff` branch. Before that, with only endpoints and an
 ad-hoc test binary, the same bug consumed a whole session and I concluded the
 graph was broken when it was not.
 
@@ -395,9 +395,9 @@ Standard order, unchanged by the above:
    This is where §2's design gets proven before any C++ exists.
 3. **ggml graph** — `src/rvc_svc.{h,cpp}`.
 4. **Per-stage diff** — `rvc_svc_diff()` + registration in
-   `crispasr_diff_main.cpp` (registering it is part of the job, not a
+   `stelnettts_diff_main.cpp` (registering it is part of the job, not a
    follow-up: mel-band-roformer shipped with a written-but-unregistered diff).
-5. **Surfaces together** — CLI verb + session C ABI (`crispasr_session_convert*`)
+5. **Surfaces together** — CLI verb + session C ABI (`stelnettts_session_convert*`)
    + wasm, and the arch in **both** detect paths. See
    `docs/contributing.md` section 7.
 

@@ -47,7 +47,7 @@ namespace core_overlap_trim {
 // `accepted_end_cs`, i.e. entirely inside audio already accepted.
 //
 // `t1_of(i)` returns item i's end time in the same units as accepted_end_cs
-// (centiseconds throughout CrispASR). Items are assumed ordered by time within
+// (centiseconds throughout StelnetTTS). Items are assumed ordered by time within
 // the chunk, which is what a decoder emits; the scan stops at the first item
 // that extends past the boundary, so a stray out-of-order item later in the
 // chunk cannot cause the whole chunk to be dropped.

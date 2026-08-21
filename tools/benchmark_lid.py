@@ -13,7 +13,7 @@ Usage:
   # Compare Q4_K vs Q2_K:
   python tools/benchmark_lid.py firered-lid-q4_k.gguf firered-lid-q2_k.gguf
 
-The script generates ~36 short wav files under CRISPASR_SCRATCH_DIR on first
+The script generates ~36 short wav files under STELNETTTS_SCRATCH_DIR on first
 run. Subsequent runs reuse cached audio if present.
 
 License: MIT (script only — generated TTS audio is transient and
@@ -89,7 +89,7 @@ LANGS = {
     ]),
 }
 
-SCRATCH_ROOT = os.environ.get("CRISPASR_SCRATCH_DIR") or os.environ.get("CRISP_SCRATCH_DIR") or ".scratch"
+SCRATCH_ROOT = os.environ.get("STELNETTTS_SCRATCH_DIR") or os.environ.get("CRISP_SCRATCH_DIR") or ".scratch"
 CACHE_DIR = os.path.join(SCRATCH_ROOT, "lid_bench")
 
 
@@ -117,7 +117,7 @@ async def generate_samples():
     return samples
 
 
-def run_benchmark(model_path, samples, cli="./build/bin/crispasr"):
+def run_benchmark(model_path, samples, cli="./build/bin/stelnettts"):
     """Run LID on all samples and return (correct, total, elapsed)."""
     correct = total = 0
     details = []
@@ -150,9 +150,9 @@ def main():
         print("Usage: python tools/benchmark_lid.py model1.gguf [model2.gguf ...]")
         sys.exit(1)
 
-    cli = "./build/bin/crispasr"
+    cli = "./build/bin/stelnettts"
     if not os.path.exists(cli):
-        cli = "crispasr"
+        cli = "stelnettts"
 
     print("Generating TTS samples...")
     samples = asyncio.run(generate_samples())

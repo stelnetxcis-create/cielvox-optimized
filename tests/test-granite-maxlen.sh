@@ -2,7 +2,7 @@
 # test-granite-maxlen.sh — live integration test for --max-len on granite
 # backend (issue #205).
 #
-# Runs crispasr with a granite-speech-plus GGUF and --max-len N, then verifies
+# Runs stelnettts with a granite-speech-plus GGUF and --max-len N, then verifies
 # that the output contains multiple subtitle lines (i.e. the segment was split).
 # Contrast: without --max-len the same audio produces fewer, longer lines.
 #
@@ -14,16 +14,16 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
-[ -n "$CRISPASR" ] || { echo "SKIP: crispasr binary not found"; exit 0; }
+[ -n "$CRISPASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 # Locate a granite-speech PLUS GGUF (word timestamps need PLUS variant).
 MODEL="${GRANITE_MODEL:-}"
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     MODEL=""
-    for d in "${CRISPASR_MODELS_DIR:-}" /mnt/storage/gguf-models "$HOME/.cache/crispasr"; do
+    for d in "${STELNETTTS_MODELS_DIR:-}" /mnt/storage/gguf-models "$HOME/.cache/stelnettts"; do
         [ -n "$d" ] && [ -d "$d" ] || continue
         # Prefer plus variant
         cand=$(ls "$d"/granite-speech*plus*.gguf "$d"/granite-speech-4.1*.gguf 2>/dev/null | head -1)
@@ -33,7 +33,7 @@ fi
 [ -n "$MODEL" ] && [ -f "$MODEL" ] || { echo "SKIP: no granite-speech GGUF found (set GRANITE_MODEL)"; exit 0; }
 
 # Locate test audio.
-AUDIO="${CRISPASR_TEST_AUDIO:-}"
+AUDIO="${STELNETTTS_TEST_AUDIO:-}"
 if [ -z "$AUDIO" ] || [ ! -f "$AUDIO" ]; then
     AUDIO=""
     for cand in samples/jfk.wav /mnt/akademie_storage/whisper.cpp/samples/jfk.wav; do

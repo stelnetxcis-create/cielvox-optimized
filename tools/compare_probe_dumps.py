@@ -2,7 +2,7 @@
 """Compare CPU vs GPU probe dumps from PROBE_BLOCK1=0 to localise where
 the first divergence appears in the s3.fd.db.0.0.b1 causal_block1d chain.
 
-Runs ./build/bin/crispasr twice; matches files by stage name; reports
+Runs ./build/bin/stelnettts twice; matches files by stage name; reports
 per-stage shape, finite-count, cosine, max_abs, and the first 5 indices
 where the two disagree by more than a threshold.
 

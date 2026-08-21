@@ -1,6 +1,6 @@
 # CLI reference
 
-`crispasr` extends upstream whisper.cpp's argument set with a handful
+`stelnettts` extends upstream whisper.cpp's argument set with a handful
 of backend-dispatch flags. Every historical whisper flag still works —
 when you don't pass `--backend`, whisper is the default.
 
@@ -33,52 +33,52 @@ The 10 patterns that cover most usage:
 
 ```bash
 # Auto-download + transcribe
-crispasr -m auto --backend parakeet -f audio.wav
+stelnettts -m auto --backend parakeet -f audio.wav
 
 # VAD + SRT + sentence-split (best subtitle output)
-crispasr -m parakeet.gguf -f long.wav --vad -osrt --split-on-punct
+stelnettts -m parakeet.gguf -f long.wav --vad -osrt --split-on-punct
 
 # Word timestamps via CTC aligner (LLM backends)
-crispasr --backend voxtral -m auto -f jfk.wav -am canary-ctc-aligner.gguf -osrt -ml 1
+stelnettts --backend voxtral -m auto -f jfk.wav -am canary-ctc-aligner.gguf -osrt -ml 1
 
 # Auto language detection
-crispasr -m auto --backend cohere -f audio.wav -l auto
+stelnettts -m auto --backend cohere -f audio.wav -l auto
 
 # Translate to English
-crispasr -m auto --backend whisper -f de.wav --translate
+stelnettts -m auto --backend whisper -f de.wav --translate
 
 # Live mic
-crispasr --mic -m auto --backend parakeet
+stelnettts --mic -m auto --backend parakeet
 
 # Text LID — auto-routes by GGUF arch, auto-downloads on first use
-crispasr-lid -m auto --text "Bonjour le monde"           # cstr/cld3-GGUF (default)
-crispasr-lid -m auto:glotlid --text "Bonjour le monde"   # 2102 ISO 639-3 + script
+stelnettts-lid -m auto --text "Bonjour le monde"           # Xenna/cld3-GGUF (default)
+stelnettts-lid -m auto:glotlid --text "Bonjour le monde"   # 2102 ISO 639-3 + script
 # Post-ASR text LID
-crispasr -m parakeet.gguf -f speech.wav --lid-on-transcript auto
+stelnettts -m parakeet.gguf -f speech.wav --lid-on-transcript auto
 
 # JSON with word + token detail
-crispasr -m auto --backend parakeet -f audio.wav -ojf
+stelnettts -m auto --backend parakeet -f audio.wav -ojf
 
 # Force GPU pick
-crispasr --gpu-backend vulkan -dev 1 -m auto -f audio.wav
+stelnettts --gpu-backend vulkan -dev 1 -m auto -f audio.wav
 
 # Half-VRAM voxtral4b
-CRISPASR_KV_QUANT=q4_0 CRISPASR_GGUF_MMAP=1 crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_KV_QUANT=q4_0 STELNETTTS_GGUF_MMAP=1 stelnettts --backend voxtral4b -m auto -f audio.wav
 
 # TTS — synthesize speech from text
-crispasr --backend kokoro -m auto --tts "Hello, how are you?" -o output.wav
+stelnettts --backend kokoro -m auto --tts "Hello, how are you?" -o output.wav
 
 # S2S — speech-to-speech (audio in → audio out)
-crispasr --backend lfm2-audio -m auto -f input.wav --s2s -o reply.wav
+stelnettts --backend lfm2-audio -m auto -f input.wav --s2s -o reply.wav
 
 # Speech restoration — 16 kHz input, restored 48 kHz output
-crispasr -m sidon-v0.1-f16.gguf -f input.wav --s2s --s2s-output restored.wav
+stelnettts -m sidon-v0.1-f16.gguf -f input.wav --s2s --s2s-output restored.wav
 
 # VoxCPM2 AudioVAE upscaling — 16 kHz input, upscaled 48 kHz output
-crispasr -m voxcpm2-vae-f32.gguf -f input.wav --s2s --s2s-output upscaled.wav
+stelnettts -m voxcpm2-vae-f32.gguf -f input.wav --s2s --s2s-output upscaled.wav
 
 # List every backend + capabilities
-crispasr --list-backends
+stelnettts --list-backends
 ```
 
 ## Core
@@ -98,7 +98,7 @@ crispasr --list-backends
 | `--s2s-output FNAME` | Output path for S2S WAV |
 | `--voice PATH` | Voice reference for TTS: GGUF voice pack or reference WAV for cloning (`--i-have-rights` required for WAV cloning) |
 | `--server` | Run as HTTP server with persistent model (see [`server.md`](server.md)) |
-| `--server-workers N` | Server: `N>1` loads N model instances so pure-ASR requests run concurrently (N× memory; env `CRISPASR_SERVER_WORKERS` overrides). See [`concurrency.md`](concurrency.md) |
+| `--server-workers N` | Server: `N>1` loads N model instances so pure-ASR requests run concurrently (N× memory; env `STELNETTTS_SERVER_WORKERS` overrides). See [`concurrency.md`](concurrency.md) |
 | `--ws-port N` | Server: real-time WebSocket ASR streaming port (`-1` off, `0` = HTTP port + 1) |
 | `--no-warmup` | Server: skip the startup warmup transcribe (workaround for GPU drivers that hang in warmup, #165) |
 | `--list-backends` | Print the capability matrix and exit |
@@ -113,8 +113,8 @@ crispasr --list-backends
 | `-m auto` | Download the registry default for `--backend` on first use; subsequent runs are instant |
 | `--model-quant Q` | Preferred quant for registry resolution; overrides the default. E.g. `--model-quant q8_0` to get Q8_0 instead of the default Q4_K. Also changes any companion model (voice pack, codec). |
 | `--auto-download` | Explicitly allow auto-download of missing registry models. Implied by `-m auto` and `--hf-repo`. |
-| `--cache-dir DIR` | Override the auto-download cache directory. Precedence: this flag, `$CRISPASR_CACHE_DIR`, `$CRISPASR_MODELS_DIR`, then `~/.cache/crispasr/`. |
-| `-hfr REPO`, `--hf-repo OWNER/REPO[:FILE]` | Fetch model from an arbitrary HuggingFace repo. E.g. `--hf-repo cstr/parakeet-tdt-0.6b-v3-GGUF:parakeet-tdt-0.6b-v3-q4_k.gguf`. Implies `--auto-download`. |
+| `--cache-dir DIR` | Override the auto-download cache directory. Precedence: this flag, `$STELNETTTS_CACHE_DIR`, `$STELNETTTS_MODELS_DIR`, then `~/.cache/stelnettts/`. |
+| `-hfr REPO`, `--hf-repo OWNER/REPO[:FILE]` | Fetch model from an arbitrary HuggingFace repo. E.g. `--hf-repo Xenna/parakeet-tdt-0.6b-v3-GGUF:parakeet-tdt-0.6b-v3-q4_k.gguf`. Implies `--auto-download`. |
 | `-hff FNAME`, `--hf-file FNAME` | Filename within `--hf-repo` (alternative to the `OWNER/REPO:FILE` shorthand) |
 | `--dry-run-resolve` | Print the resolved model path + companion paths and exit — does not load or synthesize |
 | `--dry-run-ignore-cache` | As `--dry-run-resolve` but pretend the cache is empty (shows what would be downloaded) |
@@ -125,9 +125,9 @@ crispasr --list-backends
 |---|---|
 | `--voice PATH` | GGUF voice pack or reference WAV. GGUF packs are used for VibeVoice/Qwen3-TTS/Orpheus style conditioning; WAV enables voice cloning (requires `--i-have-rights`) |
 | `--voice-dir PATH` | Server: directory of `<name>.gguf` or `<name>.wav` voice profiles. Enables `/v1/voices` listing and name-based voice selection in `/v1/audio/speech` |
-| `--ref-text "TEXT"` | Reference transcription for the ref audio (qwen3-tts, f5-tts). Auto-transcribed from `--voice <wav>` if omitted |
+| `--ref-text "TEXT"` | Reference transcription for the ref audio (cielvox2-tts, f5-tts). Auto-transcribed from `--voice <wav>` if omitted |
 | `--ref-asr BACKEND` | ASR backend to auto-transcribe the ref audio (default: `whisper`) |
-| `--instruct "TEXT"` | Natural-language voice/style description. For qwen3-tts: VoiceDesign mode (voice description) or CustomVoice mode (style control) |
+| `--instruct "TEXT"` | Natural-language voice/style description. For cielvox2-tts: VoiceDesign mode (voice description) or CustomVoice mode (style control) |
 | `--make-ref` | Create a TADA voice reference GGUF from `--voice <audio.wav>` + `--ref-text "transcript"`. Pure C++, no Python. Auto-discovers `tada-encoder-f16.gguf` + `tada-aligner-en.gguf` next to the model. Output path via `--make-ref-output` (default: `tada-ref-custom.gguf`) |
 | `--make-ref-output PATH` | Output path for `--make-ref` (default: `tada-ref-custom.gguf`) |
 | `--make-ref-encoder PATH` | Explicit path to the TADA encoder GGUF (auto-discovered if omitted) |
@@ -157,12 +157,12 @@ crispasr --list-backends
 
 ### JSON layout
 
-CrispASR writes outputs side-by-side with the input audio (e.g.
+StelnetTTS writes outputs side-by-side with the input audio (e.g.
 `jfk.wav` → `jfk.srt`, `jfk.vtt`, `jfk.json`):
 
 ```json
 {
-  "crispasr": {
+  "stelnettts": {
     "backend": "parakeet",
     "model":   "parakeet-tdt-0.6b-v3-q4_k.gguf",
     "language":"en"
@@ -197,7 +197,7 @@ document (issue #228).
 
 | Flag | Meaning |
 |---|---|
-| `--vad` | Enable Silero VAD. Auto-downloads `ggml-silero-v6.2.0.bin` (~885 KB) to `~/.cache/crispasr/` on first use |
+| `--vad` | Enable Silero VAD. Auto-downloads `ggml-silero-v6.2.0.bin` (~885 KB) to `~/.cache/stelnettts/` on first use |
 | `--vad-model FNAME` | Override the VAD model path (default: auto) |
 | `-vt F` | VAD threshold (default 0.5) |
 | `-vspd N` | VAD min speech duration (ms, default 250) |
@@ -235,11 +235,11 @@ exists to prevent.
 Last flag wins, so an explicit threshold after the preset overrides it:
 
 ```bash
-crispasr -m model.bin -f noisy.wav --sensitivity conservative
-crispasr -m model.bin -f quiet.wav --sensitivity aggressive -nth 0.9   # preset, then override
+stelnettts -m model.bin -f noisy.wav --sensitivity conservative
+stelnettts -m model.bin -f quiet.wav --sensitivity aggressive -nth 0.9   # preset, then override
 ```
 
-Same bundles from the session API: `crispasr_session_set_sensitivity()` in C,
+Same bundles from the session API: `stelnettts_session_set_sensitivity()` in C,
 `Session.set_sensitivity("conservative")` in Python.
 
 #### Reusing VAD boundaries across backends (#227)
@@ -250,11 +250,11 @@ To compare several backends on the same audio without recomputing VAD:
 
 ```bash
 # Step 1: export VAD boundaries (no model needed, ~300 ms).
-crispasr -f talk.wav --vad-export talk.vad.json
+stelnettts -f talk.wav --vad-export talk.vad.json
 
 # Step 2: transcribe with multiple backends using the same boundaries.
-crispasr -m parakeet.gguf -f talk.wav --vad-import talk.vad.json
-crispasr -m moonshine.gguf -f talk.wav --vad-import talk.vad.json
+stelnettts -m parakeet.gguf -f talk.wav --vad-import talk.vad.json
+stelnettts -m moonshine.gguf -f talk.wav --vad-import talk.vad.json
 ```
 
 Both `--vad-export` and `--vad-import` imply `--vad`, so the separate
@@ -275,9 +275,9 @@ would be — so it is the form to keep when the same audio will be transcribed b
 backends that want different chunk sizes:
 
 ```bash
-crispasr -f talk.wav --vad-export-raw talk.vad.json          # once
-crispasr -m parakeet.gguf -f talk.wav --vad-import talk.vad.json --chunk-seconds 12
-crispasr -m whisper.gguf  -f talk.wav --vad-import talk.vad.json --chunk-seconds 30
+stelnettts -f talk.wav --vad-export-raw talk.vad.json          # once
+stelnettts -m parakeet.gguf -f talk.wav --vad-import talk.vad.json --chunk-seconds 12
+stelnettts -m whisper.gguf  -f talk.wav --vad-import talk.vad.json --chunk-seconds 30
 ```
 
 Files written before `"kind"` existed are read as `chunks` (the historical
@@ -285,7 +285,7 @@ behaviour), so older exports keep working.
 
 ### Strict pipeline — require aux stages to succeed (`--strict-pipeline`, #311)
 
-By default CrispASR **degrades gracefully**: a VAD, forced-aligner, or
+By default StelnetTTS **degrades gracefully**: a VAD, forced-aligner, or
 punctuation model that fails to load is skipped with a stderr warning and the
 command still exits `0`. That is convenient interactively but hides failures
 from automation — a zero exit and a valid `-ojf` do **not** prove the requested
@@ -317,7 +317,7 @@ Distinct exit codes let a caller tell *which* stage failed:
 
 ```bash
 # The integration's contract: rc 0 ⟺ every required stage succeeded.
-crispasr --backend parakeet -m asr.gguf -f in.wav -l zh \
+stelnettts --backend parakeet -m asr.gguf -f in.wav -l zh \
     --vad -vm vad.gguf -am aligner.gguf --force-aligner \
     --punc-model punc.gguf --strict-pipeline -ojf -of result
 echo "rc=$?"   # 0 = VAD ran + words present + punctuation applied; 30/31/32 = that stage failed
@@ -331,11 +331,11 @@ relying on the legacy whisper-only path.
 and both honour strict semantics (the server via `strict_pipeline` /
 `require_*` form fields, returning HTTP 400 — see
 [`server.md`](server.md#strict-pipeline--fail-on-a-required-stages-failure-311)).
-The decision logic is shared (`crispasr_strict.h`) so they can't drift. The
-**session C-ABI** (`crispasr_session_*`, used by the language bindings) is a
+The decision logic is shared (`stelnettts_strict.h`) so they can't drift. The
+**session C-ABI** (`stelnettts_session_*`, used by the language bindings) is a
 lower-level, caller-driven primitive — it does not auto-orchestrate VAD +
 alignment + punctuation, so there is no silent degradation to guard: a binding
-caller invokes each stage explicitly (`crispasr_session_transcribe_vad`, the
+caller invokes each stage explicitly (`stelnettts_session_transcribe_vad`, the
 aligner, the punc setter) and already sees each one's result directly. Strict
 mode is therefore a property of the two orchestrating front-ends (CLI, server).
 
@@ -344,8 +344,8 @@ mode is therefore a property of the two orchestrating front-ends (CLI, server).
 Restrict processing to a slice of the input instead of the whole file:
 
 ```bash
-crispasr -m parakeet.gguf -f talk.wav --offset-t 60000              # skip the first 60 s
-crispasr -m parakeet.gguf -f talk.wav --offset-t 60000 --duration 30000   # only 60 s → 90 s
+stelnettts -m parakeet.gguf -f talk.wav --offset-t 60000              # skip the first 60 s
+stelnettts -m parakeet.gguf -f talk.wav --offset-t 60000 --duration 30000   # only 60 s → 90 s
 ```
 
 | Flag | Meaning |
@@ -367,23 +367,23 @@ More efficient than the label-looping beam for transducers.
 
 ```bash
 # Via --parakeet-decoder maes:
-crispasr -m parakeet-tdt-0.6b-v3.gguf -f audio.wav --parakeet-decoder maes --beam-size 4
+stelnettts -m parakeet-tdt-0.6b-v3.gguf -f audio.wav --parakeet-decoder maes --beam-size 4
 
 # Via env var:
-CRISPASR_PARAKEET_MAES=1 crispasr -m model.gguf -f audio.wav --beam-size 4
+STELNETTTS_PARAKEET_MAES=1 stelnettts -m model.gguf -f audio.wav --beam-size 4
 ```
 
 **Tuning env vars:**
 
 | Variable | Default | Description |
 |---|---|---|
-| `CRISPASR_PARAKEET_MAES` | 0 | Set to 1 to enable MAES (alternative to `--parakeet-decoder maes`) |
-| `CRISPASR_MAES_NUM_STEPS` | 2 | Max non-blank expansions per frame |
-| `CRISPASR_MAES_GAMMA` | 2.3 | Pruning threshold (lower = more aggressive) |
-| `CRISPASR_MAES_BETA` | 2 | Extra candidates beyond beam_size |
+| `STELNETTTS_PARAKEET_MAES` | 0 | Set to 1 to enable MAES (alternative to `--parakeet-decoder maes`) |
+| `STELNETTTS_MAES_NUM_STEPS` | 2 | Max non-blank expansions per frame |
+| `STELNETTTS_MAES_GAMMA` | 2.3 | Pruning threshold (lower = more aggressive) |
+| `STELNETTTS_MAES_BETA` | 2 | Extra candidates beyond beam_size |
 
 Works with both TDT and RNNT parakeet models, and nemotron (via
-`CRISPASR_NEMOTRON_MAES=1`). CTC beam search is separate (activated by
+`STELNETTTS_NEMOTRON_MAES=1`). CTC beam search is separate (activated by
 `--beam-size N` with CTC models, uses shared
 `core_ctc::prefix_beam_search`).
 
@@ -392,7 +392,7 @@ decoder. On JFK 11s, MAES removes spurious `<en-US>` language tags and
 produces proper punctuation vs standard beam.
 
 ```bash
-CRISPASR_NEMOTRON_MAES=1 crispasr -m nemotron-3.5-asr-streaming-0.6b-q4_k.gguf \
+STELNETTTS_NEMOTRON_MAES=1 stelnettts -m nemotron-3.5-asr-streaming-0.6b-q4_k.gguf \
   --backend nemotron --beam-size 4 -f audio.wav
 ```
 
@@ -422,7 +422,7 @@ multilingual / v3 / EN models behave very differently:
   this, any stretch of 3 s or more where nothing was transcribed is
   automatically transcribed again and the recovered words merged back in. When
   the transcript was already complete this changes nothing and adds no time.
-  `CRISPASR_GAP_FILL=0` turns it off; `CRISPASR_GAP_FILL_MIN_CS` tunes it
+  `STELNETTTS_GAP_FILL=0` turns it off; `STELNETTTS_GAP_FILL_MIN_CS` tunes it
   (see below).
 - **JA-only (vocab ≤ 4096):** the bidirectional encoder is numerically unstable
   when attention spans the whole utterance — codec-level perturbations as small
@@ -449,19 +449,19 @@ multilingual / v3 / EN models behave very differently:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CRISPASR_PARAKEET_STREAM_THRESHOLD` | non-JA 300, JA 12 | Single-pass cap (seconds). Audio ≤ this gets one full-attention pass; `0` disables single-pass entirely (always streamed). |
-| `CRISPASR_PARAKEET_VAD_SLICE_CAP` | non-JA 0, JA 12 | Max VAD slice duration (seconds); longer slices are re-split at energy minima before decoding. `0` = no cap. |
-| `CRISPASR_PARAKEET_ATT_CONTEXT` | unset | `"L,R"` switches the encoder to rel_pos_local_attn with that window (encoder frames, 1 = 80 ms) — NeMo's `change_attention_model` equivalent. `"-1,-1"` forces full attention. |
-| `CRISPASR_GAP_FILL` | 1 | Automatically re-transcribe any stretch of audio the transcript left empty and merge the recovered words back. `0` disables. |
-| `CRISPASR_GAP_FILL_MIN_CS` | non-JA 300, JA 100 | Smallest empty stretch that triggers gap-fill, in centiseconds (300 = 3.0 s). Lower values catch shorter drops but may re-transcribe normal pauses, occasionally adding filler words. |
-| `CRISPASR_PARAKEET_LONGFORM` | non-JA 1, JA 0 | `1` = silence-split single-pass above the cap; `0` = streamed fallback above the cap. |
-| `CRISPASR_PARAKEET_INTERNAL_CHUNKING` | non-JA on, JA off | `0` = revert to the dispatcher's chunk-30 + overlap-save + LCS-merge path (A/B). |
-| `CRISPASR_PARAKEET_STREAM_CHUNK` | 0 (auto: 8 JA / 30 non-JA) | Streamed-path encoder chunk size (seconds). |
-| `CRISPASR_PARAKEET_STREAM_OVERLAP` | 2 | Streamed-path encoder overlap (seconds). |
-| `CRISPASR_PARAKEET_VRAM_BUDGET_MB` | 0 (off) | Proactive memory policy: if single-pass full attention's estimated O(T²) rel-pos bias exceeds this, use the streamed (bounded-window) encoder *before* allocating — avoids the OOM spike on small GPUs. 0 = disabled (single-pass as before; the reactive OOM fallback still backstops). |
-| `CRISPASR_PARAKEET_MEM_POLICY` | `auto` | `auto` honours the VRAM budget; `single`/`streamed` force that path; `off` disables the proactive check (reactive-only). |
-| `CRISPASR_PARAKEET_MEM_COEFF` | 8.0 | O(T²) estimate coefficient. Default calibrated so a ~4 min clip (T≈2800, 8 heads) estimates ~1.9 GiB, matching a measured CUDA allocation. |
-| `CRISPASR_SESSION_UNIFIED_DISPATCH` | 1 | No effect on the CLI. `0` makes the session/bindings API use its older parakeet code path instead of the one shared with the CLI — for troubleshooting comparisons only. |
+| `STELNETTTS_PARAKEET_STREAM_THRESHOLD` | non-JA 300, JA 12 | Single-pass cap (seconds). Audio ≤ this gets one full-attention pass; `0` disables single-pass entirely (always streamed). |
+| `STELNETTTS_PARAKEET_VAD_SLICE_CAP` | non-JA 0, JA 12 | Max VAD slice duration (seconds); longer slices are re-split at energy minima before decoding. `0` = no cap. |
+| `STELNETTTS_PARAKEET_ATT_CONTEXT` | unset | `"L,R"` switches the encoder to rel_pos_local_attn with that window (encoder frames, 1 = 80 ms) — NeMo's `change_attention_model` equivalent. `"-1,-1"` forces full attention. |
+| `STELNETTTS_GAP_FILL` | 1 | Automatically re-transcribe any stretch of audio the transcript left empty and merge the recovered words back. `0` disables. |
+| `STELNETTTS_GAP_FILL_MIN_CS` | non-JA 300, JA 100 | Smallest empty stretch that triggers gap-fill, in centiseconds (300 = 3.0 s). Lower values catch shorter drops but may re-transcribe normal pauses, occasionally adding filler words. |
+| `STELNETTTS_PARAKEET_LONGFORM` | non-JA 1, JA 0 | `1` = silence-split single-pass above the cap; `0` = streamed fallback above the cap. |
+| `STELNETTTS_PARAKEET_INTERNAL_CHUNKING` | non-JA on, JA off | `0` = revert to the dispatcher's chunk-30 + overlap-save + LCS-merge path (A/B). |
+| `STELNETTTS_PARAKEET_STREAM_CHUNK` | 0 (auto: 8 JA / 30 non-JA) | Streamed-path encoder chunk size (seconds). |
+| `STELNETTTS_PARAKEET_STREAM_OVERLAP` | 2 | Streamed-path encoder overlap (seconds). |
+| `STELNETTTS_PARAKEET_VRAM_BUDGET_MB` | 0 (off) | Proactive memory policy: if single-pass full attention's estimated O(T²) rel-pos bias exceeds this, use the streamed (bounded-window) encoder *before* allocating — avoids the OOM spike on small GPUs. 0 = disabled (single-pass as before; the reactive OOM fallback still backstops). |
+| `STELNETTTS_PARAKEET_MEM_POLICY` | `auto` | `auto` honours the VRAM budget; `single`/`streamed` force that path; `off` disables the proactive check (reactive-only). |
+| `STELNETTTS_PARAKEET_MEM_COEFF` | 8.0 | O(T²) estimate coefficient. Default calibrated so a ~4 min clip (T≈2800, 8 heads) estimates ~1.9 GiB, matching a measured CUDA allocation. |
+| `STELNETTTS_SESSION_UNIFIED_DISPATCH` | 1 | No effect on the CLI. `0` makes the session/bindings API use its older parakeet code path instead of the one shared with the CLI — for troubleshooting comparisons only. |
 
 CLI escape hatches (no env needed): `--chunk-seconds N` forces the dispatcher's
 N-second chunk + merge; `--vad` forces the VAD path.
@@ -474,7 +474,7 @@ preserved — and then groups the resulting words into **~N-second output
 segments** with per-segment `offsets`/`words`/`tokens` (issue #257). So
 `--chunk-seconds 7` yields ~7-second segments of the *complete* transcript, not a
 truncated single blob. The encoder window can be overridden independently with
-`CRISPASR_PARAKEET_STREAM_CHUNK`. (For bounded-VRAM *single-pass* long audio with
+`STELNETTTS_PARAKEET_STREAM_CHUNK`. (For bounded-VRAM *single-pass* long audio with
 no segmentation, use `--att-context L,R` instead.)
 
 **Examples:**
@@ -482,19 +482,19 @@ no segmentation, use `--att-context L,R` instead.)
 ```bash
 # Non-JA (v3): default is NeMo-exact single-pass / silence-split longform —
 # no flags needed, any length:
-crispasr -m parakeet-tdt-0.6b-v3.gguf -f long_de.wav -osrt
+stelnettts -m parakeet-tdt-0.6b-v3.gguf -f long_de.wav -osrt
 
 # JA model — auto-VAD + 12 s slice cap + per-slice single-pass by default
 # (whole-clip single-pass collapses past ~12 s), no flags needed:
-crispasr -m parakeet-tdt-0.6b-ja.gguf -f podcast_ja.wav -osrt
+stelnettts -m parakeet-tdt-0.6b-ja.gguf -f podcast_ja.wav -osrt
 
 # Force the old dispatcher chunk+merge path for comparison:
-CRISPASR_PARAKEET_INTERNAL_CHUNKING=0 \
-  crispasr -m parakeet-tdt-0.6b-v3.gguf -f long_de.wav -osrt
+STELNETTTS_PARAKEET_INTERNAL_CHUNKING=0 \
+  stelnettts -m parakeet-tdt-0.6b-v3.gguf -f long_de.wav -osrt
 
 # Lower the single-pass cap on a memory-constrained box (splits sooner):
-CRISPASR_PARAKEET_STREAM_THRESHOLD=120 \
-  crispasr -m parakeet-tdt-0.6b-v3.gguf -f long_de.wav -osrt
+STELNETTTS_PARAKEET_STREAM_THRESHOLD=120 \
+  stelnettts -m parakeet-tdt-0.6b-v3.gguf -f long_de.wav -osrt
 ```
 
 ### How VAD works
@@ -510,15 +510,15 @@ segments (< 3 s) are auto-merged, and oversized segments are split at
 
 ```bash
 # Just pass --vad — the model is auto-downloaded on first use
-./build/bin/crispasr --backend parakeet -m parakeet.gguf -f long_audio.wav \
+./build/bin/stelnettts --backend parakeet -m parakeet.gguf -f long_audio.wav \
     --vad -osrt
 
 # Or point at an existing GGUF
-./build/bin/crispasr --backend parakeet -m parakeet.gguf -f long_audio.wav \
+./build/bin/stelnettts --backend parakeet -m parakeet.gguf -f long_audio.wav \
     --vad-model ~/models/ggml-silero-v6.2.0.bin -osrt
 ```
 
-The cached model lives at `~/.cache/crispasr/ggml-silero-v6.2.0.bin`
+The cached model lives at `~/.cache/stelnettts/ggml-silero-v6.2.0.bin`
 (~885 KB). If you don't pass `--vad`, whisper falls back to fixed
 30-second chunking (`-ck 30`). Backends with `CAP_UNBOUNDED_INPUT`
 (parakeet, canary, wav2vec2, firered-asr, fastconformer-ctc,
@@ -532,7 +532,7 @@ chunking for any backend.
 ### Recommended for subtitles
 
 ```bash
-crispasr --backend parakeet -m parakeet.gguf -f long_audio.wav \
+stelnettts --backend parakeet -m parakeet.gguf -f long_audio.wav \
     --vad -osrt --split-on-punct
 ```
 
@@ -540,7 +540,7 @@ crispasr --backend parakeet -m parakeet.gguf -f long_audio.wav \
   more accurate and natural than the forced-aligner fallback used by
   LLM backends.
 - **Best default subtitle flags:** `--vad --split-on-punct`. VAD
-  segments at natural speech pauses, then CrispASR stitches and
+  segments at natural speech pauses, then StelnetTTS stitches and
   remaps timestamps back to the original timeline. Avoids the
   mid-sentence boundary problems of fixed 30-second chunking.
 - **For backends without native timestamps** (`cohere`, `granite`,
@@ -553,7 +553,7 @@ crispasr --backend parakeet -m parakeet.gguf -f long_audio.wav \
   manual `--chunk-seconds` needed. JA-only models use the streamed path
   instead. See the "Parakeet long-form encoding" section above.
 - **If parakeet OOMs on very long audio:** lower the single-pass cap with
-  `CRISPASR_PARAKEET_STREAM_THRESHOLD=120` so the silence-split longform
+  `STELNETTTS_PARAKEET_STREAM_THRESHOLD=120` so the silence-split longform
   kicks in sooner (each piece is then ≤120 s of full attention).
 - **Hybrid TDT+CTC models** (e.g. `parakeet-tdt_ctc-0.6b-ja`): pass
   `--parakeet-decoder ctc` to use the CTC head. CTC decode is
@@ -563,14 +563,14 @@ crispasr --backend parakeet -m parakeet.gguf -f long_audio.wav \
 ## Word-level timestamps via CTC alignment
 
 The LLM-based backends (`qwen3`, `voxtral`, `voxtral4b`, `granite`)
-don't emit timestamps natively. CrispASR supports a second-pass
+don't emit timestamps natively. StelnetTTS supports a second-pass
 forced alignment via NVIDIA's canary-ctc-aligner — a 600 M-param
 FastConformer + CTC head that works on any transcript + audio pair
 in 25+ European languages.
 
 ```bash
 # Auto-download the aligner — Q4_K (~442 MB) lives in the registry.
-./build/bin/crispasr --backend voxtral -m auto -f samples/jfk.wav \
+./build/bin/stelnettts --backend voxtral -m auto -f samples/jfk.wav \
     -am auto -osrt -ml 1
 # [00:00:00.240 --> 00:00:00.640]  And
 # [00:00:00.640 --> 00:00:00.880]  so,
@@ -578,8 +578,8 @@ in 25+ European languages.
 
 # …or grab it once manually (Q4_K / Q5_0 / Q8_0 / F16 all on the same repo):
 curl -L -o canary-ctc-aligner.gguf \
-    https://huggingface.co/cstr/canary-ctc-aligner-GGUF/resolve/main/canary-ctc-aligner-q4_k.gguf
-./build/bin/crispasr --backend voxtral -m auto -f samples/jfk.wav \
+    https://huggingface.co/Xenna/canary-ctc-aligner-GGUF/resolve/main/canary-ctc-aligner-q4_k.gguf
+./build/bin/stelnettts --backend voxtral -m auto -f samples/jfk.wav \
     -am canary-ctc-aligner.gguf -osrt -ml 1
 ```
 
@@ -609,11 +609,11 @@ auto-download:
 
 ```bash
 # Japanese word timestamps with the JA-specific aligner:
-crispasr --backend cohere -m cohere.gguf -f japanese.wav \
+stelnettts --backend cohere -m cohere.gguf -f japanese.wav \
     -am wav2vec2-aligner-ja --auto-download -osrt -ml 1
 
 # French with Voxtral:
-crispasr --backend voxtral -m auto -f french.wav \
+stelnettts --backend voxtral -m auto -f french.wav \
     -am wav2vec2-aligner-fr --auto-download -osrt -ml 1
 ```
 
@@ -636,18 +636,18 @@ usage, all auto-download:
 
 ```bash
 # Polish word timestamps (no wav2vec2 PL aligner exists):
-crispasr --backend voxtral -m auto -f polish.wav \
+stelnettts --backend voxtral -m auto -f polish.wav \
     -am fastconformer-aligner-pl --auto-download -osrt -ml 1
 ```
 
 For LLM backends with a native timestamp head there is also
-`-am qwen3-forced-aligner` (multilingual, ~500 MB) — note it is more
+`-am cielvox2-forced-aligner` (multilingual, ~500 MB) — note it is more
 sensitive to leading silence than the CTC aligners.
 
 For subtitle output, prefer adding `--vad --split-on-punct`:
 
 ```bash
-./build/bin/crispasr --backend cohere -m cohere.gguf -f talk.wav \
+./build/bin/stelnettts --backend cohere -m cohere.gguf -f talk.wav \
     -am canary-ctc-aligner.gguf --vad -osrt --split-on-punct
 ```
 
@@ -663,7 +663,7 @@ the backend's native timing.
 
 ```bash
 # Parakeet's native word ts replaced with canary-ctc-aligner output:
-./build/bin/crispasr --backend parakeet -m auto -f samples/jfk.wav \
+./build/bin/stelnettts --backend parakeet -m auto -f samples/jfk.wav \
     -am auto --force-aligner -ojf
 ```
 
@@ -676,7 +676,7 @@ can still use it once the user explicitly asks. Short alias is
 Notes:
 - Without `--force-aligner`, the aligner path is a fallback for
   backends that lack native timestamps.
-- `qwen3-forced-aligner` is more sensitive to leading silence;
+- `cielvox2-forced-aligner` is more sensitive to leading silence;
   `--vad` is strongly recommended with it.
 - Parakeet remains the better choice when timestamp quality is the
   top priority and you don't want to pay for a second forward pass.
@@ -696,13 +696,13 @@ Because the gap is so large and the aligner is curated/registered,
 the requested output benefits from word-level timestamps (`-osrt`,
 `-ovtt`, `-ojf`, `-owts`, `--max-len > 0`, `--split-on-punct`,
 `--print-colors`). This auto-downloads `canary-ctc-aligner-q4_k.gguf`
-(~442 MB) into the crispasr cache the first time and reuses it
+(~442 MB) into the stelnettts cache the first time and reuses it
 afterwards. Stream / mic / server / `--text` / `--tts` modes are
 exempt.
 
 ```bash
 # v0.7.0+: equivalent to passing `-am auto --force-aligner` automatically
-./build/bin/crispasr --backend canary -m auto -f samples/jfk.wav \
+./build/bin/stelnettts --backend canary -m auto -f samples/jfk.wav \
     --max-len 50 --split-on-punct -osrt
 ```
 
@@ -711,7 +711,7 @@ the ~442 MB download or the second forward pass), add
 `--no-auto-aligner`:
 
 ```bash
-./build/bin/crispasr --backend canary -m auto -f samples/jfk.wav \
+./build/bin/stelnettts --backend canary -m auto -f samples/jfk.wav \
     --max-len 50 --split-on-punct -osrt --no-auto-aligner
 ```
 
@@ -724,7 +724,7 @@ upstream tools like SubtitleEdit.
 Aligns pre-existing text against audio without running ASR first.
 Accepts plain text (via `--ref-text` or `--text-file file.txt`) or an
 unaligned `.srt` file. Works with all three aligner families:
-canary-ctc, wav2vec2/hubert, qwen3-forced-aligner.
+canary-ctc, wav2vec2/hubert, cielvox2-forced-aligner.
 
 For `.srt` input the cue structure is preserved: the cue texts are
 aligned as one transcript and each cue is re-emitted with corrected
@@ -733,20 +733,20 @@ file goes in, and the same subtitles come out re-timed.
 
 ```bash
 # Re-time an unaligned/mistimed SRT (same cues, corrected timestamps):
-crispasr --align-only -am auto --auto-download -f audio.wav \
+stelnettts --align-only -am auto --auto-download -f audio.wav \
     --text-file subtitles.srt --align-output retimed.srt
 
 # Align a transcript against audio, output word-level SRT:
-crispasr --align-only -am auto --auto-download -f audio.wav \
+stelnettts --align-only -am auto --auto-download -f audio.wav \
     --ref-text "And so my fellow Americans ask not what your country can do for you"
 
 # Align a plain .txt (one subtitle line per text line) into cue-level SRT:
-crispasr --align-only -am auto --auto-download -f audio.wav \
+stelnettts --align-only -am auto --auto-download -f audio.wav \
     --text-file transcript.txt --align-granularity segment \
     --align-output aligned.srt
 
 # JSON with per-segment + nested per-word timings:
-crispasr --align-only -am canary-ctc-aligner-q4_k.gguf -f audio.wav \
+stelnettts --align-only -am canary-ctc-aligner-q4_k.gguf -f audio.wav \
     --text-file subtitles.srt --align-format json
 ```
 
@@ -774,7 +774,7 @@ permissively licensed (no NC restriction):
 | `fastconformer-{aligner,ctc}-{en-pc,es,fr,it,nl,pl,ru,ua,hr,be,ar,fa,ka,hy,uz,kk-ru,de}` | FastConformer hybrid CTC branch | ~82 MB | per-language (+punct/caps except fa, kk-ru) | CC-BY-4.0 |
 | `parakeet-ctc-0.6b` / `parakeet-ctc-1.1b` | FastConformer-CTC | ~455 / ~795 MB | en | CC-BY-4.0 |
 | `wav2vec2-aligner-{en,de,fr,es,it,ja,zh,nl,uk,…}` | wav2vec2/XLSR CTC | ~212–300 MB | per-language (incl. CJK) | Apache-2.0 |
-| `qwen3-forced-aligner` / `qwen3-fa` | Qwen3 timestamp head | ~500 MB | multilingual | Apache-2.0 |
+| `cielvox2-forced-aligner` / `qwen3-fa` | Qwen3 timestamp head | ~500 MB | multilingual | Apache-2.0 |
 
 Everything with GGUF arch `canary-ctc` (the whole NeMo
 `stt_*_fastconformer_ctc_*` standalone family, plus CTC branches
@@ -795,7 +795,7 @@ word timestamps were only generated for `--output-wts` and `-ojf`,
 causing `--max-len` to silently have no effect.
 
 ```bash
-./build/bin/crispasr --backend granite \
+./build/bin/stelnettts --backend granite \
     -m granite-speech-4.1-2b-plus-q4_k.gguf \
     -f audio.wav --max-len 50 -osrt
 ```
@@ -842,7 +842,7 @@ Per-word boost suffix: `"Berenz^5.0,NVIDIA^3.0,plain"`.
 | Mechanism | Backends |
 |---|---|
 | **CTC-WS trie (Phase A)** — token-level logit boost during CTC/TDT decode | parakeet (CTC + TDT) |
-| **LLM prompt injection (Phase B)** — hotwords appended to the system/instruction prompt | qwen3-asr, voxtral |
+| **LLM prompt injection (Phase B)** — hotwords appended to the system/instruction prompt | cielvox2-asr, voxtral |
 | **Free-form prompt injection** — separate `--context` flag, not `--hotwords` (see below) | vibevoice |
 | Not applicable | voxtral4b (fixed streaming prompt), granite-nle (NAR, no text prompt), funasr (hardcoded prompt), whisper (use `--prompt` instead) |
 
@@ -858,7 +858,7 @@ whitespace-only `--context` behaves identically to omitting the flag
 (same prompt, byte-for-byte).
 
 ```bash
-crispasr --backend vibevoice -m auto -f meeting.wav \
+stelnettts --backend vibevoice -m auto -f meeting.wav \
     --context "ACME Corp, John Smith, Q3 earnings"
 ```
 
@@ -866,16 +866,16 @@ crispasr --backend vibevoice -m auto -f meeting.wav \
 
 ```bash
 # Boost rare names during parakeet CTC decode
-crispasr --backend parakeet -m auto -f meeting.wav \
+stelnettts --backend parakeet -m auto -f meeting.wav \
     --parakeet-decoder ctc \
     --hotwords "Berenz,Acme Corp,GPU-PB"
 
-# Same hotwords for qwen3-asr (injected into LLM system prompt)
-crispasr --backend qwen3 -m auto -f meeting.wav \
+# Same hotwords for cielvox2-asr (injected into LLM system prompt)
+stelnettts --backend qwen3 -m auto -f meeting.wav \
     --hotwords "Berenz,Acme Corp,GPU-PB"
 
 # Boost from a file with custom boost values
-crispasr --backend parakeet -m auto -f meeting.wav \
+stelnettts --backend parakeet -m auto -f meeting.wav \
     --hotwords-file names.txt --hotwords-boost 3.0
 ```
 
@@ -891,7 +891,7 @@ insufficient.
 
 ```bash
 # Beam search + hotwords for medical transcription
-crispasr --backend parakeet -m auto -f consultation.wav \
+stelnettts --backend parakeet -m auto -f consultation.wav \
     --hotwords "metformin,lisinopril,atorvastatin" -bs 4
 ```
 
@@ -913,7 +913,7 @@ impact on throughput.
 
 ## Language detection (LID)
 
-CrispASR has **two distinct LID paths**: audio-LID (decides what language
+StelnetTTS has **two distinct LID paths**: audio-LID (decides what language
 the audio is in, before/during ASR) and text-LID (decides the language of
 a transcript or arbitrary UTF-8 string).
 
@@ -936,32 +936,32 @@ same binary, any text-LID GGUF.
 |---|---|
 | `--lid-on-transcript FNAME` | After ASR, run a text-LID GGUF on the assembled transcript and emit `lang=<code>\tconf=<score>\tbackend=<name>` to stderr. Accepts a path or `auto[:cld3\|glotlid\|lid-fasttext176]` (default `cld3`, auto-downloaded). Errors are logged but never fail the run |
 
-Standalone CLI: `crispasr-lid` (separate binary, ships with every build):
+Standalone CLI: `stelnettts-lid` (separate binary, ships with every build):
 
 | Flag | Meaning |
 |---|---|
-| `-m`, `--model PATH\|auto[:variant]` | Path or auto-download key. `auto` / `auto:cld3` → `cstr/cld3-GGUF` (default). `auto:glotlid` → `cstr/glotlid-GGUF`. `auto:lid-fasttext176` → `cstr/fasttext-lid176-GGUF`. A bare canonical filename (e.g. `cld3-f16.gguf`) is also looked up in the registry and downloaded if missing |
+| `-m`, `--model PATH\|auto[:variant]` | Path or auto-download key. `auto` / `auto:cld3` → `Xenna/cld3-GGUF` (default). `auto:glotlid` → `Xenna/glotlid-GGUF`. `auto:lid-fasttext176` → `Xenna/fasttext-lid176-GGUF`. A bare canonical filename (e.g. `cld3-f16.gguf`) is also looked up in the registry and downloaded if missing |
 | `--text STR` | Input text (otherwise stdin) |
 | `-k`, `--topk N` | Top-k predictions, one `label\tscore` per line (default 1) |
 | `--quiet` | Suppress the trailing `backend=… variant=… dim=… N labels` summary |
 
-First-use download lands in `~/.cache/crispasr/` (or
-`$CRISPASR_CACHE_DIR` if set). Subsequent runs are instant.
+First-use download lands in `~/.cache/stelnettts/` (or
+`$STELNETTTS_CACHE_DIR` if set). Subsequent runs are instant.
 
 Example — same input, three different label spaces:
 
 ```bash
-$ crispasr-lid -m cld3-f16.gguf --text "Bonjour le monde, comment allez-vous?"
+$ stelnettts-lid -m cld3-f16.gguf --text "Bonjour le monde, comment allez-vous?"
 fr	0.999983
-crispasr-lid: backend=lid-cld3 variant=Google CLD3 dim=80 109 labels
+stelnettts-lid: backend=lid-cld3 variant=Google CLD3 dim=80 109 labels
 
-$ crispasr-lid -m lid-glotlid-f16.gguf --text "Bonjour le monde, comment allez-vous?"
+$ stelnettts-lid -m lid-glotlid-f16.gguf --text "Bonjour le monde, comment allez-vous?"
 fra_Latn	0.983436
-crispasr-lid: backend=lid-fasttext variant=glotlid-v3 dim=256 2102 labels
+stelnettts-lid: backend=lid-fasttext variant=glotlid-v3 dim=256 2102 labels
 
-$ crispasr-lid -m lid-fasttext176-f16.gguf --text "Bonjour le monde, comment allez-vous?"
+$ stelnettts-lid -m lid-fasttext176-f16.gguf --text "Bonjour le monde, comment allez-vous?"
 fr	0.958174
-crispasr-lid: backend=lid-fasttext variant=fasttext-lid176 dim=16 176 labels
+stelnettts-lid: backend=lid-fasttext variant=fasttext-lid176 dim=16 176 labels
 ```
 
 CLD3 is the smallest+fastest option (440 KB F16, 109 langs, Apache-2.0)
@@ -994,21 +994,21 @@ rather than ASR segments — `foxnose` is at parity with it: 3.18 % against
 
 ```bash
 # Recommended: foxnose (auto-downloads the 24 MB WeSpeaker GGUF)
-crispasr -m auto --backend cohere -f podcast.wav \
+stelnettts -m auto --backend cohere -f podcast.wav \
     --diarize --diarize-method foxnose --diarize-embedder auto -ojf
 
 # Pin the speaker count when you know it (skips estimation entirely)
-crispasr -m auto --backend cohere -f podcast.wav \
+stelnettts -m auto --backend cohere -f podcast.wav \
     --diarize --diarize-method foxnose --diarize-embedder auto \
     --diarize-num-speakers 2 -ojf
 
 # Native GGUF pyannote (no Python, no sherpa-onnx)
-crispasr -m auto --backend cohere -f podcast.wav \
+stelnettts -m auto --backend cohere -f podcast.wav \
     --diarize --diarize-method pyannote --sherpa-segment-model auto -ojf
 
 # Same + embedder-based global speaker IDs (recommended for >2 speakers
 # or long-form audio where pyannote local-track IDs drift)
-crispasr -m auto --backend cohere -f podcast.wav \
+stelnettts -m auto --backend cohere -f podcast.wav \
     --diarize --diarize-method pyannote --sherpa-segment-model auto \
     --diarize-embedder auto -ojf
 ```
@@ -1034,10 +1034,10 @@ input and `vad-turns` for mono — the historical behaviour.
 > consistent across the entire file. Before #110, `sherpa`/`ecapa`
 > ran per-slice, producing local IDs that could reset between slices.
 
-#### Trading accuracy for throughput (`CRISPASR_DIARIZE_SPAN_EMBED=1`)
+#### Trading accuracy for throughput (`STELNETTTS_DIARIZE_SPAN_EMBED=1`)
 
 `foxnose` slides a 1.2 s window at a 0.6 s hop, so every sample goes through the
-embedding network twice. Setting `CRISPASR_DIARIZE_SPAN_EMBED=1` runs one
+embedding network twice. Setting `STELNETTTS_DIARIZE_SPAN_EMBED=1` runs one
 network pass per *span* of 32 windows and takes each window as a slice of it.
 
 Measured on the VoxConverse dev shard: **1.78x less diarization CPU** (66.0 s ->
@@ -1047,7 +1047,7 @@ slightly different embeddings flip the speaker-count estimate from 4 to 3.
 
 Off by default — accuracy is the better default for a diarizer. Turn it on when
 you are throughput-bound and can accept that. Span size
-(`CRISPASR_DIARIZE_SPAN_WINDOWS`, default 32) does **not** affect the accuracy
+(`STELNETTTS_DIARIZE_SPAN_WINDOWS`, default 32) does **not** affect the accuracy
 cost — it is identical from N=2 to N=32 — so there is nothing to tune: larger is
 simply faster.
 
@@ -1066,7 +1066,7 @@ the whole audio.
 | `<path>.gguf` | Dispatched by filename (`indextts` substring -> IndexTTS, otherwise TitaNet) | — |
 
 The interface is pluggable: add a new adapter by subclassing
-`CrispasrSpeakerEmbedder` in `src/crispasr_speaker_embedder.cpp` and
+`CrispasrSpeakerEmbedder` in `src/stelnettts_speaker_embedder.cpp` and
 extending the factory's dispatch.
 
 `--diarize-max-speakers N` (default 8) bounds the search. `--diarize-num-speakers N`
@@ -1094,7 +1094,7 @@ Use it when you just want stable per-recording speaker labels without
 remembering the flag combination:
 
 ```bash
-crispasr -m auto --backend cohere -f meeting.wav --diarize-speakers -ojf
+stelnettts -m auto --backend cohere -f meeting.wav --diarize-speakers -ojf
 ```
 
 > **Named profiles are a separate, deliberately opt-in feature.** The
@@ -1115,7 +1115,7 @@ crispasr -m auto --backend cohere -f meeting.wav --diarize-speakers -ojf
 ### Output shape
 
 Each segment carries the label as the string `"(speaker N) "` in
-`crispasr_segment.speaker`. Output writers surface it as:
+`stelnettts_segment.speaker`. Output writers surface it as:
 
 * **txt / wts**: prefixed inline: `(speaker 0) hello world`
 * **srt**: prefixed inline
@@ -1125,7 +1125,7 @@ Each segment carries the label as the string `"(speaker N) "` in
 When the embedder is enabled the labels are global cluster IDs;
 otherwise they are pyannote-local track IDs.
 
-### What changed in 0.6.6+ (issue [#107](https://github.com/CrispStrobe/CrispASR/issues/107))
+### What changed in 0.6.6+ (issue [#107](https://github.com/Cyna/StelnetTTS/issues/107))
 
 * `--diarize-method pyannote` is now actually correct end-to-end:
   pyannote-seg runs ONCE over the full audio (cross-slice consistent
@@ -1181,24 +1181,24 @@ Three text-to-text translation backends, all driven by `--text "..."
 
 | Backend | Model | Languages | Status |
 |---|---|---|---|
-| `m2m100` | [`facebook/m2m100_418M`](https://huggingface.co/cstr/m2m100-418m-GGUF) — 12L+12L transformer, ~502 MB Q8_0 | 100, any-to-any | ✓ production-ready (en→de exact match to Python ref) |
-| `m2m100-wmt21` | [`facebook/wmt21-dense-24-wide-en-x`](https://huggingface.co/cstr/wmt21-dense-24-wide-en-x-GGUF) + [`facebook/wmt21-dense-24-wide-x-en`](https://huggingface.co/cstr/wmt21-dense-24-wide-x-en-GGUF) — 24L+24L wider, ~2.5 GB Q4_K each | English ↔ 7 languages (separate `en-x` / `x-en` checkpoints) | ✓ runs on m2m100 runtime; vocab fix in 7f48bad |
-| `madlad` (alias `t5`) | [`google/madlad400-3b-mt`](https://huggingface.co/cstr/madlad400-3b-mt-GGUF) — T5 12L+12L, ~1.9 GB Q4_K | 419 | ✓ tokens match Python SP bit-by-bit; outputs match HF reference |
+| `m2m100` | [`facebook/m2m100_418M`](https://huggingface.co/Xenna/m2m100-418m-GGUF) — 12L+12L transformer, ~502 MB Q8_0 | 100, any-to-any | ✓ production-ready (en→de exact match to Python ref) |
+| `m2m100-wmt21` | [`facebook/wmt21-dense-24-wide-en-x`](https://huggingface.co/Xenna/wmt21-dense-24-wide-en-x-GGUF) + [`facebook/wmt21-dense-24-wide-x-en`](https://huggingface.co/Xenna/wmt21-dense-24-wide-x-en-GGUF) — 24L+24L wider, ~2.5 GB Q4_K each | English ↔ 7 languages (separate `en-x` / `x-en` checkpoints) | ✓ runs on m2m100 runtime; vocab fix in 7f48bad |
+| `madlad` (alias `t5`) | [`google/madlad400-3b-mt`](https://huggingface.co/Xenna/madlad400-3b-mt-GGUF) — T5 12L+12L, ~1.9 GB Q4_K | 419 | ✓ tokens match Python SP bit-by-bit; outputs match HF reference |
 
 ```bash
 # m2m100 base — production
-./build/bin/crispasr --backend m2m100 -m auto \
+./build/bin/stelnettts --backend m2m100 -m auto \
     --text "Hello world, how are you today?" \
     -sl en -tl de
 # → Hallo Welt, wie bist du heute?
 
 # WMT21 (4.7B, English-to-X, auto-downloads ~2.5 GB)
-./build/bin/crispasr --backend m2m100-wmt21 -m auto \
+./build/bin/stelnettts --backend m2m100-wmt21 -m auto \
     --text "The president said he would not attend." \
     -sl en -tl de
 
 # MADLAD-400 (419 languages — output matches Python SP)
-./build/bin/crispasr --backend madlad -m auto \
+./build/bin/stelnettts --backend madlad -m auto \
     --text "Hello world." \
     -sl en -tl ta
 ```
@@ -1241,7 +1241,7 @@ unique to it (`-owts` karaoke, full-mode JSON DTW tokens) — pass a
 | `-suppress-nst` | Suppress non-speech tokens |
 | `-owts` | Karaoke-style word-timestamp WTS output |
 
-For the full list of upstream whisper flags see `crispasr --help`
+For the full list of upstream whisper flags see `stelnettts --help`
 when invoked with a `ggml-*.bin` model loaded.
 
 ## Pitch / F0 estimation (`--pitch`)
@@ -1252,10 +1252,10 @@ own dispatcher before any ASR backend is constructed.
 
 ```bash
 # Auto-download the default model (crepe tiny) and print a pitch track
-crispasr --pitch -m auto --auto-download -f samples/jfk.wav
+stelnettts --pitch -m auto --auto-download -f samples/jfk.wav
 
 # Explicit model, JSON output, 20 ms hop
-crispasr --pitch -m crepe-full-f16.gguf --pitch-format json --pitch-hop-ms 20 -f audio.wav
+stelnettts --pitch -m crepe-full-f16.gguf --pitch-format json --pitch-hop-ms 20 -f audio.wav
 ```
 
 The backend (`crepe`) is auto-detected from the GGUF `general.architecture`,
@@ -1279,7 +1279,7 @@ Default output is one tab-separated line per frame — `time_ms`, `f0_hz`,
 `--pitch-format json` emits `{file, model, n_frames, frames: [...]}` with the
 same three fields per frame.
 
-**Models** (`cstr/crepe-GGUF`, MIT):
+**Models** (`Xenna/crepe-GGUF`, MIT):
 
 | Registry key | File | Size | Notes |
 |---|---|---|---|
@@ -1306,10 +1306,10 @@ backend is built.
 
 ```bash
 # Explicit model
-crispasr --beats -m beat-this-f16.gguf -f song.wav
+stelnettts --beats -m beat-this-f16.gguf -f song.wav
 
 # JSON, including the median-interval tempo estimate
-crispasr --beats -m beat-this-f16.gguf --beats-format json -f song.wav
+stelnettts --beats -m beat-this-f16.gguf --beats-format json -f song.wav
 ```
 
 The backend (`beat-this`) is auto-detected from the GGUF
@@ -1345,8 +1345,8 @@ pitch, name and velocity. Routes to its own dispatcher before any ASR backend
 is built, like `--pitch` / `--chords` / `--separate`.
 
 ```bash
-crispasr --piano -m auto --auto-download -f piano.wav
-crispasr --piano --piano-format json -m piano-transcription-f16.gguf -f piano.wav
+stelnettts --piano -m auto --auto-download -f piano.wav
+stelnettts --piano --piano-format json -m piano-transcription-f16.gguf -f piano.wav
 ```
 
 Default output is one tab-separated line per note — `onset_sec`, `offset_sec`,
@@ -1371,10 +1371,10 @@ Before this verb existed the model was reachable only as `--backend
 piano-transcription` through `transcribe()`, which rendered each note as a
 segment whose text read `"C4 v=80"` — parsing that back is lossy, and it was
 never the intended seam. The structured session API
-(`crispasr_session_piano_notes`) already existed for bindings; `--piano` gives
+(`stelnettts_session_piano_notes`) already existed for bindings; `--piano` gives
 the CLI the same fidelity. The old path still works.
 
-**Model** (`cstr/piano-transcription-GGUF`, Apache-2.0): ByteDance/Kong
+**Model** (`Xenna/piano-transcription-GGUF`, Apache-2.0): ByteDance/Kong
 high-resolution piano transcription, 16 kHz mono, CRNN + BiGRU with four heads
 (frame/onset/offset/velocity) plus onset- and frame-refinement GRUs.
 
@@ -1385,9 +1385,9 @@ Per-frame, per-string fret **scores** from guitar audio, via **TabCNN**
 auto-detected from the GGUF, so `-m <file>` alone is enough.
 
 ```bash
-crispasr --tab -m tabcnn-f16.gguf -f guitar.wav
-crispasr --tab -m auto --auto-download -f guitar.wav      # fetches cstr/tabcnn-GGUF
-crispasr --tab -m tabcnn-f16.gguf -f guitar.wav --tab-format json
+stelnettts --tab -m tabcnn-f16.gguf -f guitar.wav
+stelnettts --tab -m auto --auto-download -f guitar.wav      # fetches Xenna/tabcnn-GGUF
+stelnettts --tab -m tabcnn-f16.gguf -f guitar.wav --tab-format json
 ```
 
 Text output is one line per frame, tab-separated: the frame time in seconds,
@@ -1415,13 +1415,13 @@ For real use, take the log-probabilities through the C ABI and run your own
 constrained Viterbi/DP:
 
 ```c
-int n = crispasr_session_tab(s, pcm, n_samples, sample_rate);
+int n = stelnettts_session_tab(s, pcm, n_samples, sample_rate);
 int frames, strings, classes;
 const float* emissions =
-    crispasr_session_tab_emissions(s, &frames, &strings, &classes);
-int silent = crispasr_session_tab_silent_class(s);   // read it, never assume
-float hop  = crispasr_session_tab_frame_period(s);
-int open0  = crispasr_session_tab_string_open_midi(s, 0);  // for capo/transpose
+    stelnettts_session_tab_emissions(s, &frames, &strings, &classes);
+int silent = stelnettts_session_tab_silent_class(s);   // read it, never assume
+float hop  = stelnettts_session_tab_frame_period(s);
+int open0  = stelnettts_session_tab_string_open_midi(s, 0);  // for capo/transpose
 ```
 
 `emissions` is `[frame][string][class]` log-probabilities, frame-major, valid
@@ -1431,13 +1431,13 @@ until the next call or session close.
 
 #### Managed model downloads
 
-CrispASR records the upstream licence for every managed registry artifact and
+StelnetTTS records the upstream licence for every managed registry artifact and
 prints it when the artifact is loaded. Restricted terms (including Llama,
 Gemma, FunASR, CC-BY-NC/SA, Pocket TTS and other custom licences) require an
 exact acceptance tag before auto-download:
 
 ```bash
-crispasr --backend tada -m auto --auto-download \
+stelnettts --backend tada -m auto --auto-download \
   --accept-license llama3.2 -f input.wav
 ```
 
@@ -1480,7 +1480,7 @@ layer costs 5.8 F1 points at Q4_0, while `dense0` costs nothing.
 Another standalone task: audio in, a chord timeline out. Like `--pitch` and
 `--separate` it routes to its own dispatcher before any ASR backend is built.
 
-> **⚠ The weights are non-commercial.** CrispASR is MIT and the upstream BTC
+> **⚠ The weights are non-commercial.** StelnetTTS is MIT and the upstream BTC
 > code (jayg996/BTC-ISMIR19) is MIT, but the *checkpoints* are CC-BY-NC-SA:
 > they were trained on the Isophonics / Robbie Williams / UsPop2002 chord
 > annotations, whose licences forbid commercial use. The registry refuses to
@@ -1490,13 +1490,13 @@ Another standalone task: audio in, a chord timeline out. Like `--pitch` and
 
 ```bash
 # Accept the non-commercial licence and auto-download the default model
-crispasr --chords -m auto --auto-download --accept-license cc-by-nc-sa-4.0 -f song.wav
+stelnettts --chords -m auto --auto-download --accept-license cc-by-nc-sa-4.0 -f song.wav
 
 # Explicit model, JSON output
-crispasr --chords -m btc-chords-large-f32.gguf --chords-format json -f song.wav
+stelnettts --chords -m btc-chords-large-f32.gguf --chords-format json -f song.wav
 
 # Collapse the 170-class output to plain maj/min
-CRISPASR_BTC_MAJ_MIN=1 crispasr --chords -m btc-chords-large-f32.gguf -f song.wav
+STELNETTTS_BTC_MAJ_MIN=1 stelnettts --chords -m btc-chords-large-f32.gguf -f song.wav
 ```
 
 The backend (`btc`) is auto-detected from the GGUF `general.architecture`;
@@ -1521,7 +1521,7 @@ al.) use, so it drops straight into `mir_eval`:
 `N` means "no chord". `--chords-format json` emits
 `{file, vocabulary, n_spans, chords: [...]}` with a `confidence` per span.
 
-**Models** (`cstr/btc-chords-GGUF`, weights CC-BY-NC-SA, code MIT):
+**Models** (`Xenna/btc-chords-GGUF`, weights CC-BY-NC-SA, code MIT):
 
 | Registry key | File | Size | Notes |
 |---|---|---|---|
@@ -1532,51 +1532,51 @@ f32 variants (11.7 MB) are also published. Both dtypes pass the per-stage diff
 harness at cos 1.000000 on all 13 stages, so f16 is the shipping default.
 
 The 170-class model is the default deliberately: it reduces to maj/min with
-`CRISPASR_BTC_MAJ_MIN=1`, whereas a 25-class model can never be expanded.
+`STELNETTTS_BTC_MAJ_MIN=1`, whereas a 25-class model can never be expanded.
 
 ## Auto-download (`-m auto`)
 
-When you pass `-m auto` (or `-m default`), CrispASR downloads the
+When you pass `-m auto` (or `-m default`), StelnetTTS downloads the
 default quantized model for the selected backend into
-`~/.cache/crispasr/` on first use. The registry (kept in sync with
-`src/crispasr_model_registry.cpp`):
+`~/.cache/stelnettts/` on first use. The registry (kept in sync with
+`src/stelnettts_model_registry.cpp`):
 
 **ASR backends**
 
 | Backend | Default download | Approx size |
 |---|---|---|
 | whisper | `ggerganov/whisper.cpp/ggml-base.en.bin` | ~147 MB |
-| parakeet | `cstr/parakeet-tdt-0.6b-v3-GGUF` | ~467 MB |
-| canary | `cstr/canary-1b-v2-GGUF` | ~600 MB |
-| voxtral | `cstr/voxtral-mini-3b-2507-GGUF` | ~2.5 GB |
-| voxtral4b | `cstr/voxtral-mini-4b-realtime-GGUF` | ~3.3 GB |
-| granite | `cstr/granite-speech-4.0-1b-GGUF` | ~2.94 GB |
-| granite-4.1 | `cstr/granite-speech-4.1-2b-GGUF` | ~2.94 GB |
-| granite-4.1-plus | `cstr/granite-speech-4.1-2b-plus-GGUF` | ~5.6 GB |
-| granite-4.1-nar | `cstr/granite-speech-4.1-2b-nar-GGUF` | ~5.4 GB (F16) / ~3.2 GB (Q4_K) |
-| qwen3 | `cstr/qwen3-asr-0.6b-GGUF` | ~500 MB |
-| cohere | `cstr/cohere-transcribe-03-2026-GGUF` | ~550 MB |
-| wav2vec2 | `cstr/wav2vec2-large-xlsr-53-english-GGUF` | ~212 MB |
-| omniasr | `cstr/omniASR-CTC-1B-GGUF` | ~551 MB |
-| omniasr-llm | `cstr/omniasr-llm-300m-v2-GGUF` | ~580 MB |
-| hubert | `cstr/hubert-large-ls960-ft-GGUF` | ~200 MB |
-| data2vec | `cstr/data2vec-audio-960h-GGUF` | ~60 MB |
+| parakeet | `Xenna/parakeet-tdt-0.6b-v3-GGUF` | ~467 MB |
+| canary | `Xenna/canary-1b-v2-GGUF` | ~600 MB |
+| voxtral | `Xenna/voxtral-mini-3b-2507-GGUF` | ~2.5 GB |
+| voxtral4b | `Xenna/voxtral-mini-4b-realtime-GGUF` | ~3.3 GB |
+| granite | `Xenna/granite-speech-4.0-1b-GGUF` | ~2.94 GB |
+| granite-4.1 | `Xenna/granite-speech-4.1-2b-GGUF` | ~2.94 GB |
+| granite-4.1-plus | `Xenna/granite-speech-4.1-2b-plus-GGUF` | ~5.6 GB |
+| granite-4.1-nar | `Xenna/granite-speech-4.1-2b-nar-GGUF` | ~5.4 GB (F16) / ~3.2 GB (Q4_K) |
+| qwen3 | `Xenna/cielvox2-asr-0.6b-GGUF` | ~500 MB |
+| cohere | `Xenna/cohere-transcribe-03-2026-GGUF` | ~550 MB |
+| wav2vec2 | `Xenna/wav2vec2-large-xlsr-53-english-GGUF` | ~212 MB |
+| omniasr | `Xenna/omniASR-CTC-1B-GGUF` | ~551 MB |
+| omniasr-llm | `Xenna/omniasr-llm-300m-v2-GGUF` | ~580 MB |
+| hubert | `Xenna/hubert-large-ls960-ft-GGUF` | ~200 MB |
+| data2vec | `Xenna/data2vec-audio-960h-GGUF` | ~60 MB |
 
 **TTS backends** — all auto-download the model + a default voice pack:
 
 | Backend | Default download | Approx size | Notes |
 |---|---|---|---|
-| vibevoice-tts | `cstr/vibevoice-realtime-0.5b-GGUF` (Q4_K) + `vibevoice-voice-emma.gguf` | ~636 MB + ~3 MB | `--model-quant q8_0` → ~1.1 GB higher-quality variant |
-| vibevoice | `cstr/vibevoice-asr-GGUF` (Q4_K) | ~4.5 GB | ASR + TTS combo model |
-| vibevoice-1.5b | `cstr/vibevoice-1.5b-GGUF` (Q4_K) | ~1.6 GB | Base model, runs without a voice pack |
-| kokoro | `cstr/kokoro-v1-GGUF` (Q8_0) | ~330 MB | German variant: `--backend kokoro-de` |
-| qwen3-tts | `cstr/qwen3-tts-0.6b-base-GGUF` (Q8_0) + F16 codec | ~690 MB + ~346 MB | Streaming-capable; codec auto-discovered |
-| qwen3-tts-1.7b-base | `cstr/qwen3-tts-1.7b-base-GGUF` (Q8_0) + F16 codec | ~1.9 GB + ~346 MB | Higher quality |
-| orpheus | `cstr/orpheus-3b-0.1-ft-GGUF` (Q8_0) | ~3.7 GB | Llama-3 based; US-English |
-| chatterbox | `cstr/chatterbox-tts-GGUF` (Q4_K) | ~2 GB | S3Gen + T3; multilingual |
-| piper | `cstr/piper-en-hfc-medium-GGUF` | ~63 MB | Lightweight, many voices via `--voice` |
-| tada-1b | `cstr/tada-tts-1b-GGUF` (Q4_K + codec) | ~2.7 GB | English-only; `--voice tada-ref.gguf` |
-| tada / tada-3b-ml | `cstr/tada-tts-3b-ml-GGUF` (Q4_K + codec) | ~5 GB | 9 languages; `-l fr` auto-downloads `tada-ref-fr.gguf` — see [tts.md §TADA](tts.md#tada--multilingual-and-voice-cloning) |
+| vibevoice-tts | `Xenna/vibevoice-realtime-0.5b-GGUF` (Q4_K) + `vibevoice-voice-emma.gguf` | ~636 MB + ~3 MB | `--model-quant q8_0` → ~1.1 GB higher-quality variant |
+| vibevoice | `Xenna/vibevoice-asr-GGUF` (Q4_K) | ~4.5 GB | ASR + TTS combo model |
+| vibevoice-1.5b | `Xenna/vibevoice-1.5b-GGUF` (Q4_K) | ~1.6 GB | Base model, runs without a voice pack |
+| kokoro | `Xenna/kokoro-v1-GGUF` (Q8_0) | ~330 MB | German variant: `--backend kokoro-de` |
+| cielvox2-tts | `Xenna/cielvox2-tts-0.6b-base-GGUF` (Q8_0) + F16 codec | ~690 MB + ~346 MB | Streaming-capable; codec auto-discovered |
+| cielvox2-tts-1.7b-base | `Xenna/cielvox2-tts-1.7b-base-GGUF` (Q8_0) + F16 codec | ~1.9 GB + ~346 MB | Higher quality |
+| orpheus | `Xenna/orpheus-3b-0.1-ft-GGUF` (Q8_0) | ~3.7 GB | Llama-3 based; US-English |
+| chatterbox | `Xenna/chatterbox-tts-GGUF` (Q4_K) | ~2 GB | S3Gen + T3; multilingual |
+| piper | `Xenna/piper-en-hfc-medium-GGUF` | ~63 MB | Lightweight, many voices via `--voice` |
+| tada-1b | `Xenna/tada-tts-1b-GGUF` (Q4_K + codec) | ~2.7 GB | English-only; `--voice tada-ref.gguf` |
+| tada / tada-3b-ml | `Xenna/tada-tts-3b-ml-GGUF` (Q4_K + codec) | ~5 GB | 9 languages; `-l fr` auto-downloads `tada-ref-fr.gguf` — see [tts.md §TADA](tts.md#tada--multilingual-and-voice-cloning) |
 
 Downloads go through `curl` (preferred) with a `wget` fallback — **no
 Python, no libcurl link dependency**. Works identically on Linux,
@@ -1588,7 +1588,7 @@ can drive `-m auto`-style resolution without re-implementing it.
 
 ## Audio formats
 
-CrispASR decodes most common formats natively — no ffmpeg required — and
+StelnetTTS decodes most common formats natively — no ffmpeg required — and
 auto-resamples to 16 kHz mono. The decoders are permissive-licensed and either
 embedded or linked:
 
@@ -1596,26 +1596,26 @@ embedded or linked:
   PCM, IEEE float, A-law, μ-law, ADPCM), FLAC, MP3, and the WAV family **AIFF /
   W64 / RF64** (via its bundled `dr_wav`)
 - **[stb_vorbis](https://github.com/nothings/stb)** (public domain) — OGG Vorbis
-- **[glint](https://github.com/CrispStrobe/glint)** (MIT) — in-tree clean-room
+- **[glint](https://github.com/Cyna/glint)** (MIT) — in-tree clean-room
   decoder for **raw ADTS `.aac`** (AAC-LC) and **Ogg `.opus`** (RFC-conformant:
   all 12 RFC 6716/8251 vectors, SILK byte-identical to libopus). Cross-platform,
   always available with no runtime library, so it is the **default** for both
-  `.aac` and `.opus` via the library `crispasr_audio_load` API — `.opus` decodes
+  `.aac` and `.opus` via the library `stelnettts_audio_load` API — `.opus` decodes
   even in builds without libopus. Pin the previous decoder with
-  `CRISPASR_AAC_DECODER=fdk`/`coreaudio` or `CRISPASR_OPUS_DECODER=libopus`
-  (`=glint`/`auto` = default); `CRISPASR_{AAC,OPUS}_DEBUG=1` prints a one-line
+  `STELNETTTS_AAC_DECODER=fdk`/`coreaudio` or `STELNETTTS_OPUS_DECODER=libopus`
+  (`=glint`/`auto` = default); `STELNETTTS_{AAC,OPUS}_DEBUG=1` prints a one-line
   decode summary. Opus is glint by default **everywhere it appears** — bare
   `.opus`, the stereo loader, and **WebM/Matroska Opus** — so a build with
-  `CRISPASR_OPUS=OFF` (no libopus at all) still decodes them.
+  `STELNETTTS_OPUS=OFF` (no libopus at all) still decodes them.
 - **libopus + opusfile** (BSD-3) — optional fallback for Opus (`.opus` + WebM),
-  selected via `CRISPASR_OPUS_DECODER=libopus`. Built by default (`CRISPASR_OPUS`,
-  on when system `opusfile` is found; `CRISPASR_OPUS_FETCH=ON` builds it statically
+  selected via `STELNETTTS_OPUS_DECODER=libopus`. Built by default (`STELNETTTS_OPUS`,
+  on when system `opusfile` is found; `STELNETTTS_OPUS_FETCH=ON` builds it statically
   for platforms without system libs). No longer required for any input format.
 - **AudioToolbox** (Apple system framework) — container **`.m4a` / `.alac` /
   `.caf`** (and `.aac`) on macOS/iOS, no extra dependency; **fdk-aac** via
   `dlopen` provides the same container support on Linux/Windows when installed.
 
-| Format | Linux/other | Apple (macOS/iOS) | `CRISPASR_FFMPEG=ON` |
+| Format | Linux/other | Apple (macOS/iOS) | `STELNETTTS_FFMPEG=ON` |
 |---|:---:|:---:|:---:|
 | WAV / FLAC / MP3 / OGG Vorbis / AIFF / W64 / RF64 | ✔ | ✔ | ✔ |
 | `.opus` | ✔ | ✔ | ✔ |
@@ -1625,14 +1625,14 @@ embedded or linked:
 | `.wma` / `.amr` / raw PCM | ✗ | ✗ | ✔ / pre-convert |
 
 ¹ Container AAC (`.m4a`) needs libfdk-aac installed (loaded via `dlopen`) or
-`CRISPASR_FFMPEG=ON`; only **raw ADTS `.aac`** is covered dependency-free by the
+`STELNETTTS_FFMPEG=ON`; only **raw ADTS `.aac`** is covered dependency-free by the
 in-tree glint decoder. On Apple all AAC/ALAC/CAF is handled natively
 (AudioToolbox).
 
-The `crispasr` CLI decodes all of the above through the same library loader
-(`crispasr_audio_load`), so `-f in.opus` / `in.aac` / `in.m4a` / `in.webm` work
+The `stelnettts` CLI decodes all of the above through the same library loader
+(`stelnettts_audio_load`), so `-f in.opus` / `in.aac` / `in.m4a` / `in.webm` work
 with **no ffmpeg subprocess** — the ffmpeg fallback is only reached for formats
-the native decoders can't handle. For those, build with `CRISPASR_FFMPEG=ON` (an
+the native decoders can't handle. For those, build with `STELNETTTS_FFMPEG=ON` (an
 optional, dynamically-linked fallback — see [install.md](install.md)) or
 pre-convert: `ffmpeg -i in.X -ar 16000 -ac 1 -c:a pcm_s16le out.wav`.
 
@@ -1642,7 +1642,7 @@ Three runtime knobs control how much RAM / VRAM the binary uses.
 All are env vars (no CLI flags — these are rarely-changed deployment
 settings, not per-invocation switches).
 
-### `CRISPASR_KV_QUANT={f16,q8_0,q4_0}` — KV cache dtype
+### `STELNETTTS_KV_QUANT={f16,q8_0,q4_0}` — KV cache dtype
 
 The default `f16` KV cache is the highest-quality option but the
 biggest VRAM consumer. `q8_0` halves it; `q4_0` quarters it. Quality
@@ -1650,15 +1650,15 @@ drift is <0.1 % WER on validated backends; for long-audio chunked
 work on a VRAM-tight host, this is the cheapest knob you can turn.
 
 ```bash
-CRISPASR_KV_QUANT=q8_0 ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_KV_QUANT=q8_0 ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 ```
 
 Per-backend coverage:
 
-| Backend | Honors `CRISPASR_KV_QUANT`? |
+| Backend | Honors `STELNETTTS_KV_QUANT`? |
 |---|:-:|
 | voxtral / voxtral4b | ✔ |
-| qwen3-asr | ✔ |
+| cielvox2-asr | ✔ |
 | granite / granite-4.1 / granite-4.1-plus | ✔ |
 | glm-asr | ✔ |
 | mimo-asr | ✔ |
@@ -1668,7 +1668,7 @@ Per-backend coverage:
 | cohere | ✔ (same — §73 flash_attn_ext shipped; +11 % regression on JFK quant K/V vs cast, see PERFORMANCE.md) |
 | kyutai-stt | ✔ (native flash_attn_ext, quant-safe by construction) |
 | orpheus | ✔ |
-| qwen3-tts | ✔ (talker only) |
+| cielvox2-tts | ✔ (talker only) |
 | chatterbox / chatterbox-turbo / kartoffelbox-turbo / lahgtna-chatterbox | ✔ (T3 LM side; S3Gen Conformer attention is F32 by design) |
 | vibevoice | F16-only — flag is read but the σ-VAE attention path uses `ggml_cpy(K_perm, view)` write that's incompatible with quant K/V. Migration recipe is the canary/cohere flash_attn_ext port (see PERFORMANCE.md "Where the gaps are"). |
 | granite-4.1-nar | — (non-autoregressive variant, no LLM decode path) |
@@ -1678,53 +1678,53 @@ Per-backend coverage:
 The flag is read once per session via
 `core_attn::kv_dtype_from_env(<backend_name>)`; subsequent
 `session_transcribe` calls reuse the dtype from session open. Set
-the env before launching `crispasr` (or before opening the session
+the env before launching `stelnettts` (or before opening the session
 in Python / Rust / Dart).
 
-### `CRISPASR_KV_QUANT_K` / `CRISPASR_KV_QUANT_V` — asymmetric K vs V
+### `STELNETTTS_KV_QUANT_K` / `STELNETTTS_KV_QUANT_V` — asymmetric K vs V
 
 The two halves of the KV cache have very different sensitivity
 profiles: V is forgiving (errors get averaged inside the
 post-softmax weighted sum), K is fragile (errors distort which
 positions get attended to). llama.cpp exposes `--cache-type-k` /
-`--cache-type-v` for this; CrispASR does the same via two env
-vars that override `CRISPASR_KV_QUANT` per half.
+`--cache-type-v` for this; StelnetTTS does the same via two env
+vars that override `STELNETTTS_KV_QUANT` per half.
 
 ```bash
 # Common llama.cpp recipe — ~40 % more KV memory savings vs symmetric
 # Q8_0/Q8_0, with PPL barely moved on Llama-class models.
-CRISPASR_KV_QUANT_K=q8_0 CRISPASR_KV_QUANT_V=q4_0 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_KV_QUANT_K=q8_0 STELNETTTS_KV_QUANT_V=q4_0 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 ```
 
-Both halves fall through to `CRISPASR_KV_QUANT` when their
+Both halves fall through to `STELNETTTS_KV_QUANT` when their
 type-specific var is unset, so the legacy single-knob configuration
 keeps working unchanged.
 
 Same per-backend coverage as the table above — the asymmetric
-plumbing was added to every backend that honored `CRISPASR_KV_QUANT`
-(voxtral, voxtral4b, omniasr, qwen3_asr, granite_speech, orpheus,
-glm_asr, gemma4_e2b, mimo_asr, qwen3_tts).
+plumbing was added to every backend that honored `STELNETTTS_KV_QUANT`
+(voxtral, voxtral4b, omniasr, cielvox2_asr, granite_speech, orpheus,
+glm_asr, gemma4_e2b, mimo_asr, cielvox2_tts).
 
-### `CRISPASR_KV_ON_CPU=1` — spill KV cache to system RAM
+### `STELNETTTS_KV_ON_CPU=1` — spill KV cache to system RAM
 
-For users with very long context where even `CRISPASR_KV_QUANT=q4_0` won't
+For users with very long context where even `STELNETTTS_KV_QUANT=q4_0` won't
 fit in VRAM. Allocates the KV cache on the CPU backend instead of
 the GPU backend, even when model weights are active on GPU.
 
 ```bash
 # Long-context fallback when VRAM is exhausted
-CRISPASR_KV_ON_CPU=1 ./build/bin/crispasr --backend voxtral4b -m auto -f long-audio.wav
+STELNETTTS_KV_ON_CPU=1 ./build/bin/stelnettts --backend voxtral4b -m auto -f long-audio.wav
 
-# Stacks with CRISPASR_KV_QUANT_K/_V — minimum-memory KV path
-CRISPASR_KV_ON_CPU=1 CRISPASR_KV_QUANT_K=q8_0 CRISPASR_KV_QUANT_V=q4_0 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f long-audio.wav
+# Stacks with STELNETTTS_KV_QUANT_K/_V — minimum-memory KV path
+STELNETTTS_KV_ON_CPU=1 STELNETTTS_KV_QUANT_K=q8_0 STELNETTTS_KV_QUANT_V=q4_0 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f long-audio.wav
 ```
 
-**Try `CRISPASR_KV_QUANT` first.** The expensive part isn't the alloc —
+**Try `STELNETTTS_KV_QUANT` first.** The expensive part isn't the alloc —
 every attention step copies the KV slice GPU↔CPU↔GPU. The
 PCIe / unified-memory traffic is typically slower than just running
-with quantised KV in VRAM. Reach for `CRISPASR_KV_ON_CPU` only when
+with quantised KV in VRAM. Reach for `STELNETTTS_KV_ON_CPU` only when
 quantisation alone can't fit the context.
 
 The verbose log line shows `(on cpu)` vs `(on gpu)` so you can
@@ -1734,11 +1734,11 @@ confirm where the cache landed:
 voxtral4b: kv cache 169 MiB k=q8_0 v=q4_0 (on cpu, ...)
 ```
 
-Same per-backend coverage as `CRISPASR_KV_QUANT` (voxtral, voxtral4b,
-omniasr, qwen3_asr, granite_speech, orpheus, glm_asr, gemma4_e2b,
-mimo_asr, qwen3_tts).
+Same per-backend coverage as `STELNETTTS_KV_QUANT` (voxtral, voxtral4b,
+omniasr, cielvox2_asr, granite_speech, orpheus, glm_asr, gemma4_e2b,
+mimo_asr, cielvox2_tts).
 
-### `CRISPASR_N_GPU_LAYERS=N` — layer-residency offload
+### `STELNETTTS_N_GPU_LAYERS=N` — layer-residency offload
 
 llama.cpp `--n-gpu-layers` parity. Default `-1` keeps legacy
 single-backend behaviour (everything on GPU, or CPU if `-ng`).
@@ -1748,23 +1748,23 @@ than VRAM can still run end-to-end.
 
 ```bash
 # Voxtral4b has 26 transformer blocks. Half on GPU, half on CPU.
-CRISPASR_N_GPU_LAYERS=13 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_N_GPU_LAYERS=13 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 
 # Tight VRAM: only audio encoder + projection + embeddings on GPU,
 # all 26 transformer blocks on CPU.
-CRISPASR_N_GPU_LAYERS=0 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_N_GPU_LAYERS=0 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 ```
 
 Verbose log shows weight residency and the layer split:
 
 ```
 voxtral4b: weight residency: gpu=1585 MiB (571 tensors), cpu=821 MiB (143 tensors)
-voxtral4b: layer offload: gpu=[0,13), cpu=[13,26) (CRISPASR_N_GPU_LAYERS=13)
+voxtral4b: layer offload: gpu=[0,13), cpu=[13,26) (STELNETTTS_N_GPU_LAYERS=13)
 ```
 
-Coverage (10 LLM-decode backends): voxtral, voxtral4b, qwen3_asr,
+Coverage (10 LLM-decode backends): voxtral, voxtral4b, cielvox2_asr,
 granite_speech, glm_asr, orpheus, omniasr-llm, gemma4_e2b, mimo_asr,
 vibevoice. Vibevoice is dual-mode — ASR-only files split the
 28-layer `lm.layers.<N>.*` path; TTS-enabled files (`tts_n_layers > 0`)
@@ -1773,12 +1773,12 @@ split the dominant 20-layer `tts_lm.layers.<N>.*` path while the
 kyutai-stt) is not yet covered — cross-attention layout has no
 `<prefix><N>.*` block-tagged tensors and needs a bespoke predicate.
 
-**Stacks with `CRISPASR_KV_ON_CPU` and `CRISPASR_KV_QUANT_K/_V`** — set all three for
-the most aggressive memory footprint reduction. `CRISPASR_KV_QUANT` is
-cheaper than layer offload; reach for `CRISPASR_N_GPU_LAYERS` only when the
+**Stacks with `STELNETTTS_KV_ON_CPU` and `STELNETTTS_KV_QUANT_K/_V`** — set all three for
+the most aggressive memory footprint reduction. `STELNETTTS_KV_QUANT` is
+cheaper than layer offload; reach for `STELNETTTS_N_GPU_LAYERS` only when the
 *model* doesn't fit, not the cache.
 
-### `CRISPASR_GGUF_MMAP` — zero-copy weight load (default **on**)
+### `STELNETTTS_GGUF_MMAP` — zero-copy weight load (default **on**)
 
 Map the GGUF file directly into the model's backend buffer instead
 of read-and-copy. Saves one full copy of the GGUF on load: a 14.9 GB
@@ -1787,24 +1787,24 @@ F16 model goes from "load + 14.9 GB peak RSS" to "mmap +
 
 Default-on since 0.6.7 (issue #94 — chatterbox-turbo slow / failing
 init on macOS, where the legacy alloc+copy path took 30-60 s for
-the 658 MB T3 GGUF). Opt out with `CRISPASR_GGUF_MMAP=0` if your
+the 658 MB T3 GGUF). Opt out with `STELNETTTS_GGUF_MMAP=0` if your
 model files live on volumes that may disappear mid-run — mmap-backed
 weights SIGBUS if the underlying file vanishes (network mounts,
 removable disks).
 
 ```bash
 # Default — mmap is on, no env var needed
-./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 
 # Opt out for removable media
-CRISPASR_GGUF_MMAP=0 ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_GGUF_MMAP=0 ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 ```
 
 Honored by every backend that uses `core_gguf::load_weights()` —
 all non-whisper backends. Whisper itself uses upstream's loader and
 isn't affected.
 
-### `CRISPASR_GGUF_PRELOAD=1` — page-walk on load
+### `STELNETTTS_GGUF_PRELOAD=1` — page-walk on load
 
 When mmap is enabled, this triggers a one-byte read on every page
 to force the working set resident before returning. Trades cold-
@@ -1813,7 +1813,7 @@ that will do many short generations after one-time load and don't
 want the first request to pay the page-fault tax.
 
 ```bash
-CRISPASR_GGUF_MMAP=1 CRISPASR_GGUF_PRELOAD=1 ./build/bin/crispasr ...
+STELNETTTS_GGUF_MMAP=1 STELNETTTS_GGUF_PRELOAD=1 ./build/bin/stelnettts ...
 ```
 
 ### Recommended combos for VRAM-constrained voxtral4b
@@ -1822,21 +1822,21 @@ In order of cost — try the cheapest first:
 
 ```bash
 # 1. Cheapest — half the KV. ~0.05 % WER drift on validated suite.
-CRISPASR_KV_QUANT=q8_0 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_KV_QUANT=q8_0 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 
 # 2. Aggressive — quarter the KV. ~0.2 % WER drift.
-CRISPASR_KV_QUANT=q4_0 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_KV_QUANT=q4_0 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 
 # 3. Plus mmap so the load doesn't double-allocate the model weights.
 #    Useful when you're loading a multi-GB F16 model and the host has
 #    less RAM than 2× model size.
-CRISPASR_KV_QUANT=q4_0 CRISPASR_GGUF_MMAP=1 \
-  ./build/bin/crispasr --backend voxtral4b -m auto -f audio.wav
+STELNETTTS_KV_QUANT=q4_0 STELNETTTS_GGUF_MMAP=1 \
+  ./build/bin/stelnettts --backend voxtral4b -m auto -f audio.wav
 ```
 
-See the `CRISPASR_N_GPU_LAYERS` and `CRISPASR_KV_ON_CPU` sections above
+See the `STELNETTTS_N_GPU_LAYERS` and `STELNETTTS_KV_ON_CPU` sections above
 for the full layer-offload and KV-spill knobs — both are supported.
 
 ### TTS provenance & watermarking flags
@@ -1847,7 +1847,7 @@ the neural watermark, C2PA signing, voice-cloning consent, and the opt-out:
 | Flag | Description |
 |------|-------------|
 | `--watermark-model PATH` | Load AudioSeal GGUF for neural watermarking (upgrades built-in spread-spectrum) |
-| `--no-watermark` | Disable the AI-content watermark on TTS output. Equivalent to the `CRISPASR_NO_WATERMARK` env var; both emit a one-time stderr warning and shift the AI-content marking responsibility onto the operator (see below) |
+| `--no-watermark` | Disable the AI-content watermark on TTS output. Equivalent to the `STELNETTTS_NO_WATERMARK` env var; both emit a one-time stderr warning and shift the AI-content marking responsibility onto the operator (see below) |
 | `--detect-watermark PATH` | Read a WAV file, run watermark detection, print confidence + verdict (`>0.65` = AI-GENERATED, `0.4–0.65` = UNCERTAIN, `<0.4` = none), then exit |
 | `--i-have-rights` | Required for voice cloning (`--voice <file.wav>`); attests speaker consent |
 | `--print-speaker-identity FILE` | Standalone verb: print whose voice a model or voice pack produces (`real_person` / `synthetic` / `unknown`) and exit. Uses the same resolution the Art. 50(4) disclosure gate uses — stamp inside the file first, then the researched table — so a script never has to restate a verdict. Exits 3 when the answer is unknown |
@@ -1857,12 +1857,12 @@ the neural watermark, C2PA signing, voice-cloning consent, and the opt-out:
 | `--c2pa-cert PATH` | X.509 certificate for C2PA Content Credentials signing |
 | `--c2pa-key PATH` | Private key for C2PA signing (generate both with `scripts/generate-c2pa-cert.sh`) |
 
-**Disabling the watermark.** `--no-watermark` and `CRISPASR_NO_WATERMARK=1` are
+**Disabling the watermark.** `--no-watermark` and `STELNETTTS_NO_WATERMARK=1` are
 equal-status opt-outs (neither is more "official"). Either one turns the mark
 off for the whole process and logs, once:
 
 ```
-crispasr: warning: watermarking disabled. AI usage marking responsibility rests with the operator.
+stelnettts: warning: watermarking disabled. AI usage marking responsibility rests with the operator.
 ```
 
 The message is deliberately jurisdiction-neutral — no statute is named at
@@ -1871,8 +1871,8 @@ that may apply to the output; it transfers responsibility for meeting it to
 whoever runs the binary. See [`tts.md`](tts.md) for the full rationale.
 
 Debug env vars:
-- `CRISPASR_AUDIOSEAL_DEBUG=1` — print AudioSeal tensor shapes during graph build
-- `CRISPASR_AUDIOSEAL_DUMP_STAGES=1` — dump per-stage binary tensors to `/tmp/`
+- `STELNETTTS_AUDIOSEAL_DEBUG=1` — print AudioSeal tensor shapes during graph build
+- `STELNETTTS_AUDIOSEAL_DUMP_STAGES=1` — dump per-stage binary tensors to `/tmp/`
 
 See [`tts.md`](tts.md) for full watermarking documentation.
 
@@ -1880,43 +1880,43 @@ See [`tts.md`](tts.md) for full watermarking documentation.
 
 For TTS-specific deployment knobs (codec backend selection, graph
 reuse, etc.) see [`tts.md`](tts.md):
-- `CRISPASR_QWEN3_TTS_CODEC_GPU` — clean codec-on-GPU path (CUDA / Vulkan)
-- `CRISPASR_QWEN3_TTS_O15` — code-predictor graph reuse (CPU/Metal opt-in)
-- `CRISPASR_KOKORO_GEN_GPU` — generator on GPU (CUDA / Vulkan)
-- `CRISPASR_COSYVOICE3_FLOW_STEPS=N` — CosyVoice3 flow Euler steps (`1..100`;
+- `STELNETTTS_CIELVOX2_TTS_CODEC_GPU` — clean codec-on-GPU path (CUDA / Vulkan)
+- `STELNETTTS_CIELVOX2_TTS_O15` — code-predictor graph reuse (CPU/Metal opt-in)
+- `STELNETTTS_KOKORO_GEN_GPU` — generator on GPU (CUDA / Vulkan)
+- `STELNETTTS_COSYVOICE3_FLOW_STEPS=N` — CosyVoice3 flow Euler steps (`1..100`;
   model default `10`). Lower values reduce flow latency approximately
   linearly at a possible quality cost; `5` is a practical fast mode.
-- `CRISPASR_COSYVOICE3_BENCH=1` — print CosyVoice3 per-stage timings.
-- `CRISPASR_COSYVOICE3_CFG_BATCH=0` — compatibility fallback to two separate flow
+- `STELNETTTS_COSYVOICE3_BENCH=1` — print CosyVoice3 per-stage timings.
+- `STELNETTTS_COSYVOICE3_CFG_BATCH=0` — compatibility fallback to two separate flow
   forwards per Euler step. The default batch-2 path matches upstream and is
   faster while producing identical output on validated CPU and Metal runs.
-- `CRISPASR_COSYVOICE3_KV_BUCKET=0` — compatibility fallback that exposes the full KV
+- `STELNETTTS_COSYVOICE3_KV_BUCKET=0` — compatibility fallback that exposes the full KV
   allocation to every AR step instead of the default 256-token active buckets.
-- `CRISPASR_TADA_NUM_CANDIDATES=N` — TADA flow-matching duration candidates per token,
+- `STELNETTTS_TADA_NUM_CANDIDATES=N` — TADA flow-matching duration candidates per token,
   ranked by reconstruction likelihood (CLI default `4`). The duration head is
   noise-sensitive, so a single draw (`N=1`, fastest) can occasionally collapse
   timing into rushed/garbled speech; `4`–`8` make it robust. All candidates
   for a step solve in one batched forward, so higher `N` adds little wall-clock.
   Default `4` also applies through the C ABI / bindings / server; override there
   at runtime with `set_tts_num_candidates(n)`.
-  See [`tts.md`](tts.md#timing-quality-crispasr_tada_num_candidates).
-- `CRISPASR_TADA_DO_SAMPLE`, `CRISPASR_TADA_TEMPERATURE`, `CRISPASR_TADA_TOP_P`, `CRISPASR_TADA_TOP_K`,
-  `CRISPASR_TADA_REPETITION_PENALTY` — TADA **talker** text-decoder sampling, matching
+  See [`tts.md`](tts.md#timing-quality-stelnettts_tada_num_candidates).
+- `STELNETTTS_TADA_DO_SAMPLE`, `STELNETTTS_TADA_TEMPERATURE`, `STELNETTTS_TADA_TOP_P`, `STELNETTTS_TADA_TOP_K`,
+  `STELNETTTS_TADA_REPETITION_PENALTY` — TADA **talker** text-decoder sampling, matching
   upstream `InferenceOptions` defaults (do_sample=1, temp=0.6, top_p=0.9,
   top_k=0, rep_penalty=1.1). The talker samples by default; greedy decoding
-  (`CRISPASR_TADA_DO_SAMPLE=0`) has no repetition control and loops/cuts off words on
+  (`STELNETTTS_TADA_DO_SAMPLE=0`) has no repetition control and loops/cuts off words on
   harder or non-English text. Honoured by the CLI, C ABI, bindings and server;
   `set_temperature` / `set_top_p` / `set_repetition_penalty` also reach TADA at
   runtime.
-- `CRISPASR_VIBEVOICE_VAE_BACKEND={auto,cpu,gpu}` — VAE decoder placement
-- `CRISPASR_VIBEVOICE_TTS_FLASH_ATTN={1,0}` — TTS LM attention: `1` (default)
+- `STELNETTTS_VIBEVOICE_VAE_BACKEND={auto,cpu,gpu}` — VAE decoder placement
+- `STELNETTTS_VIBEVOICE_TTS_FLASH_ATTN={1,0}` — TTS LM attention: `1` (default)
   uses fused `ggml_flash_attn_ext`; `0` uses an explicit
   `softmax(QKᵀ)·V` path. Set `0` if VibeVoice TTS garbles, mixes
   voices, or repeats on a GPU whose fused flash-attention shader is
   buggy — notably **AMD RDNA4 (RX 9700 XT) on Vulkan**, whose coopmat2
   FA shader produces wrong hidden states (issue #171). The
   no-rebuild equivalent is `GGML_VK_DISABLE_COOPMAT2=1`. This knob and
-  `CRISPASR_VIBEVOICE_VAE_BACKEND` bisect the TTS GPU graph (LM attention vs.
+  `STELNETTTS_VIBEVOICE_VAE_BACKEND` bisect the TTS GPU graph (LM attention vs.
   the conv/col2im VAE) to localise a bad kernel.
 
 CosyVoice3 performance notes:
@@ -1925,7 +1925,7 @@ CosyVoice3 performance notes:
   on CPU; `--gpu-backend metal` selects Metal explicitly on macOS.
 - `-n/--max-new-tokens` is also the AR KV-cache sizing bound. A realistic
   cap reduces per-token work, but a value that is too low truncates speech.
-- `CRISPASR_COSYVOICE3_FLOW_STEPS=N` sets the CFM Euler step count (default `10`). Flow
+- `STELNETTTS_COSYVOICE3_FLOW_STEPS=N` sets the CFM Euler step count (default `10`). Flow
   work is ~linear in `N` and flow is ~48 % of the wall. M1 sweep (`--seed 42`,
   log-mel-spectrogram corr vs the 10-step output — ASR roundtrip is verbatim at
   8/6 and cannot distinguish steps): `8`→0.9948, `6`→0.9925, `4`→0.9895 with a
@@ -1951,38 +1951,38 @@ CosyVoice3 performance notes:
 For users coming from `llama.cpp`, here's how the equivalent knobs
 map:
 
-| Concern | llama.cpp | CrispASR |
+| Concern | llama.cpp | StelnetTTS |
 |---|---|---|
-| KV cache dtype | `--type-k q8_0 --type-v q8_0` (CLI flag, separate K/V) | `CRISPASR_KV_QUANT=q8_0` for symmetric, or `CRISPASR_KV_QUANT_K` / `_V` per half |
-| mmap weights | `--no-mmap` (mmap is default **on**) | `CRISPASR_GGUF_MMAP=0` (mmap is default **on** since 0.6.7) |
+| KV cache dtype | `--type-k q8_0 --type-v q8_0` (CLI flag, separate K/V) | `STELNETTTS_KV_QUANT=q8_0` for symmetric, or `STELNETTTS_KV_QUANT_K` / `_V` per half |
+| mmap weights | `--no-mmap` (mmap is default **on**) | `STELNETTTS_GGUF_MMAP=0` (mmap is default **on** since 0.6.7) |
 | Lock pages in RAM | `--mlock` | (not supported — `mmap+preload` is the closest analogue) |
-| GPU layer count | `--n-gpu-layers N` / `-ngl N` (CLI flag) | `CRISPASR_N_GPU_LAYERS=N` env var — 10 LLM backends |
-| KV-on-CPU-only | `--no-kv-offload` | `CRISPASR_KV_ON_CPU=1` env var |
+| GPU layer count | `--n-gpu-layers N` / `-ngl N` (CLI flag) | `STELNETTTS_N_GPU_LAYERS=N` env var — 10 LLM backends |
+| KV-on-CPU-only | `--no-kv-offload` | `STELNETTTS_KV_ON_CPU=1` env var |
 | Flash attention | `--flash-attn` / `-fa` | always-on where the backend's `capabilities()` declares `CAP_FLASH_ATTN` |
 | Threads | `--threads N` / `-t N` | `--threads N` / `-t N` (matched) |
 | Force CPU | `--gpu-layers 0` | `--no-gpu` / `--gpu-backend cpu` |
 
 Differences worth flagging:
 
-1. **mmap default.** Both projects now default mmap **on**. CrispASR
+1. **mmap default.** Both projects now default mmap **on**. StelnetTTS
    flipped from opt-in to default-on in 0.6.7 after issue #94 (slow /
    failing chatterbox-turbo init on macOS — the legacy alloc+copy
    path took 30-60 s for the 658 MB T3 GGUF). Set
-   `CRISPASR_GGUF_MMAP=0` to opt out (matches llama.cpp's
+   `STELNETTTS_GGUF_MMAP=0` to opt out (matches llama.cpp's
    `--no-mmap`).
 2. **K/V dtype unified.** llama.cpp lets you set `--type-k` and
    `--type-v` independently (rare scenario: quantize K but keep V
-   at f16). CrispASR uses a single `CRISPASR_KV_QUANT` for both.
+   at f16). StelnetTTS uses a single `STELNETTTS_KV_QUANT` for both.
    The split would be a small change if anyone needs it; file an
    issue with a use case.
 3. **CLI flags vs env vars.** llama.cpp surfaces every memory knob
-   as a CLI flag; CrispASR uses env vars for them on the assumption
+   as a CLI flag; StelnetTTS uses env vars for them on the assumption
    that they're rarely-changed deployment settings. If you want flag
    parity, see open issue / PR — converting the env vars to flags
-   is mechanical (`-DCRISPASR_KV_QUANT=val` style) but adds CLI
+   is mechanical (`-DSTELNETTTS_KV_QUANT=val` style) but adds CLI
    surface area.
-4. **`CRISPASR_N_GPU_LAYERS=N`.** Equivalent to `--n-gpu-layers N`.
-   Supported on 10 LLM-decode backends (voxtral, voxtral4b, qwen3-asr,
+4. **`STELNETTTS_N_GPU_LAYERS=N`.** Equivalent to `--n-gpu-layers N`.
+   Supported on 10 LLM-decode backends (voxtral, voxtral4b, cielvox2-asr,
    granite, glm-asr, orpheus, omniasr-llm, gemma4-e2b, mimo-asr,
    vibevoice). See the section above for details.
 
@@ -1993,9 +1993,9 @@ Differences worth flagging:
 - [`docs/streaming.md`](streaming.md) — `--stream`, `--mic`, `--live`,
   sliding-window flags, per-token confidence
 - [`docs/tts.md`](tts.md) — Kokoro / Qwen3-TTS / VibeVoice / Orpheus / Chatterbox
-  + every TTS-side env var (`CRISPASR_QWEN3_TTS_CODEC_GPU`,
-  `CRISPASR_QWEN3_TTS_SKIP_REF_DECODE`, `CRISPASR_QWEN3_TTS_O15`, `CRISPASR_KOKORO_GEN_GPU`,
-  `CRISPASR_VIBEVOICE_VAE_BACKEND`, …)
+  + every TTS-side env var (`STELNETTTS_CIELVOX2_TTS_CODEC_GPU`,
+  `STELNETTTS_CIELVOX2_TTS_SKIP_REF_DECODE`, `STELNETTTS_CIELVOX2_TTS_O15`, `STELNETTTS_KOKORO_GEN_GPU`,
+  `STELNETTTS_VIBEVOICE_VAE_BACKEND`, …)
 - [`docs/server.md`](server.md) — HTTP `/inference`, OpenAI-compat
   `/v1/audio/transcriptions`, `/v1/audio/speech` (TTS),
   `/v1/audio/speech-to-speech` (S2S)
@@ -2003,7 +2003,7 @@ Differences worth flagging:
   / Ruby — every CLI feature is reachable through the C-ABI
 - [`docs/install.md`](install.md) — full build options, GPU backends,
   ffmpeg ingestion, glibc compatibility
-- [`docs/quantize.md`](quantize.md) — `crispasr-quantize` per-backend
+- [`docs/quantize.md`](quantize.md) — `stelnettts-quantize` per-backend
   recommended quants
 - [`docs/architecture.md`](architecture.md) — internals: `src/core/`
   primitives, per-backend graph survey

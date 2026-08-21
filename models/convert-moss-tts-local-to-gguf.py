@@ -39,7 +39,7 @@ Usage:
     python models/convert-moss-tts-local-to-gguf.py \\
         --input OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5 \\
         --output moss-tts-local-v1.5-f16.gguf
-    crispasr-quantize moss-tts-local-v1.5-f16.gguf moss-tts-local-v1.5-q4_k.gguf q4_k
+    stelnettts-quantize moss-tts-local-v1.5-f16.gguf moss-tts-local-v1.5-q4_k.gguf q4_k
 """
 
 import argparse

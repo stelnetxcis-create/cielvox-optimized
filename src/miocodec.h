@@ -10,7 +10,7 @@
 // The encoder path (WavLM → local_encoder → FSQ encode) is handled separately;
 // this module implements decode-only (token indices + global embedding → PCM).
 //
-// Stage names (for crispasr-diff):
+// Stage names (for stelnettts-diff):
 //   fsq_decoded          — (T, 768) FSQ codebook lookup output
 //   wave_prenet_out      — (T, 512) after wave_prenet transformer
 //   wave_prior_net_out   — (512, T') after ResNet prior blocks

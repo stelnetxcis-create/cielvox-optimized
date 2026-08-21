@@ -69,8 +69,8 @@ def load_nemo_vocoder(hf_repo: str):
 
 
 def dump_array(arr: np.ndarray, path: str, name: str):
-    """Save array as raw F32 binary (for crispasr-diff) and .npy."""
-    # Raw F32 for crispasr-diff
+    """Save array as raw F32 binary (for stelnettts-diff) and .npy."""
+    # Raw F32 for stelnettts-diff
     f32_path = os.path.join(path, f"{name}.f32")
     arr_f32 = arr.astype(np.float32).flatten()
     arr_f32.tofile(f32_path)

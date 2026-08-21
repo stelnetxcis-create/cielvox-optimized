@@ -12,18 +12,18 @@
 import json, os, re, subprocess, sys, shutil
 from pathlib import Path
 
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 WORK = Path("/kaggle/working")
-REF = os.environ.get("CRISPASR_REF", "fix/249-moss")
+REF = os.environ.get("STELNETTTS_REF", "fix/249-moss")
 HF = "OpenMOSS-Team/MOSS-TTS-Local-Transformer-v1.5"
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", "--branch", REF,
-                           "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
                            "--recursive", "--depth", "1"], timeout=1800)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("start", ref=REF)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -57,18 +57,18 @@ def robust_download(repo, fname, local_dir, token, tries=3, timeout=900):
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=False)}")
-CLI = (BUILD / "bin" / "crispasr") if (BUILD / "bin" / "crispasr").exists() else next(iter(BUILD.rglob("crispasr")))
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=False)}")
+CLI = (BUILD / "bin" / "stelnettts") if (BUILD / "bin" / "stelnettts").exists() else next(iter(BUILD.rglob("stelnettts")))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done")
 
 M = Path("/kaggle/temp/models"); M.mkdir(parents=True, exist_ok=True)
 with kh.build_heartbeat("download"):
-    CODEC = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(M), TOKEN)
-    Q4 = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-q4_k.gguf", str(M), TOKEN)
-    F16 = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(M), TOKEN)
+    CODEC = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(M), TOKEN)
+    Q4 = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-q4_k.gguf", str(M), TOKEN)
+    F16 = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(M), TOKEN)
 
 TEXTS = {"hello": "Hello world.", "fox": "The quick brown fox jumps over the lazy dog."}
 SEEDS = [7, 42]
@@ -87,8 +87,8 @@ except Exception as e:  # noqa: BLE001 — never let tokparity block the stop te
 for tag, text in (TEXTS.items() if proc is not None else []):
     ours_ids = None
     idp = WORK / f"pids_{tag}.txt"
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DUMP_PROMPT_IDS": str(idp),
-           "CRISPASR_MOSS_TTS_LOCAL_MAX_FRAMES": "1"}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DUMP_PROMPT_IDS": str(idp),
+           "STELNETTTS_MOSS_TTS_LOCAL_MAX_FRAMES": "1"}
     with kh.build_heartbeat(f"tokdump.{tag}"):
         try:
             subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", Q4, "--codec-model", CODEC,
@@ -115,7 +115,7 @@ for tag, text in (TEXTS.items() if proc is not None else []):
 
 # ── (2) STOP OUTCOME: q4_k + f16 across texts/seeds ───────────────────────────
 def run_stop(model, text, seed):
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DEBUG": "1", "CRISPASR_MOSS_TTS_LOCAL_MAX_FRAMES": str(MAXF)}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DEBUG": "1", "STELNETTTS_MOSS_TTS_LOCAL_MAX_FRAMES": str(MAXF)}
     try:
         r = subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", model, "--codec-model", CODEC,
                             "--tts", text, "--seed", str(seed), "--tts-output", str(WORK / "o.wav")],

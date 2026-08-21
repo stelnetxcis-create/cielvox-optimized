@@ -168,7 +168,7 @@ def main():
             o = out[0] if isinstance(out,tuple) else out
             caps[name] = o.detach().numpy()
         return f
-    # PER-STAGE intermediates for crispasr-diff (HARD RULE #2: start at the
+    # PER-STAGE intermediates for stelnettts-diff (HARD RULE #2: start at the
     # earliest layer, first divergence = the bug). Endpoints alone are useless
     # for bisecting -- that is exactly what stalled the first enc_p graph.
     net.enc_p.emb_phone.register_forward_hook(_hook("encp_emb_phone"))

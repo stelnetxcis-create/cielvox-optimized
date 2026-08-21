@@ -1,15 +1,15 @@
 {
-  "id": "chr1str/crispasr-parakeet-ggml-decode-ab",
-  "title": "crispasr-parakeet-ggml-decode-ab",
-  "code_file": "crispasr-parakeet-ggml-decode-ab.py",
+  "id": "chr1str/stelnettts-parakeet-ggml-decode-ab",
+  "title": "stelnettts-parakeet-ggml-decode-ab",
+  "code_file": "stelnettts-parakeet-ggml-decode-ab.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
   "dataset_sources": [
-    "chr1str/crispasr-hf-token",
-    "chr1str/crispasr-ccache"
+    "chr1str/stelnettts-hf-token",
+    "chr1str/stelnettts-ccache"
   ],
   "competition_sources": [],
   "kernel_sources": [],

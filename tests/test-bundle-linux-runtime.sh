@@ -34,12 +34,12 @@ trap 'rm -rf "$WORK"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 cat > "$WORK/dep.c" <<'EOF'
-int crispasr_test_dep(void) { return 42; }
+int stelnettts_test_dep(void) { return 42; }
 EOF
 cat > "$WORK/app.c" <<'EOF'
 #include <stdio.h>
-int crispasr_test_dep(void);
-int main(void) { printf("dep=%d\n", crispasr_test_dep()); return 0; }
+int stelnettts_test_dep(void);
+int main(void) { printf("dep=%d\n", stelnettts_test_dep()); return 0; }
 EOF
 
 # ── 1. a dependency reachable only via RUNPATH must be bundled ───────────────
@@ -48,16 +48,16 @@ EOF
 priv="$WORK/private-lib"
 stage="$WORK/stage"
 mkdir -p "$priv" "$stage"
-cc -shared -fPIC -o "$priv/libcrispasrtestdep.so" "$WORK/dep.c"
-cc -o "$WORK/app" "$WORK/app.c" -L"$priv" -lcrispasrtestdep -Wl,-rpath,"$priv"
+cc -shared -fPIC -o "$priv/libstelnetttstestdep.so" "$WORK/dep.c"
+cc -o "$WORK/app" "$WORK/app.c" -L"$priv" -lstelnetttstestdep -Wl,-rpath,"$priv"
 cp "$WORK/app" "$stage/app"
 
 bash "$BUNDLE" "$stage" > "$WORK/bundle.log" 2>&1 || {
     cat "$WORK/bundle.log"; fail "bundler exited nonzero on a resolvable dependency"; }
 
-[ -f "$stage/libcrispasrtestdep.so" ] || {
+[ -f "$stage/libstelnetttstestdep.so" ] || {
     cat "$WORK/bundle.log"
-    fail "libcrispasrtestdep.so was not bundled — the RUNPATH-only dependency was dropped"; }
+    fail "libstelnetttstestdep.so was not bundled — the RUNPATH-only dependency was dropped"; }
 
 rp="$(patchelf --print-rpath "$stage/app")"
 [ "$rp" = '$ORIGIN' ] || fail "staged app RUNPATH is '$rp', expected \$ORIGIN"
@@ -76,8 +76,8 @@ echo "  ok: RUNPATH-only dependency bundled, and the relocated binary runs"
 priv2="$WORK/private-lib2"
 stage2="$WORK/stage2"
 mkdir -p "$priv2" "$stage2"
-cc -shared -fPIC -o "$priv2/libcrispasrtestgone.so" "$WORK/dep.c"
-cc -o "$WORK/app2" "$WORK/app.c" -L"$priv2" -lcrispasrtestgone -Wl,-rpath,"$priv2"
+cc -shared -fPIC -o "$priv2/libstelnetttstestgone.so" "$WORK/dep.c"
+cc -o "$WORK/app2" "$WORK/app.c" -L"$priv2" -lstelnetttstestgone -Wl,-rpath,"$priv2"
 cp "$WORK/app2" "$stage2/app2"
 rm -rf "$priv2"   # the library no longer exists anywhere
 
@@ -85,7 +85,7 @@ if bash "$BUNDLE" "$stage2" > "$WORK/bundle2.log" 2>&1; then
     cat "$WORK/bundle2.log"
     fail "bundler reported success with an unresolvable dependency"
 fi
-grep -q "libcrispasrtestgone.so" "$WORK/bundle2.log" || {
+grep -q "libstelnetttstestgone.so" "$WORK/bundle2.log" || {
     cat "$WORK/bundle2.log"; fail "failure did not name the missing library"; }
 echo "  ok: an unresolvable dependency fails the bundler, by name"
 
@@ -110,7 +110,7 @@ echo "  ok: an absent host-provided runtime is tolerated and not bundled"
 
 # ── 4. a dependency already staged, but not yet reachable ───────────────────
 # bundle-c2pa.sh drops libc2pa_c.so into the directory before this script runs,
-# and crispasr-quantize used to have no $ORIGIN in its RUNPATH at all — so the
+# and stelnettts-quantize used to have no $ORIGIN in its RUNPATH at all — so the
 # library sits right there and `ldd` still says `not found`. Making an
 # unresolved dependency fatal without this exemption would have failed every
 # Linux leg. It resolves once step 2 grants $ORIGIN, which is what the run
@@ -118,10 +118,10 @@ echo "  ok: an absent host-provided runtime is tolerated and not bundled"
 priv4="$WORK/private-lib4"
 stage4="$WORK/stage4"
 mkdir -p "$priv4" "$stage4"
-cc -shared -fPIC -o "$priv4/libcrispasrteststaged.so" "$WORK/dep.c"
-cc -o "$WORK/app4" "$WORK/app.c" -L"$priv4" -lcrispasrteststaged -Wl,-rpath,"$priv4"
+cc -shared -fPIC -o "$priv4/libstelnetttsteststaged.so" "$WORK/dep.c"
+cc -o "$WORK/app4" "$WORK/app.c" -L"$priv4" -lstelnetttsteststaged -Wl,-rpath,"$priv4"
 cp "$WORK/app4" "$stage4/app4"
-cp "$priv4/libcrispasrteststaged.so" "$stage4/"
+cp "$priv4/libstelnetttsteststaged.so" "$stage4/"
 rm -rf "$priv4"
 
 bash "$BUNDLE" "$stage4" > "$WORK/bundle4.log" 2>&1 || {
@@ -132,26 +132,26 @@ echo "  ok: an already-staged dependency is not missing, and resolves once \$ORI
 
 # ── 5. a declared host-toolkit directory is not bundled, but IS reachable ────
 # Resolving the HIP closure honestly copied 2.2 GB of the build image's ROCm
-# install into a 97 MB tarball. CRISPASR_BUNDLE_HOST_DIRS says "this belongs to
-# the user's toolkit"; CRISPASR_BUNDLE_EXTRA_RPATH is what makes that true
+# install into a 97 MB tarball. STELNETTTS_BUNDLE_HOST_DIRS says "this belongs to
+# the user's toolkit"; STELNETTTS_BUNDLE_EXTRA_RPATH is what makes that true
 # rather than merely asserted. Both halves are checked here, because the first
 # without the second is just the original bug with better manners.
 priv5="$WORK/opt-fake-toolkit/lib"
 stage5="$WORK/stage5"
 mkdir -p "$priv5" "$stage5"
-cc -shared -fPIC -o "$priv5/libcrispasrtesthost.so" "$WORK/dep.c"
-cc -o "$WORK/app5" "$WORK/app.c" -L"$priv5" -lcrispasrtesthost -Wl,-rpath,"$priv5"
+cc -shared -fPIC -o "$priv5/libstelnetttstesthost.so" "$WORK/dep.c"
+cc -o "$WORK/app5" "$WORK/app.c" -L"$priv5" -lstelnetttstesthost -Wl,-rpath,"$priv5"
 cp "$WORK/app5" "$stage5/app5"
 
-CRISPASR_BUNDLE_HOST_DIRS="$WORK/opt-fake-toolkit" \
-CRISPASR_BUNDLE_EXTRA_RPATH="$priv5" \
+STELNETTTS_BUNDLE_HOST_DIRS="$WORK/opt-fake-toolkit" \
+STELNETTTS_BUNDLE_EXTRA_RPATH="$priv5" \
     bash "$BUNDLE" "$stage5" > "$WORK/bundle5.log" 2>&1 || {
     cat "$WORK/bundle5.log"; fail "a declared host-toolkit dependency must not fail the bundler"; }
 
-if [ -f "$stage5/libcrispasrtesthost.so" ]; then
+if [ -f "$stage5/libstelnetttstesthost.so" ]; then
     fail "a host-toolkit library must not be copied into the archive"
 fi
-grep -q "host   libcrispasrtesthost.so" "$WORK/bundle5.log" || {
+grep -q "host   libstelnetttstesthost.so" "$WORK/bundle5.log" || {
     cat "$WORK/bundle5.log"; fail "the decision not to ship it must be visible in the log"; }
 
 rp5="$(patchelf --print-rpath "$stage5/app5")"

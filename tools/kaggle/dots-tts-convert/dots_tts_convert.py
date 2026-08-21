@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Kaggle kernel: convert rednote-hilab/dots.tts-soar → GGUF for CrispASR.
+Kaggle kernel: convert rednote-hilab/dots.tts-soar → GGUF for StelnetTTS.
 """
 
 import os
@@ -24,14 +24,14 @@ def log(msg):
 log("Kernel started")
 
 try:
-    # ── Bootstrap CrispASR (outside /kaggle/working to avoid huge output download) ──
-    CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-    _CRISPASR_DIR = Path("/tmp/CrispASR")  # /tmp is fine for code, not for large files
-    if not _CRISPASR_DIR.exists():
-        log("Cloning CrispASR...")
+    # ── Bootstrap StelnetTTS (outside /kaggle/working to avoid huge output download) ──
+    STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+    _STELNETTTS_DIR = Path("/tmp/StelnetTTS")  # /tmp is fine for code, not for large files
+    if not _STELNETTTS_DIR.exists():
+        log("Cloning StelnetTTS...")
         subprocess.check_call(["git", "clone", "--depth", "1",
-            CRISPASR_URL, str(_CRISPASR_DIR)])
-    sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+            STELNETTTS_URL, str(_STELNETTTS_DIR)])
+    sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
 
     # Also try bundled fallback
     try:
@@ -79,7 +79,7 @@ try:
     log(f"Disk: {free / (1024**3):.1f} GB free of {total / (1024**3):.1f} GB")
 
     # ── Run conversion ──
-    convert_script = _CRISPASR_DIR / "models" / "convert-dots-tts-to-gguf.py"
+    convert_script = _STELNETTTS_DIR / "models" / "convert-dots-tts-to-gguf.py"
     out_dir = WORK / "gguf_output"
     out_dir.mkdir(exist_ok=True)
 
@@ -128,7 +128,7 @@ try:
     try:
         from huggingface_hub import HfApi
         api = HfApi(token=hf_token if hf_token else None)
-        repo_id = "cstr/dots-tts-soar-GGUF"
+        repo_id = "Xenna/dots-tts-soar-GGUF"
 
         try:
             api.create_repo(repo_id, exist_ok=True, repo_type="model")

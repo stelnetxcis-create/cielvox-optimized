@@ -7,7 +7,7 @@
 // Reports per-stage cosine similarity.
 
 #include "audioseal.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include <cmath>
 #include <cstdio>
@@ -57,7 +57,7 @@ static double cosine_similarity(const float* a, const float* b, int n) {
 }
 
 int main() {
-    const char* gguf_path = crispasr_env::get("CRISPASR_AUDIOSEAL_GGUF");
+    const char* gguf_path = stelnettts_env::get("STELNETTTS_AUDIOSEAL_GGUF");
     if (!gguf_path) {
         fprintf(stderr, "Set AUDIOSEAL_GGUF=/tmp/audioseal.gguf\n");
         return 1;

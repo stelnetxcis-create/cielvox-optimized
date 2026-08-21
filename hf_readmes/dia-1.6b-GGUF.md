@@ -12,13 +12,13 @@ tags:
 - dac
 - dialogue
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Dia-1.6B — GGUF (ggml)
 
-GGUF / ggml conversion of [`nari-labs/Dia-1.6B`](https://huggingface.co/nari-labs/Dia-1.6B) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`nari-labs/Dia-1.6B`](https://huggingface.co/nari-labs/Dia-1.6B) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Dia is a dialogue text-to-speech model that generates expressive 44.1 kHz speech from text, with `[S1]` / `[S2]` speaker tags:
 
@@ -42,17 +42,17 @@ Released under **Apache 2.0**.
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Download model + DAC codec
-hf download cstr/dia-1.6b-GGUF dia-1.6b-f16.gguf dac-44khz.gguf --local-dir .
+hf download Xenna/dia-1.6b-GGUF dia-1.6b-f16.gguf dac-44khz.gguf --local-dir .
 
 # 3. Synthesize (keep the codec beside the model, or pass --codec-model)
-./build/bin/crispasr --backend dia -m dia-1.6b-f16.gguf \
+./build/bin/stelnettts --backend dia -m dia-1.6b-f16.gguf \
     --codec-model dac-44khz.gguf \
     --tts "[S1] Hello there, how are you doing today? I really hope you are having a wonderful and pleasant time." \
     --tts-output hello.wav --seed 42
@@ -60,7 +60,7 @@ hf download cstr/dia-1.6b-GGUF dia-1.6b-f16.gguf dac-44khz.gguf --local-dir .
 
 Or with auto-download (pulls the model + DAC companion):
 ```bash
-./build/bin/crispasr -m dia --auto-download \
+./build/bin/stelnettts -m dia --auto-download \
     --tts "[S1] The quick brown fox jumps over the lazy dog, and then it runs back again." \
     --tts-output fox.wav
 ```

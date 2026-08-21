@@ -20,8 +20,8 @@
 #include "core/conv.h"
 #include "core/cpu_ops.h" // core_cpu::to_f32 (quantized-safe weight read)
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml.h"
 #include "ggml-backend.h"
@@ -50,7 +50,7 @@
 static bool tada_codec_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_TADA_CODEC_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_TADA_CODEC_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -685,7 +685,7 @@ static tada_codec_context* tada_codec_init_from_file_impl(const char* path, int 
             return nullptr;
         }
         core_cpu_backend::set_n_threads(c->backend_cpu, n_threads);
-        c->backend = use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+        c->backend = use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
         if (!c->backend)
             c->backend = c->backend_cpu;
     }
@@ -710,12 +710,12 @@ static tada_codec_context* tada_codec_init_from_file_impl(const char* path, int 
     // The CPU codec is bit-faithful (Metal, which renders these same
     // features correctly, confirms the features are good). Talker/FM keep their
     // native Vulkan path. Opt back into the broken native codec with
-    // CRISPASR_TADA_CODEC_VULKAN_NATIVE=1 for debugging.
+    // STELNETTTS_TADA_CODEC_VULKAN_NATIVE=1 for debugging.
     if (c->backend != c->backend_cpu && std::strstr(ggml_backend_name(c->backend), "Vulkan")) {
-        const char* keep = std::getenv("CRISPASR_TADA_CODEC_VULKAN_NATIVE");
+        const char* keep = std::getenv("STELNETTTS_TADA_CODEC_VULKAN_NATIVE");
         if (!(keep && keep[0] == '1')) {
             fprintf(stderr, "tada-codec: Vulkan backend detected — running codec on CPU (#192 Vulkan "
-                            "conv miscompute at length; set CRISPASR_TADA_CODEC_VULKAN_NATIVE=1 to override)\n");
+                            "conv miscompute at length; set STELNETTTS_TADA_CODEC_VULKAN_NATIVE=1 to override)\n");
             c->backend = c->backend_cpu;
         }
     }
@@ -840,7 +840,7 @@ float* tada_codec_decode(struct tada_codec_context* ctx, const float* features, 
     }
 
     const bool dump_stats = [] {
-        const char* e = crispasr_env::get("CRISPASR_TADA_CODEC_DUMP");
+        const char* e = stelnettts_env::get("STELNETTTS_TADA_CODEC_DUMP");
         return e && *e && *e != '0';
     }();
     if (dump_stats) {

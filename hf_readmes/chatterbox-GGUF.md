@@ -34,13 +34,13 @@ tags:
 - flow-matching
 - hifi-gan
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Chatterbox TTS — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`ResembleAI/chatterbox`](https://huggingface.co/ResembleAI/chatterbox) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`ResembleAI/chatterbox`](https://huggingface.co/ResembleAI/chatterbox) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Chatterbox is a full TTS pipeline: character tokenizer → T3 (30-layer Llama AR, 520M) → speech tokens → S3Gen (Conformer encoder + UNet1D CFM denoiser, 10 Euler steps) → HiFTGenerator vocoder (conv chains + Snake activations + iSTFT) → 24 kHz WAV. Distributed under **MIT license**.
 
@@ -64,18 +64,18 @@ Note: vocoder weights (conv_pre, resblocks, conv_post, source fusion) are kept a
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 cmake --build build -j --target chatterbox
 
 # 2. Pull both model files
-huggingface-cli download cstr/chatterbox-GGUF chatterbox-t3-q8_0.gguf --local-dir .
-huggingface-cli download cstr/chatterbox-GGUF chatterbox-s3gen-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/chatterbox-GGUF chatterbox-t3-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/chatterbox-GGUF chatterbox-s3gen-q8_0.gguf --local-dir .
 
 # 3. Synthesise with the built-in default voice
-./build/bin/crispasr --backend chatterbox \
+./build/bin/stelnettts --backend chatterbox \
     -m chatterbox-t3-q8_0.gguf \
     --codec-model chatterbox-s3gen-q8_0.gguf \
     --tts "Hello there, this is chatterbox speaking." \
@@ -88,7 +88,7 @@ python models/bake-chatterbox-voice-from-wav.py \
     --input /path/to/reference.wav \
     --output my_voice.gguf
 
-./build/bin/crispasr --backend chatterbox \
+./build/bin/stelnettts --backend chatterbox \
     -m chatterbox-t3-q8_0.gguf \
     --codec-model chatterbox-s3gen-q8_0.gguf \
     --voice my_voice.gguf \
@@ -96,7 +96,7 @@ python models/bake-chatterbox-voice-from-wav.py \
     --tts-output cloned.wav
 ```
 
-See [`docs/tts.md`](https://github.com/CrispStrobe/CrispASR/blob/main/docs/tts.md#voice-cloning)
+See [`docs/tts.md`](https://github.com/Cyna/StelnetTTS/blob/main/docs/tts.md#voice-cloning)
 for the full Chatterbox voice-clone reference, including the
 per-call cache used by `--server` mode.
 
@@ -138,9 +138,9 @@ Requires `pip install gguf safetensors torch huggingface_hub`.
 
 ## Related models
 
-- [`cstr/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/cstr/lahgtna-chatterbox-v1-GGUF) — Arabic T3 variant (MIT, shares S3Gen)
-- [`cstr/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/cstr/orpheus-3b-0.1-ft-GGUF) — Llama-3.2 + SNAC TTS
-- [`cstr/qwen3-tts-0.6b-customvoice-GGUF`](https://huggingface.co/cstr/qwen3-tts-0.6b-customvoice-GGUF) — Qwen3-TTS with fixed speakers
+- [`Xenna/lahgtna-chatterbox-v1-GGUF`](https://huggingface.co/Xenna/lahgtna-chatterbox-v1-GGUF) — Arabic T3 variant (MIT, shares S3Gen)
+- [`Xenna/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/Xenna/orpheus-3b-0.1-ft-GGUF) — Llama-3.2 + SNAC TTS
+- [`Xenna/cielvox2-tts-0.6b-customvoice-GGUF`](https://huggingface.co/Xenna/cielvox2-tts-0.6b-customvoice-GGUF) — Qwen3-TTS with fixed speakers
 
 ## License
 

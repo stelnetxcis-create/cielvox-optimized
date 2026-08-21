@@ -8,7 +8,7 @@
 //   4. Synthesized audio has sane properties (non-silent, correct sample rate)
 
 #include <catch2/catch_test_macros.hpp>
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include "piper_tts.h"
 
@@ -20,7 +20,7 @@
 // Model path passed via -DPIPER_TEST_MODEL="..." at compile time,
 // or via PIPER_TEST_MODEL env var at runtime.
 static std::string get_model_path() {
-    const char* env = crispasr_env::get("CRISPASR_PIPER_TEST_MODEL");
+    const char* env = stelnettts_env::get("STELNETTTS_PIPER_TEST_MODEL");
     if (env && *env)
         return env;
 #ifdef PIPER_TEST_MODEL

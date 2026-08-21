@@ -39,7 +39,7 @@ if [ $# -eq 0 ]; then
 fi
 
 model=$1
-main="../build/bin/crispasr"
+main="../build/bin/stelnettts"
 
 threads=""
 if [ $# -eq 2 ]; then

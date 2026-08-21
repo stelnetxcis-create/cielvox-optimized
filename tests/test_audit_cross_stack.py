@@ -126,7 +126,7 @@ def test_parent_env_contains_required_connection_keys_without_printing_values():
         "VPS_SCRATCH_DIR",
         "CLOUD_BACKUP_SCRATCH_DIR",
         "CRISPLENS_SCRATCH_DIR",
-        "CRISPASR_SCRATCH_DIR",
+        "STELNETTTS_SCRATCH_DIR",
         "CB_API_STORAGE_ROOT",
         "CB_API_LANCE_ROOT",
     ]:
@@ -167,7 +167,7 @@ def test_cloud_backup_requires_env_for_large_blob_and_lance_roots():
     assert "CB_API_LANCE_ROOT" in lance_py
 
 
-def test_crisplens_v4_crispasr_wrapper_and_transcript_search_are_wired():
+def test_crisplens_v4_stelnettts_wrapper_and_transcript_search_are_wired():
     v4 = CRISPLENS / "electron-app-v4"
     renderer = v4 / "renderer"
     wrapper = (v4 / "renderer" / "src" / "lib" / "CrispAsrWrapper.js").read_text(errors="ignore")
@@ -182,14 +182,14 @@ def test_crisplens_v4_crispasr_wrapper_and_transcript_search_are_wired():
     server_ingest = (v4 / "server" / "routes" / "ingest.js").read_text(errors="ignore")
     server_cloud_drives = (v4 / "server" / "routes" / "cloud-drives.js").read_text(errors="ignore")
 
-    assert "registerPlugin('CrispASR')" in wrapper
-    assert "electronAPI?.crispasrTranscribe" in wrapper
+    assert "registerPlugin('StelnetTTS')" in wrapper
+    assert "electronAPI?.stelnetttsTranscribe" in wrapper
     assert "Capacitor.isNativePlatform" in wrapper
-    assert "crisplens.crispasr.language" in wrapper
-    assert "crispasrTranscribe" in preload
-    assert "ipcMain.handle('crispasr-transcribe'" in main
+    assert "crisplens.stelnettts.language" in wrapper
+    assert "stelnetttsTranscribe" in preload
+    assert "ipcMain.handle('stelnettts-transcribe'" in main
     assert "--output-json-full" in main
-    assert "CRISPASR_SCRATCH_DIR" in main
+    assert "STELNETTTS_SCRATCH_DIR" in main
     assert "isVideoName" in process_view
     assert "transcribeMedia" in process_view
     assert 'accept="image/*,video/*"' in process_view
@@ -203,28 +203,28 @@ def test_crisplens_v4_crispasr_wrapper_and_transcript_search_are_wired():
     assert "function scratchRoot()" in server_cloud_drives
     assert "process.env.CRISPLENS_SCRATCH_DIR" in server_cloud_drives
     assert "os.tmpdir()" not in server_cloud_drives
-    assert "crispasr_video_transcripts" in settings_view
+    assert "stelnettts_video_transcripts" in settings_view
     assert "hasCrispAsrWrapper" in settings_view
-    assert "crisplens.crispasr.model" in settings_view
-    assert "crisplens.crispasr.extraArgs" in settings_view
-    assert "CrispASR Video Transcripts" in (renderer / "src" / "stores.js").read_text(errors="ignore")
+    assert "crisplens.stelnettts.model" in settings_view
+    assert "crisplens.stelnettts.extraArgs" in settings_view
+    assert "StelnetTTS Video Transcripts" in (renderer / "src" / "stores.js").read_text(errors="ignore")
 
     package_json = json.loads((renderer / "package.json").read_text(errors="ignore"))
-    assert package_json["dependencies"]["crisplens-crispasr-capacitor"] == "file:plugins/crispasr-capacitor"
+    assert package_json["dependencies"]["crisplens-stelnettts-capacitor"] == "file:plugins/stelnettts-capacitor"
     assert package_json["devDependencies"]["@capacitor/ios"].startswith("^7.")
     assert package_json["devDependencies"]["vite"].startswith("^8.")
 
-    plugin = renderer / "plugins" / "crispasr-capacitor"
+    plugin = renderer / "plugins" / "stelnettts-capacitor"
     podspec = (plugin / "CrisplensCrispasrCapacitor.podspec").read_text(errors="ignore")
-    swift = (plugin / "ios" / "Sources" / "CrispASRPlugin" / "CrispASRPlugin.swift").read_text(errors="ignore")
-    android = (plugin / "android" / "src" / "main" / "java" / "com" / "crisplens" / "crispasr" / "CrispASRPlugin.kt")
+    swift = (plugin / "ios" / "Sources" / "StelnetTTSPlugin" / "StelnetTTSPlugin.swift").read_text(errors="ignore")
+    android = (plugin / "android" / "src" / "main" / "java" / "com" / "crisplens" / "stelnettts" / "StelnetTTSPlugin.kt")
     assert android.is_file()
-    assert (plugin / "ios" / "Vendor" / "crispasr.xcframework").exists()
+    assert (plugin / "ios" / "Vendor" / "stelnettts.xcframework").exists()
     assert "vendored_frameworks" in podspec
-    assert "crispasr.xcframework" in podspec
+    assert "stelnettts.xcframework" in podspec
     assert "EXCLUDED_ARCHS[sdk=iphonesimulator*]" in podspec
     assert "CAPBridgedPlugin" in swift
-    assert 'jsName = "CrispASR"' in swift
+    assert 'jsName = "StelnetTTS"' in swift
     assert ".applicationSupportDirectory" in swift
     assert "AVAssetExportSession" in swift
     assert "whisper_full" in swift
@@ -266,11 +266,11 @@ def test_no_hardcoded_tmp_or_default_tempfile_in_core_cross_stack_paths():
         CLOUD_BACKUP / "retrieve.py",
         CLOUD_BACKUP / "search_engine.py",
         CLOUD_BACKUP / "controller.py",
-        ROOT / "src" / "crispasr_cache.cpp",
-        ROOT / "examples" / "cli" / "crispasr_server.cpp",
-        ROOT / "examples" / "cli" / "crispasr_lid_cli.cpp",
-        ROOT / "examples" / "cli" / "crispasr_diarize_cli.cpp",
-        ROOT / "tests" / "test-crispasr-cache.cpp",
+        ROOT / "src" / "stelnettts_cache.cpp",
+        ROOT / "examples" / "cli" / "stelnettts_server.cpp",
+        ROOT / "examples" / "cli" / "stelnettts_lid_cli.cpp",
+        ROOT / "examples" / "cli" / "stelnettts_diarize_cli.cpp",
+        ROOT / "tests" / "test-stelnettts-cache.cpp",
         ROOT / "tests" / "test-server-tts.sh",
         ROOT / "tests" / "test-translators.sh",
         ROOT / "tests" / "test-vibevoice-base-clone.sh",

@@ -2,7 +2,7 @@
 
 Instruments AutoArk-AI/ARK-ASR-3B (ArkasrForConditionalGeneration, custom
 remote code) and emits stage activations following the contract in
-tools/dump_reference.py. The C++ side (crispasr-diff arkasr) compares:
+tools/dump_reference.py. The C++ side (stelnettts-diff arkasr) compares:
 
   mel_spectrogram  — WhisperFeatureExtractor log-mel (128, T)
   audio_embeds     — encoder + MLP adapter output (N, hidden) [validates the

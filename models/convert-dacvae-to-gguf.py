@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert Semantic-DACVAE (Aratako/Semantic-DACVAE-Japanese-32dim) → GGUF
-for the CrispASR irodori-tts backend's audio decoder.
+for the StelnetTTS irodori-tts backend's audio decoder.
 
 The DACVAE decoder has the same architecture as descript/dac_44khz:
   out_proj: Conv1d(codebook_dim → 1024, k=1)   ← VAE bottleneck projection

@@ -2,7 +2,7 @@
 //
 // #316: Kokoro dropped numbers entirely ("with 82 million parameters" came out
 // "with million parameters") and drifted into a British-sounding accent. Both
-// were G2P defects, and neither is visible to crispasr-diff: that harness is
+// were G2P defects, and neither is visible to stelnettts-diff: that harness is
 // phoneme-IN (KOKORO_PHONEMES), so it starts downstream of everything here and
 // would have shown perfect parity while the audio was wrong.
 //

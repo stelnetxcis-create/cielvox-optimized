@@ -11,11 +11,11 @@
 // split as [predictor_style 0:128 | decoder_style 128:256].
 //
 // Phonemizer: when the build links libespeak-ng (CMake option
-// CRISPASR_WITH_ESPEAK_NG, defaults to AUTO-detect via pkg-config or the
+// STELNETTTS_WITH_ESPEAK_NG, defaults to AUTO-detect via pkg-config or the
 // homebrew layout), we call espeak_TextToPhonemes() in-process. Otherwise
 // we shell out to popen("espeak-ng -q --ipa=3 -v LANG TEXT"). Results are
 // memoised in a per-context LRU cache keyed on (lang, text).
-// Set CRISPASR_ESPEAK_DATA_PATH to override the espeak-ng-data location.
+// Set STELNETTTS_ESPEAK_DATA_PATH to override the espeak-ng-data location.
 // Pass already-IPA strings via kokoro_synthesize_phonemes to skip both
 // paths. The vocab map (178 IPA symbols) lives in the GGUF as
 // `tokenizer.ggml.tokens`.
@@ -83,7 +83,7 @@ void kokoro_phoneme_cache_clear(struct kokoro_context* ctx);
 // IPA strings — caller frees with free(). Stateless, no kokoro_context
 // needed.
 //
-// Lib path is gated on CRISPASR_HAVE_ESPEAK_NG at compile time and on
+// Lib path is gated on STELNETTTS_HAVE_ESPEAK_NG at compile time and on
 // successful runtime init; returns nullptr if the lib isn't compiled
 // in or its in-process init fails. Popen path shells out to
 // `espeak-ng` on PATH; returns nullptr if the binary isn't available.
@@ -163,18 +163,18 @@ void kokoro_pcm_free(float* pcm);
 //     `ff_siwis` directly.
 
 // True iff `lang` begins with "de" followed by '\0', '-' or '_'.
-bool crispasr_kokoro_lang_is_german(const char* lang);
+bool stelnettts_kokoro_lang_is_german(const char* lang);
 
 // True iff `lang` is one of the languages Kokoro-82M ships native voice packs
 // for: en, es, fr, hi, it, ja, pt, cmn, zh.
-bool crispasr_kokoro_lang_has_native_voice(const char* lang);
+bool stelnettts_kokoro_lang_has_native_voice(const char* lang);
 
 // Resolve the model path to load for `lang` given `model_path` as the
 // user-provided baseline. Writes the result into `out_path` if non-NULL.
 // Returns: 0 if a German backbone swap was applied (path rewritten),
 // 1 if no swap is applicable (caller should keep `model_path` — also
 // copied into `out_path` for convenience), -1 on buffer-too-small.
-int crispasr_kokoro_resolve_model_for_lang(const char* model_path, const char* lang, char* out_path, int out_path_len);
+int stelnettts_kokoro_resolve_model_for_lang(const char* model_path, const char* lang, char* out_path, int out_path_len);
 
 // Resolve the fallback voice path for `lang`. Walks the per-language voice
 // cascade and returns the first existing
@@ -184,7 +184,7 @@ int crispasr_kokoro_resolve_model_for_lang(const char* model_path, const char* l
 // Returns: 0 if a fallback was found and written, 1 if `lang` already has a
 // native voice (no fallback needed), 2 if no candidate file exists,
 // -1 on buffer-too-small.
-int crispasr_kokoro_resolve_fallback_voice(const char* model_path, const char* lang, char* out_path, int out_path_len,
+int stelnettts_kokoro_resolve_fallback_voice(const char* model_path, const char* lang, char* out_path, int out_path_len,
                                            char* out_picked, int out_picked_len);
 
 #ifdef __cplusplus

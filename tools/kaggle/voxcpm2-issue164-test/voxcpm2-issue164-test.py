@@ -1,5 +1,5 @@
 """
-CrispASR issue #164 validation: voxcpm2 VOXCPM2_USE_GRAPH stop predictor + VAE.
+StelnetTTS issue #164 validation: voxcpm2 VOXCPM2_USE_GRAPH stop predictor + VAE.
 
 Tests:
   A. graph=0 baseline — stop should fire (validates model works).
@@ -28,14 +28,14 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 # Build in /kaggle/temp to avoid filling up /kaggle/working (capped at ~20 GB,
 # saved as kernel output). /kaggle/temp is ephemeral scratch space.
 _TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else WORK
 BUILD = _TEMP / "build"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-MODEL_REPO = "cstr/voxcpm2-GGUF"
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+MODEL_REPO = "Xenna/voxcpm2-GGUF"
 MODEL_FILE = "voxcpm2-q4_k.gguf"
 
 _T0 = time.time()
@@ -67,13 +67,13 @@ def run(cmd, capture=False, check=True, timeout=600, cwd=None, env=None):
 
 
 # -- Clone + build --
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
@@ -106,19 +106,19 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}"
     )
 step("build_done")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    candidates = list(BUILD.rglob("crispasr"))
+    candidates = list(BUILD.rglob("stelnettts"))
     candidates = [c for c in candidates if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 
 LIB_DIR = BUILD / "src"
 os.environ["LD_LIBRARY_PATH"] = (

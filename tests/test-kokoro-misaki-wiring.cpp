@@ -10,9 +10,9 @@
 // called `core_g2p_ctxwords::lookup` directly, which is not the code path the
 // product uses.
 //
-// So this one goes through `crispasr::phonemize_misaki_en` — the function
+// So this one goes through `stelnettts::phonemize_misaki_en` — the function
 // kokoro.cpp calls — with a tiny lexicon in misaki's own JSON shape pointed at
-// by CRISPASR_MISAKI_DICT_PATH. Hermetic: no download, no model, no audio.
+// by STELNETTTS_MISAKI_DICT_PATH. Hermetic: no download, no model, no audio.
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -40,7 +40,7 @@ const char* kLexicon = R"({
 
 std::string phonemize(const char* text) {
     std::string out;
-    REQUIRE(crispasr::phonemize_misaki_en("en", text, out));
+    REQUIRE(stelnettts::phonemize_misaki_en("en", text, out));
     return out;
 }
 
@@ -57,8 +57,8 @@ TEST_CASE("phonemize_misaki_en applies misaki's rules, not just loads its words"
         fclose(f);
     }
     // Must be set before the FIRST call — the loader runs once per process.
-    setenv("CRISPASR_MISAKI_DICT_PATH", path, 1);
-    REQUIRE(crispasr::misaki_lexicon_available());
+    setenv("STELNETTTS_MISAKI_DICT_PATH", path, 1);
+    REQUIRE(stelnettts::misaki_lexicon_available());
 
     SECTION("the contextual function words are applied") {
         // The reported "old English" diction. `ði` before a consonant is the

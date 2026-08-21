@@ -9,15 +9,15 @@ log() {
     echo "[$(ts)] hf-space: $*" >&2
 }
 
-SERVER_HOST="${CRISPASR_SERVER_HOST:-127.0.0.1}"
-SERVER_PORT="${CRISPASR_SERVER_PORT:-8080}"
-MODEL_PATH="${CRISPASR_MODEL:-/models/model.gguf}"
-LANGUAGE="${CRISPASR_LANGUAGE:-en}"
-BACKEND="${CRISPASR_BACKEND:-whisper}"
-AUTO_DOWNLOAD="${CRISPASR_AUTO_DOWNLOAD:-1}"
-CACHE_DIR="${CRISPASR_CACHE_DIR:-/cache}"
-EXTRA_ARGS="${CRISPASR_EXTRA_ARGS:-}"
-API_KEYS="${CRISPASR_API_KEYS:-}"
+SERVER_HOST="${STELNETTTS_SERVER_HOST:-127.0.0.1}"
+SERVER_PORT="${STELNETTTS_SERVER_PORT:-8080}"
+MODEL_PATH="${STELNETTTS_MODEL:-/models/model.gguf}"
+LANGUAGE="${STELNETTTS_LANGUAGE:-en}"
+BACKEND="${STELNETTTS_BACKEND:-whisper}"
+AUTO_DOWNLOAD="${STELNETTTS_AUTO_DOWNLOAD:-1}"
+CACHE_DIR="${STELNETTTS_CACHE_DIR:-/cache}"
+EXTRA_ARGS="${STELNETTTS_EXTRA_ARGS:-}"
+API_KEYS="${STELNETTTS_API_KEYS:-}"
 
 ensure_writable_dir() {
     local dir="$1"
@@ -30,7 +30,7 @@ ensure_writable_dir() {
     if [[ ! -w "$dir" ]]; then
         log "ERROR: cache directory '$dir' is not writable by uid=$(id -u) gid=$(id -g)"
         ls -ld "$dir" >&2 || true
-        log "If this is a bind mount, chown the host directory or set CRISPASR_CACHE_DIR to a writable path."
+        log "If this is a bind mount, chown the host directory or set STELNETTTS_CACHE_DIR to a writable path."
         exit 70
     fi
 }
@@ -38,7 +38,7 @@ ensure_writable_dir() {
 ensure_writable_dir "$CACHE_DIR"
 
 declare -a cmd
-cmd=(crispasr --server --host "$SERVER_HOST" --port "$SERVER_PORT" -l "$LANGUAGE" --cache-dir "$CACHE_DIR")
+cmd=(stelnettts --server --host "$SERVER_HOST" --port "$SERVER_PORT" -l "$LANGUAGE" --cache-dir "$CACHE_DIR")
 
 if [[ "$AUTO_DOWNLOAD" == "1" ]]; then
     cmd+=(-m auto --auto-download)
@@ -80,16 +80,16 @@ fi
 if [[ -n "$API_KEYS" ]]; then
     log "api_keys=enabled"
 fi
-log "launching crispasr server: ${display_cmd[*]}"
+log "launching stelnettts server: ${display_cmd[*]}"
 
 "${cmd[@]}" &
 server_pid=$!
-log "crispasr server pid=$server_pid"
+log "stelnettts server pid=$server_pid"
 
 cleanup() {
     log "cleanup"
     if kill -0 "$server_pid" 2>/dev/null; then
-        log "stopping crispasr server pid=$server_pid"
+        log "stopping stelnettts server pid=$server_pid"
         kill "$server_pid" 2>/dev/null || true
         wait "$server_pid" 2>/dev/null || true
     fi

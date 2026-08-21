@@ -9,7 +9,7 @@
 #include "ark_asr.h"
 
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
 #include "gguf.h"
@@ -22,7 +22,7 @@
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
 #include "core/mel.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 
 #include <cmath>
 #include <cstdio>
@@ -226,7 +226,7 @@ static bool ark_kv_init(ark_asr_context* ctx, int max_ctx) {
     // and these KV rows are head_dim wide (128), so each q8_0 tensor needs
     // 408 bytes more than nbytes — the hand-sized buffer came up short and
     // ggml_backend_tensor_alloc aborted. f16 is not quantized, so this only
-    // ever fired with CRISPASR_KV_QUANT set, and only on CUDA.
+    // ever fired with STELNETTTS_KV_QUANT set, and only on CUDA.
     ctx->kv_buf = ggml_backend_alloc_ctx_tensors(ctx->kv_ctx, kv_be);
     if (!ctx->kv_buf)
         return false;
@@ -326,14 +326,14 @@ extern "C" struct ark_asr_context* ark_asr_init_from_file(const char* path_model
     // decode is bandwidth/dispatch-bound on unified memory), ~1.7x faster overall
     // on jfk. (An earlier port build "emitted no tokens" on GPU; the current
     // flash-attn + KV path no longer reproduces it.) Force CPU with
-    // CRISPASR_ARKASR_CPU=1. CUDA/other GPUs not yet validated.
-    const bool force_cpu = std::getenv("CRISPASR_ARKASR_CPU") != nullptr;
+    // STELNETTTS_ARKASR_CPU=1. CUDA/other GPUs not yet validated.
+    const bool force_cpu = std::getenv("STELNETTTS_ARKASR_CPU") != nullptr;
     if (params.use_gpu && !force_cpu) {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
         if (!ctx->backend) {
             ctx->backend = ctx->backend_cpu;
         } else if (params.verbosity >= 1) {
-            fprintf(stderr, "ark_asr: GPU backend active (Metal-validated; CRISPASR_ARKASR_CPU=1 to force CPU)\n");
+            fprintf(stderr, "ark_asr: GPU backend active (Metal-validated; STELNETTTS_ARKASR_CPU=1 to force CPU)\n");
         }
     } else {
         ctx->backend = ctx->backend_cpu;
@@ -429,7 +429,7 @@ extern "C" struct ark_asr_context* ark_asr_init_from_file(const char* path_model
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
@@ -740,7 +740,7 @@ static void ark_fill_mask(std::vector<ggml_fp16_t>& mask, int T, int n_past) {
 // Run one decoder graph; returns malloc'd logits [vocab] for the last position.
 static float* ark_run_decoder(ark_asr_context* ctx, const int32_t* ids, int T, int n_past, bool inject,
                               const float* audio_features, const float* keep_mask) {
-    static const bool timing = std::getenv("CRISPASR_ARKASR_TIMING") != nullptr;
+    static const bool timing = std::getenv("STELNETTTS_ARKASR_TIMING") != nullptr;
     const int64_t t0 = timing ? ggml_time_us() : 0;
     ggml_cgraph* gf = ark_build_decoder_graph(ctx, T, n_past, inject);
     ggml_backend_sched_reset(ctx->sched);
@@ -806,10 +806,10 @@ static float* ark_run_decoder(ark_asr_context* ctx, const int32_t* ids, int T, i
 // Approximated from the GGUF vocab by shape — `<|…|>` — because the added-token
 // table upstream reads is not carried into the GGUF. That covers Qwen2.5's
 // specials and ark's five extra role/audio markers. EOS is kept: it is how
-// generation stops. Disable with CRISPASR_ARKASR_NO_SPECIAL_SUPPRESS=1.
+// generation stops. Disable with STELNETTTS_ARKASR_NO_SPECIAL_SUPPRESS=1.
 static void ark_build_banned_ids(ark_asr_context* ctx) {
     ctx->banned_ids.clear();
-    if (std::getenv("CRISPASR_ARKASR_NO_SPECIAL_SUPPRESS") != nullptr)
+    if (std::getenv("STELNETTTS_ARKASR_NO_SPECIAL_SUPPRESS") != nullptr)
         return;
     for (size_t i = 0; i < ctx->vocab.size(); i++) {
         const std::string& t = ctx->vocab[i];
@@ -825,10 +825,10 @@ static void ark_build_banned_ids(ark_asr_context* ctx) {
 // (<|system|>); everything above it is bicodec / semantic-token space that the
 // shared multi-task vocabulary carries but ASR must never emit. Our vocab is
 // 151936, so 266 ids were emittable that upstream forbids. Override or disable
-// with CRISPASR_ARKASR_BLOCK_FROM_ID (negative = off).
+// with STELNETTTS_ARKASR_BLOCK_FROM_ID (negative = off).
 static int ark_block_from_id() {
     static const int s_from = []() {
-        const char* e = std::getenv("CRISPASR_ARKASR_BLOCK_FROM_ID");
+        const char* e = std::getenv("STELNETTTS_ARKASR_BLOCK_FROM_ID");
         return e ? atoi(e) : 151670;
     }();
     return s_from;
@@ -869,7 +869,7 @@ static void ark_mask_specials(const ark_asr_context* ctx, float* logits) {
 // `ctx->ask` knob is NOT this: it inserts text BEFORE <|begin_of_audio|>, which
 // is a different position from upstream's, and it is off by default.
 //
-// Precedence: ark_asr_set_ask() > CRISPASR_ARKASR_INSTRUCTION > upstream's
+// Precedence: ark_asr_set_ask() > STELNETTTS_ARKASR_INSTRUCTION > upstream's
 // default. Setting any of them empty restores the old promptless behaviour.
 //
 // `ask` used to be spliced in before <|begin_of_audio|> and ONLY in
@@ -882,15 +882,15 @@ static void ark_push_instruction(ark_asr_context* ctx, std::vector<int32_t>& ids
     // which the CLI derives automatically from the detected language and would
     // otherwise always set, leaving the env knob unreachable in practice.
     // Present-but-empty is a deliberate "no instruction at all".
-    static const bool s_env_set = std::getenv("CRISPASR_ARKASR_INSTRUCTION") != nullptr;
-    static const std::string s_env = s_env_set ? std::getenv("CRISPASR_ARKASR_INSTRUCTION") : std::string();
+    static const bool s_env_set = std::getenv("STELNETTTS_ARKASR_INSTRUCTION") != nullptr;
+    static const std::string s_env = s_env_set ? std::getenv("STELNETTTS_ARKASR_INSTRUCTION") : std::string();
     static const std::string s_default = "Please transcribe this audio.";
 
     const std::string& instruction = s_env_set ? s_env : (!ctx->ask.empty() ? ctx->ask : s_default);
     if (instruction.empty())
         return;
     const std::vector<int32_t> tids = core_bpe::tokenize_simple(ctx->token_to_id, ctx->merge_rank, instruction);
-    if (std::getenv("CRISPASR_ARKASR_DEBUG_GEN")) {
+    if (std::getenv("STELNETTTS_ARKASR_DEBUG_GEN")) {
         // tokenize_simple does NOT do GPT-2 regex pre-tokenization (its own
         // docstring says so): it splits on whitespace only, so a trailing "."
         // stays glued to the last word and can BPE-merge across a boundary the
@@ -1113,9 +1113,9 @@ static std::string ark_transcribe_window(ark_asr_context* ctx, const float* pcm,
     // normally, so genuine endings are unaffected. On a truly empty/silent window
     // the forced first token is the model's opening "." which the output cleanup
     // strips back to empty, so this doesn't invent words out of silence. Opt out
-    // with CRISPASR_ARKASR_NO_EOS_SUPPRESS=1.
+    // with STELNETTTS_ARKASR_NO_EOS_SUPPRESS=1.
     if (ctx->id_im_end >= 0 && ctx->id_im_end < (int)ctx->hp.llm_vocab &&
-        std::getenv("CRISPASR_ARKASR_NO_EOS_SUPPRESS") == nullptr)
+        std::getenv("STELNETTTS_ARKASR_NO_EOS_SUPPRESS") == nullptr)
         logits[ctx->id_im_end] = -INFINITY;
     // Upstream bans the other special tokens at every step (see
     // ark_build_banned_ids); this is the first of those steps.
@@ -1179,7 +1179,7 @@ static std::string ark_transcribe_window(ark_asr_context* ctx, const float* pcm,
         if (t < ARK_FIRST_SPECIAL_TOKEN)
             vis.push_back(t);
     std::string txt = core_bpe::detokenize(ctx->vocab, vis.data(), vis.size());
-    if (std::getenv("CRISPASR_ARKASR_DEBUG_GEN")) {
+    if (std::getenv("STELNETTTS_ARKASR_DEBUG_GEN")) {
         fprintf(stderr, "[ark-gen] window %.1fs: %zu tokens, first_tok=%d (im_end=%d) raw='%.90s'\n",
                 (double)n_samples / (double)ctx->hp.sample_rate, gen.size(), gen.empty() ? -1 : gen[0], ctx->id_im_end,
                 txt.c_str());
@@ -1224,9 +1224,9 @@ static int ark_max_new_for(int n_samples) {
 // to empty). 30 s windows keep the encoder in-distribution. Cross-chunk language
 // conditioning carries the previous window's transcript tail forward so the model
 // keeps the same language instead of re-detecting per window (disable with
-// CRISPASR_ARKASR_NO_CHUNK_CONTEXT=1).
+// STELNETTTS_ARKASR_NO_CHUNK_CONTEXT=1).
 static std::string ark_transcribe_chunked(ark_asr_context* ctx, const float* pcm, int n_samples, int sr) {
-    const bool ctx_carry = std::getenv("CRISPASR_ARKASR_NO_CHUNK_CONTEXT") == nullptr;
+    const bool ctx_carry = std::getenv("STELNETTTS_ARKASR_NO_CHUNK_CONTEXT") == nullptr;
     const int kPrefixTokens = 32; // tail length to seed (enough to fix language)
     const int win = 30 * sr;
     std::vector<int32_t> prefix;
@@ -1264,10 +1264,10 @@ extern "C" char* ark_asr_transcribe(struct ark_asr_context* ctx, const float* pc
     // 30 s windows → full transcript). So decode audio > 30 s in 30 s windows,
     // with cross-chunk language conditioning (below) carrying the language forward
     // to avoid the per-window drift that motivated the old whole-audio pass.
-    // Raise CRISPASR_ARKASR_MAX_SINGLE_PASS_S to force a longer single pass
+    // Raise STELNETTTS_ARKASR_MAX_SINGLE_PASS_S to force a longer single pass
     // (0 = never chunk); it will degrade past ~30 s.
     int cap_s = 30;
-    if (const char* e = std::getenv("CRISPASR_ARKASR_MAX_SINGLE_PASS_S"))
+    if (const char* e = std::getenv("STELNETTTS_ARKASR_MAX_SINGLE_PASS_S"))
         cap_s = std::atoi(e);
     const long cap_samples = (long)cap_s * sr;
 

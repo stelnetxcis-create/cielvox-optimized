@@ -1,16 +1,16 @@
 // test-bench-enabled.cpp — unit tests for the bench_enabled() + BenchStage
-// pattern shared by 70+ CrispASR backends.
+// pattern shared by 70+ StelnetTTS backends.
 //
 // Every backend (nemotron, parakeet, kokoro, …) copy-pastes an identical
 // env-var-gated bench pattern:
 //
 //   static bool xxx_bench_enabled() {
 //       static int v = -1;
-//       if (v < 0) { const char* e = crispasr_env::get("CRISPASR_XXX_BENCH");
+//       if (v < 0) { const char* e = stelnettts_env::get("STELNETTTS_XXX_BENCH");
 //                     v = (e && *e && *e != '0') ? 1 : 0; }
 //       return v != 0;
 //   }
-// (the bare XXX_BENCH form still works as a deprecated alias — see core/crispasr_env.h)
+// (the bare XXX_BENCH form still works as a deprecated alias — see core/stelnettts_env.h)
 //
 // This test exercises the pattern's contract directly (no model load):
 //   • default (env unset) → false
@@ -77,14 +77,14 @@ struct bench_stage {
 
 TEST_CASE("bench_enabled — unset env var returns false", "[unit][bench]") {
     // Use a unique env var name that is guaranteed unset
-    const char* var = "CRISPASR_TEST_BENCH_UNSET_12345";
+    const char* var = "STELNETTTS_TEST_BENCH_UNSET_12345";
     test_unsetenv(var);
     int cached = -1;
     REQUIRE(bench_enabled_with(var, &cached) == false);
 }
 
 TEST_CASE("bench_enabled — env '1' returns true", "[unit][bench]") {
-    const char* var = "CRISPASR_TEST_BENCH_ONE";
+    const char* var = "STELNETTTS_TEST_BENCH_ONE";
     test_setenv(var, "1");
     int cached = -1;
     REQUIRE(bench_enabled_with(var, &cached) == true);
@@ -92,7 +92,7 @@ TEST_CASE("bench_enabled — env '1' returns true", "[unit][bench]") {
 }
 
 TEST_CASE("bench_enabled — env '0' returns false", "[unit][bench]") {
-    const char* var = "CRISPASR_TEST_BENCH_ZERO";
+    const char* var = "STELNETTTS_TEST_BENCH_ZERO";
     test_setenv(var, "0");
     int cached = -1;
     REQUIRE(bench_enabled_with(var, &cached) == false);
@@ -100,7 +100,7 @@ TEST_CASE("bench_enabled — env '0' returns false", "[unit][bench]") {
 }
 
 TEST_CASE("bench_enabled — env '' (empty) returns false", "[unit][bench]") {
-    const char* var = "CRISPASR_TEST_BENCH_EMPTY";
+    const char* var = "STELNETTTS_TEST_BENCH_EMPTY";
     test_setenv(var, "");
     int cached = -1;
     REQUIRE(bench_enabled_with(var, &cached) == false);
@@ -108,7 +108,7 @@ TEST_CASE("bench_enabled — env '' (empty) returns false", "[unit][bench]") {
 }
 
 TEST_CASE("bench_enabled — env '42' returns true", "[unit][bench]") {
-    const char* var = "CRISPASR_TEST_BENCH_42";
+    const char* var = "STELNETTTS_TEST_BENCH_42";
     test_setenv(var, "42");
     int cached = -1;
     REQUIRE(bench_enabled_with(var, &cached) == true);
@@ -116,7 +116,7 @@ TEST_CASE("bench_enabled — env '42' returns true", "[unit][bench]") {
 }
 
 TEST_CASE("bench_enabled — cached value is sticky", "[unit][bench]") {
-    const char* var = "CRISPASR_TEST_BENCH_STICKY";
+    const char* var = "STELNETTTS_TEST_BENCH_STICKY";
     test_setenv(var, "1");
     int cached = -1;
     REQUIRE(bench_enabled_with(var, &cached) == true);

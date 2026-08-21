@@ -2,7 +2,7 @@
 """test-server-realtime-api.py — integration test for the server's --ws-port
 vLLM Realtime API WebSocket streaming endpoint.
 
-Boots `crispasr --server --ws-port 0` with a small whisper model, then with a
+Boots `stelnettts --server --ws-port 0` with a small whisper model, then with a
 stdlib-only raw WebSocket client:
   1. verifies the Sec-WebSocket-Accept handshake
   2. streams samples/jfk.wav as base64 PCM16 JSON frames via input_audio_buffer.append
@@ -28,7 +28,7 @@ GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
 def find_binary():
-    for c in ["build/bin/crispasr", "build-ninja-compile/bin/crispasr", "bin/crispasr"]:
+    for c in ["build/bin/stelnettts", "build-ninja-compile/bin/stelnettts", "bin/stelnettts"]:
         p = os.path.join(ROOT, c)
         if os.path.isfile(p) and os.access(p, os.X_OK):
             return p
@@ -37,8 +37,8 @@ def find_binary():
 
 def find_whisper(cache_dir):
     cands = []
-    for d in [cache_dir, os.environ.get("CRISPASR_TEST_CACHE"), os.environ.get("CRISPASR_MODELS_DIR"),
-              os.path.expanduser("~/.cache/crispasr")]:
+    for d in [cache_dir, os.environ.get("STELNETTTS_TEST_CACHE"), os.environ.get("STELNETTTS_MODELS_DIR"),
+              os.path.expanduser("~/.cache/stelnettts")]:
         if d and os.path.isdir(d):
             for f in os.listdir(d):
                 if f.startswith("ggml-") and f.endswith(".bin"):
@@ -112,7 +112,7 @@ def read_server_frames(sock, timeout=4.0):
 
 def main():
     port = 11520
-    cache_dir = os.environ.get("CRISPASR_TEST_CACHE", "")
+    cache_dir = os.environ.get("STELNETTTS_TEST_CACHE", "")
     args = sys.argv[1:]
     for i, a in enumerate(args):
         if a == "--port" and i + 1 < len(args):
@@ -126,11 +126,11 @@ def main():
 
     binary = find_binary()
     if not binary:
-        print("SKIP: crispasr binary not found")
+        print("SKIP: stelnettts binary not found")
         return 0
     model = find_whisper(cache_dir)
     if not model:
-        print("SKIP: no whisper ggml-*.bin found (set CRISPASR_TEST_CACHE / CRISPASR_MODELS_DIR)")
+        print("SKIP: no whisper ggml-*.bin found (set STELNETTTS_TEST_CACHE / STELNETTTS_MODELS_DIR)")
         return 0
     sample = os.path.join(ROOT, "samples/jfk.wav")
     if not os.path.isfile(sample):

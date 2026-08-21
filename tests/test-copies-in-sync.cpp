@@ -1,7 +1,7 @@
 // test-copies-in-sync.cpp — every duplicated implementation must not drift.
 //
-// `crisp_punc/src/fireredpunc.cpp` is the shared library CrispASR normally links
-// (and CrispEmbed consumes via add_subdirectory). `src/fireredpunc.cpp` is the
+// `crisp_punc/src/fireredpunc.cpp` is the shared library StelnetTTS normally links
+// (and StelnetEmbed consumes via add_subdirectory). `src/fireredpunc.cpp` is the
 // fallback src/CMakeLists.txt builds when the crisp_punc/ directory is absent
 // from a checkout. They are the same implementation twice.
 //
@@ -36,8 +36,8 @@
 #include <sstream>
 #include <string>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
@@ -70,7 +70,7 @@ const Pair kPairs[] = {
     {"/crisp_punc/src/pcs.cpp", "/src/pcs.cpp", "#include \"crisp_punc.h\"", "#include \"pcs.h\"",
      "each copy includes its own public header"},
 
-    // crisp_lid. The shared copies must compile inside CrispEmbed too, hence
+    // crisp_lid. The shared copies must compile inside StelnetEmbed too, hence
     // the two structural allowances below; everything else must match.
     // Both copies declare `core_gguf::tensor_map`, which is what gguf_loader.h
     // asks for ("each repo's copy declares core_gguf::tensor_map so it tracks",
@@ -80,9 +80,9 @@ const Pair kPairs[] = {
     {"/crisp_lid/src/lid_fasttext.cpp", "/src/lid_fasttext.cpp", nullptr, nullptr, nullptr},
     {"/crisp_lid/src/lid_cld3.h", "/src/lid_cld3.h", nullptr, nullptr, nullptr},
     {"/crisp_lid/src/lid_fasttext.h", "/src/lid_fasttext.h", nullptr, nullptr, nullptr},
-    // The shared copy wraps its CrispASR-only includes in #ifdef CRISPASR_BUILD
-    // so it also compiles inside CrispEmbed. src/CMakeLists.txt:2425 defines
-    // CRISPASR_BUILD for the fallback target, so those guards are a no-op there
+    // The shared copy wraps its StelnetTTS-only includes in #ifdef STELNETTTS_BUILD
+    // so it also compiles inside StelnetEmbed. src/CMakeLists.txt:2425 defines
+    // STELNETTTS_BUILD for the fallback target, so those guards are a no-op there
     // — the copies are kept byte-identical rather than normalised apart.
     {"/crisp_lid/src/text_lid_dispatch.cpp", "/src/text_lid_dispatch.cpp", nullptr, nullptr, nullptr},
     {"/crisp_lid/src/text_lid_dispatch.h", "/src/text_lid_dispatch.h", nullptr, nullptr, nullptr},
@@ -119,7 +119,7 @@ size_t first_differing_line(const std::string& a, const std::string& b) {
 } // namespace
 
 TEST_CASE("every duplicated implementation is in sync", "[unit][punc]") {
-    const std::string root = CRISPASR_SOURCE_DIR;
+    const std::string root = STELNETTTS_SOURCE_DIR;
     for (const Pair& p : kPairs) {
         INFO("pair: " << p.shared << "  vs  " << p.fallback);
         const std::string shared = normalize(read_file(root + p.shared), p);
@@ -142,7 +142,7 @@ TEST_CASE("the sync list covers every file that exists twice", "[unit][punc]") {
     // duplicated file added without an entry would be silently unguarded, which
     // is the bug this whole test exists for. Cross-check it against the
     // directories rather than trusting it.
-    const std::string root = CRISPASR_SOURCE_DIR;
+    const std::string root = STELNETTTS_SOURCE_DIR;
     for (const char* dir : {"crisp_punc", "crisp_lid", "crisp_truecase"}) {
         const std::filesystem::path shared_dir = std::filesystem::path(root) / dir / "src";
         if (!std::filesystem::exists(shared_dir))
@@ -170,7 +170,7 @@ TEST_CASE("both copies carry the #308 capitalisation guard", "[unit][punc]") {
     // divergence by deleting the guard from both, identity still passes. This
     // pins the behaviour itself — an already-uppercase letter must satisfy the
     // pending capitalisation.
-    const std::string root = CRISPASR_SOURCE_DIR;
+    const std::string root = STELNETTTS_SOURCE_DIR;
     for (const char* rel : {"/crisp_punc/src/fireredpunc.cpp", "/src/fireredpunc.cpp"}) {
         const std::string src = read_file(root + rel);
         INFO("file: " << rel);

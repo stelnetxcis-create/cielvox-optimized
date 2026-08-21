@@ -1,4 +1,4 @@
-"""Decode CrispASR's saved per-frame latents through the official VibeVoice
+"""Decode StelnetTTS's saved per-frame latents through the official VibeVoice
 acoustic decoder. If the click is in our decoder, this run produces clean
 output; if the click is in our latents, this run reproduces it.
 

@@ -18,8 +18,8 @@
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
 #include "core/torch_rng.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -47,7 +47,7 @@
 static bool kugelaudio_debug_enabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* e = crispasr_env::get("CRISPASR_KUGELAUDIO_DEBUG");
+        const char* e = stelnettts_env::get("STELNETTTS_KUGELAUDIO_DEBUG");
         cached = (e && (e[0] == '1' || e[0] == 't' || e[0] == 'T')) ? 1 : 0;
     }
     return cached != 0;
@@ -305,7 +305,7 @@ struct kugelaudio_context {
     int n_voice_frames = 0;
 
     // RNG for diffusion noise
-    crispasr::core::mt19937_state rng;
+    stelnettts::core::mt19937_state rng;
 };
 
 // ── Tensor lookup helpers ──────────────────────────────────────────────────
@@ -349,7 +349,7 @@ extern "C" void kugelaudio_set_seed(struct kugelaudio_context* ctx, uint32_t see
         return;
     ctx->params.seed = seed;
     if (seed != 0)
-        crispasr::core::mt19937_seed(ctx->rng, seed);
+        stelnettts::core::mt19937_seed(ctx->rng, seed);
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -436,7 +436,7 @@ extern "C" struct kugelaudio_context* kugelaudio_init_from_file(const char* path
     }
 
     // ── Backend init ────────────────────────────────────────────────────
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -503,7 +503,7 @@ extern "C" struct kugelaudio_context* kugelaudio_init_from_file(const char* path
     }
 
     // Init RNG
-    crispasr::core::mt19937_seed(ctx->rng, params.seed != 0 ? params.seed : (uint32_t)time(nullptr));
+    stelnettts::core::mt19937_seed(ctx->rng, params.seed != 0 ? params.seed : (uint32_t)time(nullptr));
 
     if (params.verbosity >= 1) {
         fprintf(stderr, "kugelaudio: loaded %zu tensors (backend: %s)\n", m.tensors.size(),
@@ -1558,7 +1558,7 @@ extern "C" float* kugelaudio_synthesize(struct kugelaudio_context* ctx, const ch
             int vae_dim = hp.vae_dim_acoustic;
 
             std::vector<float> speech(vae_dim);
-            crispasr::core::fill_gaussian_noise(speech.data(), vae_dim, ctx->rng);
+            stelnettts::core::fill_gaussian_noise(speech.data(), vae_dim, ctx->rng);
 
             // DPM-Solver++ SDE loop
             std::vector<float> x0_prev(vae_dim, 0.0f);
@@ -1605,7 +1605,7 @@ extern "C" float* kugelaudio_synthesize(struct kugelaudio_context* ctx, const ch
 
                 // Generate noise for SDE
                 std::vector<float> noise(vae_dim);
-                crispasr::core::fill_gaussian_noise(noise.data(), vae_dim, ctx->rng);
+                stelnettts::core::fill_gaussian_noise(noise.data(), vae_dim, ctx->rng);
 
                 // DPM-Solver step
                 bool is_last = (si == tts_steps - 1);

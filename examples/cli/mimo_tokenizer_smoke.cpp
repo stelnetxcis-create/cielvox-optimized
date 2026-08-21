@@ -8,7 +8,7 @@
 //   mimo-tokenizer-smoke <model.gguf> <audio.wav>
 
 #include "mimo_tokenizer.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 #include "core/win_compat.h"
 
 #include <algorithm>
@@ -18,7 +18,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 namespace {
 
@@ -68,9 +68,9 @@ int main(int argc, char** argv) {
     cp.n_threads = 4;
     cp.verbosity = 1;
     // CPU-pin until the Metal conv-stem watchdog hang is verified absent on
-    // forward conv (cf. qwen3-tts kernel_conv_transpose_1d). Set
+    // forward conv (cf. cielvox2-tts kernel_conv_transpose_1d). Set
     // MIMO_SMOKE_GPU=1 to exercise the GPU path.
-    cp.use_gpu = crispasr_env::get("CRISPASR_MIMO_SMOKE_GPU") != nullptr;
+    cp.use_gpu = stelnettts_env::get("STELNETTTS_MIMO_SMOKE_GPU") != nullptr;
     mimo_tokenizer_context* ctx = mimo_tokenizer_init_from_file(model_path, cp);
     if (!ctx) {
         fprintf(stderr, "smoke: failed to load tokenizer '%s'\n", model_path);
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
         else
             n_pass++;
         printf("%s %-22s n=%-8d min=%-12.4f max=%-12.4f mean=%-12.4f\n", tag, stage, n, s.min_v, s.max_v, s.mean);
-        if (crispasr_env::get("CRISPASR_MIMO_SMOKE_DUMP")) {
+        if (stelnettts_env::get("STELNETTTS_MIMO_SMOKE_DUMP")) {
             char path[256];
             std::snprintf(path, sizeof(path), "/tmp/mimo_cpp_%s.bin", stage);
             FILE* f = std::fopen(path, "wb");
@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
         }
         std::free(data);
     }
-    if (crispasr_env::truthy("CRISPASR_MIMO_TOK_VERIFY_RVQ")) {
-        constexpr const char* kCpuRvqEnv = "CRISPASR_MIMO_TOK_CPU_RVQ";
+    if (stelnettts_env::truthy("STELNETTTS_MIMO_TOK_VERIFY_RVQ")) {
+        constexpr const char* kCpuRvqEnv = "STELNETTTS_MIMO_TOK_CPU_RVQ";
         const char* old_value_ptr = std::getenv(kCpuRvqEnv);
         const bool had_old_value = old_value_ptr != nullptr;
         const std::string old_value = old_value_ptr ? old_value_ptr : "";

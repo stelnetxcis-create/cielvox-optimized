@@ -2,13 +2,13 @@
 // metal_pipeline_cache_policy.h — bound the cost of ggml-metal's persistent
 // MTLBinaryArchive pipeline cache before the Metal device is initialised.
 //
-// WHY (CrispEmbed T18/G4, measured 2026-08-05, M1 16 GB; logic synced from
-// CrispEmbed's copy of this header — pcs.cpp rule, logic not bytes):
+// WHY (StelnetEmbed T18/G4, measured 2026-08-05, M1 16 GB; logic synced from
+// StelnetEmbed's copy of this header — pcs.cpp rule, logic not bytes):
 //   ggml carries our patch (PLAN #88) that opens a per-device MTLBinaryArchive
 //   at `~/Library/Caches/ggml-metal/<device>.archive` so PSO creation can hit a
 //   serialised pipeline instead of the shader compiler. That archive is
 //   APPEND-ONLY across every engine and every binary that ever ran on the box
-//   — CrispASR binaries exit normally, so unlike CrispEmbed's `_exit()`ing
+//   — StelnetTTS binaries exit normally, so unlike StelnetEmbed's `_exit()`ing
 //   one-shots they flush on EVERY CLI run and grow it. On the shared dev box
 //   it had reached 683 MB; opening it costs ~1 ms/MB of fixed init, and the
 //   full-size archive bought nothing measurable on first encode (macOS keeps
@@ -23,7 +23,7 @@
 //   are left alone: the pathology is unbounded growth, not the mechanism.
 //
 // GATES:
-//   CRISPASR_METAL_PIPELINE_CACHE_MAX_MB=<N>  cap in MB (default 64).
+//   STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB=<N>  cap in MB (default 64).
 //                                             0 = uncapped = legacy behaviour.
 //   GGML_METAL_PIPELINE_CACHE=<dir>           ggml's own cache-dir override,
 //                                             honoured here too.
@@ -55,7 +55,7 @@ namespace core_metal_cache {
 #if defined(__APPLE__)
 
 inline long long cap_bytes() {
-    const char* e = std::getenv("CRISPASR_METAL_PIPELINE_CACHE_MAX_MB");
+    const char* e = std::getenv("STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB");
     long long mb = 64; // default cap
     if (e && e[0]) {
         char* end = nullptr;
@@ -133,9 +133,9 @@ inline bool apply() {
     setenv("GGML_METAL_PIPELINE_CACHE_DISABLE", "1", 1);
     disabled = true;
     fprintf(stderr,
-            "crispasr: Metal pipeline-cache archive is %.0f MB (> %.0f MB cap) — skipping it; opening it costs "
+            "stelnettts: Metal pipeline-cache archive is %.0f MB (> %.0f MB cap) — skipping it; opening it costs "
             "~1 ms/MB of fixed init. Delete %s to reclaim the disk, or set "
-            "CRISPASR_METAL_PIPELINE_CACHE_MAX_MB=0 to use it anyway.\n",
+            "STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB=0 to use it anyway.\n",
             (double)sz / (1024.0 * 1024.0), (double)cap / (1024.0 * 1024.0),
             path.empty() ? "the archive" : path.c_str());
     return true;

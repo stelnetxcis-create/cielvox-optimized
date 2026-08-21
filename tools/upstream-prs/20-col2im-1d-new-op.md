@@ -11,7 +11,7 @@ strategy to patching the monolithic kernel.
 
 ## What this is
 
-`GGML_OP_COL2IM_1D` (CrispASR-local, PR #160) is the inverse-of-`im2col`
+`GGML_OP_COL2IM_1D` (StelnetTTS-local, PR #160) is the inverse-of-`im2col`
 gather that completes a transposed 1-D convolution expressed as a GEMM:
 
 ```
@@ -112,7 +112,7 @@ later with the dst-stays-F32 contract and CPU/Vulkan parity in the same PR.)
 
 ## Code provenance
 
-CrispASR's own op (PR #160). CPU forward, Metal/CUDA/Vulkan kernels, and the
+StelnetTTS's own op (PR #160). CPU forward, Metal/CUDA/Vulkan kernels, and the
 `convt1d_decomp` callers are ours. No upstream conflict (new op + new enum
 slot). Like #07, expect more review surface than a perf patch — open as
 `[RFC]` for an op-shape ack first, with cross-backend forwards (or a clean

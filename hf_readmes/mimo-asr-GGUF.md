@@ -16,7 +16,7 @@ base_model: XiaomiMiMo/MiMo-V2.5-ASR
 
 # MiMo-V2.5-ASR — GGUF
 
-GGUF conversion of [`XiaomiMiMo/MiMo-V2.5-ASR`](https://huggingface.co/XiaomiMiMo/MiMo-V2.5-ASR) for **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**. Pure C++ inference — no Python, no Transformers, runs on Apple Silicon (Metal), CPU, and CUDA.
+GGUF conversion of [`XiaomiMiMo/MiMo-V2.5-ASR`](https://huggingface.co/XiaomiMiMo/MiMo-V2.5-ASR) for **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**. Pure C++ inference — no Python, no Transformers, runs on Apple Silicon (Metal), CPU, and CUDA.
 
 The runtime is functional end-to-end: greedy decode through the 36-layer Qwen2 LM, full prefill + step-decode KV-cached graphs, prompt construction matching the upstream `MimoAudio.asr_sft` reference exactly. JFK transcription test passes verbatim.
 
@@ -27,9 +27,9 @@ The runtime is functional end-to-end: greedy decode through the 36-layer Qwen2 L
 | `mimo-asr-f16.gguf` | F16 | 14.9 GB | separate Q/K/V | Full precision; needs ~16 GB RAM during inference |
 | `mimo-asr-q4_k.gguf` | Q4_K | 4.2 GB | **fused QKV** | **Default** — fits in 8 GB RAM, no quality loss visible on JFK |
 
-The default `mimo-asr-q4_k.gguf` (re-uploaded May 2026, PLAN #60d) ships with per-LM-layer Q/K/V projections fused into a single `model.layers.{i}.attn.qkv.{weight,bias}` tensor pair, yielding ~1.7× faster per-step decode on M1 vs the prior unfused layout (3058 ms/step → 1806 ms/step on a contended-disk run; ~1.1-1.2× pure-compute on a quiet box). The CrispASR runtime auto-detects either layout: the F16 file above keeps working unchanged via the separate-Q/K/V fallback path. Re-upload of a fused F16 is queued behind disk-headroom availability.
+The default `mimo-asr-q4_k.gguf` (re-uploaded May 2026, PLAN #60d) ships with per-LM-layer Q/K/V projections fused into a single `model.layers.{i}.attn.qkv.{weight,bias}` tensor pair, yielding ~1.7× faster per-step decode on M1 vs the prior unfused layout (3058 ms/step → 1806 ms/step on a contended-disk run; ~1.1-1.2× pure-compute on a quiet box). The StelnetTTS runtime auto-detects either layout: the F16 file above keeps working unchanged via the separate-Q/K/V fallback path. Re-upload of a fused F16 is queued behind disk-headroom availability.
 
-Pair with **[`cstr/mimo-tokenizer-GGUF`](https://huggingface.co/cstr/mimo-tokenizer-GGUF)** — the audio tokenizer is a separate model that converts 16 kHz PCM → 8-channel RVQ codes that this LM consumes.
+Pair with **[`Xenna/mimo-tokenizer-GGUF`](https://huggingface.co/Xenna/mimo-tokenizer-GGUF)** — the audio tokenizer is a separate model that converts 16 kHz PCM → 8-channel RVQ codes that this LM consumes.
 
 ## Architecture
 
@@ -40,21 +40,21 @@ Pair with **[`cstr/mimo-tokenizer-GGUF`](https://huggingface.co/cstr/mimo-tokeni
 - **Languages** — Mandarin (with Wu / Cantonese / Hokkien / Sichuanese dialect support), English, code-switching
 - **License** — MIT (matches upstream)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Build (one-time)
-git clone https://github.com/CrispStrobe/CrispASR.git
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS.git
+cd StelnetTTS
 cmake -B build-ninja-compile -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-ninja-compile --target crispasr-lib
+cmake --build build-ninja-compile --target stelnettts-lib
 
 # Download both halves
-hf download cstr/mimo-asr-GGUF mimo-asr-q4_k.gguf --local-dir models/
-hf download cstr/mimo-tokenizer-GGUF mimo-tokenizer-q4_k.gguf --local-dir models/
+hf download Xenna/mimo-asr-GGUF mimo-asr-q4_k.gguf --local-dir models/
+hf download Xenna/mimo-tokenizer-GGUF mimo-tokenizer-q4_k.gguf --local-dir models/
 
 # Transcribe
-build-ninja-compile/bin/crispasr \
+build-ninja-compile/bin/stelnettts \
   --backend mimo-asr \
   -m models/mimo-asr-q4_k.gguf \
   --codec-model models/mimo-tokenizer-q4_k.gguf \
@@ -83,7 +83,7 @@ On Apple M1, Metal backend, Q4_K, warm-cache:
 | Step decode (~25 tokens) | ~20 s with the fused-QKV file (≈0.8 s/token; was ~30 s pre-fusion) |
 | **End-to-end** | **~25-30 s for 11 s audio (~0.4× realtime)** |
 
-Per-step decode is the bottleneck; PLAN #60d (May 2026) fused the per-LM-layer Q/K/V projections into one matmul, replacing 3 mul_mat + 3 ggml_add per layer × 36 layers with 1 + 1, for a measured ~1.7× speedup at the same disk-pressure level. KV cache reuse via cached step graphs (PLAN #51b') is also live. Future perf wins: F16 with fused QKV (queued behind disk headroom), `CRISPASR_KV_QUANT=q8_0` for hour-long inputs (PLAN #60e env-flag is already plumbed; default stays F16 until per-backend rollout completes).
+Per-step decode is the bottleneck; PLAN #60d (May 2026) fused the per-LM-layer Q/K/V projections into one matmul, replacing 3 mul_mat + 3 ggml_add per layer × 36 layers with 1 + 1, for a measured ~1.7× speedup at the same disk-pressure level. KV cache reuse via cached step graphs (PLAN #51b') is also live. Future perf wins: F16 with fused QKV (queued behind disk headroom), `STELNETTTS_KV_QUANT=q8_0` for hour-long inputs (PLAN #60e env-flag is already plumbed; default stays F16 until per-backend rollout completes).
 
 ## Validation
 
@@ -109,7 +109,7 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONUNBUFFERED=1 \
     --output mimo-asr-f16.gguf \
     --outtype f16
 
-build-ninja-compile/bin/crispasr-quantize \
+build-ninja-compile/bin/stelnettts-quantize \
   mimo-asr-f16.gguf mimo-asr-q4_k.gguf q4_k
 ```
 

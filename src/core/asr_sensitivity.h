@@ -6,7 +6,7 @@
 // read the decoder, and tuning them one at a time is how you end up with a
 // combination nobody has tried — raise `no_speech_thold` alone and you suppress
 // the very fallback that `logprob_thold` was supposed to trigger, because
-// crispasr.cpp:8499 requires BOTH to be crossed before a decode is retried.
+// stelnettts.cpp:8499 requires BOTH to be crossed before a decode is retried.
 //
 // This maps a name to a coherent set. It is presentation only: nothing here
 // changes decoder behaviour that the four knobs could not already express, and
@@ -28,7 +28,7 @@ struct Thresholds {
     float temperature_inc;
 };
 
-// The shipped defaults (crispasr.cpp:6523-6526). `balanced` is exactly this, so
+// The shipped defaults (stelnettts.cpp:6523-6526). `balanced` is exactly this, so
 // naming it is always a no-op — that is the point: it gives a user a word for
 // "leave it alone" and a fixed point to compare the other two against.
 inline Thresholds defaults() {

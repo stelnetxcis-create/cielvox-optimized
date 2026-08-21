@@ -19,7 +19,7 @@ base_model: kyutai/stt-1b-en_fr
 
 # Kyutai STT 1B (en/fr) -- GGUF
 
-GGUF conversions and quantisations of [`kyutai/stt-1b-en_fr`](https://huggingface.co/kyutai/stt-1b-en_fr) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`kyutai/stt-1b-en_fr`](https://huggingface.co/kyutai/stt-1b-en_fr) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -42,22 +42,22 @@ All variants produce correct transcription on test audio (JFK speech).
 
 This is a novel **codec-based** ASR architecture: audio is first encoded into discrete tokens via the Mimi neural audio codec, then a causal language model autoregressively predicts text tokens from the audio codes. Unlike encoder-decoder models (Whisper, Parakeet), the entire pipeline is autoregressive.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR && cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS && cd StelnetTTS
 cmake -S . -B build && cmake --build build -j8
 
 # Auto-detect backend from GGUF
-./build/bin/crispasr -m kyutai-stt-1b-q4_k.gguf -f audio.wav
+./build/bin/stelnettts -m kyutai-stt-1b-q4_k.gguf -f audio.wav
 
 # Explicit backend
-./build/bin/crispasr --backend kyutai-stt -m kyutai-stt-1b-q4_k.gguf -f audio.wav -osrt
+./build/bin/stelnettts --backend kyutai-stt -m kyutai-stt-1b-q4_k.gguf -f audio.wav -osrt
 ```
 
 ## Conversion
 
 ```bash
 python models/convert-kyutai-stt-to-gguf.py --input kyutai/stt-1b-en_fr --output kyutai-stt-1b.gguf
-crispasr-quantize kyutai-stt-1b.gguf kyutai-stt-1b-q4_k.gguf q4_k
+stelnettts-quantize kyutai-stt-1b.gguf kyutai-stt-1b-q4_k.gguf q4_k
 ```

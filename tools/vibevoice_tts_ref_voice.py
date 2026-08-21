@@ -2,13 +2,13 @@
 """With-voice Python reference for VibeVoice-Realtime-0.5B TTS.
 
 Loads model weights from the original safetensors (F32), the voice prompt
-from a CrispASR voice .gguf (F16 KV caches), and reproduces the same
+from a StelnetTTS voice .gguf (F16 KV caches), and reproduces the same
 text-window / speech-window interleaving the C++ runtime does. Dumps
-frame-0 stages so they can be compared to crispasr's VIBEVOICE_TTS_DUMP
+frame-0 stages so they can be compared to stelnettts's VIBEVOICE_TTS_DUMP
 output via tools/diff_vibevoice_tts.py.
 
 This covers the path the user actually exercises:
-  crispasr --tts "..." -m vibevoice-realtime-...gguf --voice <voice.gguf>
+  stelnettts --tts "..." -m vibevoice-realtime-...gguf --voice <voice.gguf>
 
 Stages dumped:
   text_token_ids.bin         int32  tokens (with trailing \\n, matching C++)

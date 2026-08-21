@@ -1,7 +1,7 @@
 // CREPE live integration test — model load + monophonic F0 estimation.
 //
-// Requires CRISPASR_MODEL_CREPE to point at a CREPE GGUF (see
-// cstr/crepe-GGUF: crepe-{tiny,full}-{f16,q8_0,q4_k}.gguf). Skips cleanly
+// Requires STELNETTTS_MODEL_CREPE to point at a CREPE GGUF (see
+// Xenna/crepe-GGUF: crepe-{tiny,full}-{f16,q8_0,q4_k}.gguf). Skips cleanly
 // when the model is not available, so the suite stays green without models.
 //
 // This is the ctest-registered gate. It is NOT a replacement for
@@ -52,13 +52,13 @@ double median_f0(const std::vector<crepe_frame>& frames, float min_conf) {
 } // namespace
 
 TEST_CASE("crepe pitch estimation", "[integration][crepe]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_CREPE");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_CREPE");
     if (!model_path || !*model_path)
-        SKIP("CRISPASR_MODEL_CREPE not set");
+        SKIP("STELNETTTS_MODEL_CREPE not set");
 
     crepe_context* ctx = crepe_init(model_path, 4);
     if (!ctx)
-        SKIP("CRISPASR_MODEL_CREPE set but the model failed to load");
+        SKIP("STELNETTTS_MODEL_CREPE set but the model failed to load");
 
     const std::string capacity = crepe_capacity(ctx);
     CHECK((capacity == "tiny" || capacity == "full"));

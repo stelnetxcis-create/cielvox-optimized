@@ -1,12 +1,12 @@
 """
-CrispASR — mimo-asr CPU-path validation (PLAN #115)
+StelnetTTS — mimo-asr CPU-path validation (PLAN #115)
 
 Question: on current main, mimo-asr produces zero output on JFK (11 s) on
 M1 Metal and segfaults on a 5 min clip. The smoking-gun commit by
 inspection is `89111260` ("perf #72: load weights to GPU when use_gpu=true")
 which flipped `core_gguf::load_weights(..., ctx->backend_cpu, ...)` to
 `..., ctx->backend, ...`. That commit's own message foresees the regression:
-"If a platform regresses, add a CRISPASR_FORCE_CPU_WEIGHTS=1 escape hatch
+"If a platform regresses, add a STELNETTTS_FORCE_CPU_WEIGHTS=1 escape hatch
 — none seen yet." Now we have one.
 
 We can't safely repro on the local M1 box (4.5 GB CPU mimo Q4_K + already
@@ -25,7 +25,7 @@ Ask what you can do for your country."
 All build-speed + reporting plumbing now comes from the shared harness
 tools/kaggle/kaggle_harness.py (imported right after the clone), which is
 the union of the best parts of the per-kernel copies:
-  - kh.step() / progress.jsonl + HF mirror at cstr/crispasr-kaggle-progress
+  - kh.step() / progress.jsonl + HF mirror at Xenna/stelnettts-kaggle-progress
   - kh.sh_with_progress() Popen-based build streamer + ninja [X/N] parsing
   - kh.build_heartbeat() ticker (now also reports VmRSS + free disk) so
     cmake/ninja hangs — and the climbing-RSS OOM signature — show in
@@ -34,7 +34,7 @@ the union of the best parts of the per-kernel copies:
     ccache (primed at /kaggle/working/.ccache, persisted across runs) +
     mold linker, so re-runs reuse cached objects and link faster
   - kh.resolve_hf_token(): 3-tier auth env → Kaggle Secret (retry) →
-    chr1str/crispasr-hf-token dataset (kernel-metadata.json:dataset_sources)
+    chr1str/stelnettts-hf-token dataset (kernel-metadata.json:dataset_sources)
 """
 
 import os
@@ -44,7 +44,7 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
 SAMPLE = WORK / "jfk.wav"
@@ -58,7 +58,7 @@ _T0 = time.time()
 # ccache/mold build toolchain. It lives inside the repo, so it can only be
 # imported after the clone. Until then we have a single minimal inline
 # helper for the pre-clone span.
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 
 
 def _sh_preclone(cmd: str) -> None:
@@ -66,11 +66,11 @@ def _sh_preclone(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print("[pre-clone] cloning CrispASR for shared harness", flush=True)
+print("[pre-clone] cloning StelnetTTS for shared harness", flush=True)
 if not REPO.exists():
     _sh_preclone(
-        f"git clone --depth 1 --branch {CRISPASR_REF} "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO}"
     )
 else:
     _sh_preclone(f"git -C {REPO} pull --ff-only")
@@ -89,13 +89,13 @@ else:
 kh.step("script.start")
 
 # Branch-parametrized so re-runs against fixes are one env var away.
-# (CRISPASR_REF was read before the clone above so the harness could be
+# (STELNETTTS_REF was read before the clone above so the harness could be
 # imported; the repo is already checked out at this ref.)
 EXPECTED_JFK = "ask not what your country can do for you"
 
 # ── Step 1: record cloned SHA (clone happened pre-import, above) ──────────
 
-kh.step("clone.done.ref", ref=CRISPASR_REF)
+kh.step("clone.done.ref", ref=STELNETTTS_REF)
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 kh.step("clone.done", sha=sha)
 
@@ -116,7 +116,7 @@ cmake_cmd = (
     f"cmake {REPO} -B{BUILD} -GNinja "
     "-DCMAKE_BUILD_TYPE=Release "
     "-DBUILD_SHARED_LIBS=ON "
-    "-DCRISPASR_BUILD_TESTS=OFF "
+    "-DSTELNETTTS_BUILD_TESTS=OFF "
     + " ".join(kh.cache_and_link_flags())
 )
 njobs = kh.safe_build_jobs(gpu=False)
@@ -125,10 +125,10 @@ with kh.build_heartbeat("cmake-configure"):
 kh.step("build.configured")
 with kh.build_heartbeat("cmake-build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}"
     )
-CRISPASR = BUILD / "bin" / "crispasr"
-assert CRISPASR.is_file(), f"crispasr binary missing at {CRISPASR}"
+CRISPASR = BUILD / "bin" / "stelnettts"
+assert CRISPASR.is_file(), f"stelnettts binary missing at {CRISPASR}"
 kh.step("build.done", binary=str(CRISPASR))
 
 # ── Step 3: download mimo-asr + tokenizer ─────────────────────────────────
@@ -140,8 +140,8 @@ kh.sh_with_progress("pip install -q huggingface_hub hf_transfer")
 from huggingface_hub import hf_hub_download
 
 for repo_id, fname in [
-    ("cstr/mimo-asr-GGUF", "mimo-asr-q4_k.gguf"),
-    ("cstr/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf"),
+    ("Xenna/mimo-asr-GGUF", "mimo-asr-q4_k.gguf"),
+    ("Xenna/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf"),
 ]:
     kh.step(f"download.{fname}.begin", repo=repo_id)
     p = hf_hub_download(repo_id=repo_id, filename=fname, local_dir=str(MODELS), local_dir_use_symlinks=False)

@@ -5,7 +5,7 @@
 //   {"text": "...", "t0": 0.0, "t1": 1.5, "counter": 1}
 //
 // Uses raw POSIX/Winsock sockets. No external dependencies beyond the
-// C standard library and the crispasr Session API.
+// C standard library and the stelnettts Session API.
 //
 // Usage from the HTTP server main():
 //   ws_stream_start(ctx, ws_port, params);  // spawns listener thread
@@ -17,22 +17,22 @@
 extern "C" {
 #endif
 
-// Forward-declare Session API (exported by libcrispasr)
+// Forward-declare Session API (exported by libstelnettts)
 struct CrispasrSession;
 struct CrispasrStream;
-struct CrispasrSession* crispasr_session_open(const char* model_path, int n_threads);
-void crispasr_session_close(struct CrispasrSession* s);
-struct CrispasrStream* crispasr_session_stream_open(struct CrispasrSession* s, int n_threads,
+struct CrispasrSession* stelnettts_session_open(const char* model_path, int n_threads);
+void stelnettts_session_close(struct CrispasrSession* s);
+struct CrispasrStream* stelnettts_session_stream_open(struct CrispasrSession* s, int n_threads,
                                                      int step_ms, int length_ms, int keep_ms,
                                                      const char* language, int translate);
-int crispasr_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
-int crispasr_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap,
+int stelnettts_stream_feed(struct CrispasrStream* s, const float* pcm, int n_samples);
+int stelnettts_stream_get_text(struct CrispasrStream* s, char* out_text, int out_cap,
                               double* out_t0_s, double* out_t1_s, long long* out_counter);
-int crispasr_stream_flush(struct CrispasrStream* s);
-void crispasr_stream_close(struct CrispasrStream* s);
+int stelnettts_stream_flush(struct CrispasrStream* s);
+void stelnettts_stream_close(struct CrispasrStream* s);
 
 // Start the WebSocket listener thread on `port`. `model_path` is used
-// to create per-connection crispasr sessions. Returns 0 on success.
+// to create per-connection stelnettts sessions. Returns 0 on success.
 int ws_stream_start(const char* model_path, int port, int n_threads);
 
 // Stop the listener and join the thread. Safe to call multiple times.

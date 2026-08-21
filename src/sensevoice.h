@@ -5,7 +5,7 @@
 // same SenseVoiceEncoderSmall topology as Fun-ASR-Nano-2512 but with an
 // attached CTC head instead of an LLM decoder.
 //
-// Upstream SenseVoice is also an emotion classifier. CrispASR does not
+// Upstream SenseVoice is also an emotion classifier. StelnetTTS does not
 // expose that output — see the note on `sensevoice_result` below.
 //
 // Architecture (matches funasr/models/sense_voice/model.py exactly):
@@ -96,7 +96,7 @@ char* sensevoice_transcribe(struct sensevoice_context* ctx, const float* samples
 // is PROHIBITED in workplace and education settings (Art. 5(1)(f), in force
 // since 2 Feb 2025) and otherwise HIGH-RISK (Annex III(1)(c)) — and the AI
 // Act's open-source exemption (Art. 2(12)) does not cover either category.
-// CrispASR does not ship the capability at all, so no configuration of it is
+// StelnetTTS does not ship the capability at all, so no configuration of it is
 // an emotion recognition system. See docs/eu-ai-act.md. Do not re-add this
 // field; the regression guard is tests/test-no-emotion-recognition.cpp.
 struct sensevoice_result {
@@ -106,7 +106,7 @@ struct sensevoice_result {
     char* text;        // transcript with the prefix stripped
     // Unfiltered model output, annotation prefix included — so it still carries
     // the raw `<|HAPPY|>` token. It exists ONLY for byte-exact parity against
-    // the FunASR reference in the diff harness; nothing in CrispASR surfaces it
+    // the FunASR reference in the diff harness; nothing in StelnetTTS surfaces it
     // and nothing should. Use `text`.
     char* raw;
 };

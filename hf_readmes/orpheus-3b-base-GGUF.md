@@ -14,19 +14,19 @@ tags:
 - llama
 - snac
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # [DEPRECATED] Orpheus 3B — GGUF (ggml-quantised)
 
-> **This repo is deprecated.** Use [`cstr/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/cstr/orpheus-3b-0.1-ft-GGUF) instead — it has F16 + Q8_0 + Q4_K quants plus the diff-harness reference file. CrispASR's model registry and auto-download now point there.
+> **This repo is deprecated.** Use [`Xenna/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/Xenna/orpheus-3b-0.1-ft-GGUF) instead — it has F16 + Q8_0 + Q4_K quants plus the diff-harness reference file. StelnetTTS's model registry and auto-download now point there.
 
-GGUF / ggml conversion of [`canopylabs/orpheus-3b-0.1-ft`](https://huggingface.co/canopylabs/orpheus-3b-0.1-ft) (sourced via the non-gated [`unsloth/orpheus-3b-0.1-ft`](https://huggingface.co/unsloth/orpheus-3b-0.1-ft) mirror) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`canopylabs/orpheus-3b-0.1-ft`](https://huggingface.co/canopylabs/orpheus-3b-0.1-ft) (sourced via the non-gated [`unsloth/orpheus-3b-0.1-ft`](https://huggingface.co/unsloth/orpheus-3b-0.1-ft) mirror) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Orpheus 3B is a Llama-3.2-3B-Instruct talker finetuned to emit `<custom_token_N>` codec tokens that the SNAC 24 kHz codec decodes back to speech. Distributed under the **Llama-3.2 community license** ("Built with Llama"). 8 fixed English speakers (`tara, leah, jess, leo, dan, mia, zac, zoe`).
 
-Pair this with the SNAC codec at [`cstr/snac-24khz-GGUF`](https://huggingface.co/cstr/snac-24khz-GGUF) — the talker outputs codec tokens but doesn't render audio without it.
+Pair this with the SNAC codec at [`Xenna/snac-24khz-GGUF`](https://huggingface.co/Xenna/snac-24khz-GGUF) — the talker outputs codec tokens but doesn't render audio without it.
 
 ## Files
 
@@ -40,18 +40,18 @@ The talker LM is sensitive to peaked codec distributions, so we ship F16 + Q8_0 
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-lib
+cmake --build build -j --target stelnettts-lib
 
 # 2. Pull the talker + the SNAC codec
-huggingface-cli download cstr/orpheus-3b-base-GGUF orpheus-3b-base-q8_0.gguf --local-dir .
-huggingface-cli download cstr/snac-24khz-GGUF snac-24khz.gguf --local-dir .
+huggingface-cli download Xenna/orpheus-3b-base-GGUF orpheus-3b-base-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/snac-24khz-GGUF snac-24khz.gguf --local-dir .
 
 # 3. Synthesise
-./build/bin/crispasr --backend orpheus \
+./build/bin/stelnettts --backend orpheus \
     -m orpheus-3b-base-q8_0.gguf \
     --codec-model snac-24khz.gguf \
     --voice tara \
@@ -65,7 +65,7 @@ huggingface-cli download cstr/snac-24khz-GGUF snac-24khz.gguf --local-dir .
 For **auto-download** simply pass `-m auto`:
 
 ```bash
-./build/bin/crispasr --backend orpheus -m auto \
+./build/bin/stelnettts --backend orpheus -m auto \
     --voice leo --temperature 0.6 \
     --tts "Auto-download fetches both files." \
     --tts-output out.wav
@@ -73,7 +73,7 @@ For **auto-download** simply pass `-m auto`:
 
 ## Quality verification
 
-ASR roundtrip via [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) on F16, voice `tara`:
+ASR roundtrip via [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) on F16, voice `tara`:
 
 | Synthesised text | Parakeet output |
 |---|---|
@@ -82,10 +82,10 @@ ASR roundtrip via [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr
 Q8_0 produces ASR-identical output on the same prompt. Validation script:
 
 ```bash
-crispasr --backend orpheus -m orpheus-3b-base-q8_0.gguf \
+stelnettts --backend orpheus -m orpheus-3b-base-q8_0.gguf \
     --codec-model snac-24khz.gguf --voice tara --temperature 0.6 \
     --tts "Hello, my name is Tara." --tts-output orpheus_test.wav
-crispasr --backend parakeet -m parakeet-tdt-0.6b-v3-q4_k.gguf \
+stelnettts --backend parakeet -m parakeet-tdt-0.6b-v3-q4_k.gguf \
     -f orpheus_test.wav --no-prints
 # → Hello, my name is Tara.
 ```
@@ -109,7 +109,7 @@ The talker emits a stream of `<custom_token_N>` LM tokens; every 7 emitted token
  eot_id=128009, audio_eot=128260, audio_eom=128261, audio_end=128257]
 ```
 
-The Llama-3 BOS at position 1 is **critical**. Without it the talker still emits well-structured super-frames but the audio is semantically garbage. The CrispASR runtime handles this for you — direct callers of `orpheus_synthesize_codes` need to mirror the layout.
+The Llama-3 BOS at position 1 is **critical**. Without it the talker still emits well-structured super-frames but the audio is semantically garbage. The StelnetTTS runtime handles this for you — direct callers of `orpheus_synthesize_codes` need to mirror the layout.
 
 ## Stop policy
 
@@ -123,7 +123,7 @@ python models/convert-orpheus-to-gguf.py \
     --output orpheus-3b-ft-f16.gguf \
     --outtype f16
 
-build/bin/crispasr-quantize orpheus-3b-ft-f16.gguf orpheus-3b-base-q8_0.gguf q8_0
+build/bin/stelnettts-quantize orpheus-3b-ft-f16.gguf orpheus-3b-base-q8_0.gguf q8_0
 ```
 
 The converter sets `GGUFWriter(use_temp_file=False)` because the `True` path buffers tensor data via `tempfile.SpooledTemporaryFile` and collapses throughput on near-full external disks (`/Volumes/backups` at 100% saw multi-MB/s spooling). The direct write holds the full tensor list in RAM during emit but completes in ~30 s on the 6.6 GB f16.
@@ -142,12 +142,12 @@ are checkpoint swaps. They reuse this same SNAC codec.
 - **Talker base model:** [`canopylabs/orpheus-3b-0.1-ft`](https://huggingface.co/canopylabs/orpheus-3b-0.1-ft) (Llama-3.2 community license). canopylabs / canopyai.
 - **Non-gated mirror used for conversion:** [`unsloth/orpheus-3b-0.1-ft`](https://huggingface.co/unsloth/orpheus-3b-0.1-ft).
 - **Llama base:** [`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct) — Llama-3.2 community license.
-- **SNAC codec:** [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz) (MIT) — see [`cstr/snac-24khz-GGUF`](https://huggingface.co/cstr/snac-24khz-GGUF).
+- **SNAC codec:** [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz) (MIT) — see [`Xenna/snac-24khz-GGUF`](https://huggingface.co/Xenna/snac-24khz-GGUF).
 - **Reference TTS engine:** [canopyai/Orpheus-TTS](https://github.com/canopyai/Orpheus-TTS) (`engine_class.py:_format_prompt`, `decoder.py`).
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR) — see `src/orpheus.cpp`, `src/orpheus_snac.cpp`, `models/convert-orpheus-to-gguf.py`.
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS) — see `src/orpheus.cpp`, `src/orpheus_snac.cpp`, `models/convert-orpheus-to-gguf.py`.
 
 ## License
 
 Llama-3.2 community license (inherited from the base talker). Includes the Acceptable Use Policy and the "Built with Llama" attribution requirement. Commercial use is permitted under the community license terms; review [`canopylabs/orpheus-3b-0.1-ft`](https://huggingface.co/canopylabs/orpheus-3b-0.1-ft) and [the Llama-3.2 license](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE) before redistribution.
 
-The SNAC codec is MIT and ships separately under [`cstr/snac-24khz-GGUF`](https://huggingface.co/cstr/snac-24khz-GGUF).
+The SNAC codec is MIT and ships separately under [`Xenna/snac-24khz-GGUF`](https://huggingface.co/Xenna/snac-24khz-GGUF).

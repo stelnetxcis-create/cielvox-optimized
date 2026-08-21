@@ -20,8 +20,8 @@
 #include "core/kaldi_fbank.h"
 #include "core/lfr.h"
 #include "core/sanm.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include <algorithm>
 #include <cassert>
@@ -50,7 +50,7 @@
 // destruction. Cost when disabled is one cached env-var read per stage
 // (~1 ns); safe to leave compiled in.
 //
-// Reported stages (per crispasr_transcribe call):
+// Reported stages (per stelnettts_transcribe call):
 //   fbank+lfr             frontend (kaldi-fbank + LFR stacking)
 //   enc+ada_compute       SANM encoder + adaptor graph compute
 //   prompt_tokenize       Qwen3 BPE encode for prefix/suffix
@@ -64,7 +64,7 @@
 static bool funasr_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_FUNASR_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_FUNASR_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -256,7 +256,7 @@ struct funasr_context {
     std::vector<uint8_t> cached_enc_meta;
     int cached_enc_T_lfr = 0;
 
-    // KV cache for the LLM body — same layout as qwen3_asr.
+    // KV cache for the LLM body — same layout as cielvox2_asr.
     ggml_context* kv_ctx = nullptr;
     ggml_backend_buffer_t kv_buf = nullptr;
     ggml_tensor* kv_k = nullptr;
@@ -439,7 +439,7 @@ static bool funasr_load_model(funasr_model& model, funasr_vocab& vocab, const ch
     // LLM CPU) for testing or as a safety net.
     core_gguf::WeightLoad wl;
     const bool force_llm_cpu = []() {
-        const char* s = crispasr_env::get("CRISPASR_FUNASR_LLM_CPU");
+        const char* s = stelnettts_env::get("STELNETTTS_FUNASR_LLM_CPU");
         return s && *s && *s != '0';
     }();
     if (!core_cpu_backend::is_cpu(backend) && cpu_backend && force_llm_cpu) {
@@ -791,7 +791,7 @@ static std::vector<float> funasr_run_encoder_adaptor(funasr_context* ctx, const 
     {
         static int dump_flag = -1;
         if (dump_flag < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_DUMP_STAGES");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_DUMP_STAGES");
             dump_flag = (e && *e && *e != '0') ? 1 : 0;
         }
         if (dump_flag) {
@@ -903,8 +903,8 @@ static int compute_fake_token_len(int T_lfr, bool use_low_frame_rate) {
 }
 // ===========================================================================
 // BPE tokenize (GPT-2 byte-level, Qwen3-compatible). Adapted from
-// qwen3_asr.cpp::qwen3_asr_tokenize but kept local — we don't link in
-// qwen3_asr's context (it requires audio.* tensors we don't ship).
+// cielvox2_asr.cpp::cielvox2_asr_tokenize but kept local — we don't link in
+// cielvox2_asr's context (it requires audio.* tensors we don't ship).
 // ===========================================================================
 
 static std::vector<int32_t> funasr_bpe_encode(const funasr_vocab& v, const std::string& s) {
@@ -1105,7 +1105,7 @@ static ggml_cgraph* funasr_build_graph_llm_kv_impl(funasr_context* ctx, int n_pa
     {
         static int layers_override = -1;
         if (layers_override < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_LLM_LAYERS");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_LLM_LAYERS");
             layers_override = (e && *e) ? std::atoi(e) : 0;
         }
         if (layers_override > 0 && (uint32_t)layers_override < n_layers_eff) {
@@ -1140,7 +1140,7 @@ static ggml_cgraph* funasr_build_graph_llm_kv_impl(funasr_context* ctx, int n_pa
         {
             static int dump_flag = -1;
             if (dump_flag < 0) {
-                const char* e = crispasr_env::get("CRISPASR_FUNASR_DUMP_STAGES");
+                const char* e = stelnettts_env::get("STELNETTTS_FUNASR_DUMP_STAGES");
                 dump_flag = (e && *e && *e != '0') ? 1 : 0;
             }
             if (dump_flag) {
@@ -1160,7 +1160,7 @@ static ggml_cgraph* funasr_build_graph_llm_kv_impl(funasr_context* ctx, int n_pa
     {
         static int dump_flag = -1;
         if (dump_flag < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_DUMP_STAGES");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_DUMP_STAGES");
             dump_flag = (e && *e && *e != '0') ? 1 : 0;
         }
         if (dump_flag) {
@@ -1317,7 +1317,7 @@ static bool funasr_kv_init(funasr_context* ctx, int max_ctx) {
     // and these KV rows are head_dim wide (128), so each q8_0 tensor needs
     // 408 bytes more than nbytes — the hand-sized buffer came up short and
     // ggml_backend_tensor_alloc aborted. f16 is not quantized, so this only
-    // ever fired with CRISPASR_KV_QUANT set, and only on CUDA.
+    // ever fired with STELNETTTS_KV_QUANT set, and only on CUDA.
     ctx->kv_buf = ggml_backend_alloc_ctx_tensors(ctx->kv_ctx, kv_backend);
     if (!ctx->kv_buf) {
         std::fprintf(stderr, "funasr: failed to allocate kv buffer\n");
@@ -1564,7 +1564,7 @@ static std::vector<float> funasr_run_llm_step(funasr_context* ctx, const float* 
     {
         static int nan_check_flag = -1;
         if (nan_check_flag < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_NAN_CHECK");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_NAN_CHECK");
             nan_check_flag = (e && *e && *e != '0') ? 1 : 0;
         }
         if (nan_check_flag && n_tokens > 1) {
@@ -1592,7 +1592,7 @@ static std::vector<float> funasr_run_llm_step(funasr_context* ctx, const float* 
     {
         static int dump_flag = -1;
         if (dump_flag < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_DUMP_STAGES");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_DUMP_STAGES");
             dump_flag = (e && *e && *e != '0') ? 1 : 0;
         }
         if (dump_flag && n_tokens > 1) {
@@ -1678,7 +1678,7 @@ static std::vector<float> funasr_run_llm_step(funasr_context* ctx, const float* 
 // token_embd table (shared with output.weight thanks to Qwen3 tied embeddings).
 // For n==1 (the AR decode hot path), skip the graph and dequant one row
 // directly — eliminates graph-build + sched overhead per decode step (§176o).
-// Gated by CRISPASR_FUNASR_EMBED_FAST (default ON, set =0 to disable).
+// Gated by STELNETTTS_FUNASR_EMBED_FAST (default ON, set =0 to disable).
 static std::vector<float> funasr_embed_tokens(funasr_context* ctx, const std::vector<int32_t>& ids) {
     const int n = (int)ids.size();
     const int d = (int)ctx->model.hparams.llm_d_model;
@@ -1686,7 +1686,7 @@ static std::vector<float> funasr_embed_tokens(funasr_context* ctx, const std::ve
     // Fast path: single-token lookup avoids full graph build + sched alloc.
     static int use_fast = -1;
     if (use_fast < 0) {
-        const char* e = std::getenv("CRISPASR_FUNASR_EMBED_FAST");
+        const char* e = std::getenv("STELNETTTS_FUNASR_EMBED_FAST");
         use_fast = (!e || *e != '0') ? 1 : 0;
     }
     if (n == 1 && use_fast) {
@@ -1788,7 +1788,7 @@ static std::string funasr_transcribe_impl(funasr_context* ctx, const float* pcm,
     const int fake_token_len = compute_fake_token_len(T_lfr, hp.use_low_frame_rate);
     const int fbank_beg = (int)prefix_ids.size();
     const int total_prompt = (int)prefix_ids.size() + fake_token_len + (int)suffix_ids.size();
-    if (std::getenv("CRISPASR_VERBOSE")) {
+    if (std::getenv("STELNETTTS_VERBOSE")) {
         std::fprintf(
             stderr, "funasr: T_lfr=%d use_low_frame_rate=%d fake_token_len=%d (prefix=%zu suffix=%zu prompt=%d)\n",
             T_lfr, (int)hp.use_low_frame_rate, fake_token_len, prefix_ids.size(), suffix_ids.size(), total_prompt);
@@ -1820,7 +1820,7 @@ static std::string funasr_transcribe_impl(funasr_context* ctx, const float* pcm,
     {
         static int dump_flag = -1;
         if (dump_flag < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_DUMP_STAGES");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_DUMP_STAGES");
             dump_flag = (e && *e && *e != '0') ? 1 : 0;
         }
         if (dump_flag) {
@@ -1887,7 +1887,7 @@ static std::string funasr_transcribe_impl(funasr_context* ctx, const float* pcm,
     {
         static int dump_flag = -1;
         if (dump_flag < 0) {
-            const char* e = crispasr_env::get("CRISPASR_FUNASR_DUMP_STAGES");
+            const char* e = stelnettts_env::get("STELNETTTS_FUNASR_DUMP_STAGES");
             dump_flag = (e && *e && *e != '0') ? 1 : 0;
         }
         if (dump_flag) {
@@ -2005,7 +2005,7 @@ static std::string funasr_transcribe_impl(funasr_context* ctx, const float* pcm,
                     std::fprintf(stderr,
                                  "funasr: greedy decode degenerated (token %d repeated >%d times). "
                                  "Aborting at step %d. This usually means the audio adaptor / encoder "
-                                 "produced unusable embeddings — re-run with CRISPASR_VERBOSE=1 to "
+                                 "produced unusable embeddings — re-run with STELNETTTS_VERBOSE=1 to "
                                  "inspect frames_spliced.\n",
                                  next_id, repeat_run, step);
                     break;
@@ -2085,7 +2085,7 @@ extern "C" funasr_context* funasr_init_from_file(const char* path, funasr_contex
     ctx->params = params;
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -2165,9 +2165,9 @@ extern "C" funasr_context* funasr_init_from_file(const char* path, funasr_contex
 
     // FA opt-out: keep the historical mul_mat + soft_max_ext path for
     // regression diffing. The default ON path matches the parakeet /
-    // qwen3-asr default; FUNASR_NO_FA=1 reverts to the original kernel
+    // cielvox2-asr default; FUNASR_NO_FA=1 reverts to the original kernel
     // sequence.
-    if (const char* s = crispasr_env::get("CRISPASR_FUNASR_NO_FA")) {
+    if (const char* s = stelnettts_env::get("STELNETTTS_FUNASR_NO_FA")) {
         if (*s && *s != '0')
             ctx->enc_flash_attn = false;
     }
@@ -2177,7 +2177,7 @@ extern "C" funasr_context* funasr_init_from_file(const char* path, funasr_contex
     // saves vs the per-call path's growing-Lk attention. The cache
     // becomes a win only with bucketed Lk graphs (voxcpm2 TSLM pattern,
     // PLAN funasr-perf #1) — when that lands we'll flip the default.
-    if (const char* s = crispasr_env::get("CRISPASR_FUNASR_STEP_CACHE")) {
+    if (const char* s = stelnettts_env::get("STELNETTTS_FUNASR_STEP_CACHE")) {
         if (*s && *s != '0')
             ctx->step_graph_cache = true;
     }

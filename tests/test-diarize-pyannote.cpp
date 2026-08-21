@@ -11,8 +11,8 @@
 //   4 = spk0 + spk1, 5 = spk0 + spk2, 6 = spk1 + spk2.
 // (Powerset ordered by subset size: all singletons, then all pairs.)
 
-#include "../src/crispasr_diarize.h"
-#include "../src/crispasr_diarize_internal.h"
+#include "../src/stelnettts_diarize.h"
+#include "../src/stelnettts_diarize_internal.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -20,10 +20,10 @@
 #include <cstdint>
 #include <vector>
 
-using crispasr_diarize_internal::assign_speakers_from_log_posteriors;
-using crispasr_diarize_internal::group_words_into_speaker_runs;
-using crispasr_diarize_internal::score_speaker_for_range;
-using crispasr_diarize_internal::SpeakerRun;
+using stelnettts_diarize_internal::assign_speakers_from_log_posteriors;
+using stelnettts_diarize_internal::group_words_into_speaker_runs;
+using stelnettts_diarize_internal::score_speaker_for_range;
+using stelnettts_diarize_internal::SpeakerRun;
 
 namespace {
 

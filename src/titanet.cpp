@@ -14,8 +14,8 @@
 
 #include "titanet.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -43,7 +43,7 @@
 // to validate scalar == GEMM or run on non-Apple.
 static bool titanet_use_scalar() {
 #if defined(HAVE_ACCELERATE)
-    static const bool force_scalar = crispasr_env::get("CRISPASR_TITANET_FORCE_SCALAR") != nullptr;
+    static const bool force_scalar = stelnettts_env::get("STELNETTTS_TITANET_FORCE_SCALAR") != nullptr;
     return force_scalar;
 #else
     return true;
@@ -61,7 +61,7 @@ static bool titanet_use_scalar() {
 static bool titanet_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_TITANET_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_TITANET_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -379,23 +379,23 @@ static void init_cache(titanet_context* ctx) {
 
 // ===========================================================================
 // ggml forward (default) — the whole encoder + ASP as one CPU-backend graph
-// (threaded SIMD matmuls). CRISPASR_TITANET_LEGACY=1 selects the original
+// (threaded SIMD matmuls). STELNETTTS_TITANET_LEGACY=1 selects the original
 // scalar/Accelerate path (A/B ground truth; the ggml path is validated
 // embedding-for-embedding against it).
 // ===========================================================================
 
-// Inverse-default regime (see crispasr-crispembed-dev.md): the ggml path is
+// Inverse-default regime (see stelnettts-crispembed-dev.md): the ggml path is
 // embedding-identical (cos=1.000000 vs legacy) and ~10× faster than the
 // scalar loops on non-Apple CPUs, but on Apple the legacy path's Accelerate
 // GEMMs run on the AMX (~5× faster than ggml's F32 NEON matmul: 0.7 s vs
 // 3.4 s per embed on M1). So: default ggml WITHOUT Accelerate, default
-// legacy WITH it. CRISPASR_TITANET_GGML=1 / CRISPASR_TITANET_LEGACY=1
+// legacy WITH it. STELNETTTS_TITANET_GGML=1 / STELNETTTS_TITANET_LEGACY=1
 // force either way.
 static bool titanet_use_legacy() {
     static const bool v = [] {
-        if (const char* e = std::getenv("CRISPASR_TITANET_LEGACY"); e && *e && *e != '0')
+        if (const char* e = std::getenv("STELNETTTS_TITANET_LEGACY"); e && *e && *e != '0')
             return true;
-        if (const char* e = std::getenv("CRISPASR_TITANET_GGML"); e && *e && *e != '0')
+        if (const char* e = std::getenv("STELNETTTS_TITANET_GGML"); e && *e && *e != '0')
             return false;
 #if defined(HAVE_ACCELERATE)
         return true;
@@ -409,7 +409,7 @@ static bool titanet_use_legacy() {
 // TITANET_DUMP=<path>: append each L2-normalized embedding as raw F32 —
 // A/B comparison between the ggml and legacy paths.
 static void titanet_dump_emb(const float* emb, int dim) {
-    const char* p = crispasr_env::get("CRISPASR_TITANET_DUMP");
+    const char* p = stelnettts_env::get("STELNETTTS_TITANET_DUMP");
     if (!p)
         return;
     if (FILE* f = fopen(p, "ab")) {
@@ -639,7 +639,7 @@ extern "C" struct titanet_context* titanet_init(const char* model_path, int n_th
             c.n_blocks);
 
     // Phase 2: load weights
-    ctx->backend = crispasr_init_gpu_backend();
+    ctx->backend = stelnettts_init_gpu_backend();
     if (!ctx->backend) {
         delete ctx;
         return nullptr;
@@ -661,18 +661,18 @@ extern "C" struct titanet_context* titanet_init(const char* model_path, int n_th
     // ggml compute path (default): upload the folded cache to a CPU backend
     // buffer once. On failure fall back to the legacy scalar path.
     if (!titanet_use_legacy()) {
-        // The GPU backend already exists — crispasr_init_gpu_backend() made it
+        // The GPU backend already exists — stelnettts_init_gpu_backend() made it
         // above and the GGUF weights were loaded onto it. Until now the compute
         // graph ignored it and ran on a separate CPU backend with a second,
         // folded copy of the weights, so the GPU was doing nothing but hold
         // memory.
         //
-        // CRISPASR_TITANET_GPU=1 points the compute path at that same backend.
+        // STELNETTTS_TITANET_GPU=1 points the compute path at that same backend.
         // Opt-in because the folded layouts were chosen for the CPU kernels
         // (see the layout notes on titanet_upload_ggml_weights) and the graph
         // leans on conv_1d_dw, whose GPU coverage varies by backend — measure
         // before trusting it on a given platform.
-        const char* want_gpu = crispasr_env::get("CRISPASR_TITANET_GPU");
+        const char* want_gpu = stelnettts_env::get("STELNETTTS_TITANET_GPU");
         if (want_gpu && want_gpu[0] == '1' && ctx->backend && !core_cpu_backend::is_cpu(ctx->backend)) {
             ctx->backend_cpu = ctx->backend;
             ctx->compute_aliases_gpu = true;
@@ -968,7 +968,7 @@ extern "C" int titanet_embed(struct titanet_context* ctx, const float* pcm_16k, 
         return 0;
 
     // Debug: optionally load reference mel features
-    const char* ref_path = crispasr_env::get("CRISPASR_TITANET_REF_MEL");
+    const char* ref_path = stelnettts_env::get("STELNETTTS_TITANET_REF_MEL");
     if (ref_path && *ref_path) {
         FILE* f = fopen(ref_path, "rb");
         if (f) {
@@ -990,8 +990,8 @@ extern "C" int titanet_embed(struct titanet_context* ctx, const float* pcm_16k, 
     // fused-BatchNorm bias in the sibling CAMPPlus embedder, found the same way).
     //
     // Layout is [T][n_mels] float32, matching what compute_mel_spectrogram
-    // produced and what CRISPASR_TITANET_REF_MEL reads back.
-    if (const char* dump_path = crispasr_env::get("CRISPASR_TITANET_DUMP_MEL")) {
+    // produced and what STELNETTTS_TITANET_REF_MEL reads back.
+    if (const char* dump_path = stelnettts_env::get("STELNETTTS_TITANET_DUMP_MEL")) {
         if (*dump_path) {
             FILE* f = fopen(dump_path, "wb");
             if (f) {

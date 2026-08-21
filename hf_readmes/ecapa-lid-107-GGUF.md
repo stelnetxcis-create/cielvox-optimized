@@ -8,14 +8,14 @@ tags:
 - ecapa-tdnn
 - speechbrain
 - gguf
-- crispasr
+- stelnettts
 base_model: speechbrain/lang-id-voxlingua107-ecapa
 pipeline_tag: audio-classification
 ---
 
 # ECAPA-TDNN Language Identification (GGUF)
 
-GGUF conversion of [speechbrain/lang-id-voxlingua107-ecapa](https://huggingface.co/speechbrain/lang-id-voxlingua107-ecapa) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [speechbrain/lang-id-voxlingua107-ecapa](https://huggingface.co/speechbrain/lang-id-voxlingua107-ecapa) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model Details
 
@@ -26,14 +26,14 @@ GGUF conversion of [speechbrain/lang-id-voxlingua107-ecapa](https://huggingface.
 - **License**: Apache 2.0
 - **Training**: SpeechBrain on VoxLingua107 (6,628 hours YouTube speech)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # As LID pre-step for any ASR backend
-crispasr -m whisper-large-v3.gguf --lid-backend ecapa -l auto -f audio.wav
+stelnettts -m whisper-large-v3.gguf --lid-backend ecapa -l auto -f audio.wav
 
 # Model auto-downloads on first use, or specify path:
-crispasr -m model.gguf --lid-backend ecapa --lid-model ecapa-lid-107-f16.gguf -l auto -f audio.wav
+stelnettts -m model.gguf --lid-backend ecapa --lid-model ecapa-lid-107-f16.gguf -l auto -f audio.wav
 ```
 
 ## Accuracy

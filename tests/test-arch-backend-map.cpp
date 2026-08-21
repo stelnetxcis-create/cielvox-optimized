@@ -28,7 +28,7 @@
 #include "gguf.h"
 
 // The C ABI's detector — the surface issue #335 was reported against.
-extern "C" int crispasr_detect_backend_from_gguf(const char* path, char* out_name, int out_cap);
+extern "C" int stelnettts_detect_backend_from_gguf(const char* path, char* out_name, int out_cap);
 
 // ---------------------------------------------------------------------------
 // The architectures our own converters write for a standalone (openable) model.
@@ -50,7 +50,7 @@ static const std::vector<std::pair<std::string, std::string>>& converter_archs()
         {"canary_qwen", "canary-qwen"},
         {"canary-ctc", "fastconformer-ctc"},
         {"cohere-transcribe", "cohere"},
-        {"qwen3asr", "qwen3"},
+        {"cielvox2asr", "qwen3"},
         {"voxtral", "voxtral"},
         {"voxtral4b", "voxtral4b"},
         {"higgs-stt", "higgs-stt"},
@@ -76,7 +76,7 @@ static const std::vector<std::pair<std::string, std::string>>& converter_archs()
         {"vibevoice-asr", "vibevoice"},
         {"vibevoice-tts", "vibevoice-tts"},
         // ── TTS ──
-        {"qwen3tts", "qwen3-tts"},
+        {"cielvox2tts", "cielvox2-tts"},
         {"miotts", "miotts"},
         {"moss-tts", "moss-tts"},
         {"moss-tts-local", "moss-tts-local"},
@@ -147,7 +147,7 @@ TEST_CASE("unknown / empty architectures resolve to the empty string", "[unit][a
     CHECK(core_arch::backend_for_arch("") == std::string(""));
     CHECK(core_arch::backend_for_arch(static_cast<const char*>(nullptr)) == std::string(""));
     CHECK(core_arch::backend_for_arch("bert") == std::string(""));
-    CHECK(core_arch::backend_for_arch("crispasr.reference") == std::string(""));
+    CHECK(core_arch::backend_for_arch("stelnettts.reference") == std::string(""));
     CHECK(core_arch::backend_for_arch("kokoro-voice") == std::string(""));
     CHECK(core_arch::backend_for_arch("cosyvoice3-s3tok") == std::string(""));
     CHECK(core_arch::backend_for_arch("not-a-real-architecture") == std::string(""));
@@ -213,7 +213,7 @@ TEST_CASE("every emitted backend name is a name a surface can open", "[unit][arc
         "sidon",
         "vibevoice",
         "vibevoice-tts",
-        "qwen3-tts",
+        "cielvox2-tts",
         "miotts",
         "moss-tts",
         "moss-tts-local",
@@ -265,7 +265,7 @@ TEST_CASE("every emitted backend name is a name a surface can open", "[unit][arc
 
 // ---------------------------------------------------------------------------
 // The ABI-level guard. Everything above would still have passed if
-// `crispasr_detect_backend_from_gguf` had kept its own private copy of the
+// `stelnettts_detect_backend_from_gguf` had kept its own private copy of the
 // table — which is precisely the shape of the shipped bug. So drive the real
 // export, on a real GGUF file, through the real code path.
 // ---------------------------------------------------------------------------
@@ -281,7 +281,7 @@ static std::string write_stub_gguf(const std::string& arch) {
     return path;
 }
 
-TEST_CASE("crispasr_detect_backend_from_gguf reads the shared table", "[unit][arch-map]") {
+TEST_CASE("stelnettts_detect_backend_from_gguf reads the shared table", "[unit][arch-map]") {
     // A metadata-only GGUF with nothing but general.architecture: no tensors,
     // no weights, no model download. This is the exact reproduction of #335 —
     // before the fix, the granite_speech case returned 0 / "" here while the
@@ -293,7 +293,7 @@ TEST_CASE("crispasr_detect_backend_from_gguf reads the shared table", "[unit][ar
     const probe probes[] = {
         {"granite_speech", "granite"}, // #335
         {"nemotron", "nemotron"},      // was CLI-only too
-        {"qwen3tts", "qwen3-tts"},     // ditto
+        {"cielvox2tts", "cielvox2-tts"},     // ditto
         {"whisper", "whisper"},        // was already shared — must not regress
         {"not-a-real-architecture", ""},
     };
@@ -301,7 +301,7 @@ TEST_CASE("crispasr_detect_backend_from_gguf reads the shared table", "[unit][ar
         INFO("architecture: " << p.arch);
         const std::string path = write_stub_gguf(p.arch);
         char out[64] = {0};
-        const int rc = crispasr_detect_backend_from_gguf(path.c_str(), out, (int)sizeof(out));
+        const int rc = stelnettts_detect_backend_from_gguf(path.c_str(), out, (int)sizeof(out));
         std::remove(path.c_str());
         CHECK(std::string(out) == std::string(p.expect));
         CHECK(rc == (int)std::string(p.expect).size());

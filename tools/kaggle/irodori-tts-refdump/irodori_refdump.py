@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Kaggle kernel: Irodori-TTS crispasr-diff reference dump.
+Kaggle kernel: Irodori-TTS stelnettts-diff reference dump.
 
 Runs the Python Irodori-TTS model and captures stage-by-stage
 intermediate activations for diff-testing against the C++ runtime.
@@ -10,7 +10,7 @@ Outputs irodori-tts-ref-stages.gguf with:
   - timestep_embed, cond_embed
   - dit_in_proj, dit_block_0, v_pred_step0, ode_step_0
 
-Uploads to cstr/irodori-tts-GGUF on HuggingFace.
+Uploads to Xenna/irodori-tts-GGUF on HuggingFace.
 """
 
 import gc
@@ -35,13 +35,13 @@ def log(msg):
 
 log("Kernel started — Irodori-TTS reference dump")
 
-# ── Clone CrispASR ──
-REPO = WORK / "CrispASR"
+# ── Clone StelnetTTS ──
+REPO = WORK / "StelnetTTS"
 if not REPO.exists():
-    log("Cloning CrispASR (feat/irodori-tts)...")
+    log("Cloning StelnetTTS (feat/irodori-tts)...")
     subprocess.check_call([
         "git", "clone", "--depth", "1", "--branch", "feat/irodori-tts",
-        "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+        "https://github.com/Cyna/StelnetTTS.git", str(REPO),
     ])
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -51,7 +51,7 @@ try:
 except Exception:
     pass
 
-log("CrispASR cloned OK")
+log("StelnetTTS cloned OK")
 
 # ── Install deps ──
 subprocess.check_call([
@@ -63,8 +63,8 @@ log("deps installed")
 
 # ── HF auth ──
 token = None
-for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-          "/kaggle/input/datasets/chr1str/crispasr-hf-token/hf_token.txt"]:
+for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+          "/kaggle/input/datasets/chr1str/stelnettts-hf-token/hf_token.txt"]:
     if os.path.exists(p):
         token = open(p).read().strip()
         break
@@ -143,7 +143,7 @@ if ref_output.exists() and ref_output.stat().st_size > 1000:
         api.upload_file(
             path_or_fileobj=str(ref_output),
             path_in_repo="irodori-tts-ref-stages.gguf",
-            repo_id="cstr/irodori-tts-GGUF",
+            repo_id="Xenna/irodori-tts-GGUF",
             repo_type="model",
         )
         log("Upload complete!")

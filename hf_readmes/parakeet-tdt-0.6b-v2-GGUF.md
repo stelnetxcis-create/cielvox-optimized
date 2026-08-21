@@ -19,7 +19,7 @@ base_model: nvidia/parakeet-tdt-0.6b-v2
 
 # Parakeet TDT 0.6B v2 — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Parakeet TDT 0.6B v2 is NVIDIA's English-only 600 M-parameter ASR model — the original Open ASR Leaderboard topper before v3 spread capacity across 25 European languages. On plain English, v2 is often stronger than v3 since it didn't have to share encoder capacity with 24 other languages.
 
@@ -27,7 +27,7 @@ Parakeet TDT 0.6B v2 is NVIDIA's English-only 600 M-parameter ASR model — the 
 - **Built-in word-level timestamps** from the TDT (Token-and-Duration Transducer) decoder — no separate CTC alignment model required
 - **CC-BY-4.0** licence (friendlier than most ASR models)
 
-This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `crispasr-quantize`.
+This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `stelnettts-quantize`.
 
 ## Files
 
@@ -44,18 +44,18 @@ All three precisions produce the same text on `samples/jfk.wav`:
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr-lib
+cmake --build build -j$(nproc) --target stelnettts-lib
 
 # 2a. Auto-download via the registry key
-./build/bin/crispasr -m parakeet-v2 --auto-download -f your-audio.wav
+./build/bin/stelnettts -m parakeet-v2 --auto-download -f your-audio.wav
 
 # 2b. Or explicit download + load
-hf download cstr/parakeet-tdt-0.6b-v2-GGUF \
+hf download Xenna/parakeet-tdt-0.6b-v2-GGUF \
     parakeet-tdt-0.6b-v2-q4_k.gguf --local-dir .
-./build/bin/crispasr -m parakeet-tdt-0.6b-v2-q4_k.gguf -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt-0.6b-v2-q4_k.gguf -f your-audio.wav
 ```
 
 ## When to pick v2 over v3
@@ -63,9 +63,9 @@ hf download cstr/parakeet-tdt-0.6b-v2-GGUF \
 | Scenario | Pick |
 | --- | --- |
 | English only, want best WER | **v2** (this repo) |
-| Multilingual, 25 EU languages | v3 — [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) |
-| Tight RAM, English | smaller hybrid — [`cstr/parakeet-tdt_ctc-110m-GGUF`](https://huggingface.co/cstr/parakeet-tdt_ctc-110m-GGUF) |
-| Long-tail English vocab, willing to pay 2x compute | larger — [`cstr/parakeet-tdt-1.1b-GGUF`](https://huggingface.co/cstr/parakeet-tdt-1.1b-GGUF) |
+| Multilingual, 25 EU languages | v3 — [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) |
+| Tight RAM, English | smaller hybrid — [`Xenna/parakeet-tdt_ctc-110m-GGUF`](https://huggingface.co/Xenna/parakeet-tdt_ctc-110m-GGUF) |
+| Long-tail English vocab, willing to pay 2x compute | larger — [`Xenna/parakeet-tdt-1.1b-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-1.1b-GGUF) |
 
 ## Model architecture
 
@@ -84,13 +84,13 @@ Same FastConformer encoder + TDT decoder as v3 — just trained on English-only 
 ## How this was made
 
 1. The `.nemo` checkpoint was unpacked, NeMo state-dict keys were remapped to ggml-friendly names, and weights were written to GGUF F16 (matmul tensors) + F32 (norms / biases / mel filterbank).
-2. Quantised variants are produced by `crispasr-quantize` (the same llama.cpp-style quantiser used for the other GGUF releases).
+2. Quantised variants are produced by `stelnettts-quantize` (the same llama.cpp-style quantiser used for the other GGUF releases).
 3. Inference uses `src/parakeet.{h,cpp}`: FastConformer encoder runs as a single ggml graph (BN folded out), LSTM predictor + joint head run as CPU F32 loops, TDT greedy decode alternates "advance encoder frame" / "emit token + advance predictor" using the duration head's argmax.
 
 ## Attribution
 
 - **Original model:** [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) (CC-BY-4.0). NVIDIA NeMo team.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).
 
 ## License
 

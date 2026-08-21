@@ -1,7 +1,7 @@
 // test-spectral-diarize.cpp — hermetic unit tests for the speaker-clustering
 // numerics (#324). No model, no audio, no network.
 //
-// These exist because the clustering stack is WEIGHT-FREE: crispasr-diff ends
+// These exist because the clustering stack is WEIGHT-FREE: stelnettts-diff ends
 // at the logits and can see none of it (HARD RULE #3b). A transposed matrix, a
 // biased-vs-unbiased covariance, or a drifted constant here produces perfectly
 // plausible speaker labels and silently worse diarization.
@@ -414,17 +414,17 @@ TEST_CASE("cluster_speakers: default estimator is bic", "[unit][spectral]") {
     auto x = make_blobs(k, per, d, 1.0f, 66, 6.0f);
     const int n = k * per;
 
-    unsetenv("CRISPASR_DIARIZE_COUNT");
-    unsetenv("CRISPASR_DIARIZE_BIC_WINDOW");
+    unsetenv("STELNETTTS_DIARIZE_COUNT");
+    unsetenv("STELNETTTS_DIARIZE_BIC_WINDOW");
     SpeakerEstimate est;
     cluster_speakers(x.data(), n, d, 1, 10, 0, &est);
     CHECK(std::string(est.reason) != "eigengap");
 
     // ...and eigengap remains selectable, and still solves this case.
-    setenv("CRISPASR_DIARIZE_COUNT", "eigengap", 1);
+    setenv("STELNETTTS_DIARIZE_COUNT", "eigengap", 1);
     SpeakerEstimate est_eg;
     auto lab_eg = cluster_speakers(x.data(), n, d, 1, 10, 0, &est_eg);
-    unsetenv("CRISPASR_DIARIZE_COUNT");
+    unsetenv("STELNETTTS_DIARIZE_COUNT");
     CHECK(std::string(est_eg.reason) == "eigengap");
     CHECK(partition_matches_blobs(lab_eg, k, per));
 }
@@ -435,20 +435,20 @@ TEST_CASE("cluster_speakers: full-k search rescues the legacy BIC over-count", "
     const int n = k * per;
 
     // The gate is INVERTED versus when this test was written: the full range is
-    // now the default and CRISPASR_DIARIZE_BIC_WINDOW=1 opts back into the
+    // now the default and STELNETTTS_DIARIZE_BIC_WINDOW=1 opts back into the
     // anchored [k-2, k+3] window. Both arms are still pinned, and the claim is
     // unchanged — the window strands above the truth, the full range reaches it.
-    setenv("CRISPASR_DIARIZE_COUNT", "bic", 1);
+    setenv("STELNETTTS_DIARIZE_COUNT", "bic", 1);
 
-    setenv("CRISPASR_DIARIZE_BIC_WINDOW", "1", 1);
+    setenv("STELNETTTS_DIARIZE_BIC_WINDOW", "1", 1);
     SpeakerEstimate est_window;
     auto lab_window = cluster_speakers(x.data(), n, d, 1, 10, 0, &est_window);
     const size_t k_window = std::set<int>(lab_window.begin(), lab_window.end()).size();
-    unsetenv("CRISPASR_DIARIZE_BIC_WINDOW");
+    unsetenv("STELNETTTS_DIARIZE_BIC_WINDOW");
 
     SpeakerEstimate est_full;
     auto lab_full = cluster_speakers(x.data(), n, d, 1, 10, 0, &est_full);
-    unsetenv("CRISPASR_DIARIZE_COUNT");
+    unsetenv("STELNETTTS_DIARIZE_COUNT");
 
     INFO("bic+window k = " << k_window << ", bic+full-search (default) k = " << est_full.best_k);
     CHECK(partition_matches_blobs(lab_full, k, per)); // the default reaches the truth

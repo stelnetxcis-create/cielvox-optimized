@@ -3,7 +3,7 @@
 #
 # Verifies that diarization applies AFTER external CTC alignment, so
 # speaker-turn splitting can use word timestamps. Requires:
-#   - crispasr binary (built)
+#   - stelnettts binary (built)
 #   - A backend without native word timestamps (cohere, paraformer)
 #   - The CTC aligner model (canary-ctc-aligner)
 #   - The pyannote segmentation GGUF
@@ -14,21 +14,21 @@
 #   bash tests/test_diarize_align_order.sh
 #
 # Env vars (with defaults from env-live-tests.sh):
-#   CRISPASR_BIN         — path to crispasr binary
-#   CRISPASR_MODEL_ALIGNER — path to canary-ctc-aligner GGUF
-#   CRISPASR_TEST_DIARIZE_MODEL — path to pyannote-seg GGUF
-#   CRISPASR_TEST_DIARIZE_WAV — path to test audio
-#   CRISPASR_MODEL_WHISPER — path to whisper model (for native-word-ts test)
-#   CRISPASR_PARAFORMER_MODEL — path to paraformer model (no native words)
+#   STELNETTTS_BIN         — path to stelnettts binary
+#   STELNETTTS_MODEL_ALIGNER — path to canary-ctc-aligner GGUF
+#   STELNETTTS_TEST_DIARIZE_MODEL — path to pyannote-seg GGUF
+#   STELNETTTS_TEST_DIARIZE_WAV — path to test audio
+#   STELNETTTS_MODEL_WHISPER — path to whisper model (for native-word-ts test)
+#   STELNETTTS_PARAFORMER_MODEL — path to paraformer model (no native words)
 
 set -e
 
-CRISPASR_BIN="${CRISPASR_BIN:-build/bin/crispasr}"
-ALIGNER="${CRISPASR_MODEL_ALIGNER:-/mnt/storage/gguf-models/canary-ctc-aligner-q4_k.gguf}"
-DIARIZE_MODEL="${CRISPASR_TEST_DIARIZE_MODEL:-/mnt/storage/gguf-models/pyannote-seg-3.0.gguf}"
-TEST_WAV="${CRISPASR_TEST_DIARIZE_WAV:-samples/multispeaker.wav}"
-WHISPER="${CRISPASR_MODEL_WHISPER:-/mnt/storage/gguf-models/ggml-base.en.bin}"
-PARAFORMER="${CRISPASR_PARAFORMER_MODEL:-/mnt/storage/gguf-models/paraformer-large-q4_k.gguf}"
+STELNETTTS_BIN="${STELNETTTS_BIN:-build/bin/stelnettts}"
+ALIGNER="${STELNETTTS_MODEL_ALIGNER:-/mnt/storage/gguf-models/canary-ctc-aligner-q4_k.gguf}"
+DIARIZE_MODEL="${STELNETTTS_TEST_DIARIZE_MODEL:-/mnt/storage/gguf-models/pyannote-seg-3.0.gguf}"
+TEST_WAV="${STELNETTTS_TEST_DIARIZE_WAV:-samples/multispeaker.wav}"
+WHISPER="${STELNETTTS_MODEL_WHISPER:-/mnt/storage/gguf-models/ggml-base.en.bin}"
+PARAFORMER="${STELNETTTS_PARAFORMER_MODEL:-/mnt/storage/gguf-models/paraformer-large-q4_k.gguf}"
 JFK_WAV="samples/jfk.wav"
 TMPOUT="/mnt/volume1/tmp-overflow/test267"
 
@@ -56,8 +56,8 @@ skip() {
 mkdir -p "$TMPOUT"
 
 # Prerequisite checks
-if [ ! -f "$CRISPASR_BIN" ]; then
-    echo "SKIP: crispasr binary not found at $CRISPASR_BIN"
+if [ ! -f "$STELNETTTS_BIN" ]; then
+    echo "SKIP: stelnettts binary not found at $STELNETTTS_BIN"
     exit 0
 fi
 
@@ -67,7 +67,7 @@ echo ""
 # ─── Test 1: external aligner + diarize produces word-level speaker splits ───
 echo "--- Test 1: aligner + diarize → words present in JSON output ---"
 if [ -f "$PARAFORMER" ] && [ -f "$ALIGNER" ] && [ -f "$DIARIZE_MODEL" ] && [ -f "$JFK_WAV" ]; then
-    $CRISPASR_BIN \
+    $STELNETTTS_BIN \
         --backend paraformer -m "$PARAFORMER" -f "$JFK_WAV" \
         -am "$ALIGNER" --force-aligner \
         --diarize --diarize-method pyannote \
@@ -91,7 +91,7 @@ fi
 echo ""
 echo "--- Test 2: diarize without aligner → segment-level speaker ---"
 if [ -f "$PARAFORMER" ] && [ -f "$DIARIZE_MODEL" ] && [ -f "$JFK_WAV" ]; then
-    OUTPUT=$($CRISPASR_BIN \
+    OUTPUT=$($STELNETTTS_BIN \
         --backend paraformer -m "$PARAFORMER" -f "$JFK_WAV" \
         --diarize --diarize-method pyannote \
         --sherpa-segment-model "$DIARIZE_MODEL" \
@@ -107,7 +107,7 @@ fi
 echo ""
 echo "--- Test 3: native words (whisper) + diarize ---"
 if [ -f "$WHISPER" ] && [ -f "$DIARIZE_MODEL" ] && [ -f "$JFK_WAV" ]; then
-    $CRISPASR_BIN \
+    $STELNETTTS_BIN \
         -m "$WHISPER" -f "$JFK_WAV" \
         --diarize --diarize-method pyannote \
         --sherpa-segment-model "$DIARIZE_MODEL" \
@@ -128,7 +128,7 @@ fi
 echo ""
 echo "--- Test 4: verbose log shows alignment before diarization ---"
 if [ -f "$PARAFORMER" ] && [ -f "$ALIGNER" ] && [ -f "$DIARIZE_MODEL" ] && [ -f "$JFK_WAV" ]; then
-    VERBOSE_LOG=$($CRISPASR_BIN \
+    VERBOSE_LOG=$($STELNETTTS_BIN \
         --backend paraformer -m "$PARAFORMER" -f "$JFK_WAV" \
         -am "$ALIGNER" --force-aligner \
         --diarize --diarize-method pyannote \

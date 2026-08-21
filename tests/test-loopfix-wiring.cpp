@@ -24,8 +24,8 @@
 #include <string>
 #include <vector>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
@@ -43,14 +43,14 @@ std::string slurp(const std::string& path) {
 // (CTC/RNN-T backends do not loop this way, and higgs-stt / moss-transcribe
 // call fix_loops inside the backend rather than the adapter).
 const char* kAdaptersWithLoopfix[] = {
-    "crispasr_backend_canary_qwen.cpp", "crispasr_backend_cohere.cpp",  "crispasr_backend_firered_asr.cpp",
-    "crispasr_backend_glm_asr.cpp",     "crispasr_backend_granite.cpp", "crispasr_backend_qwen3.cpp",
+    "stelnettts_backend_canary_qwen.cpp", "stelnettts_backend_cohere.cpp",  "stelnettts_backend_firered_asr.cpp",
+    "stelnettts_backend_glm_asr.cpp",     "stelnettts_backend_granite.cpp", "stelnettts_backend_qwen3.cpp",
 };
 
 } // namespace
 
 TEST_CASE("every AR CLI adapter on the list calls core_ngram::fix_loops", "[loopfix-wiring]") {
-    const std::string dir = std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/";
+    const std::string dir = std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/";
     for (const char* name : kAdaptersWithLoopfix) {
         const std::string src = slurp(dir + name);
         INFO("adapter: " << name);
@@ -65,8 +65,8 @@ TEST_CASE("every AR CLI adapter on the list calls core_ngram::fix_loops", "[loop
 TEST_CASE("the shared collapse header is not silently unreferenced", "[loopfix-wiring]") {
     // Sanity: the backends that own the collapse in-library still include it.
     // Catches a refactor that moves the call out without moving the guard.
-    const std::string root = CRISPASR_SOURCE_DIR;
-    for (const char* rel : {"/src/moss_transcribe.cpp", "/src/higgs_stt.cpp", "/src/crispasr_c_api.cpp"}) {
+    const std::string root = STELNETTTS_SOURCE_DIR;
+    for (const char* rel : {"/src/moss_transcribe.cpp", "/src/higgs_stt.cpp", "/src/stelnettts_c_api.cpp"}) {
         const std::string src = slurp(root + rel);
         INFO("source: " << rel);
         REQUIRE(src.find("core_ngram::fix_loops") != std::string::npos);
@@ -79,6 +79,6 @@ TEST_CASE("firered-asr's decode-time break is not mistaken for the collapse", "[
     // collapse. Both must be present. If the repeat-break is ever wired into
     // the beam branch too, this test is still correct — it only asserts that
     // neither guard has vanished.
-    const std::string src = slurp(std::string(CRISPASR_SOURCE_DIR) + "/src/firered_asr.cpp");
+    const std::string src = slurp(std::string(STELNETTTS_SOURCE_DIR) + "/src/firered_asr.cpp");
     REQUIRE(src.find("core_repeat::tail_is_repetition") != std::string::npos);
 }

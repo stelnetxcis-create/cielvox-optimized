@@ -163,7 +163,7 @@ is `gqa_ratio == 1` and `ncols2 == 1` (full Q heads = K/V heads,
 no GQA folding), so the easy patch covers our target workload.
 
 When this matters: GQA-conformer models if anyone ever builds
-them (none in the current CrispASR catalog). The kernel still
+them (none in the current StelnetTTS catalog). The kernel still
 falls back to CPU for those — same as today, no regression.
 
 ## Implementation scope
@@ -186,13 +186,13 @@ a CMake flag default-OFF so upstream builds stay bit-identical:
 
 ```cmake
 # ggml/CMakeLists.txt
-option(GGML_CUDA_CRISPASR_FA_PERHEAD_MASK
-       "CrispASR: allow per-head additive mask in CUDA FlashAttention (MMA-F16 path)"
+option(GGML_CUDA_STELNETTTS_FA_PERHEAD_MASK
+       "StelnetTTS: allow per-head additive mask in CUDA FlashAttention (MMA-F16 path)"
        OFF)
 ```
 
 Gate the four-line kernel-body change and the gate-relaxation in
-`fattn.cu` behind `#ifdef GGML_CUDA_CRISPASR_FA_PERHEAD_MASK`.
+`fattn.cu` behind `#ifdef GGML_CUDA_STELNETTTS_FA_PERHEAD_MASK`.
 
 When our internal builds want it on (after `test-backend-ops`
 verification), flip the default ON in `release.yml`'s Windows-CUDA

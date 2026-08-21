@@ -6,24 +6,24 @@
 # so the 2-way stop head's gap stays high and the 4B runs away. Two reference
 # ports (llama.cpp LM decode) use eager mul_mat + GGML_PREC_F32 + soft_max_ext and
 # match the reference to ~5e-5. This kernel A/Bs our new eager path (default for
-# moss-tts-local) vs flash (CRISPASR_CORE_ATTN_EAGER_F32=0) on the same texts+seeds
+# moss-tts-local) vs flash (STELNETTTS_CORE_ATTN_EAGER_F32=0) on the same texts+seeds
 # and reports whether eager STOPS where flash runs away.
 
 # %% [code]
 import json, os, re, subprocess, sys, shutil, time
 from pathlib import Path
 
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 WORK = Path("/kaggle/working")
-REF = os.environ.get("CRISPASR_REF", "fix/249-moss")
+REF = os.environ.get("STELNETTTS_REF", "fix/249-moss")
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", "--branch", REF,
-                           "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
                            "--recursive", "--depth", "1"], timeout=1800)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("start", ref=REF)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -61,17 +61,17 @@ def robust_download(repo, fname, local_dir, token, tries=3, timeout=900):
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=False)}")
-CLI = (BUILD / "bin" / "crispasr") if (BUILD / "bin" / "crispasr").exists() else next(iter(BUILD.rglob("crispasr")))
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=False)}")
+CLI = (BUILD / "bin" / "stelnettts") if (BUILD / "bin" / "stelnettts").exists() else next(iter(BUILD.rglob("stelnettts")))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done")
 
 MODELS = Path("/kaggle/temp/models"); MODELS.mkdir(parents=True, exist_ok=True)
 with kh.build_heartbeat("download"):
-    CODEC = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(MODELS), TOKEN)
-    F16 = robust_download("cstr/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(MODELS), TOKEN)
+    CODEC = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-codec.gguf", str(MODELS), TOKEN)
+    F16 = robust_download("Xenna/moss-tts-local-v1.5-GGUF", "moss-tts-local-v1.5-f16.gguf", str(MODELS), TOKEN)
 
 TEXTS = {"hello": "Hello world.", "fox": "The quick brown fox jumps over the lazy dog."}
 SEEDS = [7, 42]
@@ -80,10 +80,10 @@ STOP_RE = re.compile(r"generated (\d+) frames \(max_frames=\d+, (stopped natural
 
 
 def run(text, seed, eager):
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DEBUG": "1",
-           "CRISPASR_MOSS_TTS_LOCAL_MAX_FRAMES": str(MAXF)}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DEBUG": "1",
+           "STELNETTTS_MOSS_TTS_LOCAL_MAX_FRAMES": str(MAXF)}
     if not eager:
-        env["CRISPASR_CORE_ATTN_EAGER_F32"] = "0"  # force flash
+        env["STELNETTTS_CORE_ATTN_EAGER_F32"] = "0"  # force flash
     cmd = [str(CLI), "--backend", "moss-tts-local", "-m", F16, "--codec-model", CODEC,
            "--tts", text, "--seed", str(seed), "--tts-output", str(WORK / "o.wav")]
     to = False

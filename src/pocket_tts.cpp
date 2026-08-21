@@ -30,8 +30,8 @@
 #include "core/cpu_ops.h" // core_cpu::to_f32 (quantized-safe weight read)
 #include "core/gguf_loader.h"
 #include "core/sentencepiece.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -70,7 +70,7 @@ namespace {
 static bool pocket_tts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_POCKET_TTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_POCKET_TTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -931,11 +931,11 @@ static void linear_f32(float* out, const float* x, ggml_tensor* W, ggml_tensor* 
     }
 }
 
-// §224: CRISPASR_POCKET_MIMI_SCALAR=1 restores the eager per-timestep /
+// §224: STELNETTTS_POCKET_MIMI_SCALAR=1 restores the eager per-timestep /
 // per-conv scalar mimi paths (A/B ground truth for the batched ggml ones).
 static bool pocket_mimi_scalar() {
     static const bool v = [] {
-        const char* e = std::getenv("CRISPASR_POCKET_MIMI_SCALAR");
+        const char* e = std::getenv("STELNETTTS_POCKET_MIMI_SCALAR");
         return e && *e && *e != '0';
     }();
     return v;
@@ -1371,7 +1371,7 @@ static void backbone_forward_step(pocket_tts_context* pctx, const float* x_in, f
 // Dispatch: ggml or manual backbone forward step.
 // --no-gpu (use_gpu=false) forces legacy manual path; env var POCKET_MANUAL_BACKBONE=1 also works.
 static void backbone_step(pocket_tts_context* pctx, const float* x_in, float* out) {
-    if (!pctx->params.use_gpu || crispasr_env::get("CRISPASR_POCKET_MANUAL_BACKBONE")) {
+    if (!pctx->params.use_gpu || stelnettts_env::get("STELNETTTS_POCKET_MANUAL_BACKBONE")) {
         backbone_forward_step(pctx, x_in, out);
     } else {
         backbone_forward_step_ggml(pctx, x_in, out);
@@ -1442,7 +1442,7 @@ static void flow_net_eval(pocket_tts_context* pctx, const float* cond, // (d_mod
     vec_add(y.data(), t_combined.data(), c_emb.data(), FD);
 
     // Dump y for diff
-    if (crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
+    if (stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
         float yn = 0, tcn = 0, cn = 0;
         for (int i = 0; i < FD; i++) {
             yn += y[i] * y[i];
@@ -1482,7 +1482,7 @@ static void flow_net_eval(pocket_tts_context* pctx, const float* cond, // (d_mod
         for (int i = 0; i < FD; i++)
             x[i] += gate[i] * h_out[i];
 
-        if (crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
+        if (stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
             float xn = 0, gn = 0, hn = 0;
             for (int i = 0; i < FD; i++) {
                 xn += x[i] * x[i];
@@ -1507,7 +1507,7 @@ static void flow_net_eval(pocket_tts_context* pctx, const float* cond, // (d_mod
     layer_norm(normed.data(), x.data(), FD, nullptr, nullptr, 1e-6f);
 
     // Dump pre-modulation x norm and post-modulation for debugging
-    if (crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
+    if (stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
         float x_norm = 0, normed_norm = 0;
         for (int i = 0; i < FD; i++) {
             x_norm += x[i] * x[i];
@@ -1896,8 +1896,8 @@ static void mimi_decode_ggml(pocket_tts_context* pctx, const float* latent_seq, 
     }
 
     // Dump post-upsample (same as manual path for comparison)
-    if (pctx->verbosity >= 2 || crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
-        const char* dd = crispasr_env::get("CRISPASR_POCKET_DUMP_DIR");
+    if (pctx->verbosity >= 2 || stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
+        const char* dd = stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR");
         if (dd) {
             // Convert to channels-first for dump compatibility with manual path
             std::vector<float> dump_cf(OD * T_xfmr);
@@ -1973,7 +1973,7 @@ static void mimi_decode_ggml(pocket_tts_context* pctx, const float* latent_seq, 
 
     // Dump hook: mark post-transformer output
     ggml_tensor* post_xfmr = x;
-    if (crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
+    if (stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
         ggml_set_name(post_xfmr, "post_xfmr");
         ggml_set_output(post_xfmr);
     }
@@ -2036,13 +2036,13 @@ static void mimi_decode_ggml(pocket_tts_context* pctx, const float* latent_seq, 
     }
 
     // Dump post-transformer if requested
-    if (crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
+    if (stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
         ggml_tensor* pxfmr = ggml_graph_get_tensor(gf, "post_xfmr");
         if (pxfmr) {
             int n_elem = (int)ggml_nelements(pxfmr);
             std::vector<float> xfmr_data(n_elem);
             ggml_backend_tensor_get(pxfmr, xfmr_data.data(), 0, n_elem * sizeof(float));
-            const char* dd = crispasr_env::get("CRISPASR_POCKET_DUMP_DIR");
+            const char* dd = stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR");
             std::string p = std::string(dd) + "/cpp_mimi_post_xfmr.f32";
             FILE* f = fopen(p.c_str(), "wb");
             if (f) {
@@ -2496,8 +2496,8 @@ static void mimi_decode(pocket_tts_context* pctx, const float* latent_seq, int n
     int T_xfmr = T_up_causal;
 
     // Dump post-upsample
-    if (pctx->verbosity >= 2 || crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
-        const char* dd = crispasr_env::get("CRISPASR_POCKET_DUMP_DIR");
+    if (pctx->verbosity >= 2 || stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
+        const char* dd = stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR");
         if (dd) {
             std::string p = std::string(dd) + "/cpp_mimi_upsample.f32";
             FILE* f = fopen(p.c_str(), "wb");
@@ -2540,8 +2540,8 @@ static void mimi_decode(pocket_tts_context* pctx, const float* latent_seq, int n
     }
 
     // Dump post-transformer
-    if (crispasr_env::get("CRISPASR_POCKET_DUMP_DIR")) {
-        const char* dd = crispasr_env::get("CRISPASR_POCKET_DUMP_DIR");
+    if (stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR")) {
+        const char* dd = stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR");
         std::string p = std::string(dd) + "/cpp_mimi_post_xfmr.f32";
         FILE* f = fopen(p.c_str(), "wb");
         if (f) {
@@ -2880,7 +2880,7 @@ static void mimi_encode(pocket_tts_context* pctx, const float* pcm, int n_sample
         // POCKET_MIMI_DUMP=<path>: dump the (deterministic) conditioning
         // latents for scalar-vs-batched A/B — the sampler is stochastic, so
         // WAV comparison cannot validate the encoder.
-        if (const char* dp = crispasr_env::get("CRISPASR_POCKET_MIMI_DUMP")) {
+        if (const char* dp = stelnettts_env::get("STELNETTTS_POCKET_MIMI_DUMP")) {
             if (FILE* f = fopen(dp, "wb")) {
                 fwrite(*latent_out, sizeof(float), (size_t)T_down * LD, f);
                 fclose(f);
@@ -2984,7 +2984,7 @@ struct pocket_tts_context* pocket_tts_init_from_file(const char* path_model, str
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -3123,8 +3123,8 @@ float* pocket_tts_synthesize(struct pocket_tts_context* ctx, const char* text, i
     //   cpp_latents.f32      — (n_frames, latent_dim) AR latent sequence
     //   cpp_pcm.f32          — final PCM
     // POCKET_FORCE_LATENTS=f : teacher-force AR latents from file f
-    const char* pocket_dump_dir = crispasr_env::get("CRISPASR_POCKET_DUMP_DIR");
-    const char* pocket_force_lat = crispasr_env::get("CRISPASR_POCKET_FORCE_LATENTS");
+    const char* pocket_dump_dir = stelnettts_env::get("STELNETTTS_POCKET_DUMP_DIR");
+    const char* pocket_force_lat = stelnettts_env::get("STELNETTTS_POCKET_FORCE_LATENTS");
     auto dump_path = [&](const char* name) -> std::string {
         return std::string(pocket_dump_dir ? pocket_dump_dir : ".") + "/" + name;
     };
@@ -3167,7 +3167,7 @@ float* pocket_tts_synthesize(struct pocket_tts_context* ctx, const char* text, i
         max_frames = std::min(max_frames, 500); // ~40s max
     }
     // Allow env override for testing
-    if (const char* mf_env = crispasr_env::get("CRISPASR_POCKET_MAX_FRAMES")) {
+    if (const char* mf_env = stelnettts_env::get("STELNETTTS_POCKET_MAX_FRAMES")) {
         max_frames = std::atoi(mf_env);
         if (max_frames <= 0)
             max_frames = 25;
@@ -3324,7 +3324,7 @@ float* pocket_tts_synthesize(struct pocket_tts_context* ctx, const char* text, i
             // Allow forcing step-0 noise from file for diff testing
             bool noise_forced = false;
             if (frame == 0) {
-                const char* nf = crispasr_env::get("CRISPASR_POCKET_FORCE_NOISE");
+                const char* nf = stelnettts_env::get("STELNETTTS_POCKET_FORCE_NOISE");
                 if (nf) {
                     FILE* fn = fopen(nf, "rb");
                     if (fn) {
@@ -3402,7 +3402,7 @@ float* pocket_tts_synthesize(struct pocket_tts_context* ctx, const char* text, i
     {
         pocket_tts_bench_stage _bs("mimi_decode");
         // use_gpu=false forces the manual CPU Mimi path; env POCKET_MANUAL_MIMI=1 also.
-        bool force_cpu_mimi = !ctx->params.use_gpu || crispasr_env::get("CRISPASR_POCKET_MANUAL_MIMI");
+        bool force_cpu_mimi = !ctx->params.use_gpu || stelnettts_env::get("STELNETTTS_POCKET_MANUAL_MIMI");
 
         // Vulkan workgroup-limit guard (issue #256). The Mimi decoder transformer
         // dispatches ~T_xfmr^2 workgroups over the causal attention (T_xfmr scales
@@ -3415,7 +3415,7 @@ float* pocket_tts_synthesize(struct pocket_tts_context* ctx, const char* text, i
             const char* be_name = ggml_backend_name(ctx->backend);
             if (be_name && strstr(be_name, "Vulkan")) {
                 int max_frames = 120;
-                if (const char* env = crispasr_env::get("CRISPASR_POCKET_VULKAN_MIMI_MAX_FRAMES"))
+                if (const char* env = stelnettts_env::get("STELNETTTS_POCKET_VULKAN_MIMI_MAX_FRAMES"))
                     max_frames = atoi(env);
                 if (max_frames > 0 && n_gen_frames > max_frames) {
                     force_cpu_mimi = true;
@@ -3477,12 +3477,12 @@ int pocket_tts_set_voice(struct pocket_tts_context* ctx, const float* ref_pcm_24
 
     // §224: conditioning latents are deterministic per (encoder weights,
     // reference PCM), cost ~2 s to compute (39 s before the ggml mimi port)
-    // and only ~17 KB to store — cache them on disk in the shared crispasr
+    // and only ~17 KB to store — cache them on disk in the shared stelnettts
     // cache dir, keyed by an FNV-1a hash of the PCM and an encoder-weight
-    // fingerprint. CRISPASR_POCKET_VOICE_CACHE=0 disables.
+    // fingerprint. STELNETTTS_POCKET_VOICE_CACHE=0 disables.
     std::string latent_cache_path;
     {
-        const char* e = std::getenv("CRISPASR_POCKET_VOICE_CACHE");
+        const char* e = std::getenv("STELNETTTS_POCKET_VOICE_CACHE");
         const bool cache_on = !(e && *e && *e == '0');
         if (cache_on && m.seanet_enc.initial_conv_w) {
             uint64_t h = 1469598103934665603ull; // FNV-1a 64
@@ -3506,16 +3506,16 @@ int pocket_tts_set_voice(struct pocket_tts_context* ctx, const float* ref_pcm_24
 
             char name[64];
             snprintf(name, sizeof(name), "pocket-voice-%016llx.latents", (unsigned long long)h);
-            // Same resolution order as crispasr_cache::dir() (which lives in
-            // crispasr-lib, ABOVE this target — can't link it from here):
-            // CRISPASR_CACHE_DIR → CRISPASR_MODELS_DIR → $HOME/.cache/crispasr.
+            // Same resolution order as stelnettts_cache::dir() (which lives in
+            // stelnettts-lib, ABOVE this target — can't link it from here):
+            // STELNETTTS_CACHE_DIR → STELNETTTS_MODELS_DIR → $HOME/.cache/stelnettts.
             std::string cdir;
-            if (const char* d = std::getenv("CRISPASR_CACHE_DIR"); d && *d)
+            if (const char* d = std::getenv("STELNETTTS_CACHE_DIR"); d && *d)
                 cdir = d;
-            else if (const char* d2 = std::getenv("CRISPASR_MODELS_DIR"); d2 && *d2)
+            else if (const char* d2 = std::getenv("STELNETTTS_MODELS_DIR"); d2 && *d2)
                 cdir = d2;
             else if (const char* home = std::getenv("HOME"); home && *home)
-                cdir = std::string(home) + "/.cache/crispasr";
+                cdir = std::string(home) + "/.cache/stelnettts";
             std::error_code ec;
             if (!cdir.empty() &&
                 (std::filesystem::is_directory(cdir, ec) || std::filesystem::create_directories(cdir, ec)))

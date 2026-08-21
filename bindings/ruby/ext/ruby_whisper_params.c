@@ -25,7 +25,7 @@
     rb_define_method(cParams, #param_name, ruby_whisper_params_get_##param_name, 0);                                   \
     rb_define_method(cParams, #param_name "=", ruby_whisper_params_set_##param_name, 1);
 
-#define RUBY_CRISPASR_PARAMS_PARAM_NAMES_COUNT 37
+#define RUBY_STELNETTTS_PARAMS_PARAM_NAMES_COUNT 37
 
 extern VALUE cParams;
 extern VALUE cVADParams;
@@ -37,7 +37,7 @@ extern VALUE ruby_whisper_normalize_model_path(VALUE model_path);
 extern VALUE rb_whisper_segment_s_new(VALUE context, int index);
 extern const rb_data_type_t ruby_whisper_vad_params_type;
 
-static ID param_names[RUBY_CRISPASR_PARAMS_PARAM_NAMES_COUNT];
+static ID param_names[RUBY_STELNETTTS_PARAMS_PARAM_NAMES_COUNT];
 static ID id_language;
 static ID id_translate;
 static ID id_no_context;
@@ -312,7 +312,7 @@ const rb_data_type_t ruby_whisper_params_type = {"ruby_whisper_params",
 static VALUE ruby_whisper_params_allocate(VALUE klass) {
     ruby_whisper_params* rwp;
     VALUE obj = TypedData_Make_Struct(klass, ruby_whisper_params, &ruby_whisper_params_type, rwp);
-    rwp->params = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+    rwp->params = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
     if (rwp->params.language != NULL) {
         rwp->params.language = ruby_strdup(rwp->params.language);
     }
@@ -448,7 +448,7 @@ static VALUE ruby_whisper_params_set_print_realtime(VALUE self, VALUE value) {
     BOOL_PARAMS_SETTER(self, print_realtime, value)
 }
 /*
- * If true, prints results from within crispasr. (avoid it, use callback instead)
+ * If true, prints results from within stelnettts. (avoid it, use callback instead)
  *
  * call-seq:
  *   print_realtime -> bool
@@ -1057,7 +1057,7 @@ static VALUE ruby_whisper_params_get_vad_params(VALUE self) {
 
 static VALUE ruby_whisper_params_initialize(int argc, VALUE* argv, VALUE self) {
     VALUE kw_hash;
-    VALUE values[RUBY_CRISPASR_PARAMS_PARAM_NAMES_COUNT] = {Qundef};
+    VALUE values[RUBY_STELNETTTS_PARAMS_PARAM_NAMES_COUNT] = {Qundef};
     VALUE value;
     ruby_whisper_params* rwp;
     ID id;
@@ -1068,10 +1068,10 @@ static VALUE ruby_whisper_params_initialize(int argc, VALUE* argv, VALUE self) {
         return self;
     }
 
-    rb_get_kwargs(kw_hash, param_names, 0, RUBY_CRISPASR_PARAMS_PARAM_NAMES_COUNT, values);
+    rb_get_kwargs(kw_hash, param_names, 0, RUBY_STELNETTTS_PARAMS_PARAM_NAMES_COUNT, values);
     TypedData_Get_Struct(self, ruby_whisper_params, &ruby_whisper_params_type, rwp);
 
-    for (i = 0; i < RUBY_CRISPASR_PARAMS_PARAM_NAMES_COUNT; i++) {
+    for (i = 0; i < RUBY_STELNETTTS_PARAMS_PARAM_NAMES_COUNT; i++) {
         id = param_names[i];
         value = values[i];
         if (value == Qundef) {

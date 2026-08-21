@@ -14,7 +14,7 @@
 
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
 #include "gguf.h"
@@ -42,7 +42,7 @@
 #include "core/bpe.h"
 #include "core/gpu_backend_pref.h"
 #include "core/ngram_loop_fix.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/ggml_cpu_backend.h"
 
 #ifndef M_PI
@@ -56,7 +56,7 @@
 static bool moss_diarize_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MOSS_DIARIZE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MOSS_DIARIZE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -541,9 +541,9 @@ static ggml_cgraph* moss_diarize_build_encoder_graph(moss_diarize_context* ctx, 
     // Conv1d bias broadcast helper: reshape (OC,) → (1, OC, 1) for 3D conv output
     auto bias_1d = [&](ggml_tensor* b) { return ggml_reshape_3d(ctx0, b, 1, b->ne[0], 1); };
 
-    // CRISPASR_MOSS_DIARIZE_DUMP_CONV=1 enables per-stage conv snapshots
+    // STELNETTTS_MOSS_DIARIZE_DUMP_CONV=1 enables per-stage conv snapshots
     const bool dump_conv = [] {
-        const char* e = std::getenv("CRISPASR_MOSS_DIARIZE_DUMP_CONV");
+        const char* e = std::getenv("STELNETTTS_MOSS_DIARIZE_DUMP_CONV");
         return e && e[0] == '1';
     }();
 
@@ -681,9 +681,9 @@ static float* moss_diarize_run_encoder_chunk(moss_diarize_context* ctx, const fl
     float* result = (float*)malloc((size_t)d * T_enc * sizeof(float));
     ggml_backend_tensor_get(eo, result, 0, (size_t)d * T_enc * sizeof(float));
 
-    // CRISPASR_MOSS_DIARIZE_DUMP_CONV=1: dump per-stage conv intermediates to stderr
+    // STELNETTTS_MOSS_DIARIZE_DUMP_CONV=1: dump per-stage conv intermediates to stderr
     {
-        static const char* _dc = std::getenv("CRISPASR_MOSS_DIARIZE_DUMP_CONV");
+        static const char* _dc = std::getenv("STELNETTTS_MOSS_DIARIZE_DUMP_CONV");
         if (_dc && _dc[0] == '1') {
             auto dump_tensor = [](const char* name, ggml_cgraph* g) {
                 ggml_tensor* t = ggml_graph_get_tensor(g, name);
@@ -1360,7 +1360,7 @@ static char* moss_diarize_impl(struct moss_diarize_context* ctx, const float* sa
 
     if (ctx->params.verbosity >= 1)
         fprintf(stderr, "moss_diarize: %d enc, %d merged, %d prompt tokens\n", T_enc, adapt_T, n_prompt);
-    const char* _dbg = std::getenv("CRISPASR_MOSS_DIARIZE_DEBUG");
+    const char* _dbg = std::getenv("STELNETTTS_MOSS_DIARIZE_DEBUG");
     if (ctx->params.verbosity >= 2 || (_dbg && _dbg[0] == '1')) {
         fprintf(stderr, "moss_diarize: prompt first20:");
         for (int i = 0; i < std::min(20, n_prompt); i++)
@@ -1500,7 +1500,7 @@ static char* moss_diarize_impl(struct moss_diarize_context* ctx, const float* sa
 
     // n-gram loop fix
     {
-        const char* no_fix = std::getenv("CRISPASR_MOSS_DIARIZE_NO_LOOPFIX");
+        const char* no_fix = std::getenv("STELNETTTS_MOSS_DIARIZE_NO_LOOPFIX");
         if (!(no_fix && no_fix[0] == '1')) {
             std::string fixed = core_ngram::fix_loops(result);
             if (fixed != result && ctx->params.verbosity >= 1)
@@ -1589,7 +1589,7 @@ extern "C" struct moss_diarize_context* moss_diarize_init_from_file(const char* 
     ctx->n_threads = params.n_threads;
     ctx->model_path = path_model;
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -1597,7 +1597,7 @@ extern "C" struct moss_diarize_context* moss_diarize_init_from_file(const char* 
         core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
 
     {
-        const char* force_cpu = std::getenv("CRISPASR_MOSS_DIARIZE_FORCE_CPU");
+        const char* force_cpu = std::getenv("STELNETTTS_MOSS_DIARIZE_FORCE_CPU");
         if (force_cpu && force_cpu[0] == '1')
             ctx->backend = ctx->backend_cpu;
     }
@@ -1606,8 +1606,8 @@ extern "C" struct moss_diarize_context* moss_diarize_init_from_file(const char* 
 
     // Encoder attention path — flash by default, manual on Vulkan
     {
-        const char* force_flash = std::getenv("CRISPASR_MOSS_DIARIZE_ENC_FLASH");
-        const char* force_manual = std::getenv("CRISPASR_MOSS_DIARIZE_ENC_MANUAL");
+        const char* force_flash = std::getenv("STELNETTTS_MOSS_DIARIZE_ENC_FLASH");
+        const char* force_manual = std::getenv("STELNETTTS_MOSS_DIARIZE_ENC_MANUAL");
         if (force_flash && force_flash[0] == '1') {
             ctx->enc_use_flash = true;
         } else if (force_manual && force_manual[0] == '1') {

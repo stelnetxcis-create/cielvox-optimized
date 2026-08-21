@@ -113,23 +113,23 @@ std::vector<float> compute(const float* samples, int n_samples, const float* win
         return {};
     }
 
-    const bool mel_timing = (std::getenv("CRISPASR_MEL_TIMING") != nullptr);
+    const bool mel_timing = (std::getenv("STELNETTTS_MEL_TIMING") != nullptr);
     // §176f: OpenMP-parallel STFT. Each frame's window-multiply + FFT + power
     // write touches only its own [t] row of `power` and thread-private scratch,
     // so the loop is data-race free and bit-identical to the serial path. It is
-    // OPT-IN (CRISPASR_MEL_PARALLEL=1, default serial) because the `fft` callable
+    // OPT-IN (STELNETTTS_MEL_PARALLEL=1, default serial) because the `fft` callable
     // is supplied per backend (cohere_fft_r2c, glm_fft, voxtral_fft_wrapper, …)
     // and the parallel path is only safe when that callable is re-entrant. Flip
     // a backend to parallel-by-default once its fft is confirmed thread-safe
     // (audit: see Params::allow_parallel_stft) AND benched faster on the arch.
     // Measured (cohere, M1, 8 cores): warm STFT ~2.4× (43→18 ms / 800 frames).
     // Enabled by the global env var OR the per-backend Params flag.
-    // #305: parallel STFT is now DEFAULT ON (opt out with CRISPASR_MEL_SERIAL=1).
+    // #305: parallel STFT is now DEFAULT ON (opt out with STELNETTTS_MEL_SERIAL=1).
     // The §176f OpenMP path was `#ifdef _OPENMP` only and AppleClang ships no
     // libomp → it was compiled out on macOS, so the win never reached this box;
-    // the portable std::thread path below fixes that. CRISPASR_MEL_PARALLEL and
+    // the portable std::thread path below fixes that. STELNETTTS_MEL_PARALLEL and
     // Params::allow_parallel_stft are kept for back-compat (now redundant).
-    const bool mel_parallel = (std::getenv("CRISPASR_MEL_SERIAL") == nullptr);
+    const bool mel_parallel = (std::getenv("STELNETTTS_MEL_SERIAL") == nullptr);
     const auto t_stft0 = std::chrono::steady_clock::now();
     bool ran_parallel = false;
 

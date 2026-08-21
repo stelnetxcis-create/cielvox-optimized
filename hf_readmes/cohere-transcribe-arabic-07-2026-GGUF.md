@@ -10,7 +10,7 @@ tags:
 - gguf
 - conformer
 - arabic
-- crispasr
+- stelnettts
 base_model: CohereLabs/cohere-transcribe-arabic-07-2026
 ---
 
@@ -18,7 +18,7 @@ base_model: CohereLabs/cohere-transcribe-arabic-07-2026
 
 GGUF weights for **[CohereLabs/cohere-transcribe-arabic-07-2026](https://huggingface.co/CohereLabs/cohere-transcribe-arabic-07-2026)** — Cohere Labs' 2B-parameter Arabic ASR model (a FastConformer encoder + Transformer decoder), released July 2026 (~11% WER on FLEURS Arabic per the source card).
 
-These GGUFs run on CPU/Metal/CUDA/Vulkan via **[CrispASR](https://github.com/CrispStrobe/CrispASR)** — a C++ runtime for the Cohere Conformer-encoder / Transformer-decoder architecture.
+These GGUFs run on CPU/Metal/CUDA/Vulkan via **[StelnetTTS](https://github.com/Cyna/StelnetTTS)** — a C++ runtime for the Cohere Conformer-encoder / Transformer-decoder architecture.
 
 > **License**: Apache 2.0 (inherited from source model). See the [original model card](https://huggingface.co/CohereLabs/cohere-transcribe-arabic-07-2026) for full terms.
 
@@ -32,7 +32,7 @@ These GGUFs run on CPU/Metal/CUDA/Vulkan via **[CrispASR](https://github.com/Cri
 | `cohere-transcribe-arabic-q8_0.gguf` | 2.4 GB | Q8_0 |
 | `cohere-transcribe-arabic-q4_k.gguf` | 1.5 GB | Q4_K |
 | `cohere-transcribe-arabic-q4_k-imatrix.gguf` | 1.5 GB | Q4_K + importance matrix (Arabic-calibrated) |
-| `cohere-transcribe-arabic-ref.gguf` | small | per-stage reference activations for `crispasr-diff` |
+| `cohere-transcribe-arabic-ref.gguf` | small | per-stage reference activations for `stelnettts-diff` |
 
 All quants keep LayerNorm weights / biases at F32. The `-imatrix` build is
 calibrated on CC0 Common Voice Arabic (`fsicoli/common_voice_17_0`, `ar/dev`) and
@@ -46,15 +46,15 @@ On an M1 (Metal), end-to-end encode+decode on an 11 s clip is on par with the
 ## Quick start
 
 ```bash
-# Build CrispASR (see the repo for full instructions)
-git clone --recursive https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# Build StelnetTTS (see the repo for full instructions)
+git clone --recursive https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 
 # Shorthand: auto-downloads the recommended imatrix GGUF and defaults
 # the language to Arabic — no -m / --hf-repo / -l needed.
-build/bin/crispasr --backend cohere-ar audio.wav
+build/bin/stelnettts --backend cohere-ar audio.wav
 ```
 
 `cohere-ar` is a CLI alias for the `cohere` backend: it routes to the same
@@ -64,15 +64,15 @@ if you want to run this model with the LID pre-step or force another
 language for testing). It's equivalent to:
 
 ```bash
-build/bin/crispasr --backend cohere \
-    --hf-repo cstr/cohere-transcribe-arabic-07-2026-GGUF:cohere-transcribe-arabic-q4_k-imatrix.gguf \
+build/bin/stelnettts --backend cohere \
+    --hf-repo Xenna/cohere-transcribe-arabic-07-2026-GGUF:cohere-transcribe-arabic-q4_k-imatrix.gguf \
     audio.wav -l ar
 ```
 
 Or point `-m` at a locally downloaded GGUF:
 
 ```bash
-build/bin/crispasr --backend cohere -m cohere-transcribe-arabic-q4_k.gguf audio.wav -l ar
+build/bin/stelnettts --backend cohere -m cohere-transcribe-arabic-q4_k.gguf audio.wav -l ar
 ```
 
 ---
@@ -88,7 +88,7 @@ clip, `-l ru` added a hallucinated leading word, `-l ja` swapped the quotation
 marks for brackets, and `-l de` changed the diacritics — all plausible, none
 flagged.
 
-So CrispASR reads the whitelist from the GGUF and substitutes loudly:
+So StelnetTTS reads the whitelist from the GGUF and substitutes loudly:
 
 ```
 cohere: language 'de' is not supported by this model — using 'en' instead. Supported: en, ar
@@ -98,17 +98,17 @@ The GGUFs here carry `cohere_transcribe.supported_languages`. For any Cohere
 GGUF converted before that key existed, declare it at runtime instead:
 
 ```bash
-CRISPASR_COHERE_LANGS=en,ar build/bin/crispasr --backend cohere -m old.gguf audio.wav -l auto
+STELNETTTS_COHERE_LANGS=en,ar build/bin/stelnettts --backend cohere -m old.gguf audio.wav -l auto
 ```
 
-With the list present and `-l auto`, CrispASR identifies the language by
+With the list present and `-l auto`, StelnetTTS identifies the language by
 **probing this model itself** — one short decode per candidate, no whisper-tiny
 download — and can therefore only ever return `en` or `ar`:
 
 ```
 cohere[lid]: en  len=64   agree=1.00 div=0.79 score=158  :: The city is located in the city of Jerry, a large city of Je
 cohere[lid]: ar  len=82   agree=1.00 div=1.00 score=328  :: العاصفة شبه الاستوائية "جيري" تغا
-crispasr: LID -> language = 'ar' (cohere-probe, p=0.675)
+stelnettts: LID -> language = 'ar' (cohere-probe, p=0.675)
 ```
 
 ---
@@ -130,14 +130,14 @@ calc_length(T_mel)`; both are required for the cross-attention context to line u
 
 ---
 
-## Validation (`crispasr-diff`)
+## Validation (`stelnettts-diff`)
 
 `cohere-transcribe-arabic-ref.gguf` holds per-stage reference activations dumped
 from the transformers model by `tools/dump_reference.py`. Reproduce the
 per-layer parity check with:
 
 ```bash
-build/bin/crispasr-diff cohere cohere-transcribe-arabic-f16.gguf \
+build/bin/stelnettts-diff cohere cohere-transcribe-arabic-f16.gguf \
     cohere-transcribe-arabic-ref.gguf audio.wav
 ```
 
@@ -146,8 +146,8 @@ build/bin/crispasr-diff cohere cohere-transcribe-arabic-f16.gguf \
 ## Related
 
 - **Source model**: [CohereLabs/cohere-transcribe-arabic-07-2026](https://huggingface.co/CohereLabs/cohere-transcribe-arabic-07-2026)
-- **English sibling**: [cstr/cohere-transcribe-03-2026-GGUF](https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF) — Cohere Transcribe 2B (lowest English WER)
-- **C++ runtime**: [CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)
+- **English sibling**: [Xenna/cohere-transcribe-03-2026-GGUF](https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF) — Cohere Transcribe 2B (lowest English WER)
+- **C++ runtime**: [Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)
 
 ## Provenance and EU AI Act Art. 53 note
 

@@ -1,10 +1,10 @@
-#ifndef RUBY_CRISPASR_H
-#define RUBY_CRISPASR_H
+#ifndef RUBY_STELNETTTS_H
+#define RUBY_STELNETTTS_H
 
 #include <ruby.h>
 #include <ruby/util.h>
 #include <ruby/memory_view.h>
-#include "crispasr.h"
+#include "stelnettts.h"
 
 typedef struct {
     VALUE* context;

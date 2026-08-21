@@ -1,4 +1,4 @@
-# CrispASR — cross-cutting improvements program
+# StelnetTTS — cross-cutting improvements program
 
 Five high-leverage improvements surfaced by the #257 marathon. Every runtime
 change ships **behind an env gate** (A/B without recompile, never delete the
@@ -17,7 +17,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       moonshine had, and firered's CLI adapter has no `fix_loops` so that garbage
       tail reaches the decoded output. Wired `core_repeat::tail_is_repetition` into
       firered's **greedy branch only** (`beam_size==1`), gate
-      `CRISPASR_FIRERED_NO_REPEAT_BREAK` (default on, mirrors moonshine). A/B on the
+      `STELNETTTS_FIRERED_NO_REPEAT_BREAK` (default on, mirrors moonshine). A/B on the
       SAME binary (token count is the load-invariant proof):
 
       | firered greedy / 60 s song | seg-1 tokens | tail | decode |
@@ -36,16 +36,16 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
 - [x] **F2 — surface-parity in nightly CI.** Added `test-surface-parity.sh` to the
       regression workflow so cross-surface (CLI vs session) parity is a permanent
       guard against the #257 class, not a manual audit.
-- [x] **F3 — flip `CRISPASR_SESSION_UNIFIED_DISPATCH` default ON** for parakeet
+- [x] **F3 — flip `STELNETTTS_SESSION_UNIFIED_DISPATCH` default ON** for parakeet
       (verified byte-identical to the inline path, Phase 1). `=0` still selects
       the legacy inline path for A/B.
 - [x] **F4 — per-backend session auto-chunk window.** SHIPPED **opt-in, gated off**
       (default behavior unchanged: flat 30 s for every backend). `transcribe_autochunk`
       now sources its default window from the pure
       `session_default_chunk_seconds(backend, perbackend_enabled)`; with
-      `CRISPASR_SESSION_PERBACKEND_CHUNK=1` short-segment models (moonshine /
+      `STELNETTTS_SESSION_PERBACKEND_CHUNK=1` short-segment models (moonshine /
       moonshine-streaming) chunk at 20 s — the session mirror of the CLI's
-      `vad_slice_cap_seconds()`. `CRISPASR_SESSION_CHUNK_SECONDS` stays the direct
+      `vad_slice_cap_seconds()`. `STELNETTTS_SESSION_CHUNK_SECONDS` stays the direct
       per-call override.
 
       **Why opt-in, not default:** the hypothesis (short-segment models want a
@@ -69,8 +69,8 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       default is then a one-liner. No-regression confirmed: gate off ⇒ moonshine
       30 s = 0.75, identical to pre-change; parakeet + qwen3 parity PASS 1.00 on jfk;
       `test-session-autochunk` green (both gate modes covered). Backends touched:
-      none (session-only). Gates: `CRISPASR_SESSION_PERBACKEND_CHUNK`,
-      `CRISPASR_SESSION_CHUNK_SECONDS`.
+      none (session-only). Gates: `STELNETTTS_SESSION_PERBACKEND_CHUNK`,
+      `STELNETTTS_SESSION_CHUNK_SECONDS`.
 - [ ] **F5 — run the two CUDA kernels** (`tools/kaggle/{parakeet-mem-policy-cuda,
       server-workers-cuda}/`) — prepared; user-gated on Kaggle quota. _2026-07-16:
       push attempted, REJECTED pre-flight — `chr1str` account at its 30 h/week GPU
@@ -111,18 +111,18 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       `tools/kaggle/parakeet-mem-policy-cuda/` (Phase 2: estimate-vs-real VRAM +
       budget-policy OOM avoidance, incl. a torch VRAM-hog to simulate the
       reporter's small card) and `tools/kaggle/server-workers-cuda/` (Phase 4b:
-      `CRISPASR_SERVER_WORKERS=2` concurrency + transcript parity). Merge to main,
+      `STELNETTTS_SERVER_WORKERS=2` concurrency + transcript parity). Merge to main,
       then `bash <dir>/push.sh` when Kaggle quota is available.
 - [x] **Session long-audio fix** (2026-07-16) — DONE. The long-audio audit found
-      `crispasr_session_transcribe` did one degraded/hanging pass on long audio
+      `stelnettts_session_transcribe` did one degraded/hanging pass on long audio
       (the CLI/server chunk it). Fixed: `transcribe_autochunk` now slices long
       audio at energy minima and transcribes each piece, shifting timestamps to
       the absolute timeline — like the CLI. Merged chunks are run through
       `core_ngram::fix_loops` (identity on clean text) since a short-segment
       model (moonshine) can loop on a hard slice. Pure applicability decision in
       `src/session_autochunk.h` (`test-session-autochunk`, 13 assertions). Gate:
-      `CRISPASR_SESSION_AUTOCHUNK` (default ON — it fixes a hang; `=0` disables),
-      `CRISPASR_SESSION_CHUNK_SECONDS` (window, default 30). Skips self-chunkers
+      `STELNETTTS_SESSION_AUTOCHUNK` (default ON — it fixes a hang; `=0` disables),
+      `STELNETTTS_SESSION_CHUNK_SECONDS` (window, default 30). Skips self-chunkers
       (parakeet/reazonspeech), the return_logits path, and explicit chunk
       requests. Verified on moonshine/60 s: 1 seg (hung, 104-word ×15 loop) →
       3 segs, 43 words, loop collapsed, completes, timestamps monotonic. Caveat:
@@ -135,7 +135,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       decode-time repetition break to moonshine's greedy loop
       (`core_repeat::tail_is_repetition`: a period-≤8 block repeated ≥4× stops
       generation early). moonshine/60 s went **57.2 s → 11.3 s (5×), identical
-      output**. Gate `CRISPASR_MOONSHINE_NO_REPEAT_BREAK=1`; pure detector
+      output**. Gate `STELNETTTS_MOONSHINE_NO_REPEAT_BREAK=1`; pure detector
       unit-tested (`test-repeat-break`, 13 assertions).
       _Broad long-audio re-verification (2026-07-16):_ ran the parity harness on a
       60 s clip across the locally-available backends to check the auto-chunk
@@ -156,7 +156,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       Orchestration hoisted to `src/parakeet_orchestrate.{h,cpp}`
       (`parakeet_transcribe_segments`); the CLI adapter is now a thin wrapper
       (**−310 LOC**, 544→234) and the session C-ABI calls the same code under
-      `CRISPASR_SESSION_UNIFIED_DISPATCH=1`. Pure `parakeet_pick_strategy`
+      `STELNETTTS_SESSION_UNIFIED_DISPATCH=1`. Pure `parakeet_pick_strategy`
       unit-tested (`test-parakeet-strategy`, 11 assertions). A/B: CLI
       byte-identical pre/post refactor; parity harness PASS gate-ON on jfk (short)
       AND the 225 s single-pass clip (where the old inline session diverged).
@@ -164,7 +164,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       tracked below.
 - [x] **Phase 1b** — audited, no further hoist warranted (evidence-driven). Rather
       than speculatively hoist every backend, generalized the parity harness
-      (`CRISPASR_PARITY_BACKEND` + a CONTENT check that ignores punctuation/case)
+      (`STELNETTTS_PARITY_BACKEND` + a CONTENT check that ignores punctuation/case)
       and ran it CLI-vs-session on the locally-available backends. Result on jfk
       (16 kHz, no resample artifact): **parakeet PASS** (unified); **qwen3,
       moonshine, nemotron all PASS(content)** — CLI and session produce identical
@@ -177,12 +177,12 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       on LONG/chunked audio, so a long-clip audit of any backend with a bespoke
       long-audio session path (qwen3's ~212-line block) is the remaining check —
       the generalized harness makes it a one-liner. The parakeet gate
-      (`CRISPASR_SESSION_UNIFIED_DISPATCH`) stays opt-in.
+      (`STELNETTTS_SESSION_UNIFIED_DISPATCH`) stays opt-in.
 
       **Long-audio audit run (2026-07-16).** Ran the harness on a 225 s / 60 s
       clip. Finding: on long audio CLI and session DO diverge — e.g. moonshine
       CLI = 8 segments (dispatcher chunks at 30 s) vs session = 1 segment. Root
-      cause (verified in `crispasr_c_api.cpp`): the raw `crispasr_session_transcribe`
+      cause (verified in `stelnettts_c_api.cpp`): the raw `stelnettts_session_transcribe`
       is a LOW-LEVEL "transcribe this buffer" primitive that does NOT auto-chunk —
       `moonshine_transcribe_with_probs(ctx, pcm, n_samples)` runs one pass over
       the whole buffer (degraded + very slow on a short-segment model like
@@ -199,7 +199,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       `parakeet_est_singlepass_peak_mb` / `parakeet_singlepass_fits_budget`
       (`test-parakeet-strategy`, +2 cases) proactively pick streamed over
       single-pass when the O(T²) bias would exceed
-      `CRISPASR_PARAKEET_VRAM_BUDGET_MB` — before allocating, layered over the
+      `STELNETTTS_PARAKEET_VRAM_BUDGET_MB` — before allocating, layered over the
       reactive OOM fallback. A/B: on the reporter's 225 s clip the estimate came
       out **1931 MiB (T=2812, H=8)** — matching the reporter's actual **1911.98
       MiB** — and `budget=1500` correctly switched to streamed (full 267-word
@@ -222,7 +222,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
 - [~] **Phase 4** — server throughput — primitive DONE, integration scoped.
       Landed the reusable, thread-safe `core_pool::WorkerPool<T>` (RAII lease,
       blocking acquire, `test-worker-pool` 17 assertions incl. a blocking-until-
-      release concurrency case) + the `CRISPASR_SERVER_WORKERS` gate design.
+      release concurrency case) + the `STELNETTTS_SERVER_WORKERS` gate design.
       **Full server integration deferred to 4b with a hard constraint I verified
       by reading the code:** `do_transcribe`'s single `model_mutex` guards not
       just the backend but the SHARED, explicitly non-re-entrant post-processing
@@ -236,7 +236,7 @@ working path — per the dev-guide), with an **A/B method** and **unit tests**.
       N=2 throughput with identical transcripts; GPU-worker concurrency
       (per-context Metal queues) validated per-platform.
 - [x] **Phase 4b** — WorkerPool wired into the server — DONE (gated, correctness-
-      verified; throughput is workload-dependent). `CRISPASR_SERVER_WORKERS=N`
+      verified; throughput is workload-dependent). `STELNETTTS_SERVER_WORKERS=N`
       builds N independent backends; a "pure ASR" request (explicit language, no
       aligner, no punctuation/truecaser) routes to a pooled worker and runs
       concurrently, while anything touching the shared LID/aligner/post-processing
@@ -271,11 +271,11 @@ would have caught the wiring gap on commit 1, and is the precondition for safely
 unifying them (Phase 1).
 
 **Deliverable:** `tests/test-surface-parity.sh` (live, needs a model) — runs the
-same clip through (a) `crispasr` CLI, (b) an in-process session via the Python
+same clip through (a) `stelnettts` CLI, (b) an in-process session via the Python
 binding, (c) the HTTP server, and asserts identical segment text/offsets. Plus a
 pure **unit test** for the params→`whisper_params` marshalling helper Phase 1 adds.
 
-**Env gate:** none (test infra). Gated to run only when `CRISPASR_MODELS_DIR` +
+**Env gate:** none (test infra). Gated to run only when `STELNETTTS_MODELS_DIR` +
 a parakeet model are present (label `live;parity`).
 
 **A/B method:** the test itself is the A/B — CLI vs session vs server on the same
@@ -286,18 +286,18 @@ clip and a `--chunk-seconds 7` clip; unit test green.
 
 ## Phase 1 — collapse the dual dispatch
 
-**Why:** `crispasr_session_transcribe*` reimplements each backend's transcribe
+**Why:** `stelnettts_session_transcribe*` reimplements each backend's transcribe
 inline (dev-guide HARD RULE #6) instead of calling the `CrispasrBackend` adapter
 the CLI/server use. Every fix/feature/default risks landing in one path but not
 the other (JA-detection was patched in ~5 places; #257 segmentation in 3).
 
 **Approach:** add a session→`whisper_params` marshaller (sticky `source/target_lang`,
-chunk, att-context, hotwords, …) and route `crispasr_session_transcribe*` through
+chunk, att-context, hotwords, …) and route `stelnettts_session_transcribe*` through
 `backend->transcribe()` for backends that have an adapter. Delete the inline
 per-backend branch once parity holds. Start with **parakeet** (freshest), then
 canary/cohere/granite/etc.
 
-**Env gate:** `CRISPASR_SESSION_UNIFIED_DISPATCH` — `1` routes through the adapter
+**Env gate:** `STELNETTTS_SESSION_UNIFIED_DISPATCH` — `1` routes through the adapter
 (new), `0` keeps the inline path (old). Default `0` until parity proven per
 backend, then flip to `1` and keep `0` as the A/B escape hatch.
 
@@ -314,7 +314,7 @@ matrix; measured LOC deleted from the inline branch reported in this doc.
 ## Phase 2 — unified encoder memory policy
 
 **Why:** windowed local attention is bit-exact + ~3× faster + lower memory yet
-still opt-in (`--att-context` + `CRISPASR_FC_WINDOWED_ATTN`), and we just bolted a
+still opt-in (`--att-context` + `STELNETTTS_FC_WINDOWED_ATTN`), and we just bolted a
 *reactive* single-pass-OOM fallback on top (issue #257). Three scattered gates +
 a catch-and-retry instead of one decision.
 
@@ -322,9 +322,9 @@ a catch-and-retry instead of one decision.
 single-pass / windowed / streamed proactively (bound the O(T²) bias you can't
 afford before allocating it). Keep the reactive fallback as a backstop.
 
-**Env gate:** `CRISPASR_PARAKEET_MEM_POLICY` = `auto` (new default) | `single` |
+**Env gate:** `STELNETTTS_PARAKEET_MEM_POLICY` = `auto` (new default) | `single` |
 `windowed` | `streamed` | `off` (current reactive-only behaviour). Never removes
-the existing `--att-context` / `--chunk-seconds` / `CRISPASR_FC_WINDOWED_ATTN`.
+the existing `--att-context` / `--chunk-seconds` / `STELNETTTS_FC_WINDOWED_ATTN`.
 
 **A/B method:** back-to-back on the reporter's 225 s clip + a long clip; decoded
 output equality vs single-pass within tolerance + peak-footprint (`phys_footprint`
@@ -338,12 +338,12 @@ peak memory ≤ single-pass; policy table documented.
 
 ## Phase 3 — diff-harness parity in CI
 
-**Why:** the `dump_reference → crispasr-diff` methodology is the crown jewel but
+**Why:** the `dump_reference → stelnettts-diff` methodology is the crown jewel but
 run by hand. Automating it catches the "cos 0.99 snowballs into a hallucination"
 class (and the TTS "component cos=0.999 but audio garbage" case) on every push.
 
 **Approach:** a CI job (nightly / label-gated) that, per backend with a hosted
-`ref.gguf` (dataset `cstr/crispasr-regression-fixtures`), runs the per-stage diff
+`ref.gguf` (dataset `Xenna/stelnettts-regression-fixtures`), runs the per-stage diff
 + the decoded-output roundtrip and reds on cos / word-overlap regression. Extend
 the manifest beyond ASR-transcript-only to include a TTS→ASR roundtrip gate.
 
@@ -364,7 +364,7 @@ broken quant reds the job.
 **Approach:** request batching / a small worker pool / KV reuse. Bigger lift;
 scoped last.
 
-**Env gate:** `CRISPASR_SERVER_WORKERS=N` (default 1 = current behaviour).
+**Env gate:** `STELNETTTS_SERVER_WORKERS=N` (default 1 = current behaviour).
 
 **A/B method:** concurrent-request throughput + latency, N=1 vs N>1, identical
 transcripts.

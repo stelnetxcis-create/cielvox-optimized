@@ -22,7 +22,7 @@ base_model: nvidia/parakeet-tdt_ctc-110m
 
 # Parakeet TDT+CTC 110M — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-110m`](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-110m`](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 The **smallest** Parakeet variant: 110 M parameters, 17-layer FastConformer encoder with both TDT and CTC heads. Designed for low-RAM hosts and high-throughput batch transcription.
 
@@ -31,7 +31,7 @@ The **smallest** Parakeet variant: 110 M parameters, 17-layer FastConformer enco
 - **~45× realtime on M1 Metal** with Q4_K — fastest in the family
 - **CC-BY-4.0** licence
 
-This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `crispasr-quantize`.
+This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `stelnettts-quantize`.
 
 ## Files
 
@@ -55,18 +55,18 @@ Smoke test on `samples/jfk.wav` (11 s clip, M1 Metal):
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr-lib
+cmake --build build -j$(nproc) --target stelnettts-lib
 
 # 2a. Auto-download via the registry key
-./build/bin/crispasr -m parakeet-tdt_ctc-110m --auto-download -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt_ctc-110m --auto-download -f your-audio.wav
 
 # 2b. Or explicit download + load
-hf download cstr/parakeet-tdt_ctc-110m-GGUF \
+hf download Xenna/parakeet-tdt_ctc-110m-GGUF \
     parakeet-tdt_ctc-110m-q4_k.gguf --local-dir .
-./build/bin/crispasr -m parakeet-tdt_ctc-110m-q4_k.gguf -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt_ctc-110m-q4_k.gguf -f your-audio.wav
 ```
 
 The runtime detects `pred_layers=1 + has_ctc=True` at load time and automatically flips to CTC decode — no flag needed. See `parakeet_init_from_file` in `src/parakeet.cpp`.
@@ -76,9 +76,9 @@ The runtime detects `pred_layers=1 + has_ctc=True` at load time and automaticall
 | Scenario | Pick |
 | --- | --- |
 | English, tightest RAM (mobile / edge / embedded) | **110m** (this repo) |
-| English, best WER, ~600 M params | [`cstr/parakeet-tdt-0.6b-v2-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v2-GGUF) |
-| Multilingual (25 EU languages) | [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) |
-| English, long-tail vocab | [`cstr/parakeet-tdt-1.1b-GGUF`](https://huggingface.co/cstr/parakeet-tdt-1.1b-GGUF) |
+| English, best WER, ~600 M params | [`Xenna/parakeet-tdt-0.6b-v2-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v2-GGUF) |
+| Multilingual (25 EU languages) | [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) |
+| English, long-tail vocab | [`Xenna/parakeet-tdt-1.1b-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-1.1b-GGUF) |
 
 ## Model architecture
 
@@ -100,7 +100,7 @@ Hybrid TDT+CTC models normally let the user choose between the two decoders. But
 ## Attribution
 
 - **Original model:** [`nvidia/parakeet-tdt_ctc-110m`](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) (CC-BY-4.0). NVIDIA NeMo team.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).
 
 ## License
 

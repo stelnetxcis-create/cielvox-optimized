@@ -9,7 +9,7 @@
 // majority filtering are textbook; what comes from the upstream recipe is the
 // order of operations and the tuned constants below.
 //
-// Weight-free, so crispasr-diff cannot see any of it (HARD RULE #3b): the
+// Weight-free, so stelnettts-diff cannot see any of it (HARD RULE #3b): the
 // guards are the hermetic unit tests in tests/test-diarize-smooth.cpp.
 
 #pragma once

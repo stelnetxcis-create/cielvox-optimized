@@ -28,13 +28,13 @@
 //       generation. We can ignore them for ASR.
 //
 // Known follow-ups (PLAN #51):
-//   - Audio: load the mimo-tokenizer GGUF (cstr/mimo-tokenizer-GGUF)
+//   - Audio: load the mimo-tokenizer GGUF (Xenna/mimo-tokenizer-GGUF)
 //     and run its encoder over PCM → 8-channel RVQ code stream.
 //   - Wire the codes through speech_embeddings → input_local_transformer
 //     → hidden_proj → LLM.embed augmentation as the prefill prompt.
 //   - LLM forward: standard Qwen2 — fully covered by
 //     core_attn::kv_self_attn + core_ffn::swiglu, same call site as
-//     qwen3-asr / gemma4-e2b.
+//     cielvox2-asr / gemma4-e2b.
 
 #include "mimo_asr.h"
 
@@ -42,11 +42,11 @@
 #include "core/bpe.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "ggml.h"
 #include "gguf.h"
@@ -73,7 +73,7 @@ namespace {
 static bool mimo_asr_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MIMO_ASR_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MIMO_ASR_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -380,10 +380,10 @@ extern "C" struct mimo_asr_context* mimo_asr_init_from_file(const char* path_mod
     // When use_gpu is true, weights are split: matmul weights on GPU, Q4_K
     // embed tables on CPU (CUDA GET_ROWS doesn't support k-quants). Decode
     // steps run via the prefill graph which handles cross-backend routing.
-    // Set CRISPASR_MIMO_FORCE_CPU=1 to override back to CPU-only.
-    const bool force_cpu = std::getenv("CRISPASR_MIMO_FORCE_CPU") != nullptr;
+    // Set STELNETTTS_MIMO_FORCE_CPU=1 to override back to CPU-only.
+    const bool force_cpu = std::getenv("STELNETTTS_MIMO_FORCE_CPU") != nullptr;
     if (params.use_gpu && !force_cpu) {
-        ctx->backend = crispasr_init_gpu_backend();
+        ctx->backend = stelnettts_init_gpu_backend();
         if (!ctx->backend) {
             fprintf(stderr, "mimo_asr: GPU backend init failed; falling back to CPU\n");
             ctx->backend = ctx->backend_cpu;
@@ -393,16 +393,16 @@ extern "C" struct mimo_asr_context* mimo_asr_init_from_file(const char* path_mod
     } else {
         ctx->backend = ctx->backend_cpu;
         if (force_cpu && params.verbosity >= 1) {
-            fprintf(stderr, "mimo_asr: CRISPASR_MIMO_FORCE_CPU=1 — forced CPU\n");
+            fprintf(stderr, "mimo_asr: STELNETTTS_MIMO_FORCE_CPU=1 — forced CPU\n");
         }
     }
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total LLM
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total LLM
     // layers, the split loader still works against ctx->backend_cpu —
     // both halves of the split go to CPU buffers because the GPU half
     // would hit the same prefill bug.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)hp.llm_layers;
@@ -551,7 +551,7 @@ extern "C" struct mimo_asr_context* mimo_asr_init_from_file(const char* path_mod
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
@@ -960,7 +960,7 @@ static ggml_cgraph* mimo_asr_build_prefill_graph(mimo_asr_context* ctx, int T_gr
 // so the audio branch contributes a literal zero to the LM input. We
 // elide it and feed embed_w[next] straight into the LM trunk.
 //
-// `fixed_kv_len`/`kv_indices` mirror the qwen3-tts O15 path:
+// `fixed_kv_len`/`kv_indices` mirror the cielvox2-tts O15 path:
 //   fixed_kv_len > 0  → pin Lk so the topology is invariant across n_past
 //   kv_indices != nullptr → scatter-write K/V via ggml_set_rows so the
 //                            destination slot is a runtime input rather
@@ -1006,7 +1006,7 @@ static ggml_cgraph* mimo_asr_build_step_graph(mimo_asr_context* ctx, int n_past,
     ggml_set_name(positions, "lm_positions");
 
     // Causal mask is always declared at T=1 in the cached path so the
-    // topology stays invariant (matches qwen3_tts.cpp O15 pattern).
+    // topology stays invariant (matches cielvox2_tts.cpp O15 pattern).
     ggml_tensor* causal_mask = ggml_new_tensor_2d(ctx0, GGML_TYPE_F16, Lk, T);
     ggml_set_input(causal_mask);
     ggml_set_name(causal_mask, "lm_causal_mask");
@@ -1307,7 +1307,7 @@ extern "C" void mimo_asr_set_max_new_tokens(struct mimo_asr_context* ctx, int n)
 //   - stop on <|im_end|> / eos; skip <|empty|>/<|eot|>/<|eostm|> in output.
 // ===========================================================================
 
-// BPE encode a text fragment. Mirrors `qwen3_asr_tokenize`: split on
+// BPE encode a text fragment. Mirrors `cielvox2_asr_tokenize`: split on
 // recognised <|...|> special tokens (emit their ids directly), then
 // whitespace-pre-split + bytes_to_unicode + bpe_one for the rest. Falls
 // back to the per-byte path when merge_rank is empty (stale GGUF).
@@ -1466,7 +1466,7 @@ static std::vector<int32_t> mimo_asr_concat_segments(int channels_plus_text,
 // `next_token` is the most recent argmax; `n_past_groups` is the number
 // of LM groups already in the KV cache.
 //
-// Cached-graph contract (matches qwen3-tts O15):
+// Cached-graph contract (matches cielvox2-tts O15):
 //   • Lk pinned to ctx->kv_max_ctx so the graph topology is invariant
 //     across n_past — any change in n_past is a tensor *value* change,
 //     not a graph-topology change.
@@ -1477,7 +1477,7 @@ static std::vector<int32_t> mimo_asr_concat_segments(int channels_plus_text,
 //     the never-written tail slots so they can't leak NaN/garbage.
 //   • The KV buffer is zero-cleared at mimo_asr_kv_init (already in
 //     place at line ~459) — required to avoid CUDA / partial-CPU
-//     noise from uninit'd KV pages (cf. qwen3-tts commit 7298dd5).
+//     noise from uninit'd KV pages (cf. cielvox2-tts commit 7298dd5).
 static float* mimo_asr_run_lm(mimo_asr_context* ctx, const int32_t* input_ids_9xT, int T_total, int n_past);
 static float* mimo_asr_run_lm_step(mimo_asr_context* ctx, int32_t next_token, int n_past_groups) {
     const auto& hp = ctx->hp;
@@ -1588,8 +1588,8 @@ static float* mimo_asr_run_lm(mimo_asr_context* ctx, const int32_t* input_ids_9x
     // Production path: skip diag captures (~5% win + cleaner allocator,
     // PLAN #51 perf wave). Honour MIMO_ASR_DIAG=1 to keep the diag tensors
     // resident when debugging a transcribe-time regression directly.
-    const bool diag_env = crispasr_env::get("CRISPASR_MIMO_ASR_DIAG") != nullptr ||
-                          crispasr_env::get("CRISPASR_MIMO_ASR_DUMP_STAGES") != nullptr;
+    const bool diag_env = stelnettts_env::get("STELNETTTS_MIMO_ASR_DIAG") != nullptr ||
+                          stelnettts_env::get("STELNETTTS_MIMO_ASR_DUMP_STAGES") != nullptr;
     ggml_cgraph* gf = mimo_asr_build_prefill_graph(ctx, Tg, n_past, /*diag_captures*/ diag_env);
     ggml_backend_sched_reset(ctx->sched);
     if (!ggml_backend_sched_alloc_graph(ctx->sched, gf))
@@ -1647,10 +1647,10 @@ static float* mimo_asr_run_lm(mimo_asr_context* ctx, const int32_t* input_ids_9x
         return nullptr;
 
     // Per-stage tensor stats dump (MIMO_ASR_DUMP_STAGES=1) — mirrors funasr's
-    // FUNASR_DUMP_STAGES so a CPU run and a GPU run (CRISPASR_MIMO_FORCE_GPU=1)
+    // FUNASR_DUMP_STAGES so a CPU run and a GPU run (STELNETTTS_MIMO_FORCE_GPU=1)
     // can be compared stage-by-stage to localise where the PLAN #115 GPU
     // prefill diverges (NaN / wrong / zero).
-    if (crispasr_env::get("CRISPASR_MIMO_ASR_DUMP_STAGES")) {
+    if (stelnettts_env::get("STELNETTTS_MIMO_ASR_DUMP_STAGES")) {
         static const char* dump_stages[] = {
             "prefill_audio_features", "prefill_text_embeds",       "prefill_inputs_embeds",
             "prefill_last_hidden",    "prefill_text_logits_step0",
@@ -1788,7 +1788,7 @@ static char* mimo_asr_transcribe_impl(struct mimo_asr_context* ctx, const float*
     ctx->step_t1_fixed_kv_len = 0;
 
     // 5. Prefill.
-    const bool bench = crispasr_env::get("CRISPASR_MIMO_ASR_BENCH") != nullptr;
+    const bool bench = stelnettts_env::get("STELNETTTS_MIMO_ASR_BENCH") != nullptr;
     auto now_ms = []() {
         using namespace std::chrono;
         return duration_cast<duration<double, std::milli>>(steady_clock::now().time_since_epoch()).count();

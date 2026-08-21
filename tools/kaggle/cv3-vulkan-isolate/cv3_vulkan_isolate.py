@@ -8,16 +8,16 @@ Vulkan Windows build to every user). The native-Vulkan path was garbage. On Molt
   1. AR-decode collapse = the ggml_backend_sched weight-less-first-op miscompute
      (LM graph starts with rms_norm(inputs_embeds) on a leaf). FIXED by dispatching
      every CV3 graph through a single-backend gallocr on the GPU backend, bypassing
-     the scheduler (branch fix/304-cosyvoice3-se, gated CRISPASR_COSYVOICE3_VULKAN_NATIVE=1).
+     the scheduler (branch fix/304-cosyvoice3-se, gated STELNETTTS_COSYVOICE3_VULKAN_NATIVE=1).
   2. Even with valid LM tokens the audio was near-silent noise. The pre-HiFT mel is
      HEALTHY on MoltenVK (range ~-12..0.5, no NaN) -> flow works, HiFT is the breaker.
 
 MoltenVK != the Windows/NVIDIA Vulkan SubtitleEdit ships, so this kernel CONFIRMS the
-split on a real NVIDIA driver. It builds crispasr from the branch with GGML_VULKAN=ON,
+split on a real NVIDIA driver. It builds stelnettts from the branch with GGML_VULKAN=ON,
 then synthesizes ONE fixed sentence (same seed) under:
    A) --no-gpu                                   (CPU reference, known-good)
-   B) CRISPASR_COSYVOICE3_VULKAN_NATIVE=1        (native Vulkan, gallocr LM path)
-For each it dumps generated tokens, the pre-HiFT mel (CRISPASR_COSYVOICE3_DUMP_MEL
+   B) STELNETTTS_COSYVOICE3_VULKAN_NATIVE=1        (native Vulkan, gallocr LM path)
+For each it dumps generated tokens, the pre-HiFT mel (STELNETTTS_COSYVOICE3_DUMP_MEL
 stats + raw), and the audio, then ASR-roundtrips with whisper-tiny.en.
 
 Verdict emitted to /kaggle/working/cv3_isolate_results.json:
@@ -39,9 +39,9 @@ RESULTS = WORK / "cv3_isolate_results.json"
 
 # ── kaggle_harness regime: clone repo, import harness, init progress ─────────
 HERE = Path(__file__).resolve().parent
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 BRANCH = "fix/304-cosyvoice3-se"
-CLONE = Path("/kaggle/temp/CrispASR")
+CLONE = Path("/kaggle/temp/StelnetTTS")
 _cloned = CLONE.exists()
 if not _cloned:
     try:
@@ -50,7 +50,7 @@ if not _cloned:
         # --shallow-submodules (tip-only fetch) fails to find it. A full
         # submodule fetch is small enough and reliable.
         subprocess.run(["git", "clone", "--depth", "1", "--branch", BRANCH,
-                        "--recurse-submodules", CRISPASR_URL, str(CLONE)],
+                        "--recurse-submodules", STELNETTTS_URL, str(CLONE)],
                        check=True, timeout=1200)
         _cloned = True
     except Exception as e:
@@ -70,7 +70,7 @@ def sh(cmd, timeout=None, check=False):
                           timeout=timeout, check=check)
 
 
-# HF auth (env -> Kaggle Secret -> mounted crispasr-hf-token dataset)
+# HF auth (env -> Kaggle Secret -> mounted stelnettts-hf-token dataset)
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
                 "hf_transfer", "huggingface_hub"], check=False)
 HF_TOKEN = kh.resolve_hf_token()
@@ -80,7 +80,7 @@ from huggingface_hub import hf_hub_download
 SENT = "The quick brown fox jumps over the lazy dog."
 SEED = 42
 VOICE = "fleurs-en"
-CV3_REPO = "cstr/cosyvoice3-0.5b-2512-GGUF"
+CV3_REPO = "Xenna/cosyvoice3-0.5b-2512-GGUF"
 # Companion GGUFs the CV3 backend resolves as siblings of the LLM.
 CV3_FILES = [
     "cosyvoice3-llm-q4_k.gguf",
@@ -152,8 +152,8 @@ def enable_vulkan():
     return devs, nvidia
 
 
-# ── 2. Build crispasr from the branch with Vulkan ───────────────────────────
-def build_crispasr():
+# ── 2. Build stelnettts from the branch with Vulkan ───────────────────────────
+def build_stelnettts():
     kh.install_build_toolchain()
     src = CLONE
     if not (src / "CMakeLists.txt").exists():
@@ -165,7 +165,7 @@ def build_crispasr():
     bdir = src / "build-vk"
     flags = ["-DCMAKE_BUILD_TYPE=Release", "-DGGML_VULKAN=ON", "-DGGML_CUDA=OFF",
              "-DGGML_NATIVE=OFF", "-DGGML_AVX2=ON", "-DGGML_FMA=ON", "-DGGML_F16C=ON",
-             "-DCRISPASR_OPUS_FETCH=ON"] + kh.cache_and_link_flags()
+             "-DSTELNETTTS_OPUS_FETCH=ON"] + kh.cache_and_link_flags()
     glslc = os.environ.get("GLSLC_PATH")
     if glslc:
         flags.append(f"-DVulkan_GLSLC_EXECUTABLE={glslc}")
@@ -182,13 +182,13 @@ def build_crispasr():
     step("build.compile", jobs=jobs)
     with kh.build_heartbeat("build.ninja", interval_s=30):
         try:
-            kh.sh_with_progress(f"cmake --build build-vk -j{jobs} --target crispasr", cwd=str(src))
+            kh.sh_with_progress(f"cmake --build build-vk -j{jobs} --target stelnettts", cwd=str(src))
         except Exception as e:
             step("build.compile_FAILED", err=str(e)[-2000:])
             raise
-    binp = src / "build-vk" / "bin" / "crispasr"
+    binp = src / "build-vk" / "bin" / "stelnettts"
     if not binp.exists():
-        raise RuntimeError("crispasr binary not produced")
+        raise RuntimeError("stelnettts binary not produced")
     os.environ["LD_LIBRARY_PATH"] = str(binp.parent) + ":" + os.environ.get("LD_LIBRARY_PATH", "")
     ver = sh(f"{binp} --version")
     step("build.ready", path=str(binp),
@@ -279,8 +279,8 @@ def run_synth(binp, llm, tag, env_extra, cli_extra=None, timeout=1800):
     mel = TMP / f"mel_{tag}.bin"
     tok = TMP / f"tok_{tag}.txt"
     env = dict(os.environ)
-    env["CRISPASR_COSYVOICE3_DUMP_MEL"] = str(mel)
-    env["CRISPASR_COSYVOICE3_DUMP_TOKENS"] = str(tok)
+    env["STELNETTTS_COSYVOICE3_DUMP_MEL"] = str(mel)
+    env["STELNETTTS_COSYVOICE3_DUMP_TOKENS"] = str(tok)
     env.update(env_extra)
     cmd = [binp, "--backend", "cosyvoice3-tts", "-m", llm, "--tts", SENT,
            "--voice", VOICE, "--seed", str(SEED), "--tts-output", str(out)]
@@ -307,14 +307,14 @@ def run_synth(binp, llm, tag, env_extra, cli_extra=None, timeout=1800):
 
 def main():
     devs, nvidia = enable_vulkan()
-    binp = build_crispasr()
+    binp = build_stelnettts()
     llm, whisp = fetch_models()
 
     results = {"env": {"vulkan_devices": devs, "real_nvidia": nvidia}, "runs": {}}
 
     # B) native Vulkan (gallocr LM path) — the ESSENTIAL run, GPU-fast. Runs
     # FIRST so a slow CPU reference can't starve it of session time.
-    vk = run_synth(binp, llm, "vk", {"CRISPASR_COSYVOICE3_VULKAN_NATIVE": "1"}, timeout=1200)
+    vk = run_synth(binp, llm, "vk", {"STELNETTTS_COSYVOICE3_VULKAN_NATIVE": "1"}, timeout=1200)
     step("run.vk", **{k: vk[k] for k in ("rc", "timed_out", "mel", "n_tokens", "audio")})
     results["runs"]["vk"] = vk
     RESULTS.write_text(json.dumps(results, indent=2))  # persist before the slow CPU ref

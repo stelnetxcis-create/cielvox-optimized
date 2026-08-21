@@ -323,8 +323,8 @@ def convert(upstream_src: Path, out_path: Path, write_f16: bool) -> None:
     writer.add_array("lid_cld3.labels", languages)
 
     # Tensors. Names use the `.weight` suffix on every quantizable tensor so
-    # crispasr-quantize's is_weight gate matches them — see LEARNINGS.md
-    # "crispasr-quantize is_weight gate" for the silent-no-op trap.
+    # stelnettts-quantize's is_weight gate matches them — see LEARNINGS.md
+    # "stelnettts-quantize is_weight gate" for the silent-no-op trap.
     for i, emb in enumerate(embeddings_out):
         writer.add_tensor(f"lid_cld3.embedding.{i}.weight", emb)
     writer.add_tensor("lid_cld3.hidden.weight", hidden_w_out)
@@ -352,7 +352,7 @@ def main() -> None:
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path("/Volumes/backups/ai/crispasr-models/lid-cld3/cld3-f16.gguf"),
+        default=Path("/Volumes/backups/ai/stelnettts-models/lid-cld3/cld3-f16.gguf"),
         help="Output GGUF path.",
     )
     parser.add_argument(

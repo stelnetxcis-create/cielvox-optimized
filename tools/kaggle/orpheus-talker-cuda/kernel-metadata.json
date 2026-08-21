@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-orpheus-talker-cuda",
-  "title": "crispasr orpheus talker cuda",
-  "code_file": "crispasr-orpheus-talker-cuda.py",
+  "id": "chr1str/stelnettts-orpheus-talker-cuda",
+  "title": "stelnettts orpheus talker cuda",
+  "code_file": "stelnettts-orpheus-talker-cuda.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

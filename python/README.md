@@ -1,16 +1,16 @@
-# crispasr
+# stelnettts
 
-Python bindings for [CrispASR](https://github.com/CrispStrobe/CrispASR) — lightweight on-device speech recognition via ggml.
+Python bindings for [StelnetTTS](https://github.com/Cyna/StelnetTTS) — lightweight on-device speech recognition via ggml.
 
-Supports the ASR backends compiled into the linked CrispASR library, including Whisper, Qwen3-ASR, FastConformer, Canary, Parakeet, Cohere, Granite-Speech, Voxtral, wav2vec2, GLM-ASR, Kyutai-STT, Moonshine, FireRed, OmniASR, and VibeVoice-ASR.
+Supports the ASR backends compiled into the linked StelnetTTS library, including Whisper, Qwen3-ASR, FastConformer, Canary, Parakeet, Cohere, Granite-Speech, Voxtral, wav2vec2, GLM-ASR, Kyutai-STT, Moonshine, FireRed, OmniASR, and VibeVoice-ASR.
 
 ## Install
 
 ```bash
-pip install crispasr
+pip install stelnettts
 ```
 
-Platform wheels **bundle the native `libcrispasr`** — nothing else to install —
+Platform wheels **bundle the native `libstelnettts`** — nothing else to install —
 for Linux (x86_64, arm64), macOS (Apple Silicon, Metal-accelerated), and
 Windows (x86_64).
 
@@ -21,29 +21,29 @@ style — pass `--extra-index-url`):
 
 ```bash
 # NVIDIA CUDA (Linux + Windows)
-pip install crispasr --extra-index-url https://crispstrobe.github.io/CrispASR/whl/cuda/
+pip install stelnettts --extra-index-url https://crispstrobe.github.io/StelnetTTS/whl/cuda/
 # Vulkan (Windows)
-pip install crispasr --extra-index-url https://crispstrobe.github.io/CrispASR/whl/vulkan/
+pip install stelnettts --extra-index-url https://crispstrobe.github.io/StelnetTTS/whl/vulkan/
 ```
 
 ### Other platforms / bring-your-own library
 
 Where no prebuilt wheel matches, pip installs the pure-Python **sdist**, which
-loads a `libcrispasr` you supply. Build/install it from source and, if it lands
-in a non-standard location, point `CRISPASR_LIB_PATH` at the file:
+loads a `libstelnettts` you supply. Build/install it from source and, if it lands
+in a non-standard location, point `STELNETTTS_LIB_PATH` at the file:
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR && cmake -B build && cmake --build build -j && sudo cmake --install build
-export CRISPASR_LIB_PATH=/usr/local/lib/libcrispasr.so   # only if non-standard
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS && cmake -B build && cmake --build build -j && sudo cmake --install build
+export STELNETTTS_LIB_PATH=/usr/local/lib/libstelnettts.so   # only if non-standard
 ```
 
 ## Quick start
 
 ```python
-from crispasr import CrispASR
+from stelnettts import StelnetTTS
 
-model = CrispASR("ggml-base.en.bin")
+model = StelnetTTS("ggml-base.en.bin")
 for seg in model.transcribe("audio.wav"):
     print(f"[{seg.start:.1f}s - {seg.end:.1f}s] {seg.text}")
 model.close()
@@ -52,17 +52,17 @@ model.close()
 Or use the unified `Session` API for non-Whisper backends (Qwen3-ASR, FastConformer, Parakeet, …):
 
 ```python
-from crispasr import Session
+from stelnettts import Session
 
-s = Session("qwen3-asr-0.6b-q4_k.gguf")
+s = Session("cielvox2-asr-0.6b-q4_k.gguf")
 for seg in s.transcribe_pcm(pcm_f32, sample_rate=16000):
     print(seg.text)
 ```
 
 ## API
 
-- `CrispASR` — Whisper-compatible high-level API
-- `Session` — unified API across all backends compiled into `libcrispasr`
+- `StelnetTTS` — Whisper-compatible high-level API
+- `Session` — unified API across all backends compiled into `libstelnettts`
 - `ChatSession` — text → text chat over a GGUF chat model: one-shot and streaming generation, prompt-token counting, and cancellation through an abort predicate
 - `align_words(...)` — word-level CTC alignment
 - `diarize_segments(...)` — speaker diarization (energy / xcorr / vad-turns / pyannote)
@@ -74,7 +74,7 @@ for seg in s.transcribe_pcm(pcm_f32, sample_rate=16000):
 - `registry_lookup(...)` — auto-download known models from the model hub
 - `registry_default_bundle(...)` — enumerate the exact primary, companion, and extra files used by `-m auto`, including licence-acceptance policy
 
-See the [main repo](https://github.com/CrispStrobe/CrispASR) for full documentation, model registry, and CLI.
+See the [main repo](https://github.com/Cyna/StelnetTTS) for full documentation, model registry, and CLI.
 
 ## License
 

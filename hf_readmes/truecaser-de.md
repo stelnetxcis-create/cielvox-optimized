@@ -14,7 +14,7 @@ pipeline_tag: token-classification
 
 # Truecaser Models
 
-Truecasing models for restoring proper capitalization in lowercase ASR output. Used by [CrispASR](https://github.com/CrispStrobe/CrispASR) via `--truecase-model`.
+Truecasing models for restoring proper capitalization in lowercase ASR output. Used by [StelnetTTS](https://github.com/Cyna/StelnetTTS) via `--truecase-model`.
 
 ## Available Models
 
@@ -66,20 +66,20 @@ Simple word-frequency lookup trained on WMT News Crawl 2023 German.
 - **Approach**: for each word, pick the casing variant (lowercase/capitalize/uppercase) seen most often
 - **Training data**: WMT News Crawl 2023 German (278K sentences), MIT license
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # BiLSTM (recommended)
-crispasr --backend wav2vec2-de -m model.gguf --truecase-model lstm -f audio.wav
+stelnettts --backend wav2vec2-de -m model.gguf --truecase-model lstm -f audio.wav
 
 # CRF
-crispasr --backend wav2vec2-de -m model.gguf --truecase-model crf -f audio.wav
+stelnettts --backend wav2vec2-de -m model.gguf --truecase-model crf -f audio.wav
 
 # Statistical
-crispasr --backend wav2vec2-de -m model.gguf --truecase-model auto -f audio.wav
+stelnettts --backend wav2vec2-de -m model.gguf --truecase-model auto -f audio.wav
 
 # Combined with punctuation restoration
-crispasr --backend moonshine -m model.gguf --punc-model punctuate-all --truecase-model lstm -f audio.wav
+stelnettts --backend moonshine -m model.gguf --punc-model punctuate-all --truecase-model lstm -f audio.wav
 ```
 
 ## Conversion

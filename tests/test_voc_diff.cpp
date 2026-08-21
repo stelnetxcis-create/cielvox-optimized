@@ -2,7 +2,7 @@
 // Uses the OLD voc-ref.gguf (which has C as fast axis in GGUF, requiring transpose).
 
 #include "chatterbox_s3gen.h"
-#include "crispasr_diff.h"
+#include "stelnettts_diff.h"
 
 #include <cmath>
 #include <cstdio>
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     if (argc >= 4)
         mel_path = argv[3];
 
-    crispasr_diff::Ref ref;
+    stelnettts_diff::Ref ref;
     if (!ref.load(ref_path)) {
         fprintf(stderr, "ERROR: cannot load ref\n");
         return 1;

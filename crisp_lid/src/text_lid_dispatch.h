@@ -16,7 +16,7 @@
 //   text_lid_free(ctx);
 //
 // The same flag in cli.cpp's `--lid-on-transcript` and the standalone
-// `crispasr-lid` binary go through this façade so any text-LID GGUF
+// `stelnettts-lid` binary go through this façade so any text-LID GGUF
 // produced by `convert-glotlid-to-gguf.py` or `convert-cld3-to-gguf.py`
 // works without re-running the user with a different flag.
 
@@ -45,17 +45,17 @@ struct text_lid_context* text_lid_init_from_file(const char* gguf_path, int n_th
 // Resolve `arg` to a usable on-disk GGUF path, auto-downloading from the
 // registry if needed. Accepted forms:
 //
-//   "auto"                       → cstr/cld3-GGUF (smallest, Apache-2.0)
+//   "auto"                       → Xenna/cld3-GGUF (smallest, Apache-2.0)
 //   "auto:cld3"                  → same as "auto"
-//   "auto:glotlid"               → cstr/glotlid-GGUF (2102 ISO 639-3)
-//   "auto:lid-fasttext176"       → cstr/fasttext-lid176-GGUF (CC-BY-NC-4.0)
+//   "auto:glotlid"               → Xenna/glotlid-GGUF (2102 ISO 639-3)
+//   "auto:lid-fasttext176"       → Xenna/fasttext-lid176-GGUF (CC-BY-NC-4.0)
 //   "<filename>" or "<path>"     → if it exists, return as-is; else look up
 //                                  by basename in the registry and download.
 //
 // Returns the absolute path on success, empty string on failure (with an
 // error logged to stderr). `cache_dir_override` is forwarded to
-// `crispasr_cache::ensure_cached_file`; pass an empty string for the
-// default `~/.cache/crispasr/`.
+// `stelnettts_cache::ensure_cached_file`; pass an empty string for the
+// default `~/.cache/stelnettts/`.
 std::string text_lid_resolve_path(const std::string& arg, const std::string& cache_dir_override = "",
                                   bool quiet = false);
 

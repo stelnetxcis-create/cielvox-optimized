@@ -1,26 +1,26 @@
 # %% [markdown]
-# # CrispASR — MOSS-Audio-4B-Instruct GGUF conversion
+# # StelnetTTS — MOSS-Audio-4B-Instruct GGUF conversion
 #
 # Convert `OpenMOSS-Team/MOSS-Audio-4B-Instruct` to F16 GGUF,
-# quantize to Q4_K, upload to `cstr/MOSS-Audio-4B-Instruct-GGUF`.
+# quantize to Q4_K, upload to `Xenna/MOSS-Audio-4B-Instruct-GGUF`.
 
 # %% [code]
 import os, subprocess, sys, shutil
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 OUT_F16 = WORK / "moss-audio-4b-instruct-f16.gguf"
 OUT_Q4K = WORK / "moss-audio-4b-instruct-q4_k.gguf"
-BRANCH = os.environ.get("CRISPASR_REF", "feature/moss-audio")
+BRANCH = os.environ.get("STELNETTTS_REF", "feature/moss-audio")
 
 print(f"[1] cloning {BRANCH}", flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
 subprocess.check_call([
     "git", "clone", "--depth", "1", "--branch", BRANCH,
-    "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+    "https://github.com/Cyna/StelnetTTS.git", str(REPO),
 ])
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -65,25 +65,25 @@ print(f"[4] F16: {OUT_F16.stat().st_size / (1024**3):.1f} GiB", flush=True)
 kh.step("f16_done", size_gb=round(OUT_F16.stat().st_size / (1024**3), 2))
 
 # %% [code]
-print("[5] building crispasr-quantize", flush=True)
+print("[5] building stelnettts-quantize", flush=True)
 kh.install_build_toolchain()
 BUILD.mkdir(exist_ok=True)
 
 cmake_cfg = (
     f"cmake -G Ninja -S {REPO} -B {BUILD} "
-    f"-DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DCRISPASR_BUILD_TESTS=OFF "
+    f"-DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DSTELNETTTS_BUILD_TESTS=OFF "
     + " ".join(kh.cache_and_link_flags())
 )
 kh.sh_with_progress(cmake_cfg)
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"cmake --build {BUILD} --target crispasr-quantize "
+        f"cmake --build {BUILD} --target stelnettts-quantize "
         f"-j{kh.safe_build_jobs(gpu=False)}"
     )
 kh.step("quantize_built")
 
-QUANTIZE = BUILD / "bin" / "crispasr-quantize"
+QUANTIZE = BUILD / "bin" / "stelnettts-quantize"
 print("[5] quantizing F16 -> Q4_K", flush=True)
 subprocess.check_call([str(QUANTIZE), str(OUT_F16), str(OUT_Q4K), "q4_k"])
 print(f"[5] Q4K: {OUT_Q4K.stat().st_size / (1024**3):.1f} GiB", flush=True)
@@ -93,7 +93,7 @@ kh.step("q4k_done", size_gb=round(OUT_Q4K.stat().st_size / (1024**3), 2))
 OUT_F16.unlink(missing_ok=True)
 
 # %% [code]
-HF_REPO = "cstr/MOSS-Audio-4B-Instruct-GGUF"
+HF_REPO = "Xenna/MOSS-Audio-4B-Instruct-GGUF"
 hf_token = os.environ.get("HF_TOKEN")
 if hf_token:
     from huggingface_hub import HfApi

@@ -28,7 +28,7 @@ tags:
 
 GGUF quantizations of [mistralai/Voxtral-Mini-4B-Realtime-2602](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602), a **4.4B-parameter realtime streaming speech-to-text model** with a causal audio encoder and configurable transcription delay.
 
-Converted and tested with [CrispASR](https://github.com/CrispStrobe/CrispASR), a multi-model ASR framework built on ggml.
+Converted and tested with [StelnetTTS](https://github.com/Cyna/StelnetTTS), a multi-model ASR framework built on ggml.
 
 ## Files
 
@@ -51,14 +51,14 @@ Q4_K recommended — 3.5× smaller than F16, 2.7× faster, identical transcripti
 ## Usage
 
 ```bash
-# Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target voxtral4b-main
 
 # Download Q4_K (recommended)
-huggingface-cli download cstr/voxtral-mini-4b-realtime-GGUF \
+huggingface-cli download Xenna/voxtral-mini-4b-realtime-GGUF \
     voxtral-mini-4b-realtime-q4_k.gguf --local-dir .
 
 # Transcribe
@@ -69,7 +69,7 @@ huggingface-cli download cstr/voxtral-mini-4b-realtime-GGUF \
 
 ```bash
 # Also download the CTC aligner
-huggingface-cli download cstr/canary-ctc-aligner-GGUF \
+huggingface-cli download Xenna/canary-ctc-aligner-GGUF \
     canary-ctc-aligner-q4_k.gguf --local-dir .
 
 ./build/bin/voxtral4b-main -m voxtral-mini-4b-realtime-q4_k.gguf \
@@ -112,12 +112,12 @@ python models/convert-voxtral4b-to-gguf.py \
     --output voxtral-mini-4b-realtime.gguf
 
 # Then quantize
-./build/bin/crispasr-quantize voxtral-mini-4b-realtime.gguf \
+./build/bin/stelnettts-quantize voxtral-mini-4b-realtime.gguf \
     voxtral-mini-4b-realtime-q4_k.gguf q4_k
 ```
 
 ## Credits
 
 - Model: [Mistral AI](https://mistral.ai/) — Apache 2.0
-- GGUF conversion: [CrispASR](https://github.com/CrispStrobe/CrispASR)
+- GGUF conversion: [StelnetTTS](https://github.com/Cyna/StelnetTTS)
 - Port cross-referenced against [voxtral.c](https://github.com/antirez/voxtral.c), [voxmlx](https://github.com/awni/voxmlx), [voxtral-mini-realtime-rs](https://github.com/TrevorS/voxtral-mini-realtime-rs)

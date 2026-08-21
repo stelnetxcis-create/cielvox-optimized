@@ -1,7 +1,7 @@
 """Per-iteration capture helpers for AR / diffusion samplers.
 
 Companion to `_hooks.py`. That module hooks `nn.Module.forward` and
-captures one tensor per stage — fine for prefill-only diffs (qwen3-tts
+captures one tensor per stage — fine for prefill-only diffs (cielvox2-tts
 talker prefill, parakeet encoder layers, etc.).
 
 Per-frame diffs against an AR generator need to capture state INSIDE

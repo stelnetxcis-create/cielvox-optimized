@@ -1,8 +1,8 @@
 """Dia 1.6B TTS reference dump backend.
 
 Captures stage-by-stage activations from the official PyTorch Dia model
-(nari-labs/Dia-1.6B) so the CrispASR C++ Dia TTS backend can be diffed
-via `crispasr-diff dia`.
+(nari-labs/Dia-1.6B) so the StelnetTTS C++ Dia TTS backend can be diffed
+via `stelnettts-diff dia`.
 
 Architecture:
   Text encoder (12-layer Llama-style, 1024-d) encodes byte-level text

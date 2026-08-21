@@ -58,7 +58,7 @@ on CPU and matmul weights on GPU. Currently: mimo-asr (workaround: reuse
 prefill graph for decode). Potentially affects any future model with the
 same split-load pattern.
 
-## Workaround (in CrispASR)
+## Workaround (in StelnetTTS)
 
 mimo-asr decode steps reuse the prefill graph (which has enough GPU ops
 for the flood fill to work) instead of the minimal T=1 step graph. The
@@ -94,12 +94,12 @@ happen to have CUDA buffer types.
 ## Repro
 
 ```bash
-# Build CrispASR with CUDA
-cmake -B build -DGGML_CUDA=ON && cmake --build build --target crispasr-cli
+# Build StelnetTTS with CUDA
+cmake -B build -DGGML_CUDA=ON && cmake --build build --target stelnettts-cli
 
 # Run mimo-asr with GPU + split-load (embed on CPU, matmul on GPU)
 # This uses the prefill-graph workaround, so it works:
-build/bin/crispasr --backend mimo-asr -m auto --auto-download \
+build/bin/stelnettts --backend mimo-asr -m auto --auto-download \
     -f samples/jfk.wav
 
 # To reproduce the raw bug, revert ec3ba861 (prefill-graph workaround)
@@ -108,7 +108,7 @@ build/bin/crispasr --backend mimo-asr -m auto --auto-download \
 
 ## Cross-refs
 
-- CrispASR LEARNINGS.md §"ggml scheduler tightened cross-backend tensor resolution"
+- StelnetTTS LEARNINGS.md §"ggml scheduler tightened cross-backend tensor resolution"
 - upstream-prs/10 (related: Metal sched buffer reuse drift)
 - upstream-prs/11 (related: Metal sched NaN at large T)
-- CrispASR commit `ec3ba861` for the workaround
+- StelnetTTS commit `ec3ba861` for the workaround

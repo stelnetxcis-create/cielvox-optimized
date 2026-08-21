@@ -1,7 +1,7 @@
 """Orpheus talker (Llama-3.2-3B-FT) reference dump backend.
 
 Captures the greedy codec-token stream the Orpheus talker LM emits for a
-given prompt, so `crispasr-diff orpheus-talker` can verify the C++ AR
+given prompt, so `stelnettts-diff orpheus-talker` can verify the C++ AR
 decode (the §176b Lk-bucketed graph + device KV) against PyTorch ground
 truth — the part the SNAC-only `orpheus` diff does not cover.
 

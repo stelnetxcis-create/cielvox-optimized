@@ -45,7 +45,7 @@ base_model: nvidia/canary-1b-v2
 
 # Canary-1B-v2 CTC aligner — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of the **auxiliary CTC alignment model** that ships *inside* [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2)'s `.nemo` tarball, repackaged as a standalone forced-aligner for use with the `nfa-align` CLI from **[CrispStrobe/CrispASR@parakeet](https://github.com/CrispStrobe/CrispASR/tree/parakeet)**.
+GGUF / ggml conversions of the **auxiliary CTC alignment model** that ships *inside* [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2)'s `.nemo` tarball, repackaged as a standalone forced-aligner for use with the `nfa-align` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.
 
 ## What is this?
 
@@ -77,7 +77,7 @@ The original model card, paper, and license are at:
 - NeMo Forced Aligner (the tool that uses this model): https://github.com/NVIDIA-NeMo/NeMo
 - NVIDIA NeMo: https://github.com/NVIDIA-NeMo/NeMo
 
-The `.nemo` extraction + GGUF conversion + ggml runtime in this repo are MIT-licensed (matching the [CrispASR](https://github.com/CrispStrobe/CrispASR) base they extend), but **the model weights themselves are CC-BY-4.0 from NVIDIA**.
+The `.nemo` extraction + GGUF conversion + ggml runtime in this repo are MIT-licensed (matching the [StelnetTTS](https://github.com/Cyna/StelnetTTS) base they extend), but **the model weights themselves are CC-BY-4.0 from NVIDIA**.
 
 ## Files
 
@@ -92,13 +92,13 @@ The `.nemo` extraction + GGUF conversion + ggml runtime in this repo are MIT-lic
 
 ```bash
 # 1. Build the runtime
-git clone -b parakeet https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone -b parakeet https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc) --target nfa-align
 
 # 2. Download the aligner GGUF
-huggingface-cli download cstr/canary-ctc-aligner-GGUF \
+huggingface-cli download Xenna/canary-ctc-aligner-GGUF \
     canary-ctc-aligner-q4_k.gguf --local-dir .
 
 # 3. Greedy CTC decode (sanity check — works as a standalone ASR too)
@@ -233,17 +233,17 @@ Same coverage as Canary-1B-v2 and Parakeet-TDT-0.6B-v3, since this is the same G
 ## How this was made
 
 1. **Inspect** `canary-1b-v2.nemo`: there's a separate `timestamps_asr_model_weights.ckpt` and `timestamps_asr_model_config.yaml` inside the tarball. The weights file has 712 tensors, ~625 M parameters, structured as `encoder.* + decoder.decoder_layers.0.*`.
-2. **Convert** with [`models/convert-canary-ctc-to-gguf.py`](https://github.com/CrispStrobe/CrispASR/blob/parakeet/models/convert-canary-ctc-to-gguf.py): extract just the auxiliary checkpoint (not the main canary), remap NeMo state-dict keys (`encoder.layers.{i}.feed_forward1.linear1.weight` → `encoder.layers.{i}.ff1.linear1.weight`, etc.), squeeze the trailing kernel-1 dim on the CTC weight to make it a plain 2D linear, and write 712 tensors as F16 + F32.
-3. **C++ runtime** in [`src/canary_ctc.{h,cpp}`](https://github.com/CrispStrobe/CrispASR/blob/parakeet/src/canary_ctc.cpp): mmap the GGUF, fold BN into the depthwise conv at load time, build the encoder graph (identical to parakeet's), add a final `mul_mat` with the CTC head, return per-frame logits.
+2. **Convert** with [`models/convert-canary-ctc-to-gguf.py`](https://github.com/Cyna/StelnetTTS/blob/parakeet/models/convert-canary-ctc-to-gguf.py): extract just the auxiliary checkpoint (not the main canary), remap NeMo state-dict keys (`encoder.layers.{i}.feed_forward1.linear1.weight` → `encoder.layers.{i}.ff1.linear1.weight`, etc.), squeeze the trailing kernel-1 dim on the CTC weight to make it a plain 2D linear, and write 712 tensors as F16 + F32.
+3. **C++ runtime** in [`src/canary_ctc.{h,cpp}`](https://github.com/Cyna/StelnetTTS/blob/parakeet/src/canary_ctc.cpp): mmap the GGUF, fold BN into the depthwise conv at load time, build the encoder graph (identical to parakeet's), add a final `mul_mat` with the CTC head, return per-frame logits.
 4. **Subword Viterbi** in the same file: greedy longest-prefix tokenisation against the vocab, build the CTC-expanded label sequence, run the standard CTC Viterbi DP, traceback to per-token frames.
-5. **Quantise** with `crispasr-quantize` (the same llama.cpp-style quantiser used for the other GGUFs in this family). Q4_K alignment is byte-identical to F16 on the verification clip.
+5. **Quantise** with `stelnettts-quantize` (the same llama.cpp-style quantiser used for the other GGUFs in this family). Q4_K alignment is byte-identical to F16 on the verification clip.
 
 ## Related
 
-- **C++ runtime:** [`CrispStrobe/CrispASR@parakeet`](https://github.com/CrispStrobe/CrispASR/tree/parakeet)
+- **C++ runtime:** [`Cyna/StelnetTTS@parakeet`](https://github.com/Cyna/StelnetTTS/tree/parakeet)
 - **Original NVIDIA model:** [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2) — the .nemo tarball this aligner was extracted from
-- **Sister GGUF release (canary main model):** [`cstr/canary-1b-v2-GGUF`](https://huggingface.co/cstr/canary-1b-v2-GGUF) — the encoder-decoder transcription + translation model
-- **Sister parakeet release:** [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) — the same encoder family with a TDT decoder for free word timestamps
+- **Sister GGUF release (canary main model):** [`Xenna/canary-1b-v2-GGUF`](https://huggingface.co/Xenna/canary-1b-v2-GGUF) — the encoder-decoder transcription + translation model
+- **Sister parakeet release:** [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) — the same encoder family with a TDT decoder for free word timestamps
 - **NeMo Forced Aligner (the official tool that uses this same auxiliary model):** [NVIDIA-NeMo/NeMo](https://github.com/NVIDIA-NeMo/NeMo)
 - **Canary technical report:** [arXiv:2509.14128](https://arxiv.org/abs/2509.14128)
 
@@ -251,4 +251,4 @@ Same coverage as Canary-1B-v2 and Parakeet-TDT-0.6B-v3, since this is the same G
 
 **CC-BY-4.0**, inherited from `nvidia/canary-1b-v2`. Use of these GGUF files **must** comply with the CC-BY-4.0 license including attribution to NVIDIA's NeMo team. See [the license](https://creativecommons.org/licenses/by/4.0/) for full terms.
 
-The conversion + runtime code is MIT-licensed (matching the crispasr base), but the model weights themselves are NVIDIA's CC-BY-4.0 work.
+The conversion + runtime code is MIT-licensed (matching the stelnettts base), but the model weights themselves are NVIDIA's CC-BY-4.0 work.

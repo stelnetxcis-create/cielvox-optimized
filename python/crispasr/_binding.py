@@ -1,7 +1,7 @@
-"""CrispASR Python wrapper via ctypes.
+"""StelnetTTS Python wrapper via ctypes.
 
 Provides speech-to-text transcription using ggml inference.
-Wraps the whisper.h C API from crispasr / CrispASR.
+Wraps the whisper.h C API from stelnettts / StelnetTTS.
 """
 
 import codecs
@@ -28,16 +28,16 @@ class Segment:
 
 
 def _find_lib():
-    """Locate the crispasr / whisper shared library.
+    """Locate the stelnettts / whisper shared library.
 
     Platform wheels (CPU on PyPI, GPU on the extra index) bundle the native
     library *next to this file*, so that copy is probed first and always wins.
     The pure-Python sdist does not bundle it; there the user supplies
-    `libcrispasr.{so,dylib,dll}` via a package manager (Homebrew, apt), a
-    source build, or `$CRISPASR_LIB_PATH`.
+    `libstelnettts.{so,dylib,dll}` via a package manager (Homebrew, apt), a
+    source build, or `$STELNETTTS_LIB_PATH`.
 
     Probe order:
-      1. $CRISPASR_LIB_PATH (explicit override — full path to the .so/.dylib/.dll)
+      1. $STELNETTTS_LIB_PATH (explicit override — full path to the .so/.dylib/.dll)
       2. This package directory (a lib bundled into the installed wheel)
       3. sys.prefix/lib (pip install --user, virtualenv, conda)
       4. Standard install prefixes (Homebrew arm64/x64, /usr/local, /usr)
@@ -45,20 +45,20 @@ def _find_lib():
       6. The bare filename (lets the loader use $LD_LIBRARY_PATH /
          $DYLD_LIBRARY_PATH / PATH and the system loader cache)
 
-    Both `libcrispasr.*` (preferred — all backends) and the legacy
+    Both `libstelnettts.*` (preferred — all backends) and the legacy
     `libwhisper.*` alias are accepted at every step.
     """
     import sys
 
     system = platform.system()
     if system == "Darwin":
-        candidates = ["libcrispasr.dylib", "libwhisper.dylib"]
+        candidates = ["libstelnettts.dylib", "libwhisper.dylib"]
     elif system == "Windows":
-        candidates = ["crispasr.dll", "whisper.dll"]
+        candidates = ["stelnettts.dll", "whisper.dll"]
     else:
-        candidates = ["libcrispasr.so", "libwhisper.so"]
+        candidates = ["libstelnettts.so", "libwhisper.so"]
 
-    override = os.environ.get("CRISPASR_LIB_PATH")
+    override = os.environ.get("STELNETTTS_LIB_PATH")
     if override and Path(override).exists():
         _register_dll_dir(Path(override).parent)
         return override
@@ -93,10 +93,10 @@ def _find_lib():
 def _register_dll_dir(directory: Path) -> None:
     """Windows only: make `directory` searchable for DEPENDENT DLLs.
 
-    `crispasr.dll` needs `ggml.dll`, `ggml-base.dll` and `ggml-cpu.dll`, which a
+    `stelnettts.dll` needs `ggml.dll`, `ggml-base.dll` and `ggml-cpu.dll`, which a
     platform wheel ships right beside it. Since Python 3.8 the directory of a DLL
     loaded by full path is NOT searched for that DLL's own dependencies, so
-    `ctypes.CDLL(<path>/crispasr.dll)` raises "DLL load failed while importing"
+    `ctypes.CDLL(<path>/stelnettts.dll)` raises "DLL load failed while importing"
     even though every dependency is present in the same folder.
     `os.add_dll_directory` is the documented remedy.
 
@@ -123,15 +123,15 @@ _dll_dirs: dict = {}
 
 
 # Whisper sampling strategies
-CRISPASR_SAMPLING_GREEDY = 0
-CRISPASR_SAMPLING_BEAM_SEARCH = 1
+STELNETTTS_SAMPLING_GREEDY = 0
+STELNETTTS_SAMPLING_BEAM_SEARCH = 1
 
 
-class CrispASR:
+class StelnetTTS:
     """Speech-to-text model using ggml inference.
 
     Usage:
-        model = CrispASR("ggml-base.en.bin")
+        model = StelnetTTS("ggml-base.en.bin")
         segments = model.transcribe("audio.wav")
         for seg in segments:
             print(f"[{seg.start:.1f}s - {seg.end:.1f}s] {seg.text}")
@@ -150,8 +150,8 @@ class CrispASR:
         # Load helpers library (provides pointer-based wrappers for by-value struct APIs)
         helpers_search = [
             helpers_lib_path,
-            str(Path(lib_path).parent / "libcrispasr_helpers.so") if lib_path else None,
-            str(Path(__file__).parent.parent.parent / "build" / "libcrispasr_helpers.so"),
+            str(Path(lib_path).parent / "libstelnettts_helpers.so") if lib_path else None,
+            str(Path(__file__).parent.parent.parent / "build" / "libstelnettts_helpers.so"),
         ]
         self._helpers = None
         for hp in helpers_search:
@@ -236,31 +236,31 @@ class CrispASR:
 
         # Parameter setters on whisper_full_params — all void(ptr, val).
         for _sym, _argtypes in [
-            ("crispasr_params_set_language", [ctypes.c_void_p, ctypes.c_char_p]),
-            ("crispasr_params_set_translate", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_detect_language", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_token_timestamps", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_n_threads", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_max_len", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_best_of", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_split_on_word", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_no_context", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_single_segment", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_print_realtime", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_print_progress", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_print_timestamps", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_print_special", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_suppress_blank", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_temperature", [ctypes.c_void_p, ctypes.c_float]),
-            ("crispasr_params_set_max_tokens", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_initial_prompt", [ctypes.c_void_p, ctypes.c_char_p]),
-            ("crispasr_params_set_alt_n", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_vad", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_vad_model_path", [ctypes.c_void_p, ctypes.c_char_p]),
-            ("crispasr_params_set_vad_threshold", [ctypes.c_void_p, ctypes.c_float]),
-            ("crispasr_params_set_vad_min_speech_ms", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_vad_min_silence_ms", [ctypes.c_void_p, ctypes.c_int]),
-            ("crispasr_params_set_tdrz", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_language", [ctypes.c_void_p, ctypes.c_char_p]),
+            ("stelnettts_params_set_translate", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_detect_language", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_token_timestamps", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_n_threads", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_max_len", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_best_of", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_split_on_word", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_no_context", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_single_segment", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_print_realtime", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_print_progress", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_print_timestamps", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_print_special", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_suppress_blank", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_temperature", [ctypes.c_void_p, ctypes.c_float]),
+            ("stelnettts_params_set_max_tokens", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_initial_prompt", [ctypes.c_void_p, ctypes.c_char_p]),
+            ("stelnettts_params_set_alt_n", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_vad", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_vad_model_path", [ctypes.c_void_p, ctypes.c_char_p]),
+            ("stelnettts_params_set_vad_threshold", [ctypes.c_void_p, ctypes.c_float]),
+            ("stelnettts_params_set_vad_min_speech_ms", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_vad_min_silence_ms", [ctypes.c_void_p, ctypes.c_int]),
+            ("stelnettts_params_set_tdrz", [ctypes.c_void_p, ctypes.c_int]),
         ]:
             if hasattr(lib, _sym):
                 getattr(lib, _sym).argtypes = _argtypes
@@ -268,13 +268,13 @@ class CrispASR:
 
         # Token-level accessors (0.5.x).
         for _sym, _args, _ret in [
-            ("crispasr_token_t0", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_int64),
-            ("crispasr_token_t1", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_int64),
-            ("crispasr_token_p", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_float),
-            ("crispasr_token_n_alts", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_int),
-            ("crispasr_token_alt_id", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int], ctypes.c_int32),
-            ("crispasr_token_alt_p", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int], ctypes.c_float),
-            ("crispasr_token_alt_text", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ("stelnettts_token_t0", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_int64),
+            ("stelnettts_token_t1", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_int64),
+            ("stelnettts_token_p", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_float),
+            ("stelnettts_token_n_alts", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int], ctypes.c_int),
+            ("stelnettts_token_alt_id", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int], ctypes.c_int32),
+            ("stelnettts_token_alt_p", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int], ctypes.c_float),
+            ("stelnettts_token_alt_text", [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
                                          ctypes.c_char_p, ctypes.c_int], ctypes.c_int),
         ]:
             if hasattr(lib, _sym):
@@ -282,46 +282,46 @@ class CrispASR:
                 getattr(lib, _sym).restype = _ret
 
         # Language detection (whisper context).
-        if hasattr(lib, "crispasr_detect_language"):
-            lib.crispasr_detect_language.argtypes = [
+        if hasattr(lib, "stelnettts_detect_language"):
+            lib.stelnettts_detect_language.argtypes = [
                 ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
                 ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
             ]
-            lib.crispasr_detect_language.restype = ctypes.c_float
+            lib.stelnettts_detect_language.restype = ctypes.c_float
 
         # VAD free + slices.
-        if hasattr(lib, "crispasr_vad_free"):
-            lib.crispasr_vad_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
-            lib.crispasr_vad_free.restype = None
-        if hasattr(lib, "crispasr_vad_slices"):
-            lib.crispasr_vad_slices.argtypes = [
+        if hasattr(lib, "stelnettts_vad_free"):
+            lib.stelnettts_vad_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+            lib.stelnettts_vad_free.restype = None
+        if hasattr(lib, "stelnettts_vad_slices"):
+            lib.stelnettts_vad_slices.argtypes = [
                 ctypes.c_char_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
                 ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int,
                 ctypes.c_int, ctypes.c_float, ctypes.c_int,
                 ctypes.POINTER(ctypes.POINTER(ctypes.c_float)),
             ]
-            lib.crispasr_vad_slices.restype = ctypes.c_int
+            lib.stelnettts_vad_slices.restype = ctypes.c_int
 
         # Streaming (whisper context).
-        if hasattr(lib, "crispasr_stream_open"):
-            lib.crispasr_stream_open.argtypes = [
+        if hasattr(lib, "stelnettts_stream_open"):
+            lib.stelnettts_stream_open.argtypes = [
                 ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
                 ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
             ]
-            lib.crispasr_stream_open.restype = ctypes.c_void_p
+            lib.stelnettts_stream_open.restype = ctypes.c_void_p
 
     def transcribe(
         self,
         audio_path: str,
         language: str = "auto",
-        strategy: int = CRISPASR_SAMPLING_GREEDY,
+        strategy: int = STELNETTTS_SAMPLING_GREEDY,
     ) -> List[Segment]:
         """Transcribe an audio file (WAV, 16kHz mono recommended).
 
         Args:
             audio_path: Path to audio file.
             language: Language code (e.g. "en", "de") or "auto" for detection.
-            strategy: CRISPASR_SAMPLING_GREEDY or CRISPASR_SAMPLING_BEAM_SEARCH.
+            strategy: STELNETTTS_SAMPLING_GREEDY or STELNETTTS_SAMPLING_BEAM_SEARCH.
 
         Returns:
             List of Segment objects with text and timing.
@@ -334,7 +334,7 @@ class CrispASR:
         pcm: np.ndarray,
         sample_rate: int = 16000,
         language: str = "auto",
-        strategy: int = CRISPASR_SAMPLING_GREEDY,
+        strategy: int = STELNETTTS_SAMPLING_GREEDY,
         vad: bool = False,
         vad_model_path: Optional[str] = None,
         vad_threshold: float = 0.5,
@@ -375,20 +375,20 @@ class CrispASR:
         # 0.4.2: VAD + tdrz. Setters are optional — older dylibs don't
         # have them, the lookup-time hasattr() guard skipped the argtypes
         # declaration so these calls no-op silently.
-        if vad and hasattr(self._lib, "crispasr_params_set_vad"):
-            self._lib.crispasr_params_set_vad(params_ptr, 1)
-            if hasattr(self._lib, "crispasr_params_set_vad_threshold"):
-                self._lib.crispasr_params_set_vad_threshold(params_ptr, vad_threshold)
-            if hasattr(self._lib, "crispasr_params_set_vad_min_speech_ms"):
-                self._lib.crispasr_params_set_vad_min_speech_ms(params_ptr, vad_min_speech_ms)
-            if hasattr(self._lib, "crispasr_params_set_vad_min_silence_ms"):
-                self._lib.crispasr_params_set_vad_min_silence_ms(params_ptr, vad_min_silence_ms)
-            if vad_model_path and hasattr(self._lib, "crispasr_params_set_vad_model_path"):
-                self._lib.crispasr_params_set_vad_model_path(
+        if vad and hasattr(self._lib, "stelnettts_params_set_vad"):
+            self._lib.stelnettts_params_set_vad(params_ptr, 1)
+            if hasattr(self._lib, "stelnettts_params_set_vad_threshold"):
+                self._lib.stelnettts_params_set_vad_threshold(params_ptr, vad_threshold)
+            if hasattr(self._lib, "stelnettts_params_set_vad_min_speech_ms"):
+                self._lib.stelnettts_params_set_vad_min_speech_ms(params_ptr, vad_min_speech_ms)
+            if hasattr(self._lib, "stelnettts_params_set_vad_min_silence_ms"):
+                self._lib.stelnettts_params_set_vad_min_silence_ms(params_ptr, vad_min_silence_ms)
+            if vad_model_path and hasattr(self._lib, "stelnettts_params_set_vad_model_path"):
+                self._lib.stelnettts_params_set_vad_model_path(
                     params_ptr, vad_model_path.encode("utf-8")
                 )
-        if tdrz and hasattr(self._lib, "crispasr_params_set_tdrz"):
-            self._lib.crispasr_params_set_tdrz(params_ptr, 1)
+        if tdrz and hasattr(self._lib, "stelnettts_params_set_tdrz"):
+            self._lib.stelnettts_params_set_tdrz(params_ptr, 1)
 
         # Run inference
         if self._helpers:
@@ -464,7 +464,7 @@ class CrispASR:
 
 
 # =========================================================================
-# Unified session — works for every backend libcrispasr was built with
+# Unified session — works for every backend libstelnettts was built with
 # =========================================================================
 
 @dataclass
@@ -484,12 +484,12 @@ class SessionSegment:
     end: float    # seconds
     words: List[SessionWord]
     # Whisper's per-segment no-speech probability (the <|nospeech|> posterior)
-    # in [0, 1]. Whisper-only; other backends (and older libcrispasr builds
+    # in [0, 1]. Whisper-only; other backends (and older libstelnettts builds
     # without the accessor) leave the -1.0 "no data" sentinel.
     no_speech_prob: float = -1.0
     # Native per-segment speaker label from a backend that diarizes on its own,
     # in the "(Speaker N) " form the CLI prefixes into text/srt/vtt output, or
-    # "" when the backend produced none (and on older libcrispasr builds without
+    # "" when the backend produced none (and on older libstelnettts builds without
     # the accessor). Populated today by vibevoice, whose model answers with a
     # Start/End/Speaker/Content array. The ordinals are CHUNK-LOCAL: "Speaker 1"
     # in one transcribe call is not necessarily the same voice as "Speaker 1" in
@@ -583,12 +583,12 @@ class RegistryBundle:
 
 def registry_lookup(backend: str, *, lib_path: Optional[str] = None) -> Optional[RegistryEntry]:
     """Look up the canonical GGUF for a backend. Returns ``None`` on miss."""
-    return _registry_call("crispasr_registry_lookup_abi", backend, lib_path)
+    return _registry_call("stelnettts_registry_lookup_abi", backend, lib_path)
 
 
 def registry_lookup_by_filename(filename: str, *, lib_path: Optional[str] = None) -> Optional[RegistryEntry]:
     """Look up the canonical GGUF by filename (exact, then fuzzy substring)."""
-    return _registry_call("crispasr_registry_lookup_by_filename_abi", filename, lib_path)
+    return _registry_call("stelnettts_registry_lookup_by_filename_abi", filename, lib_path)
 
 
 def registry_default_bundle(
@@ -603,11 +603,11 @@ def registry_default_bundle(
     if not backend:
         return None
     lib = ctypes.CDLL(lib_path or _find_lib())
-    info_symbol = "crispasr_registry_default_bundle_info_abi"
-    artifact_symbol = "crispasr_registry_default_bundle_artifact_abi"
+    info_symbol = "stelnettts_registry_default_bundle_info_abi"
+    artifact_symbol = "stelnettts_registry_default_bundle_artifact_abi"
     if not hasattr(lib, info_symbol) or not hasattr(lib, artifact_symbol):
         raise RuntimeError(
-            "default-bundle registry API not in loaded library — rebuild CrispASR."
+            "default-bundle registry API not in loaded library — rebuild StelnetTTS."
         )
 
     info = getattr(lib, info_symbol)
@@ -684,9 +684,9 @@ def list_known_models(*, lib_path: Optional[str] = None) -> list:
     details (filename, URL, approximate size).
     """
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_registry_list_backends_abi"):
+    if not hasattr(lib, "stelnettts_registry_list_backends_abi"):
         return []
-    fn = lib.crispasr_registry_list_backends_abi
+    fn = lib.stelnettts_registry_list_backends_abi
     fn.argtypes = [ctypes.c_char_p, ctypes.c_int]
     fn.restype = ctypes.c_int
     buf = ctypes.create_string_buffer(8192)
@@ -702,7 +702,7 @@ def _registry_call(sym: str, key: str, lib_path: Optional[str]) -> Optional[Regi
         return None
     lib = ctypes.CDLL(lib_path or _find_lib())
     if not hasattr(lib, sym):
-        raise RuntimeError(f"{sym} not in loaded library — rebuild CrispASR 0.4.8+.")
+        raise RuntimeError(f"{sym} not in loaded library — rebuild StelnetTTS 0.4.8+.")
     fn = getattr(lib, sym)
     fn.argtypes = [
         ctypes.c_char_p,
@@ -766,12 +766,12 @@ def kokoro_resolve_for_lang(
     out_picked = ctypes.create_string_buffer(64)
 
     swapped = False
-    if hasattr(lib, "crispasr_kokoro_resolve_model_for_lang_abi"):
-        lib.crispasr_kokoro_resolve_model_for_lang_abi.argtypes = [
+    if hasattr(lib, "stelnettts_kokoro_resolve_model_for_lang_abi"):
+        lib.stelnettts_kokoro_resolve_model_for_lang_abi.argtypes = [
             ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int,
         ]
-        lib.crispasr_kokoro_resolve_model_for_lang_abi.restype = ctypes.c_int
-        rc = lib.crispasr_kokoro_resolve_model_for_lang_abi(
+        lib.stelnettts_kokoro_resolve_model_for_lang_abi.restype = ctypes.c_int
+        rc = lib.stelnettts_kokoro_resolve_model_for_lang_abi(
             model_path.encode("utf-8"), (lang or "").encode("utf-8"),
             out_model, 1024,
         )
@@ -783,14 +783,14 @@ def kokoro_resolve_for_lang(
 
     voice_path: Optional[str] = None
     voice_name: Optional[str] = None
-    if hasattr(lib, "crispasr_kokoro_resolve_fallback_voice_abi"):
-        lib.crispasr_kokoro_resolve_fallback_voice_abi.argtypes = [
+    if hasattr(lib, "stelnettts_kokoro_resolve_fallback_voice_abi"):
+        lib.stelnettts_kokoro_resolve_fallback_voice_abi.argtypes = [
             ctypes.c_char_p, ctypes.c_char_p,
             ctypes.c_char_p, ctypes.c_int,
             ctypes.c_char_p, ctypes.c_int,
         ]
-        lib.crispasr_kokoro_resolve_fallback_voice_abi.restype = ctypes.c_int
-        rc = lib.crispasr_kokoro_resolve_fallback_voice_abi(
+        lib.stelnettts_kokoro_resolve_fallback_voice_abi.restype = ctypes.c_int
+        rc = lib.stelnettts_kokoro_resolve_fallback_voice_abi(
             model_path.encode("utf-8"), (lang or "").encode("utf-8"),
             out_voice, 1024, out_picked, 64,
         )
@@ -823,17 +823,17 @@ def cache_ensure_file(
     if not filename or not url:
         return None
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_cache_ensure_file_abi"):
+    if not hasattr(lib, "stelnettts_cache_ensure_file_abi"):
         raise RuntimeError(
-            "crispasr_cache_ensure_file_abi not in loaded library — rebuild CrispASR 0.4.8+."
+            "stelnettts_cache_ensure_file_abi not in loaded library — rebuild StelnetTTS 0.4.8+."
         )
-    lib.crispasr_cache_ensure_file_abi.argtypes = [
+    lib.stelnettts_cache_ensure_file_abi.argtypes = [
         ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32,
         ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32,
     ]
-    lib.crispasr_cache_ensure_file_abi.restype = ctypes.c_int
+    lib.stelnettts_cache_ensure_file_abi.restype = ctypes.c_int
     buf = ctypes.create_string_buffer(2048)
-    rc = lib.crispasr_cache_ensure_file_abi(
+    rc = lib.stelnettts_cache_ensure_file_abi(
         filename.encode("utf-8"),
         url.encode("utf-8"),
         1 if quiet else 0,
@@ -844,16 +844,16 @@ def cache_ensure_file(
 
 
 def cache_dir(*, override: Optional[str] = None, lib_path: Optional[str] = None) -> Optional[str]:
-    """Return the CrispASR cache directory (creating it if missing)."""
+    """Return the StelnetTTS cache directory (creating it if missing)."""
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_cache_dir_abi"):
+    if not hasattr(lib, "stelnettts_cache_dir_abi"):
         raise RuntimeError(
-            "crispasr_cache_dir_abi not in loaded library — rebuild CrispASR 0.4.8+."
+            "stelnettts_cache_dir_abi not in loaded library — rebuild StelnetTTS 0.4.8+."
         )
-    lib.crispasr_cache_dir_abi.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
-    lib.crispasr_cache_dir_abi.restype = ctypes.c_int
+    lib.stelnettts_cache_dir_abi.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
+    lib.stelnettts_cache_dir_abi.restype = ctypes.c_int
     buf = ctypes.create_string_buffer(2048)
-    rc = lib.crispasr_cache_dir_abi((override or "").encode("utf-8"), buf, 2048)
+    rc = lib.stelnettts_cache_dir_abi((override or "").encode("utf-8"), buf, 2048)
     return buf.value.decode("utf-8") if rc == 0 else None
 
 
@@ -881,32 +881,32 @@ def align_words(
         return []
 
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_align_words_abi"):
+    if not hasattr(lib, "stelnettts_align_words_abi"):
         raise RuntimeError(
-            "crispasr_align_words_abi not in loaded library — rebuild "
-            "CrispASR 0.4.7+ to use forced alignment from the Python binding."
+            "stelnettts_align_words_abi not in loaded library — rebuild "
+            "StelnetTTS 0.4.7+ to use forced alignment from the Python binding."
         )
     # (argtypes/restype wired in Session._setup_session_signatures when a
     # session is open; do it defensively here too so standalone use works.)
-    lib.crispasr_align_words_abi.argtypes = [
+    lib.stelnettts_align_words_abi.argtypes = [
         ctypes.c_char_p, ctypes.c_char_p,
         ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
         ctypes.c_int64, ctypes.c_int32,
     ]
-    lib.crispasr_align_words_abi.restype = ctypes.c_void_p
-    lib.crispasr_align_result_n_words.argtypes = [ctypes.c_void_p]
-    lib.crispasr_align_result_n_words.restype = ctypes.c_int
-    lib.crispasr_align_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.crispasr_align_result_word_text.restype = ctypes.c_char_p
-    lib.crispasr_align_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.crispasr_align_result_word_t0.restype = ctypes.c_int64
-    lib.crispasr_align_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.crispasr_align_result_word_t1.restype = ctypes.c_int64
-    lib.crispasr_align_result_free.argtypes = [ctypes.c_void_p]
-    lib.crispasr_align_result_free.restype = None
+    lib.stelnettts_align_words_abi.restype = ctypes.c_void_p
+    lib.stelnettts_align_result_n_words.argtypes = [ctypes.c_void_p]
+    lib.stelnettts_align_result_n_words.restype = ctypes.c_int
+    lib.stelnettts_align_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.stelnettts_align_result_word_text.restype = ctypes.c_char_p
+    lib.stelnettts_align_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.stelnettts_align_result_word_t0.restype = ctypes.c_int64
+    lib.stelnettts_align_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.stelnettts_align_result_word_t1.restype = ctypes.c_int64
+    lib.stelnettts_align_result_free.argtypes = [ctypes.c_void_p]
+    lib.stelnettts_align_result_free.restype = None
 
     pcm_np = np.asarray(pcm, dtype=np.float32)
-    res = lib.crispasr_align_words_abi(
+    res = lib.stelnettts_align_words_abi(
         aligner_model.encode("utf-8"),
         transcript.encode("utf-8"),
         pcm_np.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
@@ -917,19 +917,19 @@ def align_words(
     if not res:
         return []
     try:
-        n = lib.crispasr_align_result_n_words(res)
+        n = lib.stelnettts_align_result_n_words(res)
         out: List[AlignedWord] = []
         for i in range(n):
-            t = lib.crispasr_align_result_word_text(res, i)
+            t = lib.stelnettts_align_result_word_text(res, i)
             text = t.decode("utf-8") if t else ""
             out.append(AlignedWord(
                 text=text,
-                start=lib.crispasr_align_result_word_t0(res, i) / 100.0,
-                end=lib.crispasr_align_result_word_t1(res, i) / 100.0,
+                start=lib.stelnettts_align_result_word_t0(res, i) / 100.0,
+                end=lib.stelnettts_align_result_word_t1(res, i) / 100.0,
             ))
         return out
     finally:
-        lib.crispasr_align_result_free(res)
+        lib.stelnettts_align_result_free(res)
 
 
 # ===========================================================================
@@ -939,7 +939,7 @@ def align_words(
 class Mic:
     """Library-level microphone capture handle.
 
-    Wraps the C-ABI ``crispasr_mic_*`` functions which delegate to
+    Wraps the C-ABI ``stelnettts_mic_*`` functions which delegate to
     miniaudio's ``ma_device`` (Core Audio on macOS, ALSA/PulseAudio on
     Linux, WASAPI on Windows). The callback runs on miniaudio's audio
     thread — keep it short and non-blocking. To do streaming ASR,
@@ -968,8 +968,8 @@ class Mic:
         if callback is None:
             raise ValueError("callback is required")
         self._lib = ctypes.CDLL(lib_path or _find_lib())
-        if not hasattr(self._lib, "crispasr_mic_open"):
-            raise RuntimeError("mic API not present in this libcrispasr build")
+        if not hasattr(self._lib, "stelnettts_mic_open"):
+            raise RuntimeError("mic API not present in this libstelnettts build")
         self._py_callback = callback
 
         def _trampoline(pcm_ptr, n_samples, _userdata):
@@ -981,25 +981,25 @@ class Mic:
                 callback(arr)
             except Exception as e:
                 import sys
-                sys.stderr.write(f"crispasr.Mic callback raised: {e}\n")
+                sys.stderr.write(f"stelnettts.Mic callback raised: {e}\n")
 
         self._cb_holder = Mic._CB_TYPE(_trampoline)
 
-        self._lib.crispasr_mic_open.argtypes = [
+        self._lib.stelnettts_mic_open.argtypes = [
             ctypes.c_int, ctypes.c_int, Mic._CB_TYPE, ctypes.c_void_p,
         ]
-        self._lib.crispasr_mic_open.restype = ctypes.c_void_p
-        self._handle = self._lib.crispasr_mic_open(
+        self._lib.stelnettts_mic_open.restype = ctypes.c_void_p
+        self._handle = self._lib.stelnettts_mic_open(
             int(sample_rate), int(channels), self._cb_holder, None,
         )
         if not self._handle:
-            raise RuntimeError("crispasr_mic_open failed")
+            raise RuntimeError("stelnettts_mic_open failed")
         self._started = False
 
     def start(self) -> None:
-        self._lib.crispasr_mic_start.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_mic_start.restype = ctypes.c_int
-        rc = self._lib.crispasr_mic_start(self._handle)
+        self._lib.stelnettts_mic_start.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_mic_start.restype = ctypes.c_int
+        rc = self._lib.stelnettts_mic_start(self._handle)
         if rc != 0:
             raise RuntimeError(f"mic_start failed (rc={rc})")
         self._started = True
@@ -1007,18 +1007,18 @@ class Mic:
     def stop(self) -> None:
         if not self._started:
             return
-        self._lib.crispasr_mic_stop.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_mic_stop.restype = ctypes.c_int
-        self._lib.crispasr_mic_stop(self._handle)
+        self._lib.stelnettts_mic_stop.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_mic_stop.restype = ctypes.c_int
+        self._lib.stelnettts_mic_stop(self._handle)
         self._started = False
 
     def close(self) -> None:
         if not self._handle:
             return
         self.stop()
-        self._lib.crispasr_mic_close.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_mic_close.restype = None
-        self._lib.crispasr_mic_close(self._handle)
+        self._lib.stelnettts_mic_close.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_mic_close.restype = None
+        self._lib.stelnettts_mic_close(self._handle)
         self._handle = None
         self._cb_holder = None
 
@@ -1039,9 +1039,9 @@ def mic_default_device_name(*, lib_path: Optional[str] = None) -> str:
     """Return the human-readable name of the default capture device,
     or empty string if no input device is available."""
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_mic_default_device_name"):
+    if not hasattr(lib, "stelnettts_mic_default_device_name"):
         return ""
-    fn = lib.crispasr_mic_default_device_name
+    fn = lib.stelnettts_mic_default_device_name
     fn.argtypes = []
     fn.restype = ctypes.c_char_p
     s = fn()
@@ -1070,23 +1070,23 @@ def detect_language_pcm(
         return LidResult(lang_code="", confidence=-1.0)
 
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_detect_language_pcm"):
+    if not hasattr(lib, "stelnettts_detect_language_pcm"):
         raise RuntimeError(
-            "crispasr_detect_language_pcm not in loaded library — rebuild "
-            "CrispASR 0.4.6+ to use LID from the Python binding."
+            "stelnettts_detect_language_pcm not in loaded library — rebuild "
+            "StelnetTTS 0.4.6+ to use LID from the Python binding."
         )
-    lib.crispasr_detect_language_pcm.argtypes = [
+    lib.stelnettts_detect_language_pcm.argtypes = [
         ctypes.POINTER(ctypes.c_float), ctypes.c_int32, ctypes.c_int32,
         ctypes.c_char_p, ctypes.c_int32, ctypes.c_int32, ctypes.c_int32,
         ctypes.c_int32, ctypes.c_char_p, ctypes.c_int32,
         ctypes.POINTER(ctypes.c_float),
     ]
-    lib.crispasr_detect_language_pcm.restype = ctypes.c_int
+    lib.stelnettts_detect_language_pcm.restype = ctypes.c_int
 
     pcm_np = np.asarray(pcm, dtype=np.float32)
     buf = ctypes.create_string_buffer(16)
     conf = ctypes.c_float(-1.0)
-    rc = lib.crispasr_detect_language_pcm(
+    rc = lib.stelnettts_detect_language_pcm(
         pcm_np.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
         int(len(pcm_np)), int(method),
         model_path.encode("utf-8"),
@@ -1122,17 +1122,17 @@ def diarize_segments(
         return True
 
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_diarize_segments_abi"):
+    if not hasattr(lib, "stelnettts_diarize_segments_abi"):
         raise RuntimeError(
-            "crispasr_diarize_segments_abi not in loaded library — rebuild "
-            "CrispASR 0.4.5+ to use diarization from the Python binding."
+            "stelnettts_diarize_segments_abi not in loaded library — rebuild "
+            "StelnetTTS 0.4.5+ to use diarization from the Python binding."
         )
-    lib.crispasr_diarize_segments_abi.argtypes = [
+    lib.stelnettts_diarize_segments_abi.argtypes = [
         ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float),
         ctypes.c_int32, ctypes.c_int32, ctypes.c_void_p,
         ctypes.c_int32, ctypes.c_void_p,
     ]
-    lib.crispasr_diarize_segments_abi.restype = ctypes.c_int
+    lib.stelnettts_diarize_segments_abi.restype = ctypes.c_int
 
     left_np = np.asarray(left, dtype=np.float32)
     left_ptr = left_np.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
@@ -1142,7 +1142,7 @@ def diarize_segments(
     else:
         right_ptr = left_ptr
 
-    # ABI structs must match crispasr_c_api.cpp.
+    # ABI structs must match stelnettts_c_api.cpp.
     class _SegAbi(ctypes.Structure):
         _fields_ = [
             ("t0_cs", ctypes.c_int64),
@@ -1174,7 +1174,7 @@ def diarize_segments(
                              if pyannote_model_path else None),
     )
 
-    rc = lib.crispasr_diarize_segments_abi(
+    rc = lib.stelnettts_diarize_segments_abi(
         left_ptr, right_ptr, int(len(left_np)), 1 if is_stereo else 0,
         ctypes.byref(seg_array), len(segs), ctypes.byref(opts),
     )
@@ -1185,15 +1185,15 @@ def diarize_segments(
 
 
 class Session:
-    """Backend-agnostic transcription session over any CrispASR-supported GGUF.
+    """Backend-agnostic transcription session over any StelnetTTS-supported GGUF.
 
     The backend is auto-detected from the file's `general.architecture`
     metadata. `Session.available_backends()` lists which backends the
-    bundled libcrispasr was actually compiled with — a model whose
+    bundled libstelnettts was actually compiled with — a model whose
     backend isn't in that list will fail to open.
 
     Usage:
-        with crispasr.Session("model.gguf") as s:
+        with stelnettts.Session("model.gguf") as s:
             print(f"backend: {s.backend}")
             for seg in s.transcribe(pcm_f32):
                 print(f"[{seg.start:.1f}-{seg.end:.1f}s] {seg.text}")
@@ -1211,19 +1211,19 @@ class Session:
 
         path_bytes = model_path.encode("utf-8")
         if backend:
-            self._handle = self._lib.crispasr_session_open_explicit(
+            self._handle = self._lib.stelnettts_session_open_explicit(
                 path_bytes, backend.encode("utf-8"), n_threads
             )
         else:
-            self._handle = self._lib.crispasr_session_open(path_bytes, n_threads)
+            self._handle = self._lib.stelnettts_session_open(path_bytes, n_threads)
 
         if not self._handle:
             avail = Session.available_backends(lib_path=lib_path)
             raise RuntimeError(
                 f"Failed to open {model_path!r} — backend not supported. "
-                f"libcrispasr was built with: {avail}"
+                f"libstelnettts was built with: {avail}"
             )
-        be = self._lib.crispasr_session_backend(self._handle)
+        be = self._lib.stelnettts_session_backend(self._handle)
         self.backend = be.decode("utf-8") if be else ""
         self._n_threads = int(n_threads)
 
@@ -1231,212 +1231,212 @@ class Session:
         lib = self._lib
         # Missing symbol ⇒ pre-0.4.0 dylib.
         for name in (
-            "crispasr_session_open", "crispasr_session_transcribe",
-            "crispasr_session_available_backends", "crispasr_session_close",
+            "stelnettts_session_open", "stelnettts_session_transcribe",
+            "stelnettts_session_available_backends", "stelnettts_session_close",
         ):
             if not hasattr(lib, name):
                 raise RuntimeError(
                     "Unified session API not found in loaded library — "
-                    "rebuild CrispASR with 0.4.0+ helpers."
+                    "rebuild StelnetTTS with 0.4.0+ helpers."
                 )
 
-        lib.crispasr_session_open.argtypes = [ctypes.c_char_p, ctypes.c_int]
-        lib.crispasr_session_open.restype = ctypes.c_void_p
-        lib.crispasr_session_open_explicit.argtypes = [
+        lib.stelnettts_session_open.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        lib.stelnettts_session_open.restype = ctypes.c_void_p
+        lib.stelnettts_session_open_explicit.argtypes = [
             ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int,
         ]
-        lib.crispasr_session_open_explicit.restype = ctypes.c_void_p
-        lib.crispasr_session_backend.argtypes = [ctypes.c_void_p]
-        lib.crispasr_session_backend.restype = ctypes.c_char_p
+        lib.stelnettts_session_open_explicit.restype = ctypes.c_void_p
+        lib.stelnettts_session_backend.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_session_backend.restype = ctypes.c_char_p
         # Acoustic detected language (Whisper). Probe with hasattr — older
-        # libcrispasr builds don't export it (detected_language() -> "unknown").
-        if hasattr(lib, "crispasr_session_detected_language"):
-            lib.crispasr_session_detected_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
-            lib.crispasr_session_detected_language.restype = ctypes.c_int
-        lib.crispasr_session_available_backends.argtypes = [ctypes.c_char_p, ctypes.c_int]
-        lib.crispasr_session_available_backends.restype = ctypes.c_int
+        # libstelnettts builds don't export it (detected_language() -> "unknown").
+        if hasattr(lib, "stelnettts_session_detected_language"):
+            lib.stelnettts_session_detected_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+            lib.stelnettts_session_detected_language.restype = ctypes.c_int
+        lib.stelnettts_session_available_backends.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        lib.stelnettts_session_available_backends.restype = ctypes.c_int
         # 2026-07-08: CTC vocabulary access (Omni CTC backend). n_vocab is the
         # piece count; token_text maps an id to its raw piece. hasattr-guarded
         # so a binding loaded against an older dylib still works.
-        if hasattr(lib, "crispasr_session_token_text"):
-            lib.crispasr_session_n_vocab.argtypes = [ctypes.c_void_p]
-            lib.crispasr_session_n_vocab.restype = ctypes.c_int
-            lib.crispasr_session_token_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_session_token_text.restype = ctypes.c_char_p
-        lib.crispasr_session_transcribe.argtypes = [
+        if hasattr(lib, "stelnettts_session_token_text"):
+            lib.stelnettts_session_n_vocab.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_session_n_vocab.restype = ctypes.c_int
+            lib.stelnettts_session_token_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_session_token_text.restype = ctypes.c_char_p
+        lib.stelnettts_session_transcribe.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
         ]
-        lib.crispasr_session_transcribe.restype = ctypes.c_void_p
+        lib.stelnettts_session_transcribe.restype = ctypes.c_void_p
         # 0.4.9+: language-aware session transcribe. Backends that
         # accept a source-language hint (whisper / canary / cohere /
         # voxtral / voxtral4b) honour it; others ignore.
-        if hasattr(lib, "crispasr_session_transcribe_lang"):
-            lib.crispasr_session_transcribe_lang.argtypes = [
+        if hasattr(lib, "stelnettts_session_transcribe_lang"):
+            lib.stelnettts_session_transcribe_lang.argtypes = [
                 ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
                 ctypes.c_char_p,
             ]
-            lib.crispasr_session_transcribe_lang.restype = ctypes.c_void_p
+            lib.stelnettts_session_transcribe_lang.restype = ctypes.c_void_p
         # 0.10.3+ (issue #208): chunked-encode transcribe — forces the
         # Parakeet backend through its bounded overlapping-window long-form
         # path (inert on other backends). hasattr-guarded for old dylibs.
-        if hasattr(lib, "crispasr_session_transcribe_chunked_lang"):
-            lib.crispasr_session_transcribe_chunked_lang.argtypes = [
+        if hasattr(lib, "stelnettts_session_transcribe_chunked_lang"):
+            lib.stelnettts_session_transcribe_chunked_lang.argtypes = [
                 ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
                 ctypes.c_int, ctypes.c_int, ctypes.c_char_p,
             ]
-            lib.crispasr_session_transcribe_chunked_lang.restype = ctypes.c_void_p
-        # 0.10.3+ (issue #208): long-form progress. crispasr_get_progress()
+            lib.stelnettts_session_transcribe_chunked_lang.restype = ctypes.c_void_p
+        # 0.10.3+ (issue #208): long-form progress. stelnettts_get_progress()
         # polls 0..100 (-1 idle) and now tracks chunked windows; the callback
         # setter fires cb(processed, total, ud) once per finished window.
-        if hasattr(lib, "crispasr_get_progress"):
-            lib.crispasr_get_progress.argtypes = []
-            lib.crispasr_get_progress.restype = ctypes.c_int
-        if hasattr(lib, "crispasr_session_set_progress_callback"):
-            lib.crispasr_session_set_progress_callback.argtypes = [
+        if hasattr(lib, "stelnettts_get_progress"):
+            lib.stelnettts_get_progress.argtypes = []
+            lib.stelnettts_get_progress.restype = ctypes.c_int
+        if hasattr(lib, "stelnettts_session_set_progress_callback"):
+            lib.stelnettts_session_set_progress_callback.argtypes = [
                 ctypes.c_void_p, Session._PROGRESS_CB_TYPE, ctypes.c_void_p,
             ]
-            lib.crispasr_session_set_progress_callback.restype = None
+            lib.stelnettts_session_set_progress_callback.restype = None
         # 0.4.3+: VAD-driven session transcribe. hasattr-guarded so a
         # binding loaded against an older dylib still works for non-VAD
         # calls.
-        if hasattr(lib, "crispasr_session_transcribe_vad"):
-            lib.crispasr_session_transcribe_vad.argtypes = [
+        if hasattr(lib, "stelnettts_session_transcribe_vad"):
+            lib.stelnettts_session_transcribe_vad.argtypes = [
                 ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
                 ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p,
             ]
-            lib.crispasr_session_transcribe_vad.restype = ctypes.c_void_p
+            lib.stelnettts_session_transcribe_vad.restype = ctypes.c_void_p
         # 0.4.9+: language-aware VAD transcribe (same hint semantics
         # as _lang above).
-        if hasattr(lib, "crispasr_session_transcribe_vad_lang"):
-            lib.crispasr_session_transcribe_vad_lang.argtypes = [
+        if hasattr(lib, "stelnettts_session_transcribe_vad_lang"):
+            lib.stelnettts_session_transcribe_vad_lang.argtypes = [
                 ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
                 ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p,
                 ctypes.c_char_p,
             ]
-            lib.crispasr_session_transcribe_vad_lang.restype = ctypes.c_void_p
+            lib.stelnettts_session_transcribe_vad_lang.restype = ctypes.c_void_p
         # 0.4.5+: shared speaker diarization. Same hasattr guard.
-        if hasattr(lib, "crispasr_diarize_segments_abi"):
-            lib.crispasr_diarize_segments_abi.argtypes = [
+        if hasattr(lib, "stelnettts_diarize_segments_abi"):
+            lib.stelnettts_diarize_segments_abi.argtypes = [
                 ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float),
                 ctypes.c_int32, ctypes.c_int32, ctypes.c_void_p,
                 ctypes.c_int32, ctypes.c_void_p,
             ]
-            lib.crispasr_diarize_segments_abi.restype = ctypes.c_int
+            lib.stelnettts_diarize_segments_abi.restype = ctypes.c_int
         # 0.4.6+: shared language identification.
-        if hasattr(lib, "crispasr_detect_language_pcm"):
-            lib.crispasr_detect_language_pcm.argtypes = [
+        if hasattr(lib, "stelnettts_detect_language_pcm"):
+            lib.stelnettts_detect_language_pcm.argtypes = [
                 ctypes.POINTER(ctypes.c_float), ctypes.c_int32, ctypes.c_int32,
                 ctypes.c_char_p, ctypes.c_int32, ctypes.c_int32, ctypes.c_int32,
                 ctypes.c_int32, ctypes.c_char_p, ctypes.c_int32,
                 ctypes.POINTER(ctypes.c_float),
             ]
-            lib.crispasr_detect_language_pcm.restype = ctypes.c_int
+            lib.stelnettts_detect_language_pcm.restype = ctypes.c_int
         # 0.4.7+: shared CTC / forced-aligner word timings.
-        if hasattr(lib, "crispasr_align_words_abi"):
-            lib.crispasr_align_words_abi.argtypes = [
+        if hasattr(lib, "stelnettts_align_words_abi"):
+            lib.stelnettts_align_words_abi.argtypes = [
                 ctypes.c_char_p, ctypes.c_char_p,
                 ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
                 ctypes.c_int64, ctypes.c_int32,
             ]
-            lib.crispasr_align_words_abi.restype = ctypes.c_void_p
-            lib.crispasr_align_result_n_words.argtypes = [ctypes.c_void_p]
-            lib.crispasr_align_result_n_words.restype = ctypes.c_int
-            lib.crispasr_align_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_align_result_word_text.restype = ctypes.c_char_p
-            lib.crispasr_align_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_align_result_word_t0.restype = ctypes.c_int64
-            lib.crispasr_align_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_align_result_word_t1.restype = ctypes.c_int64
-            lib.crispasr_align_result_free.argtypes = [ctypes.c_void_p]
-            lib.crispasr_align_result_free.restype = None
-        lib.crispasr_session_result_n_segments.argtypes = [ctypes.c_void_p]
-        lib.crispasr_session_result_n_segments.restype = ctypes.c_int
-        lib.crispasr_session_result_segment_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.crispasr_session_result_segment_text.restype = ctypes.c_char_p
-        lib.crispasr_session_result_segment_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.crispasr_session_result_segment_t0.restype = ctypes.c_int64
-        lib.crispasr_session_result_segment_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.crispasr_session_result_segment_t1.restype = ctypes.c_int64
-        # segment_speaker was added 2026-07-27 (#300). Older libcrispasr builds
+            lib.stelnettts_align_words_abi.restype = ctypes.c_void_p
+            lib.stelnettts_align_result_n_words.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_align_result_n_words.restype = ctypes.c_int
+            lib.stelnettts_align_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_align_result_word_text.restype = ctypes.c_char_p
+            lib.stelnettts_align_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_align_result_word_t0.restype = ctypes.c_int64
+            lib.stelnettts_align_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_align_result_word_t1.restype = ctypes.c_int64
+            lib.stelnettts_align_result_free.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_align_result_free.restype = None
+        lib.stelnettts_session_result_n_segments.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_session_result_n_segments.restype = ctypes.c_int
+        lib.stelnettts_session_result_segment_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.stelnettts_session_result_segment_text.restype = ctypes.c_char_p
+        lib.stelnettts_session_result_segment_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.stelnettts_session_result_segment_t0.restype = ctypes.c_int64
+        lib.stelnettts_session_result_segment_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.stelnettts_session_result_segment_t1.restype = ctypes.c_int64
+        # segment_speaker was added 2026-07-27 (#300). Older libstelnettts builds
         # don't export it — probe with hasattr at the call site and fall back to
         # "" so a new wheel keeps working against an older system library.
-        if hasattr(lib, "crispasr_session_result_segment_speaker"):
-            lib.crispasr_session_result_segment_speaker.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_session_result_segment_speaker.restype = ctypes.c_char_p
-        lib.crispasr_session_result_n_words.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.crispasr_session_result_n_words.restype = ctypes.c_int
-        lib.crispasr_session_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-        lib.crispasr_session_result_word_text.restype = ctypes.c_char_p
-        lib.crispasr_session_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-        lib.crispasr_session_result_word_t0.restype = ctypes.c_int64
-        lib.crispasr_session_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-        lib.crispasr_session_result_word_t1.restype = ctypes.c_int64
-        # word_p was added 2026-05-02. Older libcrispasr builds don't export it
+        if hasattr(lib, "stelnettts_session_result_segment_speaker"):
+            lib.stelnettts_session_result_segment_speaker.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_session_result_segment_speaker.restype = ctypes.c_char_p
+        lib.stelnettts_session_result_n_words.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.stelnettts_session_result_n_words.restype = ctypes.c_int
+        lib.stelnettts_session_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        lib.stelnettts_session_result_word_text.restype = ctypes.c_char_p
+        lib.stelnettts_session_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        lib.stelnettts_session_result_word_t0.restype = ctypes.c_int64
+        lib.stelnettts_session_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        lib.stelnettts_session_result_word_t1.restype = ctypes.c_int64
+        # word_p was added 2026-05-02. Older libstelnettts builds don't export it
         # — probe with hasattr below and fall back to 1.0 when missing.
-        if hasattr(lib, "crispasr_session_result_word_p"):
-            lib.crispasr_session_result_word_p.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-            lib.crispasr_session_result_word_p.restype = ctypes.c_float
+        if hasattr(lib, "stelnettts_session_result_word_p"):
+            lib.stelnettts_session_result_word_p.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            lib.stelnettts_session_result_word_p.restype = ctypes.c_float
         # Per-segment no_speech_prob (Whisper). Probe with hasattr like word_p —
-        # older libcrispasr builds don't export it (fall back to the -1.0 sentinel).
-        if hasattr(lib, "crispasr_session_result_segment_no_speech_prob"):
-            lib.crispasr_session_result_segment_no_speech_prob.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_session_result_segment_no_speech_prob.restype = ctypes.c_float
+        # older libstelnettts builds don't export it (fall back to the -1.0 sentinel).
+        if hasattr(lib, "stelnettts_session_result_segment_no_speech_prob"):
+            lib.stelnettts_session_result_segment_no_speech_prob.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_session_result_segment_no_speech_prob.restype = ctypes.c_float
         # 0.5.13: per-word top-N alternative candidates.
-        if hasattr(lib, "crispasr_session_result_word_n_alts"):
-            lib.crispasr_session_result_word_n_alts.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-            lib.crispasr_session_result_word_n_alts.restype = ctypes.c_int
-        if hasattr(lib, "crispasr_session_result_word_alt_p"):
-            lib.crispasr_session_result_word_alt_p.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            lib.crispasr_session_result_word_alt_p.restype = ctypes.c_float
+        if hasattr(lib, "stelnettts_session_result_word_n_alts"):
+            lib.stelnettts_session_result_word_n_alts.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            lib.stelnettts_session_result_word_n_alts.restype = ctypes.c_int
+        if hasattr(lib, "stelnettts_session_result_word_alt_p"):
+            lib.stelnettts_session_result_word_alt_p.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            lib.stelnettts_session_result_word_alt_p.restype = ctypes.c_float
         # 2026-07-07: per-frame CTC logits for backends with a dense CTC grid
         # (Omni CTC, wav2vec2/hubert/data2vec, canary-ctc), opted in via
-        # crispasr_session_set_return_logits. Frame-major (raw pre-softmax for
+        # stelnettts_session_set_return_logits. Frame-major (raw pre-softmax for
         # Omni & wav2vec2, log-probabilities for canary-ctc);
-        # crispasr_session_result_logits returns NULL when none were captured.
+        # stelnettts_session_result_logits returns NULL when none were captured.
         # hasattr-guarded so a binding loaded against an older dylib still works.
-        if hasattr(lib, "crispasr_session_result_logits"):
-            lib.crispasr_session_result_n_logit_frames.argtypes = [ctypes.c_void_p]
-            lib.crispasr_session_result_n_logit_frames.restype = ctypes.c_int
-            lib.crispasr_session_result_n_logit_vocab.argtypes = [ctypes.c_void_p]
-            lib.crispasr_session_result_n_logit_vocab.restype = ctypes.c_int
-            lib.crispasr_session_result_logits.argtypes = [ctypes.c_void_p]
-            lib.crispasr_session_result_logits.restype = ctypes.POINTER(ctypes.c_float)
-        lib.crispasr_session_result_free.argtypes = [ctypes.c_void_p]
-        lib.crispasr_session_result_free.restype = None
-        lib.crispasr_session_close.argtypes = [ctypes.c_void_p]
-        lib.crispasr_session_close.restype = None
+        if hasattr(lib, "stelnettts_session_result_logits"):
+            lib.stelnettts_session_result_n_logit_frames.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_session_result_n_logit_frames.restype = ctypes.c_int
+            lib.stelnettts_session_result_n_logit_vocab.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_session_result_n_logit_vocab.restype = ctypes.c_int
+            lib.stelnettts_session_result_logits.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_session_result_logits.restype = ctypes.POINTER(ctypes.c_float)
+        lib.stelnettts_session_result_free.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_session_result_free.restype = None
+        lib.stelnettts_session_close.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_session_close.restype = None
         # 0.6.1: session_open_with_params.
-        if hasattr(lib, "crispasr_session_open_with_params"):
-            lib.crispasr_session_open_with_params.argtypes = [
+        if hasattr(lib, "stelnettts_session_open_with_params"):
+            lib.stelnettts_session_open_with_params.argtypes = [
                 ctypes.c_char_p, ctypes.c_char_p, ctypes.c_void_p,
             ]
-            lib.crispasr_session_open_with_params.restype = ctypes.c_void_p
+            lib.stelnettts_session_open_with_params.restype = ctypes.c_void_p
 
     @staticmethod
     def available_backends(lib_path: Optional[str] = None) -> List[str]:
-        """List the backend names the loaded CrispASR library was built with."""
+        """List the backend names the loaded StelnetTTS library was built with."""
         lib = ctypes.CDLL(lib_path or _find_lib())
-        if not hasattr(lib, "crispasr_session_available_backends"):
+        if not hasattr(lib, "stelnettts_session_available_backends"):
             return []
-        lib.crispasr_session_available_backends.argtypes = [ctypes.c_char_p, ctypes.c_int]
-        lib.crispasr_session_available_backends.restype = ctypes.c_int
+        lib.stelnettts_session_available_backends.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        lib.stelnettts_session_available_backends.restype = ctypes.c_int
         buf = ctypes.create_string_buffer(256)
-        needed = lib.crispasr_session_available_backends(buf, len(buf))
+        needed = lib.stelnettts_session_available_backends(buf, len(buf))
         if needed >= len(buf):
             buf = ctypes.create_string_buffer(needed + 1)
-            lib.crispasr_session_available_backends(buf, len(buf))
+            lib.stelnettts_session_available_backends(buf, len(buf))
         csv = buf.value.decode("utf-8")
         return [s.strip() for s in csv.split(",") if s.strip()]
 
     def detected_language(self) -> str:
         """The acoustic language Whisper detected on the last transcribe, as an
         ISO-639-1 code (e.g. "en"). Whisper-only; other backends return the
-        session's source-language hint, or "unknown" (also on libcrispasr
+        session's source-language hint, or "unknown" (also on libstelnettts
         builds predating the accessor)."""
-        if not hasattr(self._lib, "crispasr_session_detected_language"):
+        if not hasattr(self._lib, "stelnettts_session_detected_language"):
             return "unknown"
         buf = ctypes.create_string_buffer(32)
-        self._lib.crispasr_session_detected_language(self._handle, buf, len(buf))
+        self._lib.stelnettts_session_detected_language(self._handle, buf, len(buf))
         return buf.value.decode("utf-8") or "unknown"
 
     def transcribe(
@@ -1444,7 +1444,7 @@ class Session:
         *,
         language: Optional[str] = None,
     ) -> List[SessionSegment]:
-        """Transcribe 16 kHz mono float32 PCM. Dispatches via crispasr_session.
+        """Transcribe 16 kHz mono float32 PCM. Dispatches via stelnettts_session.
 
         ``language`` is an optional ISO 639-1 code ("en", "de", "ja", ...).
         Backends that accept a source-language hint (whisper, canary,
@@ -1459,38 +1459,38 @@ class Session:
         pcm = np.asarray(pcm, dtype=np.float32)
         samples_ptr = pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
 
-        if language and hasattr(self._lib, "crispasr_session_transcribe_lang"):
-            res = self._lib.crispasr_session_transcribe_lang(
+        if language and hasattr(self._lib, "stelnettts_session_transcribe_lang"):
+            res = self._lib.stelnettts_session_transcribe_lang(
                 self._handle, samples_ptr, len(pcm), language.encode("utf-8"))
         else:
-            res = self._lib.crispasr_session_transcribe(self._handle, samples_ptr, len(pcm))
+            res = self._lib.stelnettts_session_transcribe(self._handle, samples_ptr, len(pcm))
         if not res:
             self.set_return_logits(False)
-            raise RuntimeError(f"crispasr_session_transcribe failed for backend {self.backend!r}")
+            raise RuntimeError(f"stelnettts_session_transcribe failed for backend {self.backend!r}")
 
         try:
-            n_seg = self._lib.crispasr_session_result_n_segments(res)
+            n_seg = self._lib.stelnettts_session_result_n_segments(res)
             out: List[SessionSegment] = []
             for i in range(n_seg):
-                t = self._lib.crispasr_session_result_segment_text(res, i)
+                t = self._lib.stelnettts_session_result_segment_text(res, i)
                 text = t.decode("utf-8") if t else ""
-                t0 = self._lib.crispasr_session_result_segment_t0(res, i) / 100.0
-                t1 = self._lib.crispasr_session_result_segment_t1(res, i) / 100.0
-                wn = self._lib.crispasr_session_result_n_words(res, i)
-                has_nsp = hasattr(self._lib, "crispasr_session_result_segment_no_speech_prob")
-                nsp = self._lib.crispasr_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
-                spk_b = (self._lib.crispasr_session_result_segment_speaker(res, i)
-                         if hasattr(self._lib, "crispasr_session_result_segment_speaker") else None)
+                t0 = self._lib.stelnettts_session_result_segment_t0(res, i) / 100.0
+                t1 = self._lib.stelnettts_session_result_segment_t1(res, i) / 100.0
+                wn = self._lib.stelnettts_session_result_n_words(res, i)
+                has_nsp = hasattr(self._lib, "stelnettts_session_result_segment_no_speech_prob")
+                nsp = self._lib.stelnettts_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
+                spk_b = (self._lib.stelnettts_session_result_segment_speaker(res, i)
+                         if hasattr(self._lib, "stelnettts_session_result_segment_speaker") else None)
                 spk = spk_b.decode("utf-8") if spk_b else ""
                 words: List[SessionWord] = []
-                has_word_p = hasattr(self._lib, "crispasr_session_result_word_p")
+                has_word_p = hasattr(self._lib, "stelnettts_session_result_word_p")
                 for j in range(wn):
-                    wt = self._lib.crispasr_session_result_word_text(res, i, j)
-                    raw_p = self._lib.crispasr_session_result_word_p(res, i, j) if has_word_p else 1.0
+                    wt = self._lib.stelnettts_session_result_word_text(res, i, j)
+                    raw_p = self._lib.stelnettts_session_result_word_p(res, i, j) if has_word_p else 1.0
                     words.append(SessionWord(
                         text=wt.decode("utf-8") if wt else "",
-                        start=self._lib.crispasr_session_result_word_t0(res, i, j) / 100.0,
-                        end=self._lib.crispasr_session_result_word_t1(res, i, j) / 100.0,
+                        start=self._lib.stelnettts_session_result_word_t0(res, i, j) / 100.0,
+                        end=self._lib.stelnettts_session_result_word_t1(res, i, j) / 100.0,
                         # -1.0 from C means "no per-word p for this backend";
                         # surface 1.0 so callers can render uniformly.
                         confidence=1.0 if raw_p < 0 else raw_p,
@@ -1498,7 +1498,7 @@ class Session:
                 out.append(SessionSegment(text=text.strip(), start=t0, end=t1, words=words, no_speech_prob=nsp, speaker=spk))
             return out
         finally:
-            self._lib.crispasr_session_result_free(res)
+            self._lib.stelnettts_session_result_free(res)
 
     def transcribe_chunked(
         self, pcm: np.ndarray,
@@ -1520,7 +1520,7 @@ class Session:
         per finished window on the calling thread. You can also poll
         :meth:`get_progress` (0..100) from another thread.
         """
-        if not hasattr(self._lib, "crispasr_session_transcribe_chunked_lang"):
+        if not hasattr(self._lib, "stelnettts_session_transcribe_chunked_lang"):
             return self.transcribe(pcm, sample_rate, language=language)  # old dylib
         if sample_rate != 16000:
             ratio = 16000 / sample_rate
@@ -1532,68 +1532,68 @@ class Session:
         lang_c = language.encode("utf-8") if language else None
 
         registered = False
-        if progress is not None and hasattr(self._lib, "crispasr_session_set_progress_callback"):
+        if progress is not None and hasattr(self._lib, "stelnettts_session_set_progress_callback"):
             def _trampoline(processed, total, _ud):
                 try:
                     progress(processed, total)
                 except Exception as e:  # never let a Python exception cross the FFI boundary
                     import sys
-                    sys.stderr.write(f"crispasr progress callback raised: {e}\n")
+                    sys.stderr.write(f"stelnettts progress callback raised: {e}\n")
             self._progress_cb_holder = Session._PROGRESS_CB_TYPE(_trampoline)
-            self._lib.crispasr_session_set_progress_callback(self._handle, self._progress_cb_holder, None)
+            self._lib.stelnettts_session_set_progress_callback(self._handle, self._progress_cb_holder, None)
             registered = True
 
         try:
-            res = self._lib.crispasr_session_transcribe_chunked_lang(
+            res = self._lib.stelnettts_session_transcribe_chunked_lang(
                 self._handle, samples_ptr, len(pcm), int(chunk_seconds), int(overlap_seconds), lang_c)
         finally:
             if registered:
-                self._lib.crispasr_session_set_progress_callback(self._handle, None, None)
+                self._lib.stelnettts_session_set_progress_callback(self._handle, None, None)
                 self._progress_cb_holder = None
         if not res:
-            raise RuntimeError(f"crispasr_session_transcribe_chunked failed for backend {self.backend!r}")
+            raise RuntimeError(f"stelnettts_session_transcribe_chunked failed for backend {self.backend!r}")
 
         try:
-            n_seg = self._lib.crispasr_session_result_n_segments(res)
+            n_seg = self._lib.stelnettts_session_result_n_segments(res)
             out: List[SessionSegment] = []
-            has_word_p = hasattr(self._lib, "crispasr_session_result_word_p")
+            has_word_p = hasattr(self._lib, "stelnettts_session_result_word_p")
             for i in range(n_seg):
-                t = self._lib.crispasr_session_result_segment_text(res, i)
+                t = self._lib.stelnettts_session_result_segment_text(res, i)
                 text = t.decode("utf-8") if t else ""
-                t0 = self._lib.crispasr_session_result_segment_t0(res, i) / 100.0
-                t1 = self._lib.crispasr_session_result_segment_t1(res, i) / 100.0
-                wn = self._lib.crispasr_session_result_n_words(res, i)
-                has_nsp = hasattr(self._lib, "crispasr_session_result_segment_no_speech_prob")
-                nsp = self._lib.crispasr_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
-                spk_b = (self._lib.crispasr_session_result_segment_speaker(res, i)
-                         if hasattr(self._lib, "crispasr_session_result_segment_speaker") else None)
+                t0 = self._lib.stelnettts_session_result_segment_t0(res, i) / 100.0
+                t1 = self._lib.stelnettts_session_result_segment_t1(res, i) / 100.0
+                wn = self._lib.stelnettts_session_result_n_words(res, i)
+                has_nsp = hasattr(self._lib, "stelnettts_session_result_segment_no_speech_prob")
+                nsp = self._lib.stelnettts_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
+                spk_b = (self._lib.stelnettts_session_result_segment_speaker(res, i)
+                         if hasattr(self._lib, "stelnettts_session_result_segment_speaker") else None)
                 spk = spk_b.decode("utf-8") if spk_b else ""
                 words: List[SessionWord] = []
                 for j in range(wn):
-                    wt = self._lib.crispasr_session_result_word_text(res, i, j)
-                    raw_p = self._lib.crispasr_session_result_word_p(res, i, j) if has_word_p else 1.0
+                    wt = self._lib.stelnettts_session_result_word_text(res, i, j)
+                    raw_p = self._lib.stelnettts_session_result_word_p(res, i, j) if has_word_p else 1.0
                     words.append(SessionWord(
                         text=wt.decode("utf-8") if wt else "",
-                        start=self._lib.crispasr_session_result_word_t0(res, i, j) / 100.0,
-                        end=self._lib.crispasr_session_result_word_t1(res, i, j) / 100.0,
+                        start=self._lib.stelnettts_session_result_word_t0(res, i, j) / 100.0,
+                        end=self._lib.stelnettts_session_result_word_t1(res, i, j) / 100.0,
                         confidence=1.0 if raw_p < 0 else raw_p,
                     ))
                 out.append(SessionSegment(text=text.strip(), start=t0, end=t1, words=words, no_speech_prob=nsp, speaker=spk))
             return out
         finally:
             self.set_return_logits(False)
-            self._lib.crispasr_session_result_free(res)
+            self._lib.stelnettts_session_result_free(res)
 
     def get_progress(self) -> int:
         """Poll long-form transcription progress: 0..100, or -1 when idle.
 
         Updated in lockstep with :meth:`transcribe_chunked` windows (issue
         #208), so a UI thread can render a progress bar without a callback.
-        Returns -1 if the loaded libcrispasr predates the poll API.
+        Returns -1 if the loaded libstelnettts predates the poll API.
         """
-        if not hasattr(self._lib, "crispasr_get_progress"):
+        if not hasattr(self._lib, "stelnettts_get_progress"):
             return -1
-        return int(self._lib.crispasr_get_progress())
+        return int(self._lib.stelnettts_get_progress())
 
     def transcribe_vad(
         self,
@@ -1609,7 +1609,7 @@ class Session:
         n_threads: int = 4,
         language: Optional[str] = None,
     ) -> List[SessionSegment]:
-        """Transcribe with Silero VAD segmentation + crispasr-style stitching.
+        """Transcribe with Silero VAD segmentation + stelnettts-style stitching.
 
         Runs VAD on ``pcm``, merges short / overlong speech slices into usable
         chunks, stitches them into a single buffer with 0.1s silence gaps,
@@ -1624,10 +1624,10 @@ class Session:
         chunks), which matters for O(T²) backends such as parakeet /
         cohere / canary.
         """
-        if not hasattr(self._lib, "crispasr_session_transcribe_vad"):
+        if not hasattr(self._lib, "stelnettts_session_transcribe_vad"):
             raise RuntimeError(
-                "crispasr_session_transcribe_vad not in loaded library — "
-                "rebuild CrispASR 0.4.3+ or call transcribe() instead."
+                "stelnettts_session_transcribe_vad not in loaded library — "
+                "rebuild StelnetTTS 0.4.3+ or call transcribe() instead."
             )
         if sample_rate != 16000:
             ratio = 16000 / sample_rate
@@ -1637,7 +1637,7 @@ class Session:
         pcm = np.asarray(pcm, dtype=np.float32)
         samples_ptr = pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
 
-        # ABI struct layout must match crispasr_vad_abi_opts (crispasr_c_api.cpp):
+        # ABI struct layout must match stelnettts_vad_abi_opts (stelnettts_c_api.cpp):
         # float + 5 x int32.
         class _VadAbiOpts(ctypes.Structure):
             _fields_ = [
@@ -1657,8 +1657,8 @@ class Session:
             int(n_threads),
         )
 
-        if language and hasattr(self._lib, "crispasr_session_transcribe_vad_lang"):
-            res = self._lib.crispasr_session_transcribe_vad_lang(
+        if language and hasattr(self._lib, "stelnettts_session_transcribe_vad_lang"):
+            res = self._lib.stelnettts_session_transcribe_vad_lang(
                 self._handle,
                 samples_ptr,
                 len(pcm),
@@ -1668,7 +1668,7 @@ class Session:
                 language.encode("utf-8"),
             )
         else:
-            res = self._lib.crispasr_session_transcribe_vad(
+            res = self._lib.stelnettts_session_transcribe_vad(
                 self._handle,
                 samples_ptr,
                 len(pcm),
@@ -1678,32 +1678,32 @@ class Session:
             )
         if not res:
             raise RuntimeError(
-                f"crispasr_session_transcribe_vad failed for backend {self.backend!r}"
+                f"stelnettts_session_transcribe_vad failed for backend {self.backend!r}"
             )
 
         try:
-            n_seg = self._lib.crispasr_session_result_n_segments(res)
+            n_seg = self._lib.stelnettts_session_result_n_segments(res)
             out: List[SessionSegment] = []
             for i in range(n_seg):
-                t = self._lib.crispasr_session_result_segment_text(res, i)
+                t = self._lib.stelnettts_session_result_segment_text(res, i)
                 text = t.decode("utf-8") if t else ""
-                t0 = self._lib.crispasr_session_result_segment_t0(res, i) / 100.0
-                t1 = self._lib.crispasr_session_result_segment_t1(res, i) / 100.0
-                wn = self._lib.crispasr_session_result_n_words(res, i)
-                has_nsp = hasattr(self._lib, "crispasr_session_result_segment_no_speech_prob")
-                nsp = self._lib.crispasr_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
-                spk_b = (self._lib.crispasr_session_result_segment_speaker(res, i)
-                         if hasattr(self._lib, "crispasr_session_result_segment_speaker") else None)
+                t0 = self._lib.stelnettts_session_result_segment_t0(res, i) / 100.0
+                t1 = self._lib.stelnettts_session_result_segment_t1(res, i) / 100.0
+                wn = self._lib.stelnettts_session_result_n_words(res, i)
+                has_nsp = hasattr(self._lib, "stelnettts_session_result_segment_no_speech_prob")
+                nsp = self._lib.stelnettts_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
+                spk_b = (self._lib.stelnettts_session_result_segment_speaker(res, i)
+                         if hasattr(self._lib, "stelnettts_session_result_segment_speaker") else None)
                 spk = spk_b.decode("utf-8") if spk_b else ""
                 words: List[SessionWord] = []
-                has_word_p = hasattr(self._lib, "crispasr_session_result_word_p")
+                has_word_p = hasattr(self._lib, "stelnettts_session_result_word_p")
                 for j in range(wn):
-                    wt = self._lib.crispasr_session_result_word_text(res, i, j)
-                    raw_p = self._lib.crispasr_session_result_word_p(res, i, j) if has_word_p else 1.0
+                    wt = self._lib.stelnettts_session_result_word_text(res, i, j)
+                    raw_p = self._lib.stelnettts_session_result_word_p(res, i, j) if has_word_p else 1.0
                     words.append(SessionWord(
                         text=wt.decode("utf-8") if wt else "",
-                        start=self._lib.crispasr_session_result_word_t0(res, i, j) / 100.0,
-                        end=self._lib.crispasr_session_result_word_t1(res, i, j) / 100.0,
+                        start=self._lib.stelnettts_session_result_word_t0(res, i, j) / 100.0,
+                        end=self._lib.stelnettts_session_result_word_t1(res, i, j) / 100.0,
                         # -1.0 from C means "no per-word p for this backend";
                         # surface 1.0 so callers can render uniformly.
                         confidence=1.0 if raw_p < 0 else raw_p,
@@ -1711,7 +1711,7 @@ class Session:
                 out.append(SessionSegment(text=text.strip(), start=t0, end=t1, words=words, no_speech_prob=nsp, speaker=spk))
             return out
         finally:
-            self._lib.crispasr_session_result_free(res)
+            self._lib.stelnettts_session_result_free(res)
 
     def transcribe_with_logits(
         self, pcm: np.ndarray, sample_rate: int = 16000,
@@ -1732,7 +1732,7 @@ class Session:
         ``sample_rate`` / ``language`` behave exactly as in :meth:`transcribe`.
         """
         segs = []  # type: List[SessionSegment]
-        if not hasattr(self._lib, "crispasr_session_result_logits"):
+        if not hasattr(self._lib, "stelnettts_session_result_logits"):
             return self.transcribe(pcm, sample_rate, language=language), None
         if len(pcm) == 0:
             return segs, None
@@ -1746,44 +1746,44 @@ class Session:
         pcm = np.asarray(pcm, dtype=np.float32)
         samples_ptr = pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
 
-        if language and hasattr(self._lib, "crispasr_session_transcribe_lang"):
-            res = self._lib.crispasr_session_transcribe_lang(
+        if language and hasattr(self._lib, "stelnettts_session_transcribe_lang"):
+            res = self._lib.stelnettts_session_transcribe_lang(
                 self._handle, samples_ptr, len(pcm), language.encode("utf-8"))
         else:
-            res = self._lib.crispasr_session_transcribe(self._handle, samples_ptr, len(pcm))
+            res = self._lib.stelnettts_session_transcribe(self._handle, samples_ptr, len(pcm))
         if not res:
-            raise RuntimeError(f"crispasr_session_transcribe failed for backend {self.backend!r}")
+            raise RuntimeError(f"stelnettts_session_transcribe failed for backend {self.backend!r}")
 
         try:
-            n_seg = self._lib.crispasr_session_result_n_segments(res)
-            has_word_p = hasattr(self._lib, "crispasr_session_result_word_p")
+            n_seg = self._lib.stelnettts_session_result_n_segments(res)
+            has_word_p = hasattr(self._lib, "stelnettts_session_result_word_p")
             for i in range(n_seg):
-                t = self._lib.crispasr_session_result_segment_text(res, i)
+                t = self._lib.stelnettts_session_result_segment_text(res, i)
                 text = t.decode("utf-8") if t else ""
-                t0 = self._lib.crispasr_session_result_segment_t0(res, i) / 100.0
-                t1 = self._lib.crispasr_session_result_segment_t1(res, i) / 100.0
-                wn = self._lib.crispasr_session_result_n_words(res, i)
-                has_nsp = hasattr(self._lib, "crispasr_session_result_segment_no_speech_prob")
-                nsp = self._lib.crispasr_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
-                spk_b = (self._lib.crispasr_session_result_segment_speaker(res, i)
-                         if hasattr(self._lib, "crispasr_session_result_segment_speaker") else None)
+                t0 = self._lib.stelnettts_session_result_segment_t0(res, i) / 100.0
+                t1 = self._lib.stelnettts_session_result_segment_t1(res, i) / 100.0
+                wn = self._lib.stelnettts_session_result_n_words(res, i)
+                has_nsp = hasattr(self._lib, "stelnettts_session_result_segment_no_speech_prob")
+                nsp = self._lib.stelnettts_session_result_segment_no_speech_prob(res, i) if has_nsp else -1.0
+                spk_b = (self._lib.stelnettts_session_result_segment_speaker(res, i)
+                         if hasattr(self._lib, "stelnettts_session_result_segment_speaker") else None)
                 spk = spk_b.decode("utf-8") if spk_b else ""
                 words: List[SessionWord] = []
                 for j in range(wn):
-                    wt = self._lib.crispasr_session_result_word_text(res, i, j)
-                    raw_p = self._lib.crispasr_session_result_word_p(res, i, j) if has_word_p else 1.0
+                    wt = self._lib.stelnettts_session_result_word_text(res, i, j)
+                    raw_p = self._lib.stelnettts_session_result_word_p(res, i, j) if has_word_p else 1.0
                     words.append(SessionWord(
                         text=wt.decode("utf-8") if wt else "",
-                        start=self._lib.crispasr_session_result_word_t0(res, i, j) / 100.0,
-                        end=self._lib.crispasr_session_result_word_t1(res, i, j) / 100.0,
+                        start=self._lib.stelnettts_session_result_word_t0(res, i, j) / 100.0,
+                        end=self._lib.stelnettts_session_result_word_t1(res, i, j) / 100.0,
                         confidence=1.0 if raw_p < 0 else raw_p,
                     ))
                 segs.append(SessionSegment(text=text.strip(), start=t0, end=t1, words=words, no_speech_prob=nsp, speaker=spk))
 
             # Lift out the CTC logits (if any) before the handle is freed.
-            n_frames = self._lib.crispasr_session_result_n_logit_frames(res)
-            n_vocab = self._lib.crispasr_session_result_n_logit_vocab(res)
-            lp = self._lib.crispasr_session_result_logits(res)
+            n_frames = self._lib.stelnettts_session_result_n_logit_frames(res)
+            n_vocab = self._lib.stelnettts_session_result_n_logit_vocab(res)
+            lp = self._lib.stelnettts_session_result_logits(res)
             logits: Optional[np.ndarray] = None
             if n_frames > 0 and n_vocab > 0 and lp:
                 # Buffer is owned by the result — copy before the free below.
@@ -1791,7 +1791,7 @@ class Session:
                     lp, shape=(n_frames, n_vocab)).copy()
             return segs, logits
         finally:
-            self._lib.crispasr_session_result_free(res)
+            self._lib.stelnettts_session_result_free(res)
 
     def ctc_vocab(self) -> Optional[List[str]]:
         """Return the Omni CTC vocabulary as raw pieces, indexed by token id.
@@ -1802,42 +1802,42 @@ class Session:
         :meth:`transcribe_with_logits`. Returns ``None`` for backends that
         don't expose a CTC vocab or on dylibs predating the accessor.
         """
-        if not hasattr(self._lib, "crispasr_session_token_text"):
+        if not hasattr(self._lib, "stelnettts_session_token_text"):
             return None
-        n = self._lib.crispasr_session_n_vocab(self._handle)
+        n = self._lib.stelnettts_session_n_vocab(self._handle)
         if n <= 0:
             return None
         vocab: List[str] = []
         for i in range(n):
-            p = self._lib.crispasr_session_token_text(self._handle, i)
+            p = self._lib.stelnettts_session_token_text(self._handle, i)
             vocab.append(p.decode("utf-8") if p else "")
         return vocab
 
     # ---------------------------------------------------------------------
-    # TTS synthesis (vibevoice, qwen3-tts, miotts, moss-tts, moss-tts-local, omnivoice, kokoro, orpheus, chatterbox, outetts, indextts, voxcpm2, csm, dia, zonos-tts, bark, speecht5, parler-tts, pocket-tts, kugelaudio, tada, lfm2-audio, dots-tts)
+    # TTS synthesis (vibevoice, cielvox2-tts, miotts, moss-tts, moss-tts-local, omnivoice, kokoro, orpheus, chatterbox, outetts, indextts, voxcpm2, csm, dia, zonos-tts, bark, speecht5, parler-tts, pocket-tts, kugelaudio, tada, lfm2-audio, dots-tts)
     # ---------------------------------------------------------------------
 
     def set_codec_path(self, path: str) -> None:
         """Load a separate codec GGUF.
 
-        Required for qwen3-tts (12 Hz tokenizer), moss-tts (1.6B transformer
+        Required for cielvox2-tts (12 Hz tokenizer), moss-tts (1.6B transformer
         RVQ codec) and orpheus (SNAC codec); no-op for other backends.
         """
-        if not hasattr(self._lib, "crispasr_session_set_codec_path"):
-            raise RuntimeError("TTS API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_codec_path.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_codec_path.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_codec_path(self._handle, path.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_codec_path"):
+            raise RuntimeError("TTS API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_codec_path.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_codec_path.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_codec_path(self._handle, path.encode("utf-8"))
         if rc != 0:
             raise RuntimeError(f"set_codec_path failed (rc={rc}) for backend {self.backend!r}")
 
     def set_pcm_sample_rate(self, sample_rate: int) -> None:
         """Declare the sample rate of PCM passed to the next audio call."""
-        if not hasattr(self._lib, "crispasr_session_set_pcm_sample_rate"):
-            raise RuntimeError("PCM sample-rate API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_pcm_sample_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_pcm_sample_rate.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_pcm_sample_rate(self._handle, int(sample_rate))
+        if not hasattr(self._lib, "stelnettts_session_set_pcm_sample_rate"):
+            raise RuntimeError("PCM sample-rate API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_pcm_sample_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_pcm_sample_rate.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_pcm_sample_rate(self._handle, int(sample_rate))
         if rc != 0:
             raise RuntimeError(f"set_pcm_sample_rate failed (rc={rc})")
 
@@ -1851,18 +1851,18 @@ class Session:
         full (global) attention; the default (unset) keeps the model's own
         window. No-op for non-parakeet backends.
         """
-        if not hasattr(self._lib, "crispasr_session_set_parakeet_att_context"):
-            raise RuntimeError("crispasr_session_set_parakeet_att_context not present in this libcrispasr build")
-        self._lib.crispasr_session_set_parakeet_att_context.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
-        self._lib.crispasr_session_set_parakeet_att_context.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_parakeet_att_context(self._handle, int(left), int(right))
+        if not hasattr(self._lib, "stelnettts_session_set_parakeet_att_context"):
+            raise RuntimeError("stelnettts_session_set_parakeet_att_context not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_parakeet_att_context.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        self._lib.stelnettts_session_set_parakeet_att_context.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_parakeet_att_context(self._handle, int(left), int(right))
         if rc != 0:
             raise RuntimeError(f"set_parakeet_att_context failed (rc={rc}) for backend {self.backend!r}")
 
     def set_voice(self, path: str, ref_text: Optional[str] = None) -> None:
         """Load a voice prompt: a baked GGUF voice pack OR a *.wav reference.
 
-        For qwen3-tts a *.wav reference requires ``ref_text`` (the
+        For cielvox2-tts a *.wav reference requires ``ref_text`` (the
         transcription of the reference audio).
 
         For orpheus voice selection is BY NAME — use
@@ -1871,12 +1871,12 @@ class Session:
         For speecht5, pass a raw float32 binary file containing a 512-d
         x-vector (e.g. from Matthijs/cmu-arctic-xvectors).
         """
-        if not hasattr(self._lib, "crispasr_session_set_voice"):
-            raise RuntimeError("TTS API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_voice.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_voice.restype = ctypes.c_int
+        if not hasattr(self._lib, "stelnettts_session_set_voice"):
+            raise RuntimeError("TTS API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_voice.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_voice.restype = ctypes.c_int
         rt = ref_text.encode("utf-8") if ref_text else None
-        rc = self._lib.crispasr_session_set_voice(self._handle, path.encode("utf-8"), rt)
+        rc = self._lib.stelnettts_session_set_voice(self._handle, path.encode("utf-8"), rt)
         if rc != 0:
             raise RuntimeError(f"set_voice failed (rc={rc}) for backend {self.backend!r}")
 
@@ -1893,11 +1893,11 @@ class Session:
         Raises if the active backend has no preset-speaker contract or
         the name is not in the GGUF metadata.
         """
-        if not hasattr(self._lib, "crispasr_session_set_speaker_name"):
-            raise RuntimeError("set_speaker_name API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_speaker_name.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_speaker_name.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_speaker_name(self._handle, name.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_speaker_name"):
+            raise RuntimeError("set_speaker_name API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_speaker_name.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_speaker_name.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_speaker_name(self._handle, name.encode("utf-8"))
         if rc == -2:
             raise ValueError(f"unknown speaker {name!r} for backend {self.backend!r}; "
                              f"call .speakers() to enumerate")
@@ -1921,11 +1921,11 @@ class Session:
         contract (use :meth:`set_speaker_name` for name-based backends
         like orpheus).
         """
-        if not hasattr(self._lib, "crispasr_session_set_speaker_id"):
-            raise RuntimeError("set_speaker_id API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_speaker_id.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_speaker_id.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_speaker_id(self._handle, speaker_id)
+        if not hasattr(self._lib, "stelnettts_session_set_speaker_id"):
+            raise RuntimeError("set_speaker_id API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_speaker_id.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_speaker_id.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_speaker_id(self._handle, speaker_id)
         if rc == -2:
             raise ValueError(f"speaker id {speaker_id} out of range for backend {self.backend!r}")
         if rc == -3:
@@ -1935,7 +1935,7 @@ class Session:
             raise RuntimeError(f"set_speaker_id failed (rc={rc}) for backend {self.backend!r}")
 
     def set_instruct(self, instruct: str) -> None:
-        """Set the voice description / style instruct (qwen3-tts, parler, omnivoice).
+        """Set the voice description / style instruct (cielvox2-tts, parler, omnivoice).
 
         VoiceDesign generates speech in a voice **described by a
         natural-language instruction** — no reference WAV, no preset
@@ -1944,7 +1944,7 @@ class Session:
         to the talker prefill; the codec bridge omits the speaker
         frame entirely.
 
-        Required for qwen3-tts VoiceDesign before
+        Required for cielvox2-tts VoiceDesign before
         :meth:`synthesize`. Re-callable; latest call wins. Raises if
         the active backend has no instruct contract.
 
@@ -1965,14 +1965,14 @@ class Session:
            spoken (``"male, elderly"`` becomes ``男，老年`` for Chinese
            text). See docs/tts.md for the full vocabulary.
         """
-        if not hasattr(self._lib, "crispasr_session_set_instruct"):
-            raise RuntimeError("set_instruct API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_instruct.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_instruct.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_instruct(self._handle, instruct.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_instruct"):
+            raise RuntimeError("set_instruct API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_instruct.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_instruct.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_instruct(self._handle, instruct.encode("utf-8"))
         if rc == -3:
             raise RuntimeError(f"backend {self.backend!r} is not a VoiceDesign variant; "
-                               f"set_instruct only applies to qwen3-tts VoiceDesign models")
+                               f"set_instruct only applies to cielvox2-tts VoiceDesign models")
         if rc != 0:
             raise RuntimeError(f"set_instruct failed (rc={rc}) for backend {self.backend!r}")
 
@@ -1982,11 +1982,11 @@ class Session:
         Args:
             phonemes: IPA string in the backend's own alphabet, or "" to clear.
         """
-        if not hasattr(self._lib, "crispasr_session_set_tts_phonemes"):
-            raise RuntimeError("set_tts_phonemes API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_tts_phonemes.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_tts_phonemes.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_tts_phonemes(self._session, phonemes.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_tts_phonemes"):
+            raise RuntimeError("set_tts_phonemes API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_tts_phonemes.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_tts_phonemes.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_tts_phonemes(self._session, phonemes.encode("utf-8"))
         if rc == -2:
             raise RuntimeError(
                 f"backend {self.backend!r} has no phonemes-in entry point (kokoro and piper do)"
@@ -2000,11 +2000,11 @@ class Session:
         No-op for non-kokoro backends. Useful for long-running daemons
         that resynthesize across many speakers and want bounded memory.
         """
-        if not hasattr(self._lib, "crispasr_session_kokoro_clear_phoneme_cache"):
+        if not hasattr(self._lib, "stelnettts_session_kokoro_clear_phoneme_cache"):
             return
-        self._lib.crispasr_session_kokoro_clear_phoneme_cache.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_session_kokoro_clear_phoneme_cache.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_kokoro_clear_phoneme_cache(self._handle)
+        self._lib.stelnettts_session_kokoro_clear_phoneme_cache.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_session_kokoro_clear_phoneme_cache.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_kokoro_clear_phoneme_cache(self._handle)
         if rc != 0:
             raise RuntimeError(f"clear_phoneme_cache failed (rc={rc})")
 
@@ -2018,11 +2018,11 @@ class Session:
         Empty string clears. Per-call ``language`` arg passed to
         :meth:`transcribe` still wins.
         """
-        if not hasattr(self._lib, "crispasr_session_set_source_language"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_source_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_source_language.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_source_language(self._handle, lang.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_source_language"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_source_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_source_language.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_source_language(self._handle, lang.encode("utf-8"))
         if rc != 0:
             raise RuntimeError(f"set_source_language failed (rc={rc})")
 
@@ -2031,11 +2031,11 @@ class Session:
         backend emits a translation. For whisper, pair with
         :meth:`set_translate` ``(True)``.
         """
-        if not hasattr(self._lib, "crispasr_session_set_target_language"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_target_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_target_language.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_target_language(self._handle, lang.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_target_language"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_target_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_target_language.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_target_language(self._handle, lang.encode("utf-8"))
         if rc != 0:
             raise RuntimeError(f"set_target_language failed (rc={rc})")
 
@@ -2054,22 +2054,22 @@ class Session:
         language has no effect — set this to make it explicit. Empty string
         clears.
         """
-        if not hasattr(self._lib, "crispasr_session_set_tts_reference_language"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_tts_reference_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_tts_reference_language.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_tts_reference_language(self._handle, lang.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_tts_reference_language"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_tts_reference_language.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_tts_reference_language.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_tts_reference_language(self._handle, lang.encode("utf-8"))
         if rc != 0:
             raise RuntimeError(f"set_tts_reference_language failed (rc={rc})")
 
     def set_punctuation(self, enable: bool) -> None:
         """Toggle punctuation + capitalisation in the output (canary/cohere
         natively; LLM backends via post-process strip). Default True."""
-        if not hasattr(self._lib, "crispasr_session_set_punctuation"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_punctuation.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_punctuation.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_punctuation(self._handle, 1 if enable else 0)
+        if not hasattr(self._lib, "stelnettts_session_set_punctuation"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_punctuation.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_punctuation.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_punctuation(self._handle, 1 if enable else 0)
         if rc != 0:
             raise RuntimeError(f"set_punctuation failed (rc={rc})")
 
@@ -2082,11 +2082,11 @@ class Session:
         punctuation on backends that emit none (parakeet RNNT/CTC, etc.) —
         the same post-processor the CLI ``--punc-model`` and server apply.
         """
-        if not hasattr(self._lib, "crispasr_session_set_punc_model"):
-            raise RuntimeError("punc-model API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_punc_model.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_punc_model.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_punc_model(self._handle, (punc_model or "").encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_punc_model"):
+            raise RuntimeError("punc-model API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_punc_model.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_punc_model.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_punc_model(self._handle, (punc_model or "").encode("utf-8"))
         if rc != 0:
             raise RuntimeError(f"set_punc_model failed (rc={rc})")
 
@@ -2096,33 +2096,33 @@ class Session:
         them into the prompt (vibevoice splices the raw string into its
         "with extra info:" prompt slot, same as the CLI's --context). Empty
         string clears."""
-        if not hasattr(self._lib, "crispasr_session_set_hotwords"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_hotwords.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_float]
-        self._lib.crispasr_session_set_hotwords.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_hotwords(self._handle, (hotwords or "").encode("utf-8"), float(boost))
+        if not hasattr(self._lib, "stelnettts_session_set_hotwords"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_hotwords.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_hotwords.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_hotwords(self._handle, (hotwords or "").encode("utf-8"), float(boost))
         if rc != 0:
             raise RuntimeError(f"set_hotwords failed (rc={rc})")
 
     def set_g2p_dict(self, source: str) -> None:
         """Select the G2P pronunciation dictionary for TTS phonemization
         (``olaph`` / ``open-dict`` or a path). Empty string keeps the default."""
-        if not hasattr(self._lib, "crispasr_session_set_g2p_dict"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_g2p_dict.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_g2p_dict.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_g2p_dict(self._handle, (source or "").encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_g2p_dict"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_g2p_dict.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_g2p_dict.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_g2p_dict(self._handle, (source or "").encode("utf-8"))
         if rc != 0:
             raise RuntimeError(f"set_g2p_dict failed (rc={rc})")
 
     def set_translate(self, enable: bool) -> None:
         """Whisper sticky ``--translate``. For canary/cohere/voxtral the
         equivalent is :meth:`set_target_language` ≠ source."""
-        if not hasattr(self._lib, "crispasr_session_set_translate"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_translate.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_translate.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_translate(self._handle, 1 if enable else 0)
+        if not hasattr(self._lib, "stelnettts_session_set_translate"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_translate.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_translate.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_translate(self._handle, 1 if enable else 0)
         if rc != 0:
             raise RuntimeError(f"set_translate failed (rc={rc})")
 
@@ -2133,11 +2133,11 @@ class Session:
         ``seed`` is the RNG seed for sampling; pass 0 for time-based.
         Returns silently when no backend in the session honours the
         setter (so it's safe to call for any session)."""
-        if not hasattr(self._lib, "crispasr_session_set_temperature"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_temperature.argtypes = [ctypes.c_void_p, ctypes.c_float, ctypes.c_uint64]
-        self._lib.crispasr_session_set_temperature.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_temperature(self._handle, float(temperature), int(seed))
+        if not hasattr(self._lib, "stelnettts_session_set_temperature"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_temperature.argtypes = [ctypes.c_void_p, ctypes.c_float, ctypes.c_uint64]
+        self._lib.stelnettts_session_set_temperature.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_temperature(self._handle, float(temperature), int(seed))
         # rc == -2 means no backend in this session supports temperature
         # — treat as a soft no-op so it's safe to call for any session.
         if rc not in (0, -2):
@@ -2149,11 +2149,11 @@ class Session:
         This is a soft no-op for sessions whose loaded backend does not
         expose a reseed hook.
         """
-        if not hasattr(self._lib, "crispasr_session_set_tts_seed"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_tts_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-        self._lib.crispasr_session_set_tts_seed.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_tts_seed(self._handle, int(seed))
+        if not hasattr(self._lib, "stelnettts_session_set_tts_seed"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_tts_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self._lib.stelnettts_session_set_tts_seed.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_tts_seed(self._handle, int(seed))
         if rc not in (0, -2):
             raise RuntimeError(f"set_tts_seed failed (rc={rc})")
 
@@ -2161,11 +2161,11 @@ class Session:
         """Set a generated-token cap for autoregressive session backends.
 
         Pass ``<= 0`` to clear the override and use the backend default."""
-        if not hasattr(self._lib, "crispasr_session_set_max_new_tokens"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_max_new_tokens.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_max_new_tokens.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_max_new_tokens(self._handle, int(max_new_tokens))
+        if not hasattr(self._lib, "stelnettts_session_set_max_new_tokens"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_max_new_tokens.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_max_new_tokens.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_max_new_tokens(self._handle, int(max_new_tokens))
         if rc != 0:
             raise RuntimeError(f"set_max_new_tokens failed (rc={rc})")
 
@@ -2173,11 +2173,11 @@ class Session:
         """Set an opt-in repeated generated-token penalty for AR backends.
 
         Pass ``<= 0`` to disable it."""
-        if not hasattr(self._lib, "crispasr_session_set_frequency_penalty"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_frequency_penalty.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_frequency_penalty.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_frequency_penalty(self._handle, float(penalty))
+        if not hasattr(self._lib, "stelnettts_session_set_frequency_penalty"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_frequency_penalty.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_frequency_penalty.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_frequency_penalty(self._handle, float(penalty))
         if rc != 0:
             raise RuntimeError(f"set_frequency_penalty failed (rc={rc})")
 
@@ -2188,11 +2188,11 @@ class Session:
         Higher = better fidelity, slower. Soft no-op (rc=-2) when the active
         backend has no step-based stage.
         """
-        if not hasattr(self._lib, "crispasr_session_set_tts_steps"):
+        if not hasattr(self._lib, "stelnettts_session_set_tts_steps"):
             return
-        self._lib.crispasr_session_set_tts_steps.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_tts_steps.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_tts_steps(self._handle, int(steps))
+        self._lib.stelnettts_session_set_tts_steps.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_tts_steps.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_tts_steps(self._handle, int(steps))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_tts_steps failed (rc={rc})")
 
@@ -2203,141 +2203,141 @@ class Session:
         multilingual timing at higher cost. Soft no-op (rc=-2) on backends
         that don't rank timing candidates.
         """
-        if not hasattr(self._lib, "crispasr_session_set_tts_num_candidates"):
+        if not hasattr(self._lib, "stelnettts_session_set_tts_num_candidates"):
             return
-        self._lib.crispasr_session_set_tts_num_candidates.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_tts_num_candidates.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_tts_num_candidates(self._handle, int(n))
+        self._lib.stelnettts_session_set_tts_num_candidates.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_tts_num_candidates.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_tts_num_candidates(self._handle, int(n))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_tts_num_candidates failed (rc={rc})")
 
     def set_top_p(self, top_p: float) -> None:
         """Set the top-p nucleus-sampling threshold. Honoured by chatterbox."""
-        if not hasattr(self._lib, "crispasr_session_set_top_p"):
+        if not hasattr(self._lib, "stelnettts_session_set_top_p"):
             return
-        self._lib.crispasr_session_set_top_p.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_top_p.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_top_p(self._handle, float(top_p))
+        self._lib.stelnettts_session_set_top_p.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_top_p.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_top_p(self._handle, float(top_p))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_top_p failed (rc={rc})")
 
     def set_top_k(self, top_k: int) -> None:
         """Set the top-k sampling cutoff (0 = disabled). Honoured by TADA."""
-        if not hasattr(self._lib, "crispasr_session_set_top_k"):
+        if not hasattr(self._lib, "stelnettts_session_set_top_k"):
             return
-        self._lib.crispasr_session_set_top_k.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_top_k.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_top_k(self._handle, int(top_k))
+        self._lib.stelnettts_session_set_top_k.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_top_k.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_top_k(self._handle, int(top_k))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_top_k failed (rc={rc})")
 
     def set_do_sample(self, enable: bool) -> None:
         """Enable/disable sampling (False = greedy). Honoured by TADA."""
-        if not hasattr(self._lib, "crispasr_session_set_do_sample"):
+        if not hasattr(self._lib, "stelnettts_session_set_do_sample"):
             return
-        self._lib.crispasr_session_set_do_sample.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_do_sample.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_do_sample(self._handle, 1 if enable else 0)
+        self._lib.stelnettts_session_set_do_sample.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_do_sample.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_do_sample(self._handle, 1 if enable else 0)
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_do_sample failed (rc={rc})")
 
     def set_min_p(self, min_p: float) -> None:
         """Set the min-p sampling threshold. Honoured by chatterbox."""
-        if not hasattr(self._lib, "crispasr_session_set_min_p"):
+        if not hasattr(self._lib, "stelnettts_session_set_min_p"):
             return
-        self._lib.crispasr_session_set_min_p.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_min_p.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_min_p(self._handle, float(min_p))
+        self._lib.stelnettts_session_set_min_p.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_min_p.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_min_p(self._handle, float(min_p))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_min_p failed (rc={rc})")
 
     def set_repetition_penalty(self, r: float) -> None:
         """Set the repetition penalty (1.0 = no penalty). Honoured by chatterbox."""
-        if not hasattr(self._lib, "crispasr_session_set_repetition_penalty"):
+        if not hasattr(self._lib, "stelnettts_session_set_repetition_penalty"):
             return
-        self._lib.crispasr_session_set_repetition_penalty.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_repetition_penalty.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_repetition_penalty(self._handle, float(r))
+        self._lib.stelnettts_session_set_repetition_penalty.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_repetition_penalty.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_repetition_penalty(self._handle, float(r))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_repetition_penalty failed (rc={rc})")
 
     def set_cfg_weight(self, cfg_weight: float) -> None:
         """Set the classifier-free-guidance weight (chatterbox). 0 disables CFG."""
-        if not hasattr(self._lib, "crispasr_session_set_cfg_weight"):
+        if not hasattr(self._lib, "stelnettts_session_set_cfg_weight"):
             return
-        self._lib.crispasr_session_set_cfg_weight.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_cfg_weight.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_cfg_weight(self._handle, float(cfg_weight))
+        self._lib.stelnettts_session_set_cfg_weight.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_cfg_weight.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_cfg_weight(self._handle, float(cfg_weight))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_cfg_weight failed (rc={rc})")
 
     def set_tts_noise_temp(self, noise_temp: float) -> None:
         """TADA flow-matching noise temperature (Python noise_temp, default 0.9)."""
-        if not hasattr(self._lib, "crispasr_session_set_tts_noise_temp"):
+        if not hasattr(self._lib, "stelnettts_session_set_tts_noise_temp"):
             return
-        self._lib.crispasr_session_set_tts_noise_temp.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_tts_noise_temp.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_tts_noise_temp(self._handle, float(noise_temp))
+        self._lib.stelnettts_session_set_tts_noise_temp.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_tts_noise_temp.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_tts_noise_temp(self._handle, float(noise_temp))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_tts_noise_temp failed (rc={rc})")
 
     def set_exaggeration(self, exaggeration: float) -> None:
         """Set the emotion-exaggeration scalar (chatterbox). 0.5 is the upstream default."""
-        if not hasattr(self._lib, "crispasr_session_set_exaggeration"):
+        if not hasattr(self._lib, "stelnettts_session_set_exaggeration"):
             return
-        self._lib.crispasr_session_set_exaggeration.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_exaggeration.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_exaggeration(self._handle, float(exaggeration))
+        self._lib.stelnettts_session_set_exaggeration.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_exaggeration.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_exaggeration(self._handle, float(exaggeration))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_exaggeration failed (rc={rc})")
 
     def set_max_speech_tokens(self, n: int) -> None:
         """Set the upper bound on speech tokens per synthesize call (chatterbox). Default 1000 ≈ 20 s."""
-        if not hasattr(self._lib, "crispasr_session_set_max_speech_tokens"):
+        if not hasattr(self._lib, "stelnettts_session_set_max_speech_tokens"):
             return
-        self._lib.crispasr_session_set_max_speech_tokens.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_max_speech_tokens.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_max_speech_tokens(self._handle, int(n))
+        self._lib.stelnettts_session_set_max_speech_tokens.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_max_speech_tokens.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_max_speech_tokens(self._handle, int(n))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_max_speech_tokens failed (rc={rc})")
 
     def set_min_speech_tokens(self, n: int) -> None:
         """Set the floor on generated audio length (MOSS TTS). Units are codec frames at 12.5 Hz (80 ms each), so n=25 floors at ~2 s; other backends no-op (rc=-2)."""
-        if not hasattr(self._lib, "crispasr_session_set_min_speech_tokens"):
+        if not hasattr(self._lib, "stelnettts_session_set_min_speech_tokens"):
             return
-        self._lib.crispasr_session_set_min_speech_tokens.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_min_speech_tokens.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_min_speech_tokens(self._handle, int(n))
+        self._lib.stelnettts_session_set_min_speech_tokens.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_min_speech_tokens.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_min_speech_tokens(self._handle, int(n))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_min_speech_tokens failed (rc={rc})")
 
     def set_length_scale(self, scale: float) -> None:
         """Set the per-phoneme length-scale / speaking-rate scalar. Honoured by kokoro."""
-        if not hasattr(self._lib, "crispasr_session_set_length_scale"):
+        if not hasattr(self._lib, "stelnettts_session_set_length_scale"):
             return
-        self._lib.crispasr_session_set_length_scale.argtypes = [ctypes.c_void_p, ctypes.c_float]
-        self._lib.crispasr_session_set_length_scale.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_length_scale(self._handle, float(scale))
+        self._lib.stelnettts_session_set_length_scale.argtypes = [ctypes.c_void_p, ctypes.c_float]
+        self._lib.stelnettts_session_set_length_scale.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_length_scale(self._handle, float(scale))
         if rc != 0 and rc != -2:
             raise RuntimeError(f"set_length_scale failed (rc={rc})")
 
     def set_best_of(self, n: int) -> None:
         """Set the best-of-N sampling count for ASR backends."""
-        if not hasattr(self._lib, "crispasr_session_set_best_of"):
+        if not hasattr(self._lib, "stelnettts_session_set_best_of"):
             return
-        self._lib.crispasr_session_set_best_of.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_best_of.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_best_of(self._handle, int(n))
+        self._lib.stelnettts_session_set_best_of.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_best_of.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_best_of(self._handle, int(n))
         if rc != 0:
             raise RuntimeError(f"set_best_of failed (rc={rc})")
 
     def set_beam_size(self, n: int) -> None:
         """Set the beam-search width for ASR backends that support it."""
-        if not hasattr(self._lib, "crispasr_session_set_beam_size"):
+        if not hasattr(self._lib, "stelnettts_session_set_beam_size"):
             return
-        self._lib.crispasr_session_set_beam_size.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_beam_size.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_beam_size(self._handle, int(n))
+        self._lib.stelnettts_session_set_beam_size.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_beam_size.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_beam_size(self._handle, int(n))
         if rc != 0:
             raise RuntimeError(f"set_beam_size failed (rc={rc})")
 
@@ -2350,23 +2350,23 @@ class Session:
         needs the logits. Retrieve them with :meth:`transcribe_with_logits`.
         No-op on dylibs predating the accessor.
         """
-        if not hasattr(self._lib, "crispasr_session_set_return_logits"):
+        if not hasattr(self._lib, "stelnettts_session_set_return_logits"):
             return
-        self._lib.crispasr_session_set_return_logits.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_return_logits.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_return_logits(self._handle, 1 if on else 0)
+        self._lib.stelnettts_session_set_return_logits.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_return_logits.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_return_logits(self._handle, 1 if on else 0)
         if rc != 0:
             raise RuntimeError(f"set_return_logits failed (rc={rc})")
 
     def set_grammar_text(self, gbnf_text: str, root_rule: str = "root", penalty: float = 100.0) -> None:
         """Set a GBNF grammar for constrained whisper decoding. Pass "" to clear."""
-        if not hasattr(self._lib, "crispasr_session_set_grammar_text"):
+        if not hasattr(self._lib, "stelnettts_session_set_grammar_text"):
             return
-        self._lib.crispasr_session_set_grammar_text.argtypes = [
+        self._lib.stelnettts_session_set_grammar_text.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_float,
         ]
-        self._lib.crispasr_session_set_grammar_text.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_grammar_text(
+        self._lib.stelnettts_session_set_grammar_text.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_grammar_text(
             self._handle,
             gbnf_text.encode() if gbnf_text else None,
             root_rule.encode() if root_rule else None,
@@ -2385,13 +2385,13 @@ class Session:
         temperature_inc: float,
     ) -> None:
         """Set whisper decoder fallback thresholds. temperature_inc=0.0 disables fallback."""
-        if not hasattr(self._lib, "crispasr_session_set_fallback_thresholds"):
+        if not hasattr(self._lib, "stelnettts_session_set_fallback_thresholds"):
             return
-        self._lib.crispasr_session_set_fallback_thresholds.argtypes = [
+        self._lib.stelnettts_session_set_fallback_thresholds.argtypes = [
             ctypes.c_void_p, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float,
         ]
-        self._lib.crispasr_session_set_fallback_thresholds.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_fallback_thresholds(
+        self._lib.stelnettts_session_set_fallback_thresholds.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_fallback_thresholds(
             self._handle,
             float(entropy_thold), float(logprob_thold),
             float(no_speech_thold), float(temperature_inc),
@@ -2418,11 +2418,11 @@ class Session:
         Raises ValueError for an unrecognised preset -- a typo is never
         silently treated as "balanced".
         """
-        if not hasattr(self._lib, "crispasr_session_set_sensitivity"):
+        if not hasattr(self._lib, "stelnettts_session_set_sensitivity"):
             return
-        self._lib.crispasr_session_set_sensitivity.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_sensitivity.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_sensitivity(self._handle, str(preset).encode("utf-8"))
+        self._lib.stelnettts_session_set_sensitivity.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_sensitivity.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_sensitivity(self._handle, str(preset).encode("utf-8"))
         if rc == -2:
             raise ValueError(
                 f"unknown sensitivity preset {preset!r} "
@@ -2433,11 +2433,11 @@ class Session:
 
     def set_alt_n(self, n: int) -> None:
         """Set per-token top-N alternative-candidate capture for whisper greedy decode. 0 = off."""
-        if not hasattr(self._lib, "crispasr_session_set_alt_n"):
+        if not hasattr(self._lib, "stelnettts_session_set_alt_n"):
             return
-        self._lib.crispasr_session_set_alt_n.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_set_alt_n.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_alt_n(self._handle, int(n))
+        self._lib.stelnettts_session_set_alt_n.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_set_alt_n.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_alt_n(self._handle, int(n))
         if rc != 0:
             raise RuntimeError(f"set_alt_n failed (rc={rc})")
 
@@ -2448,13 +2448,13 @@ class Session:
         carry_initial_prompt: bool = False,
     ) -> None:
         """Set whisper-only text-suppression and prompt-carry extras."""
-        if not hasattr(self._lib, "crispasr_session_set_whisper_decode_extras"):
+        if not hasattr(self._lib, "stelnettts_session_set_whisper_decode_extras"):
             return
-        self._lib.crispasr_session_set_whisper_decode_extras.argtypes = [
+        self._lib.stelnettts_session_set_whisper_decode_extras.argtypes = [
             ctypes.c_void_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
         ]
-        self._lib.crispasr_session_set_whisper_decode_extras.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_whisper_decode_extras(
+        self._lib.stelnettts_session_set_whisper_decode_extras.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_whisper_decode_extras(
             self._handle,
             int(suppress_nst),
             suppress_regex.encode() if suppress_regex else b"",
@@ -2466,18 +2466,18 @@ class Session:
     def set_ask(self, prompt: str) -> None:
         """Set a free-form prompt passed to the backend on the next transcribe/synthesize call.
 
-        Supported by: granite, voxtral, qwen3-asr, glm-asr, gemma4-e2b,
+        Supported by: granite, voxtral, cielvox2-asr, glm-asr, gemma4-e2b,
         mimo-asr, moss-audio, moss-diarize, lfm2-audio, mini-omni2, ark-asr. For moss-audio
         this enables audio understanding beyond ASR (e.g. "Describe the sounds
         in this clip." or "What language is spoken?"). For ark-asr it is a
         best-effort language hint (the model is promptless / not instruction-
         trained).
         """
-        if not hasattr(self._lib, "crispasr_session_set_ask"):
+        if not hasattr(self._lib, "stelnettts_session_set_ask"):
             return
-        self._lib.crispasr_session_set_ask.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_ask.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_ask(self._handle, prompt.encode())
+        self._lib.stelnettts_session_set_ask.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_ask.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_ask(self._handle, prompt.encode())
         if rc != 0:
             raise RuntimeError(f"set_ask failed (rc={rc})")
 
@@ -2488,18 +2488,18 @@ class Session:
         Returns ``(lang_iso2, confidence_in_0_to_1)``. Raises
         :class:`RuntimeError` on failure.
         """
-        if not hasattr(self._lib, "crispasr_session_detect_language"):
-            raise RuntimeError("session-state API not present in this libcrispasr build")
+        if not hasattr(self._lib, "stelnettts_session_detect_language"):
+            raise RuntimeError("session-state API not present in this libstelnettts build")
         import numpy as np
         pcm_arr = np.ascontiguousarray(pcm, dtype=np.float32)
-        self._lib.crispasr_session_detect_language.argtypes = [
+        self._lib.stelnettts_session_detect_language.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
             ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_float),
         ]
-        self._lib.crispasr_session_detect_language.restype = ctypes.c_int
+        self._lib.stelnettts_session_detect_language.restype = ctypes.c_int
         out_buf = ctypes.create_string_buffer(16)
         out_prob = ctypes.c_float(0.0)
-        rc = self._lib.crispasr_session_detect_language(
+        rc = self._lib.stelnettts_session_detect_language(
             self._handle,
             pcm_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
             int(pcm_arr.size),
@@ -2525,9 +2525,9 @@ class Session:
         Requires a backend that supports text translation (currently
         only ``m2m100``).  Raises :class:`RuntimeError` on failure.
         """
-        fn = "crispasr_session_translate_text"
+        fn = "stelnettts_session_translate_text"
         if not hasattr(self._lib, fn):
-            raise RuntimeError("translate_text not present in this libcrispasr build")
+            raise RuntimeError("translate_text not present in this libstelnettts build")
         func = getattr(self._lib, fn)
         func.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p,
                          ctypes.c_char_p, ctypes.c_int]
@@ -2539,14 +2539,14 @@ class Session:
             raise RuntimeError("translate_text returned null — check model and language pair")
         out = result.decode("utf-8")
         # Free the malloc'd string
-        free_fn = "crispasr_session_translate_text_free"
+        free_fn = "stelnettts_session_translate_text_free"
         if hasattr(self._lib, free_fn):
             getattr(self._lib, free_fn).argtypes = [ctypes.c_char_p]
             getattr(self._lib, free_fn)(result)
         return out
 
     # ------------------------------------------------------------------
-    # Streaming API (PLAN #62a — Python wrapper for crispasr_stream_*).
+    # Streaming API (PLAN #62a — Python wrapper for stelnettts_stream_*).
     # ------------------------------------------------------------------
 
     def stream_open(self, *, step_ms: int = 3000, length_ms: int = 10000, keep_ms: int = 200,
@@ -2572,23 +2572,23 @@ class Session:
         Returns a :class:`_Stream` handle. Feed PCM with
         :meth:`_Stream.feed` and pull text with :meth:`_Stream.get_text`.
         """
-        if not hasattr(self._lib, "crispasr_session_stream_open"):
-            raise RuntimeError("streaming API not present in this libcrispasr build")
-        self._lib.crispasr_session_stream_open.argtypes = [
+        if not hasattr(self._lib, "stelnettts_session_stream_open"):
+            raise RuntimeError("streaming API not present in this libstelnettts build")
+        self._lib.stelnettts_session_stream_open.argtypes = [
             ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
         ]
-        self._lib.crispasr_session_stream_open.restype = ctypes.c_void_p
-        h = self._lib.crispasr_session_stream_open(
+        self._lib.stelnettts_session_stream_open.restype = ctypes.c_void_p
+        h = self._lib.stelnettts_session_stream_open(
             self._handle, self._n_threads, step_ms, length_ms, keep_ms,
             language.encode("utf-8") if language else b"", 1 if translate else 0,
         )
         if not h:
             raise RuntimeError(f"stream_open failed for backend {self.backend!r}")
         # Voxtral4b live-decode toggle. No-op on other backends. Idempotent.
-        if live and hasattr(self._lib, "crispasr_stream_set_live_decode"):
-            self._lib.crispasr_stream_set_live_decode.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            self._lib.crispasr_stream_set_live_decode.restype = None
-            self._lib.crispasr_stream_set_live_decode(h, 1)
+        if live and hasattr(self._lib, "stelnettts_stream_set_live_decode"):
+            self._lib.stelnettts_stream_set_live_decode.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            self._lib.stelnettts_stream_set_live_decode.restype = None
+            self._lib.stelnettts_stream_set_live_decode(h, 1)
         return Session._Stream(self._lib, h)
 
     class _Stream:
@@ -2606,9 +2606,9 @@ class Session:
             Raises on error."""
             import numpy as np
             arr = np.ascontiguousarray(pcm, dtype=np.float32)
-            self._lib.crispasr_stream_feed.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int]
-            self._lib.crispasr_stream_feed.restype = ctypes.c_int
-            rc = self._lib.crispasr_stream_feed(
+            self._lib.stelnettts_stream_feed.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int]
+            self._lib.stelnettts_stream_feed.restype = ctypes.c_int
+            rc = self._lib.stelnettts_stream_feed(
                 self._handle, arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), int(arr.size),
             )
             if rc < 0:
@@ -2619,17 +2619,17 @@ class Session:
             """Return latest committed transcript as
             ``{"text": str, "t0": float, "t1": float, "counter": int}``.
             ``counter`` increments per commit; same value means no new text."""
-            self._lib.crispasr_stream_get_text.argtypes = [
+            self._lib.stelnettts_stream_get_text.argtypes = [
                 ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int,
                 ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
                 ctypes.POINTER(ctypes.c_int64),
             ]
-            self._lib.crispasr_stream_get_text.restype = ctypes.c_int
+            self._lib.stelnettts_stream_get_text.restype = ctypes.c_int
             buf = ctypes.create_string_buffer(8192)
             t0 = ctypes.c_double(0.0)
             t1 = ctypes.c_double(0.0)
             counter = ctypes.c_int64(0)
-            rc = self._lib.crispasr_stream_get_text(
+            rc = self._lib.stelnettts_stream_get_text(
                 self._handle, buf, 8192, ctypes.byref(t0), ctypes.byref(t1), ctypes.byref(counter),
             )
             if rc < 0:
@@ -2638,18 +2638,18 @@ class Session:
 
         def flush(self) -> None:
             """Finalise any remaining buffered audio."""
-            self._lib.crispasr_stream_flush.argtypes = [ctypes.c_void_p]
-            self._lib.crispasr_stream_flush.restype = ctypes.c_int
-            rc = self._lib.crispasr_stream_flush(self._handle)
+            self._lib.stelnettts_stream_flush.argtypes = [ctypes.c_void_p]
+            self._lib.stelnettts_stream_flush.restype = ctypes.c_int
+            rc = self._lib.stelnettts_stream_flush(self._handle)
             if rc < 0:
                 raise RuntimeError(f"stream_flush failed (rc={rc})")
 
         def close(self) -> None:
             if self._closed or not self._handle:
                 return
-            self._lib.crispasr_stream_close.argtypes = [ctypes.c_void_p]
-            self._lib.crispasr_stream_close.restype = None
-            self._lib.crispasr_stream_close(self._handle)
+            self._lib.stelnettts_stream_close.argtypes = [ctypes.c_void_p]
+            self._lib.stelnettts_stream_close.restype = None
+            self._lib.stelnettts_stream_close(self._handle)
             self._closed = True
 
         def __enter__(self):
@@ -2665,44 +2665,44 @@ class Session:
                 pass
 
     def is_voice_design(self) -> bool:
-        """Return True iff the loaded model is a qwen3-tts VoiceDesign variant.
+        """Return True iff the loaded model is a cielvox2-tts VoiceDesign variant.
 
         Lets callers branch on the voice-prompt API: VoiceDesign needs
         :meth:`set_instruct`, CustomVoice needs :meth:`set_speaker_name`,
         Base needs :meth:`set_voice`.
         """
-        if not hasattr(self._lib, "crispasr_session_is_voice_design"):
+        if not hasattr(self._lib, "stelnettts_session_is_voice_design"):
             return False
-        self._lib.crispasr_session_is_voice_design.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_session_is_voice_design.restype = ctypes.c_int
-        return bool(self._lib.crispasr_session_is_voice_design(self._handle))
+        self._lib.stelnettts_session_is_voice_design.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_session_is_voice_design.restype = ctypes.c_int
+        return bool(self._lib.stelnettts_session_is_voice_design(self._handle))
 
     def is_custom_voice(self) -> bool:
-        """Return True iff the loaded model is a qwen3-tts CustomVoice variant."""
-        if not hasattr(self._lib, "crispasr_session_is_custom_voice"):
+        """Return True iff the loaded model is a cielvox2-tts CustomVoice variant."""
+        if not hasattr(self._lib, "stelnettts_session_is_custom_voice"):
             return False
-        self._lib.crispasr_session_is_custom_voice.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_session_is_custom_voice.restype = ctypes.c_int
-        return bool(self._lib.crispasr_session_is_custom_voice(self._handle))
+        self._lib.stelnettts_session_is_custom_voice.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_session_is_custom_voice.restype = ctypes.c_int
+        return bool(self._lib.stelnettts_session_is_custom_voice(self._handle))
 
     def speakers(self) -> list:
         """Return the list of preset speaker names for the active backend.
 
         Empty list if the backend has no preset-speaker contract
-        (e.g. vibevoice, kokoro, qwen3-tts ICL/Base, qwen3-tts
+        (e.g. vibevoice, kokoro, cielvox2-tts ICL/Base, cielvox2-tts
         VoiceDesign). Orpheus returns the speakers baked into the GGUF
         metadata.
         """
-        if not hasattr(self._lib, "crispasr_session_n_speakers"):
+        if not hasattr(self._lib, "stelnettts_session_n_speakers"):
             return []
-        self._lib.crispasr_session_n_speakers.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_session_n_speakers.restype = ctypes.c_int
-        self._lib.crispasr_session_get_speaker_name.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        self._lib.crispasr_session_get_speaker_name.restype = ctypes.c_char_p
-        n = self._lib.crispasr_session_n_speakers(self._handle)
+        self._lib.stelnettts_session_n_speakers.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_session_n_speakers.restype = ctypes.c_int
+        self._lib.stelnettts_session_get_speaker_name.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self._lib.stelnettts_session_get_speaker_name.restype = ctypes.c_char_p
+        n = self._lib.stelnettts_session_n_speakers(self._handle)
         out = []
         for i in range(n):
-            ptr = self._lib.crispasr_session_get_speaker_name(self._handle, i)
+            ptr = self._lib.stelnettts_session_get_speaker_name(self._handle, i)
             if ptr:
                 out.append(ptr.decode("utf-8", errors="replace"))
         return out
@@ -2713,13 +2713,13 @@ class Session:
         Output sample rate is backend-dependent (24 kHz for most engines;
         ``voxcpm2-tts`` returns 48 kHz).
 
-        Works with any TTS-capable backend — ``vibevoice``, ``qwen3-tts``,
+        Works with any TTS-capable backend — ``vibevoice``, ``cielvox2-tts``,
         ``kokoro``, ``orpheus``, ``chatterbox``, ``indextts``, ``voxcpm2-tts``,
         ``csm``, ``dia``, ``fastpitch``, ``bananamind-tts``, ``speecht5``,
         ``melotts``, ``piper``, ``parler-tts``, ``outetts``, ``cosyvoice3-tts``,
         ``pocket-tts``, ``f5-tts``, ``irodori-tts``, ``bark``, ``kugelaudio``, ``tada``,
         ``lfm2-audio``, ``voxtral-tts``, ``dots-tts``, ``omnivoice``.
-        For qwen3-tts call :meth:`set_codec_path` and one of:
+        For cielvox2-tts call :meth:`set_codec_path` and one of:
 
         * :meth:`set_voice` — Base variants (WAV + ref_text, or voice-pack GGUF)
         * :meth:`set_speaker_name` — CustomVoice variants (fixed speaker name)
@@ -2732,22 +2732,22 @@ class Session:
         accepted but ignored (the adapter prints a warning and falls back
         to the default voice; cloning hookup is still pending).
         """
-        if not hasattr(self._lib, "crispasr_session_synthesize"):
-            raise RuntimeError("TTS API not present in this libcrispasr build")
-        self._lib.crispasr_session_synthesize.argtypes = [
+        if not hasattr(self._lib, "stelnettts_session_synthesize"):
+            raise RuntimeError("TTS API not present in this libstelnettts build")
+        self._lib.stelnettts_session_synthesize.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int),
         ]
-        self._lib.crispasr_session_synthesize.restype = ctypes.POINTER(ctypes.c_float)
-        self._lib.crispasr_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
-        self._lib.crispasr_pcm_free.restype = None
+        self._lib.stelnettts_session_synthesize.restype = ctypes.POINTER(ctypes.c_float)
+        self._lib.stelnettts_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        self._lib.stelnettts_pcm_free.restype = None
         n = ctypes.c_int(0)
-        ptr = self._lib.crispasr_session_synthesize(self._handle, text.encode("utf-8"), ctypes.byref(n))
+        ptr = self._lib.stelnettts_session_synthesize(self._handle, text.encode("utf-8"), ctypes.byref(n))
         if not ptr or n.value <= 0:
             raise RuntimeError(f"synthesize returned no audio for backend {self.backend!r}")
         try:
             arr = np.ctypeslib.as_array(ptr, shape=(n.value,)).copy()
         finally:
-            self._lib.crispasr_pcm_free(ptr)
+            self._lib.stelnettts_pcm_free(ptr)
         return arr
 
     def accept_marking_responsibility(self, attestation: str = "") -> None:
@@ -2755,13 +2755,13 @@ class Session:
         (EU AI Act Art. 50). REQUIRED before :meth:`synthesize_raw` will return
         unmarked audio; the default :meth:`synthesize` is watermarked and needs
         no attestation. ``attestation`` is recorded for audit."""
-        if not hasattr(self._lib, "crispasr_session_accept_marking_responsibility"):
-            raise RuntimeError("marking-attestation API not present in this libcrispasr build")
-        self._lib.crispasr_session_accept_marking_responsibility.argtypes = [
+        if not hasattr(self._lib, "stelnettts_session_accept_marking_responsibility"):
+            raise RuntimeError("marking-attestation API not present in this libstelnettts build")
+        self._lib.stelnettts_session_accept_marking_responsibility.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p,
         ]
-        self._lib.crispasr_session_accept_marking_responsibility.restype = ctypes.c_int
-        self._lib.crispasr_session_accept_marking_responsibility(self._handle, attestation.encode("utf-8"))
+        self._lib.stelnettts_session_accept_marking_responsibility.restype = ctypes.c_int
+        self._lib.stelnettts_session_accept_marking_responsibility(self._handle, attestation.encode("utf-8"))
 
     def set_speaker_identity(self, identity: str) -> None:
         """Declare whose voice a PRESET voice is: "real_person", "synthetic" or
@@ -2777,11 +2777,11 @@ class Session:
         silently downgrading it to "unknown" — a typo must not quietly remove
         a duty you meant to declare.
         """
-        if not hasattr(self._lib, "crispasr_session_set_speaker_identity"):
-            raise RuntimeError("speaker-identity API not present in this libcrispasr build")
-        self._lib.crispasr_session_set_speaker_identity.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self._lib.crispasr_session_set_speaker_identity.restype = ctypes.c_int
-        rc = self._lib.crispasr_session_set_speaker_identity(self._handle, identity.encode("utf-8"))
+        if not hasattr(self._lib, "stelnettts_session_set_speaker_identity"):
+            raise RuntimeError("speaker-identity API not present in this libstelnettts build")
+        self._lib.stelnettts_session_set_speaker_identity.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self._lib.stelnettts_session_set_speaker_identity.restype = ctypes.c_int
+        rc = self._lib.stelnettts_session_set_speaker_identity(self._handle, identity.encode("utf-8"))
         if rc == -2:
             raise ValueError(
                 f"unrecognised speaker_identity {identity!r}; "
@@ -2795,16 +2795,16 @@ class Session:
         before embedding the mark themselves. Hard-refused unless
         :meth:`accept_marking_responsibility` was called first. Prefer
         :meth:`synthesize` for the default watermarked output."""
-        if not hasattr(self._lib, "crispasr_session_synthesize_raw"):
-            raise RuntimeError("TTS raw API not present in this libcrispasr build")
-        self._lib.crispasr_session_synthesize_raw.argtypes = [
+        if not hasattr(self._lib, "stelnettts_session_synthesize_raw"):
+            raise RuntimeError("TTS raw API not present in this libstelnettts build")
+        self._lib.stelnettts_session_synthesize_raw.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int),
         ]
-        self._lib.crispasr_session_synthesize_raw.restype = ctypes.POINTER(ctypes.c_float)
-        self._lib.crispasr_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
-        self._lib.crispasr_pcm_free.restype = None
+        self._lib.stelnettts_session_synthesize_raw.restype = ctypes.POINTER(ctypes.c_float)
+        self._lib.stelnettts_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        self._lib.stelnettts_pcm_free.restype = None
         n = ctypes.c_int(0)
-        ptr = self._lib.crispasr_session_synthesize_raw(self._handle, text.encode("utf-8"), ctypes.byref(n))
+        ptr = self._lib.stelnettts_session_synthesize_raw(self._handle, text.encode("utf-8"), ctypes.byref(n))
         if not ptr or n.value <= 0:
             raise RuntimeError(
                 "synthesize_raw returned no audio (attestation required? "
@@ -2813,7 +2813,7 @@ class Session:
         try:
             arr = np.ctypeslib.as_array(ptr, shape=(n.value,)).copy()
         finally:
-            self._lib.crispasr_pcm_free(ptr)
+            self._lib.stelnettts_pcm_free(ptr)
         return arr
 
     def separate(self, pcm_stereo: "np.ndarray") -> dict:
@@ -2827,24 +2827,24 @@ class Session:
         Works with separation-capable backends — ``htdemucs``.
         """
         lib = self._lib
-        lib.crispasr_session_separate.argtypes = [
+        lib.stelnettts_session_separate.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
         ]
-        lib.crispasr_session_separate.restype = ctypes.c_int
-        lib.crispasr_session_separate_n_stems.argtypes = [ctypes.c_void_p]
-        lib.crispasr_session_separate_n_stems.restype = ctypes.c_int
-        lib.crispasr_session_separate_stem_name.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.crispasr_session_separate_stem_name.restype = ctypes.c_char_p
-        lib.crispasr_session_separate_stem.argtypes = [
+        lib.stelnettts_session_separate.restype = ctypes.c_int
+        lib.stelnettts_session_separate_n_stems.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_session_separate_n_stems.restype = ctypes.c_int
+        lib.stelnettts_session_separate_stem_name.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.stelnettts_session_separate_stem_name.restype = ctypes.c_char_p
+        lib.stelnettts_session_separate_stem.argtypes = [
             ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int),
         ]
-        lib.crispasr_session_separate_stem.restype = ctypes.POINTER(ctypes.c_float)
-        lib.crispasr_session_separate_sample_rate.argtypes = [ctypes.c_void_p]
-        lib.crispasr_session_separate_sample_rate.restype = ctypes.c_int
+        lib.stelnettts_session_separate_stem.restype = ctypes.POINTER(ctypes.c_float)
+        lib.stelnettts_session_separate_sample_rate.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_session_separate_sample_rate.restype = ctypes.c_int
 
         data = pcm_stereo.astype(np.float32)
         n_samples = len(data) // 2  # stereo interleaved
-        n_stems = lib.crispasr_session_separate(
+        n_stems = lib.stelnettts_session_separate(
             self._handle, data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), n_samples,
         )
         if n_stems <= 0:
@@ -2852,12 +2852,12 @@ class Session:
 
         result = {}
         for i in range(n_stems):
-            name_ptr = lib.crispasr_session_separate_stem_name(self._handle, i)
+            name_ptr = lib.stelnettts_session_separate_stem_name(self._handle, i)
             name = name_ptr.decode("utf-8") if name_ptr else f"stem{i}"
             n_out = ctypes.c_int(0)
-            ptr = lib.crispasr_session_separate_stem(self._handle, i, ctypes.byref(n_out))
+            ptr = lib.stelnettts_session_separate_stem(self._handle, i, ctypes.byref(n_out))
             if ptr and n_out.value > 0:
-                sr = lib.crispasr_session_separate_sample_rate(self._handle)
+                sr = lib.stelnettts_session_separate_sample_rate(self._handle)
                 n_ch = 2  # stereo
                 arr = np.ctypeslib.as_array(ptr, shape=(n_out.value * n_ch,)).copy()
                 result[name] = arr
@@ -2874,22 +2874,22 @@ class Session:
         Works with pitch-capable backends — ``crepe``.
         """
         lib = self._lib
-        lib.crispasr_session_pitch.argtypes = [
+        lib.stelnettts_session_pitch.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_float,
         ]
-        lib.crispasr_session_pitch.restype = ctypes.c_int
-        lib.crispasr_session_pitch_frames.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
-        lib.crispasr_session_pitch_frames.restype = ctypes.POINTER(ctypes.c_float)
+        lib.stelnettts_session_pitch.restype = ctypes.c_int
+        lib.stelnettts_session_pitch_frames.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+        lib.stelnettts_session_pitch_frames.restype = ctypes.POINTER(ctypes.c_float)
 
         data = pcm_mono.astype(np.float32)
-        n = lib.crispasr_session_pitch(
+        n = lib.stelnettts_session_pitch(
             self._handle, data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), len(data), float(hop_ms),
         )
         if n <= 0:
             raise RuntimeError(f"pitch failed for backend {self.backend!r}")
 
         n_out = ctypes.c_int(0)
-        ptr = lib.crispasr_session_pitch_frames(self._handle, ctypes.byref(n_out))
+        ptr = lib.stelnettts_session_pitch_frames(self._handle, ctypes.byref(n_out))
         if not ptr or n_out.value <= 0:
             raise RuntimeError("pitch returned no frames")
         return np.ctypeslib.as_array(ptr, shape=(n_out.value * 3,)).copy().reshape(-1, 3)
@@ -2909,23 +2909,23 @@ class Session:
         Raises :class:`RuntimeError` if the C ABI lacks the symbol or
         if the backend doesn't support S2S.
         """
-        if not hasattr(self._lib, "crispasr_session_speech_to_speech"):
-            raise RuntimeError("S2S API not present in this libcrispasr build")
-        self._lib.crispasr_session_speech_to_speech.argtypes = [
+        if not hasattr(self._lib, "stelnettts_session_speech_to_speech"):
+            raise RuntimeError("S2S API not present in this libstelnettts build")
+        self._lib.stelnettts_session_speech_to_speech.argtypes = [
             ctypes.c_void_p,
             ctypes.POINTER(ctypes.c_float), ctypes.c_int,
             ctypes.POINTER(ctypes.c_char_p),
             ctypes.POINTER(ctypes.c_int),
         ]
-        self._lib.crispasr_session_speech_to_speech.restype = ctypes.POINTER(ctypes.c_float)
-        self._lib.crispasr_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
-        self._lib.crispasr_pcm_free.restype = None
+        self._lib.stelnettts_session_speech_to_speech.restype = ctypes.POINTER(ctypes.c_float)
+        self._lib.stelnettts_pcm_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        self._lib.stelnettts_pcm_free.restype = None
         import numpy as np
         in_arr = np.ascontiguousarray(input_pcm, dtype=np.float32)
         in_ptr = in_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
         text_out = ctypes.c_char_p(None)
         n_out = ctypes.c_int(0)
-        ptr = self._lib.crispasr_session_speech_to_speech(
+        ptr = self._lib.stelnettts_session_speech_to_speech(
             self._handle, in_ptr, len(in_arr),
             ctypes.byref(text_out), ctypes.byref(n_out))
         if not ptr or n_out.value <= 0:
@@ -2933,12 +2933,12 @@ class Session:
         try:
             arr = np.ctypeslib.as_array(ptr, shape=(n_out.value,)).copy()
         finally:
-            self._lib.crispasr_pcm_free(ptr)
+            self._lib.stelnettts_pcm_free(ptr)
         transcript = text_out.value.decode("utf-8") if text_out.value else ""
-        if text_out.value and hasattr(self._lib, "crispasr_session_translate_text_free"):
-            self._lib.crispasr_session_translate_text_free.argtypes = [ctypes.c_char_p]
-            self._lib.crispasr_session_translate_text_free.restype = None
-            self._lib.crispasr_session_translate_text_free(text_out)
+        if text_out.value and hasattr(self._lib, "stelnettts_session_translate_text_free"):
+            self._lib.stelnettts_session_translate_text_free.argtypes = [ctypes.c_char_p]
+            self._lib.stelnettts_session_translate_text_free.restype = None
+            self._lib.stelnettts_session_translate_text_free(text_out)
         return arr, transcript
 
     def input_sample_rate(self) -> int:
@@ -2949,11 +2949,11 @@ class Session:
         callers to resample to it, without giving them a way to ask what it
         is, is not actionable (issue #321).
         """
-        if not hasattr(self._lib, "crispasr_session_input_sample_rate"):
-            raise RuntimeError("input_sample_rate not present in this libcrispasr build")
-        self._lib.crispasr_session_input_sample_rate.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_session_input_sample_rate.restype = ctypes.c_int
-        return int(self._lib.crispasr_session_input_sample_rate(self._handle))
+        if not hasattr(self._lib, "stelnettts_session_input_sample_rate"):
+            raise RuntimeError("input_sample_rate not present in this libstelnettts build")
+        self._lib.stelnettts_session_input_sample_rate.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_session_input_sample_rate.restype = ctypes.c_int
+        return int(self._lib.stelnettts_session_input_sample_rate(self._handle))
 
     def output_sample_rate(self) -> int:
         """Sample rate of PCM this backend returns, in Hz.
@@ -2962,15 +2962,15 @@ class Session:
         :meth:`speech_to_speech` and :meth:`synthesize` hand back. 24 kHz for
         conversational S2S, 48 kHz for Sidon and VoxCPM2 AudioVAE.
         """
-        if not hasattr(self._lib, "crispasr_session_output_sample_rate"):
-            raise RuntimeError("output_sample_rate not present in this libcrispasr build")
-        self._lib.crispasr_session_output_sample_rate.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_session_output_sample_rate.restype = ctypes.c_int
-        return int(self._lib.crispasr_session_output_sample_rate(self._handle))
+        if not hasattr(self._lib, "stelnettts_session_output_sample_rate"):
+            raise RuntimeError("output_sample_rate not present in this libstelnettts build")
+        self._lib.stelnettts_session_output_sample_rate.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_session_output_sample_rate.restype = ctypes.c_int
+        return int(self._lib.stelnettts_session_output_sample_rate(self._handle))
 
     def close(self) -> None:
         if getattr(self, "_handle", None):
-            self._lib.crispasr_session_close(self._handle)
+            self._lib.stelnettts_session_close(self._handle)
             self._handle = None
 
     def __del__(self):
@@ -2997,13 +2997,13 @@ class PuncModel:
 
     Usage::
 
-        punc = crispasr.PuncModel("fireredpunc-q8_0.gguf")
+        punc = stelnettts.PuncModel("fireredpunc-q8_0.gguf")
         text = punc.process("and so my fellow americans ask not")
         punc.close()
 
     Or as context manager::
 
-        with crispasr.PuncModel("fireredpunc.gguf") as punc:
+        with stelnettts.PuncModel("fireredpunc.gguf") as punc:
             for seg in segments:
                 seg.text = punc.process(seg.text)
     """
@@ -3011,39 +3011,39 @@ class PuncModel:
     def __init__(self, model_path: str, lib_path: Optional[str] = None):
         self._lib = ctypes.CDLL(lib_path or _find_lib())
         self._setup_punc_signatures()
-        self._handle = self._lib.crispasr_punc_init(model_path.encode("utf-8"))
+        self._handle = self._lib.stelnettts_punc_init(model_path.encode("utf-8"))
         if not self._handle:
             raise RuntimeError(f"Failed to load punctuation model: {model_path}")
 
     def _setup_punc_signatures(self):
         lib = self._lib
-        for name in ("crispasr_punc_init", "crispasr_punc_process",
-                      "crispasr_punc_free_text", "crispasr_punc_free"):
+        for name in ("stelnettts_punc_init", "stelnettts_punc_process",
+                      "stelnettts_punc_free_text", "stelnettts_punc_free"):
             if not hasattr(lib, name):
                 raise RuntimeError(
-                    "FireRedPunc API not found — rebuild CrispASR 0.5.0+")
-        lib.crispasr_punc_init.argtypes = [ctypes.c_char_p]
-        lib.crispasr_punc_init.restype = ctypes.c_void_p
-        lib.crispasr_punc_process.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        lib.crispasr_punc_process.restype = ctypes.c_char_p
-        lib.crispasr_punc_free_text.argtypes = [ctypes.c_char_p]
-        lib.crispasr_punc_free_text.restype = None
-        lib.crispasr_punc_free.argtypes = [ctypes.c_void_p]
-        lib.crispasr_punc_free.restype = None
+                    "FireRedPunc API not found — rebuild StelnetTTS 0.5.0+")
+        lib.stelnettts_punc_init.argtypes = [ctypes.c_char_p]
+        lib.stelnettts_punc_init.restype = ctypes.c_void_p
+        lib.stelnettts_punc_process.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        lib.stelnettts_punc_process.restype = ctypes.c_char_p
+        lib.stelnettts_punc_free_text.argtypes = [ctypes.c_char_p]
+        lib.stelnettts_punc_free_text.restype = None
+        lib.stelnettts_punc_free.argtypes = [ctypes.c_void_p]
+        lib.stelnettts_punc_free.restype = None
 
     def process(self, text: str) -> str:
         """Add punctuation to unpunctuated text."""
-        result = self._lib.crispasr_punc_process(
+        result = self._lib.stelnettts_punc_process(
             self._handle, text.encode("utf-8"))
         if not result:
             return text
         out = result.decode("utf-8")
-        self._lib.crispasr_punc_free_text(result)
+        self._lib.stelnettts_punc_free_text(result)
         return out
 
     def close(self) -> None:
         if getattr(self, "_handle", None):
-            self._lib.crispasr_punc_free(self._handle)
+            self._lib.stelnettts_punc_free(self._handle)
             self._handle = None
 
     def __del__(self):
@@ -3065,20 +3065,20 @@ class TitaNet:
 
     def __init__(self, model_path: str, n_threads: int = 4, lib_path: str = None):
         self._lib = ctypes.CDLL(lib_path or _find_lib())
-        self._lib.crispasr_titanet_init.argtypes = [ctypes.c_char_p, ctypes.c_int32]
-        self._lib.crispasr_titanet_init.restype = ctypes.c_void_p
-        self._lib.crispasr_titanet_free.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_titanet_free.restype = None
-        self._lib.crispasr_titanet_embed.argtypes = [
+        self._lib.stelnettts_titanet_init.argtypes = [ctypes.c_char_p, ctypes.c_int32]
+        self._lib.stelnettts_titanet_init.restype = ctypes.c_void_p
+        self._lib.stelnettts_titanet_free.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_titanet_free.restype = None
+        self._lib.stelnettts_titanet_embed.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
             ctypes.POINTER(ctypes.c_float),
         ]
-        self._lib.crispasr_titanet_embed.restype = ctypes.c_int32
-        self._lib.crispasr_titanet_cosine_sim.argtypes = [
+        self._lib.stelnettts_titanet_embed.restype = ctypes.c_int32
+        self._lib.stelnettts_titanet_cosine_sim.argtypes = [
             ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
         ]
-        self._lib.crispasr_titanet_cosine_sim.restype = ctypes.c_float
-        self._ctx = self._lib.crispasr_titanet_init(model_path.encode(), n_threads)
+        self._lib.stelnettts_titanet_cosine_sim.restype = ctypes.c_float
+        self._ctx = self._lib.stelnettts_titanet_init(model_path.encode(), n_threads)
         if not self._ctx:
             raise RuntimeError(f"Failed to load TitaNet model: {model_path}")
 
@@ -3087,7 +3087,7 @@ class TitaNet:
         import numpy as np
         pcm = np.ascontiguousarray(pcm_16k, dtype=np.float32)
         out = np.zeros(192, dtype=np.float32)
-        dim = self._lib.crispasr_titanet_embed(
+        dim = self._lib.stelnettts_titanet_embed(
             self._ctx,
             pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
             len(pcm),
@@ -3105,7 +3105,7 @@ class TitaNet:
 
     def close(self):
         if self._ctx:
-            self._lib.crispasr_titanet_free(self._ctx)
+            self._lib.stelnettts_titanet_free(self._ctx)
             self._ctx = None
 
     def __del__(self):
@@ -3138,21 +3138,21 @@ class SpeakerDB:
         # ignored in __del__: AttributeError" for every refused instance.
         self._db = None
         self._lib = ctypes.CDLL(lib_path or _find_lib())
-        self._lib.crispasr_speaker_db_open.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
-        self._lib.crispasr_speaker_db_open.restype = ctypes.c_void_p
-        self._lib.crispasr_speaker_db_free.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_speaker_db_free.restype = None
-        self._lib.crispasr_speaker_db_count.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_speaker_db_count.restype = ctypes.c_int32
-        self._lib.crispasr_speaker_db_match.argtypes = [
+        self._lib.stelnettts_speaker_db_open.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
+        self._lib.stelnettts_speaker_db_open.restype = ctypes.c_void_p
+        self._lib.stelnettts_speaker_db_free.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_speaker_db_free.restype = None
+        self._lib.stelnettts_speaker_db_count.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_speaker_db_count.restype = ctypes.c_int32
+        self._lib.stelnettts_speaker_db_match.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
             ctypes.c_float, ctypes.c_char_p, ctypes.c_int32,
         ]
-        self._lib.crispasr_speaker_db_match.restype = ctypes.c_float
-        self._lib.crispasr_speaker_db_enroll2.argtypes = [
+        self._lib.stelnettts_speaker_db_match.restype = ctypes.c_float
+        self._lib.stelnettts_speaker_db_enroll2.argtypes = [
             ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int32, ctypes.c_int32,
         ]
-        self._lib.crispasr_speaker_db_enroll2.restype = ctypes.c_int32
+        self._lib.stelnettts_speaker_db_enroll2.restype = ctypes.c_int32
         self._consent = bool(consent)
         if not self._consent:
             raise ValueError(
@@ -3161,19 +3161,19 @@ class SpeakerDB:
                 "from every enrolled person"
             )
         if expected_names:
-            self._db = self._lib.crispasr_speaker_db_open(dir_path.encode(), expected_names.encode(), 1)
+            self._db = self._lib.stelnettts_speaker_db_open(dir_path.encode(), expected_names.encode(), 1)
         self._dir = dir_path
 
     @property
     def count(self):
-        return self._lib.crispasr_speaker_db_count(self._db) if self._db else 0
+        return self._lib.stelnettts_speaker_db_count(self._db) if self._db else 0
 
     def match(self, embedding, threshold=0.7):
         """Match embedding against DB. Returns (name, score) or (None, score)."""
         import numpy as np
         emb = np.ascontiguousarray(embedding, dtype=np.float32)
         name_buf = ctypes.create_string_buffer(256)
-        score = self._lib.crispasr_speaker_db_match(
+        score = self._lib.stelnettts_speaker_db_match(
             self._db, emb.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
             len(emb), threshold, name_buf, 256,
         )
@@ -3188,7 +3188,7 @@ class SpeakerDB:
         """
         import numpy as np
         emb = np.ascontiguousarray(embedding, dtype=np.float32)
-        rc = self._lib.crispasr_speaker_db_enroll2(
+        rc = self._lib.stelnettts_speaker_db_enroll2(
             self._dir.encode(), name.encode(),
             emb.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), len(emb), 1,
         )
@@ -3196,7 +3196,7 @@ class SpeakerDB:
 
     def close(self):
         if self._db:
-            self._lib.crispasr_speaker_db_free(self._db)
+            self._lib.stelnettts_speaker_db_free(self._db)
             self._db = None
 
     def __del__(self):
@@ -3229,22 +3229,22 @@ class SpeakerEmbedder:
     def __init__(self, model_spec: str, n_threads: int = 4,
                  cache_dir: str = "", lib_path: str = None):
         self._lib = ctypes.CDLL(lib_path or _find_lib())
-        self._lib.crispasr_speaker_embedder_make_abi.argtypes = [
+        self._lib.stelnettts_speaker_embedder_make_abi.argtypes = [
             ctypes.c_char_p, ctypes.c_int32, ctypes.c_char_p,
         ]
-        self._lib.crispasr_speaker_embedder_make_abi.restype = ctypes.c_void_p
-        self._lib.crispasr_speaker_embedder_free_abi.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_speaker_embedder_free_abi.restype = None
-        self._lib.crispasr_speaker_embedder_dim_abi.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_speaker_embedder_dim_abi.restype = ctypes.c_int32
-        self._lib.crispasr_speaker_embedder_embed_abi.argtypes = [
+        self._lib.stelnettts_speaker_embedder_make_abi.restype = ctypes.c_void_p
+        self._lib.stelnettts_speaker_embedder_free_abi.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_speaker_embedder_free_abi.restype = None
+        self._lib.stelnettts_speaker_embedder_dim_abi.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_speaker_embedder_dim_abi.restype = ctypes.c_int32
+        self._lib.stelnettts_speaker_embedder_embed_abi.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
             ctypes.POINTER(ctypes.c_float),
         ]
-        self._lib.crispasr_speaker_embedder_embed_abi.restype = ctypes.c_int32
-        self._lib.crispasr_speaker_embedder_name_abi.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_speaker_embedder_name_abi.restype = ctypes.c_char_p
-        self._ctx = self._lib.crispasr_speaker_embedder_make_abi(
+        self._lib.stelnettts_speaker_embedder_embed_abi.restype = ctypes.c_int32
+        self._lib.stelnettts_speaker_embedder_name_abi.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_speaker_embedder_name_abi.restype = ctypes.c_char_p
+        self._ctx = self._lib.stelnettts_speaker_embedder_make_abi(
             model_spec.encode("utf-8"), int(n_threads), cache_dir.encode("utf-8"),
         )
         if not self._ctx:
@@ -3252,11 +3252,11 @@ class SpeakerEmbedder:
 
     @property
     def dim(self) -> int:
-        return int(self._lib.crispasr_speaker_embedder_dim_abi(self._ctx))
+        return int(self._lib.stelnettts_speaker_embedder_dim_abi(self._ctx))
 
     @property
     def name(self) -> str:
-        name = self._lib.crispasr_speaker_embedder_name_abi(self._ctx)
+        name = self._lib.stelnettts_speaker_embedder_name_abi(self._ctx)
         return name.decode("utf-8") if name else ""
 
     def embed(self, pcm_16k):
@@ -3269,7 +3269,7 @@ class SpeakerEmbedder:
         import numpy as np
         pcm = np.ascontiguousarray(pcm_16k, dtype=np.float32)
         out = np.zeros(self.dim, dtype=np.float32)
-        ok = self._lib.crispasr_speaker_embedder_embed_abi(
+        ok = self._lib.stelnettts_speaker_embedder_embed_abi(
             self._ctx,
             pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
             len(pcm),
@@ -3279,7 +3279,7 @@ class SpeakerEmbedder:
 
     def close(self):
         if self._ctx:
-            self._lib.crispasr_speaker_embedder_free_abi(self._ctx)
+            self._lib.stelnettts_speaker_embedder_free_abi(self._ctx)
             self._ctx = None
 
     def __del__(self):
@@ -3309,13 +3309,13 @@ def agglomerative_cluster(embeddings, *, merge_threshold: float = 0.5,
     n, dim = arr.shape
 
     lib = ctypes.CDLL(lib_path or _find_lib())
-    lib.crispasr_speaker_cluster_abi.argtypes = [
+    lib.stelnettts_speaker_cluster_abi.argtypes = [
         ctypes.POINTER(ctypes.c_float), ctypes.c_int32, ctypes.c_int32,
         ctypes.c_float, ctypes.c_int32, ctypes.POINTER(ctypes.c_int32),
     ]
-    lib.crispasr_speaker_cluster_abi.restype = ctypes.c_int32
+    lib.stelnettts_speaker_cluster_abi.restype = ctypes.c_int32
     out = np.zeros(n, dtype=np.int32)
-    rc = lib.crispasr_speaker_cluster_abi(
+    rc = lib.stelnettts_speaker_cluster_abi(
         arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), n, dim,
         ctypes.c_float(merge_threshold), int(max_speakers),
         out.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
@@ -3338,20 +3338,20 @@ class PyannoteCache:
                  lib_path: str = None):
         import numpy as np
         self._lib = ctypes.CDLL(lib_path or _find_lib())
-        self._lib.crispasr_pyannote_cache_compute_abi.argtypes = [
+        self._lib.stelnettts_pyannote_cache_compute_abi.argtypes = [
             ctypes.POINTER(ctypes.c_float), ctypes.c_int32, ctypes.c_char_p,
             ctypes.c_int32,
         ]
-        self._lib.crispasr_pyannote_cache_compute_abi.restype = ctypes.c_void_p
-        self._lib.crispasr_pyannote_cache_free_abi.argtypes = [ctypes.c_void_p]
-        self._lib.crispasr_pyannote_cache_free_abi.restype = None
-        self._lib.crispasr_pyannote_cache_apply_abi.argtypes = [
+        self._lib.stelnettts_pyannote_cache_compute_abi.restype = ctypes.c_void_p
+        self._lib.stelnettts_pyannote_cache_free_abi.argtypes = [ctypes.c_void_p]
+        self._lib.stelnettts_pyannote_cache_free_abi.restype = None
+        self._lib.stelnettts_pyannote_cache_apply_abi.argtypes = [
             ctypes.c_void_p, ctypes.c_int64, ctypes.c_void_p, ctypes.c_int32,
         ]
-        self._lib.crispasr_pyannote_cache_apply_abi.restype = ctypes.c_int32
+        self._lib.stelnettts_pyannote_cache_apply_abi.restype = ctypes.c_int32
 
         pcm = np.ascontiguousarray(pcm_16k, dtype=np.float32)
-        self._ctx = self._lib.crispasr_pyannote_cache_compute_abi(
+        self._ctx = self._lib.stelnettts_pyannote_cache_compute_abi(
             pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
             int(len(pcm)), model_path.encode("utf-8"), int(n_threads),
         )
@@ -3378,7 +3378,7 @@ class PyannoteCache:
             seg_array[i].t0_cs = int(round(s.t0 * 100))
             seg_array[i].t1_cs = int(round(s.t1 * 100))
             seg_array[i].speaker = s.speaker
-        rc = self._lib.crispasr_pyannote_cache_apply_abi(
+        rc = self._lib.stelnettts_pyannote_cache_apply_abi(
             self._ctx, int(round(slice_t0 * 100)),
             ctypes.byref(seg_array), len(segs),
         )
@@ -3389,7 +3389,7 @@ class PyannoteCache:
 
     def close(self):
         if self._ctx:
-            self._lib.crispasr_pyannote_cache_free_abi(self._ctx)
+            self._lib.stelnettts_pyannote_cache_free_abi(self._ctx)
             self._ctx = None
 
     def __del__(self):
@@ -3436,7 +3436,7 @@ def vad_segments(
         min_silence_ms: minimum silence to split on (ms).
     """
     lib = ctypes.CDLL(lib_path or _find_lib())
-    fn = lib.crispasr_vad_segments
+    fn = lib.stelnettts_vad_segments
     fn.argtypes = [
         ctypes.c_char_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
         ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int,
@@ -3454,7 +3454,7 @@ def vad_segments(
         ctypes.byref(out_spans),
     )
     if n < 0:
-        raise RuntimeError(f"crispasr_vad_segments failed (rc={n})")
+        raise RuntimeError(f"stelnettts_vad_segments failed (rc={n})")
     spans = []
     for i in range(n):
         spans.append(VadSpan(start=float(out_spans[2 * i]),
@@ -3481,7 +3481,7 @@ def text_detect_language(
         model_path: path to a text-LID GGUF (GlotLID, LID-176, etc.).
     """
     lib = ctypes.CDLL(lib_path or _find_lib())
-    fn = lib.crispasr_text_detect_language
+    fn = lib.stelnettts_text_detect_language
     fn.argtypes = [
         ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32,
         ctypes.c_char_p, ctypes.c_int32, ctypes.POINTER(ctypes.c_float),
@@ -3509,7 +3509,7 @@ def enhance_audio_rnnoise(
     16 kHz, resample to 48 kHz first, denoise, then resample back.
     """
     lib = ctypes.CDLL(lib_path or _find_lib())
-    fn = lib.crispasr_enhance_audio_rnnoise
+    fn = lib.stelnettts_enhance_audio_rnnoise
     fn.argtypes = [
         ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
         ctypes.POINTER(ctypes.c_float), ctypes.c_int32,
@@ -3534,12 +3534,12 @@ def detect_backend_from_gguf(
     *,
     lib_path: Optional[str] = None,
 ) -> str:
-    """Detect which CrispASR backend a GGUF file belongs to.
+    """Detect which StelnetTTS backend a GGUF file belongs to.
 
     Returns the backend name (e.g. "parakeet", "cohere", "whisper").
     """
     lib = ctypes.CDLL(lib_path or _find_lib())
-    fn = lib.crispasr_detect_backend_from_gguf
+    fn = lib.stelnettts_detect_backend_from_gguf
     fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
     fn.restype = ctypes.c_int
 
@@ -3567,7 +3567,7 @@ class Parakeet:
     def __init__(self, model_path: str, *, n_threads: int = 4,
                  use_flash: bool = True, lib_path: Optional[str] = None):
         self._lib = ctypes.CDLL(lib_path or _find_lib())
-        fn = self._lib.crispasr_parakeet_init
+        fn = self._lib.stelnettts_parakeet_init
         fn.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         fn.restype = ctypes.c_void_p
         self._handle = fn(model_path.encode("utf-8"), n_threads, 1 if use_flash else 0)
@@ -3579,7 +3579,7 @@ class Parakeet:
         words [(text, t0_cs, t1_cs)], and tokens [(text, t0_cs, t1_cs, p)]."""
         pcm_arr = np.ascontiguousarray(pcm, dtype=np.float32)
         lib = self._lib
-        fn = lib.crispasr_parakeet_transcribe
+        fn = lib.stelnettts_parakeet_transcribe
         fn.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_float),
                        ctypes.c_int, ctypes.c_char_p]
         fn.restype = ctypes.c_void_p
@@ -3588,63 +3588,63 @@ class Parakeet:
                  pcm_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
                  int(pcm_arr.size), lang)
         if not res:
-            raise RuntimeError("crispasr_parakeet_transcribe returned null")
+            raise RuntimeError("stelnettts_parakeet_transcribe returned null")
         try:
             # Text
-            lib.crispasr_parakeet_result_text.argtypes = [ctypes.c_void_p]
-            lib.crispasr_parakeet_result_text.restype = ctypes.c_char_p
-            raw = lib.crispasr_parakeet_result_text(res)
+            lib.stelnettts_parakeet_result_text.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_parakeet_result_text.restype = ctypes.c_char_p
+            raw = lib.stelnettts_parakeet_result_text(res)
             text = raw.decode("utf-8") if raw else ""
             # Words
-            lib.crispasr_parakeet_result_n_words.argtypes = [ctypes.c_void_p]
-            lib.crispasr_parakeet_result_n_words.restype = ctypes.c_int
-            lib.crispasr_parakeet_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_word_text.restype = ctypes.c_char_p
-            lib.crispasr_parakeet_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_word_t0.restype = ctypes.c_int64
-            lib.crispasr_parakeet_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_word_t1.restype = ctypes.c_int64
-            nw = lib.crispasr_parakeet_result_n_words(res)
+            lib.stelnettts_parakeet_result_n_words.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_parakeet_result_n_words.restype = ctypes.c_int
+            lib.stelnettts_parakeet_result_word_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_word_text.restype = ctypes.c_char_p
+            lib.stelnettts_parakeet_result_word_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_word_t0.restype = ctypes.c_int64
+            lib.stelnettts_parakeet_result_word_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_word_t1.restype = ctypes.c_int64
+            nw = lib.stelnettts_parakeet_result_n_words(res)
             words = []
             for i in range(nw):
-                wt = lib.crispasr_parakeet_result_word_text(res, i)
+                wt = lib.stelnettts_parakeet_result_word_text(res, i)
                 words.append((
                     wt.decode("utf-8") if wt else "",
-                    lib.crispasr_parakeet_result_word_t0(res, i),
-                    lib.crispasr_parakeet_result_word_t1(res, i),
+                    lib.stelnettts_parakeet_result_word_t0(res, i),
+                    lib.stelnettts_parakeet_result_word_t1(res, i),
                 ))
             # Tokens
-            lib.crispasr_parakeet_result_n_tokens.argtypes = [ctypes.c_void_p]
-            lib.crispasr_parakeet_result_n_tokens.restype = ctypes.c_int
-            lib.crispasr_parakeet_result_token_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_token_text.restype = ctypes.c_char_p
-            lib.crispasr_parakeet_result_token_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_token_t0.restype = ctypes.c_int64
-            lib.crispasr_parakeet_result_token_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_token_t1.restype = ctypes.c_int64
-            lib.crispasr_parakeet_result_token_p.argtypes = [ctypes.c_void_p, ctypes.c_int]
-            lib.crispasr_parakeet_result_token_p.restype = ctypes.c_float
-            nt = lib.crispasr_parakeet_result_n_tokens(res)
+            lib.stelnettts_parakeet_result_n_tokens.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_parakeet_result_n_tokens.restype = ctypes.c_int
+            lib.stelnettts_parakeet_result_token_text.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_token_text.restype = ctypes.c_char_p
+            lib.stelnettts_parakeet_result_token_t0.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_token_t0.restype = ctypes.c_int64
+            lib.stelnettts_parakeet_result_token_t1.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_token_t1.restype = ctypes.c_int64
+            lib.stelnettts_parakeet_result_token_p.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            lib.stelnettts_parakeet_result_token_p.restype = ctypes.c_float
+            nt = lib.stelnettts_parakeet_result_n_tokens(res)
             tokens = []
             for i in range(nt):
-                tt = lib.crispasr_parakeet_result_token_text(res, i)
+                tt = lib.stelnettts_parakeet_result_token_text(res, i)
                 tokens.append((
                     tt.decode("utf-8") if tt else "",
-                    lib.crispasr_parakeet_result_token_t0(res, i),
-                    lib.crispasr_parakeet_result_token_t1(res, i),
-                    float(lib.crispasr_parakeet_result_token_p(res, i)),
+                    lib.stelnettts_parakeet_result_token_t0(res, i),
+                    lib.stelnettts_parakeet_result_token_t1(res, i),
+                    float(lib.stelnettts_parakeet_result_token_p(res, i)),
                 ))
             return {"text": text, "words": words, "tokens": tokens}
         finally:
-            lib.crispasr_parakeet_result_free.argtypes = [ctypes.c_void_p]
-            lib.crispasr_parakeet_result_free.restype = None
-            lib.crispasr_parakeet_result_free(res)
+            lib.stelnettts_parakeet_result_free.argtypes = [ctypes.c_void_p]
+            lib.stelnettts_parakeet_result_free.restype = None
+            lib.stelnettts_parakeet_result_free(res)
 
     def close(self):
         if self._handle:
-            self._lib.crispasr_parakeet_free.argtypes = [ctypes.c_void_p]
-            self._lib.crispasr_parakeet_free.restype = None
-            self._lib.crispasr_parakeet_free(self._handle)
+            self._lib.stelnettts_parakeet_free.argtypes = [ctypes.c_void_p]
+            self._lib.stelnettts_parakeet_free.restype = None
+            self._lib.stelnettts_parakeet_free(self._handle)
             self._handle = None
 
     def __enter__(self):
@@ -3668,7 +3668,7 @@ def lcs_dedup_prefix_count(
     """Chunk-boundary LCS dedup: returns the number of leading tokens
     of ``curr_tokens`` to drop to remove overlap with ``prev_tail_tokens``."""
     lib = ctypes.CDLL(lib_path or _find_lib())
-    fn = lib.crispasr_lcs_dedup_prefix_count
+    fn = lib.stelnettts_lcs_dedup_prefix_count
     fn.argtypes = [
         ctypes.POINTER(ctypes.c_int32), ctypes.c_int,
         ctypes.POINTER(ctypes.c_int32), ctypes.c_int, ctypes.c_int,
@@ -3682,9 +3682,9 @@ def lcs_dedup_prefix_count(
 def kokoro_lang_is_german(lang: str, *, lib_path: Optional[str] = None) -> bool:
     """Whether ``lang`` is German (Kokoro phoneme selection)."""
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_kokoro_lang_is_german_abi"):
+    if not hasattr(lib, "stelnettts_kokoro_lang_is_german_abi"):
         return False
-    fn = lib.crispasr_kokoro_lang_is_german_abi
+    fn = lib.stelnettts_kokoro_lang_is_german_abi
     fn.argtypes = [ctypes.c_char_p]
     fn.restype = ctypes.c_bool
     return fn(lang.encode("utf-8"))
@@ -3693,9 +3693,9 @@ def kokoro_lang_is_german(lang: str, *, lib_path: Optional[str] = None) -> bool:
 def kokoro_lang_has_native_voice(lang: str, *, lib_path: Optional[str] = None) -> bool:
     """Whether ``lang`` has a native Kokoro voice (vs. cross-lingual fallback)."""
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_kokoro_lang_has_native_voice_abi"):
+    if not hasattr(lib, "stelnettts_kokoro_lang_has_native_voice_abi"):
         return False
-    fn = lib.crispasr_kokoro_lang_has_native_voice_abi
+    fn = lib.stelnettts_kokoro_lang_has_native_voice_abi
     fn.argtypes = [ctypes.c_char_p]
     fn.restype = ctypes.c_bool
     return fn(lang.encode("utf-8"))
@@ -3721,7 +3721,7 @@ def vad_slices(
     default intact.
     """
     lib = ctypes.CDLL(lib_path or _find_lib())
-    fn = lib.crispasr_vad_slices
+    fn = lib.stelnettts_vad_slices
     fn.argtypes = [
         ctypes.c_char_p, ctypes.POINTER(ctypes.c_float), ctypes.c_int,
         ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int,
@@ -3729,8 +3729,8 @@ def vad_slices(
         ctypes.POINTER(ctypes.POINTER(ctypes.c_float)),
     ]
     fn.restype = ctypes.c_int
-    lib.crispasr_vad_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
-    lib.crispasr_vad_free.restype = None
+    lib.stelnettts_vad_free.argtypes = [ctypes.POINTER(ctypes.c_float)]
+    lib.stelnettts_vad_free.restype = None
 
     pcm_arr = np.ascontiguousarray(pcm, dtype=np.float32)
     out_spans = ctypes.POINTER(ctypes.c_float)()
@@ -3743,13 +3743,13 @@ def vad_slices(
         ctypes.byref(out_spans),
     )
     if n < 0:
-        raise RuntimeError(f"crispasr_vad_slices failed (rc={n})")
+        raise RuntimeError(f"stelnettts_vad_slices failed (rc={n})")
     spans = []
     for i in range(n):
         spans.append(VadSpan(start=float(out_spans[2 * i]),
                              end=float(out_spans[2 * i + 1])))
     if n > 0:
-        lib.crispasr_vad_free(out_spans)
+        lib.stelnettts_vad_free(out_spans)
     return spans
 
 
@@ -3765,12 +3765,12 @@ def watermark_load_model(gguf_path: str) -> None:
     built-in spread-spectrum watermark.
     """
     lib = _get_lib()
-    fn = lib.crispasr_watermark_load_model
+    fn = lib.stelnettts_watermark_load_model
     fn.argtypes = [ctypes.c_char_p]
     fn.restype = ctypes.c_int
     rc = fn(gguf_path.encode())
     if rc != 0:
-        raise RuntimeError(f"crispasr_watermark_load_model failed (rc={rc})")
+        raise RuntimeError(f"stelnettts_watermark_load_model failed (rc={rc})")
 
 
 def watermark_embed(pcm: "numpy.ndarray", alpha: float = -1.0) -> None:
@@ -3792,7 +3792,7 @@ def watermark_embed(pcm: "numpy.ndarray", alpha: float = -1.0) -> None:
     if pcm.dtype != np.float32:
         raise TypeError("pcm must be float32")
     lib = _get_lib()
-    fn = lib.crispasr_watermark_embed
+    fn = lib.stelnettts_watermark_embed
     fn.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_float]
     fn.restype = None
     fn(pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
@@ -3805,7 +3805,7 @@ def watermark_detect(pcm: "numpy.ndarray") -> float:
     if pcm.dtype != np.float32:
         raise TypeError("pcm must be float32")
     lib = _get_lib()
-    fn = lib.crispasr_watermark_detect
+    fn = lib.stelnettts_watermark_detect
     fn.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_int]
     fn.restype = ctypes.c_float
     return float(fn(pcm.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
@@ -3813,7 +3813,7 @@ def watermark_detect(pcm: "numpy.ndarray") -> float:
 
 
 # ---------------------------------------------------------------------------
-# Chat / LLM — the crispasr_chat.h surface
+# Chat / LLM — the stelnettts_chat.h surface
 # ---------------------------------------------------------------------------
 #
 # EU AI Act: this surface generates synthetic TEXT, which the runtime does NOT
@@ -3821,12 +3821,12 @@ def watermark_detect(pcm: "numpy.ndarray") -> float:
 # `ChatSession.ai_disclosure_text()` at or before the first turn of anything
 # that talks to a person, and read docs/eu-ai-act.md §6.6 before shipping.
 #
-# Every entry point of that header is bound here, crispasr_chat_memory_estimate
+# Every entry point of that header is bound here, stelnettts_chat_memory_estimate
 # included.
 
-# The one error code crispasr_chat.h promises as a contract. Every other
+# The one error code stelnettts_chat.h promises as a contract. Every other
 # non-zero value is a diagnostic aid — read the message, don't switch on it.
-CRISPASR_CHAT_ERR_ABORTED = 40
+STELNETTTS_CHAT_ERR_ABORTED = 40
 
 
 class ChatAborted(RuntimeError):
@@ -3855,7 +3855,7 @@ class ChatMessage:
     content: str
 
 
-# ABI structs — must match include/crispasr_chat.h.
+# ABI structs — must match include/stelnettts_chat.h.
 class _ChatErrorAbi(ctypes.Structure):
     _fields_ = [
         ("code", ctypes.c_int32),
@@ -3902,61 +3902,61 @@ class _ChatGenerateParamsAbi(ctypes.Structure):
 
 
 def _chat_lib(lib_path: Optional[str] = None):
-    """Load libcrispasr and declare every crispasr_chat_* signature."""
+    """Load libstelnettts and declare every stelnettts_chat_* signature."""
     lib = ctypes.CDLL(lib_path or _find_lib())
-    if not hasattr(lib, "crispasr_chat_open"):
-        raise RuntimeError("chat API not present in this libcrispasr build")
+    if not hasattr(lib, "stelnettts_chat_open"):
+        raise RuntimeError("chat API not present in this libstelnettts build")
 
     err_p = ctypes.POINTER(_ChatErrorAbi)
     msg_p = ctypes.POINTER(_ChatMessageAbi)
     open_p = ctypes.POINTER(_ChatOpenParamsAbi)
     gen_p = ctypes.POINTER(_ChatGenerateParamsAbi)
 
-    lib.crispasr_chat_open_params_default.argtypes = [open_p]
-    lib.crispasr_chat_open_params_default.restype = None
-    lib.crispasr_chat_generate_params_default.argtypes = [gen_p]
-    lib.crispasr_chat_generate_params_default.restype = None
+    lib.stelnettts_chat_open_params_default.argtypes = [open_p]
+    lib.stelnettts_chat_open_params_default.restype = None
+    lib.stelnettts_chat_generate_params_default.argtypes = [gen_p]
+    lib.stelnettts_chat_generate_params_default.restype = None
 
-    lib.crispasr_chat_open.argtypes = [ctypes.c_char_p, open_p, err_p]
-    lib.crispasr_chat_open.restype = ctypes.c_void_p
-    lib.crispasr_chat_close.argtypes = [ctypes.c_void_p]
-    lib.crispasr_chat_close.restype = None
-    lib.crispasr_chat_reset.argtypes = [ctypes.c_void_p, err_p]
-    lib.crispasr_chat_reset.restype = ctypes.c_int32
+    lib.stelnettts_chat_open.argtypes = [ctypes.c_char_p, open_p, err_p]
+    lib.stelnettts_chat_open.restype = ctypes.c_void_p
+    lib.stelnettts_chat_close.argtypes = [ctypes.c_void_p]
+    lib.stelnettts_chat_close.restype = None
+    lib.stelnettts_chat_reset.argtypes = [ctypes.c_void_p, err_p]
+    lib.stelnettts_chat_reset.restype = ctypes.c_int32
 
     # Returned as POINTER(c_char), not c_char_p: ctypes turns a c_char_p
     # restype into a bytes object and loses the pointer we have to hand back
-    # to crispasr_chat_string_free.
-    lib.crispasr_chat_generate.argtypes = [ctypes.c_void_p, msg_p, ctypes.c_size_t, gen_p, err_p]
-    lib.crispasr_chat_generate.restype = ctypes.POINTER(ctypes.c_char)
-    lib.crispasr_chat_string_free.argtypes = [ctypes.POINTER(ctypes.c_char)]
-    lib.crispasr_chat_string_free.restype = None
+    # to stelnettts_chat_string_free.
+    lib.stelnettts_chat_generate.argtypes = [ctypes.c_void_p, msg_p, ctypes.c_size_t, gen_p, err_p]
+    lib.stelnettts_chat_generate.restype = ctypes.POINTER(ctypes.c_char)
+    lib.stelnettts_chat_string_free.argtypes = [ctypes.POINTER(ctypes.c_char)]
+    lib.stelnettts_chat_string_free.restype = None
 
-    lib.crispasr_chat_generate_stream.argtypes = [
+    lib.stelnettts_chat_generate_stream.argtypes = [
         ctypes.c_void_p, msg_p, ctypes.c_size_t, gen_p,
         ChatSession._ON_TOKEN_CB_TYPE, ctypes.c_void_p, err_p,
     ]
-    lib.crispasr_chat_generate_stream.restype = ctypes.c_int32
-    lib.crispasr_chat_set_abort_callback.argtypes = [
+    lib.stelnettts_chat_generate_stream.restype = ctypes.c_int32
+    lib.stelnettts_chat_set_abort_callback.argtypes = [
         ctypes.c_void_p, ChatSession._ABORT_CB_TYPE, ctypes.c_void_p,
     ]
-    lib.crispasr_chat_set_abort_callback.restype = None
+    lib.stelnettts_chat_set_abort_callback.restype = None
 
-    lib.crispasr_chat_count_tokens.argtypes = [ctypes.c_void_p, msg_p, ctypes.c_size_t, err_p]
-    lib.crispasr_chat_count_tokens.restype = ctypes.c_int32
-    lib.crispasr_chat_memory_estimate.argtypes = [ctypes.c_char_p, open_p, err_p]
-    lib.crispasr_chat_memory_estimate.restype = ctypes.c_size_t
-    lib.crispasr_chat_n_ctx.argtypes = [ctypes.c_void_p]
-    lib.crispasr_chat_n_ctx.restype = ctypes.c_int32
-    lib.crispasr_chat_template_name.argtypes = [ctypes.c_void_p]
-    lib.crispasr_chat_template_name.restype = ctypes.c_char_p
-    lib.crispasr_chat_ai_disclosure_text.argtypes = []
-    lib.crispasr_chat_ai_disclosure_text.restype = ctypes.c_char_p
+    lib.stelnettts_chat_count_tokens.argtypes = [ctypes.c_void_p, msg_p, ctypes.c_size_t, err_p]
+    lib.stelnettts_chat_count_tokens.restype = ctypes.c_int32
+    lib.stelnettts_chat_memory_estimate.argtypes = [ctypes.c_char_p, open_p, err_p]
+    lib.stelnettts_chat_memory_estimate.restype = ctypes.c_size_t
+    lib.stelnettts_chat_n_ctx.argtypes = [ctypes.c_void_p]
+    lib.stelnettts_chat_n_ctx.restype = ctypes.c_int32
+    lib.stelnettts_chat_template_name.argtypes = [ctypes.c_void_p]
+    lib.stelnettts_chat_template_name.restype = ctypes.c_char_p
+    lib.stelnettts_chat_ai_disclosure_text.argtypes = []
+    lib.stelnettts_chat_ai_disclosure_text.restype = ctypes.c_char_p
     return lib
 
 
 def _chat_raise(err: _ChatErrorAbi, fallback: str, code_hint: int = 0):
-    """Raise the right exception for a filled crispasr_chat_error.
+    """Raise the right exception for a filled stelnettts_chat_error.
 
     The one-shot path signals failure by returning NULL, so there `err` is the
     only carrier; the streaming path also returns the code, passed as
@@ -3966,7 +3966,7 @@ def _chat_raise(err: _ChatErrorAbi, fallback: str, code_hint: int = 0):
     message = err.message.decode("utf-8", "replace") if err.message else ""
     if not message:
         message = fallback
-    if code == CRISPASR_CHAT_ERR_ABORTED:
+    if code == STELNETTTS_CHAT_ERR_ABORTED:
         raise ChatAborted(message)
     raise RuntimeError(message)
 
@@ -4019,7 +4019,7 @@ def _chat_open_params(
     """ABI defaults with the fields the caller named applied over them, so no
     default is duplicated here. `None` means "leave the ABI's own value"."""
     params = _ChatOpenParamsAbi()
-    lib.crispasr_chat_open_params_default(ctypes.byref(params))
+    lib.stelnettts_chat_open_params_default(ctypes.byref(params))
     if n_threads is not None:
         params.n_threads = int(n_threads)
     if n_threads_batch is not None:
@@ -4059,7 +4059,7 @@ def _chat_generate_params(
 ) -> Tuple[_ChatGenerateParamsAbi, list]:
     """As :func:`_chat_open_params`, for the per-call sampler settings."""
     params = _ChatGenerateParamsAbi()
-    lib.crispasr_chat_generate_params_default(ctypes.byref(params))
+    lib.stelnettts_chat_generate_params_default(ctypes.byref(params))
     if max_tokens is not None:
         params.max_tokens = int(max_tokens)
     if temperature is not None:
@@ -4114,12 +4114,12 @@ class ChatSession:
 
     Usage::
 
-        with crispasr.ChatSession("gemma-3-1b-it-Q4_K_M.gguf") as chat:
+        with stelnettts.ChatSession("gemma-3-1b-it-Q4_K_M.gguf") as chat:
             msgs = [{"role": "user", "content": "Name three primes."}]
             print(chat.count_tokens(msgs), "of", chat.n_ctx, "prompt tokens")
             print(chat.generate(msgs))
 
-    One call at a time per session, which crispasr_chat.h requires and this
+    One call at a time per session, which stelnettts_chat.h requires and this
     class enforces: a :meth:`generate` or :meth:`generate_stream` entered while
     another thread is inside one on the same session raises
     :class:`RuntimeError` instead of waiting. It is a diagnostic, not a queue —
@@ -4164,7 +4164,7 @@ class ChatSession:
         chat_template: Optional[str] = None,
     ):
         """Open a GGUF chat model. Every parameter left as ``None`` keeps the
-        value ``crispasr_chat_open_params_default`` supplies.
+        value ``stelnettts_chat_open_params_default`` supplies.
 
         ``chat_template`` overrides the template baked into the GGUF; ``None``
         reads ``tokenizer.chat_template`` from the model and falls back to
@@ -4181,7 +4181,7 @@ class ChatSession:
             chat_template=chat_template,
         )
         err = _ChatErrorAbi()
-        handle = self._lib.crispasr_chat_open(
+        handle = self._lib.stelnettts_chat_open(
             _chat_cstr(model_path, "model_path"), ctypes.byref(params), ctypes.byref(err))
         if not handle:
             _chat_raise(err, f"failed to open chat model {model_path!r}")
@@ -4191,7 +4191,7 @@ class ChatSession:
     def n_ctx(self) -> int:
         """The session's context window, in tokens."""
         with self._use("n_ctx", closed_raises=False) as handle:
-            return int(self._lib.crispasr_chat_n_ctx(handle))
+            return int(self._lib.stelnettts_chat_n_ctx(handle))
 
     @property
     def template_name(self) -> str:
@@ -4203,7 +4203,7 @@ class ChatSession:
         # is that copy, so decoding it outside costs nothing and races nothing.
         # A restype of POINTER(c_char) here would be a use-after-free.
         with self._use("template_name", closed_raises=False) as handle:
-            name = self._lib.crispasr_chat_template_name(handle)
+            name = self._lib.stelnettts_chat_template_name(handle)
         return name.decode("utf-8") if name else ""
 
     def reset(self) -> None:
@@ -4212,9 +4212,9 @@ class ChatSession:
         after a :class:`ChatAborted`, which already flushed."""
         err = _ChatErrorAbi()
         with self._use("reset") as handle:
-            rc = self._lib.crispasr_chat_reset(handle, ctypes.byref(err))
+            rc = self._lib.stelnettts_chat_reset(handle, ctypes.byref(err))
         if rc != 0:
-            _chat_raise(err, "crispasr_chat_reset failed", rc)
+            _chat_raise(err, "stelnettts_chat_reset failed", rc)
 
     def count_tokens(self, messages) -> int:
         """Prompt tokens a FRESH session prefills for ``messages``.
@@ -4234,12 +4234,12 @@ class ChatSession:
         msgs, _keep = _chat_messages(messages)
         err = _ChatErrorAbi()
         with self._use("count_tokens") as handle:
-            n = self._lib.crispasr_chat_count_tokens(
+            n = self._lib.stelnettts_chat_count_tokens(
                 handle, msgs, len(msgs), ctypes.byref(err))
         if n < 0:
             # A negative return is the failure sentinel, not an error code —
             # `err` is the only carrier here, so there is no hint to pass.
-            _chat_raise(err, "crispasr_chat_count_tokens failed")
+            _chat_raise(err, "stelnettts_chat_count_tokens failed")
         return int(n)
 
     def generate(
@@ -4282,7 +4282,7 @@ class ChatSession:
             try:
                 abort_cb = self._register_abort(handle, should_continue, state)
                 try:
-                    out = self._lib.crispasr_chat_generate(
+                    out = self._lib.stelnettts_chat_generate(
                         handle, msgs, len(msgs), ctypes.byref(params), ctypes.byref(err))
                 finally:
                     self._clear_abort(handle, should_continue)
@@ -4294,11 +4294,11 @@ class ChatSession:
         if state.error is not None:
             raise state.error
         if not out:
-            _chat_raise(err, "crispasr_chat_generate failed")
+            _chat_raise(err, "stelnettts_chat_generate failed")
         try:
             return ctypes.cast(out, ctypes.c_char_p).value.decode("utf-8", "replace")
         finally:
-            self._lib.crispasr_chat_string_free(out)
+            self._lib.stelnettts_chat_string_free(out)
 
     def generate_stream(
         self, messages, on_token: Callable[[str], None], *,
@@ -4344,8 +4344,8 @@ class ChatSession:
 
         **Abort polarity: ``should_continue()`` returns True to LET THE
         GENERATION CONTINUE** and False to abort it — a "may I keep going?"
-        predicate. That is the polarity of ``crispasr_chat_abort_callback``
-        in crispasr_chat.h, which in turn matches the encoder-begin callback
+        predicate. That is the polarity of ``stelnettts_chat_abort_callback``
+        in stelnettts_chat.h, which in turn matches the encoder-begin callback
         on the ASR surface; this binding passes your answer to C as it is,
         without inverting it. It is called on the generating thread before
         each prompt batch and before each sampled token, and on the CPU
@@ -4399,7 +4399,7 @@ class ChatSession:
             try:
                 abort_cb = self._register_abort(handle, should_continue, state)
                 try:
-                    rc = self._lib.crispasr_chat_generate_stream(
+                    rc = self._lib.stelnettts_chat_generate_stream(
                         handle, msgs, len(msgs), ctypes.byref(params),
                         token_cb, None, ctypes.byref(err))
                 finally:
@@ -4421,7 +4421,7 @@ class ChatSession:
         if state.error is not None:
             raise state.error
         if rc != 0:
-            _chat_raise(err, "crispasr_chat_generate_stream failed", rc)
+            _chat_raise(err, "stelnettts_chat_generate_stream failed", rc)
 
     def _init_state(self) -> None:
         """The session state that exists before — and independently of — the
@@ -4444,7 +4444,7 @@ class ChatSession:
         Every operation that hands ``self._handle`` to C goes through this,
         the properties and :meth:`count_tokens` included.
 
-        ``crispasr_chat_close`` counts the calls that are already inside C and
+        ``stelnettts_chat_close`` counts the calls that are already inside C and
         waits for them, so this is not what keeps a running generation's
         session alive — C does that. What C cannot see is the window between
         this method reading ``self._handle`` and the native call actually
@@ -4482,7 +4482,7 @@ class ChatSession:
         Held for the span in which C holds pointers to this call's
         trampolines, so a second call cannot register over them and
         :meth:`close` cannot free the session under them. The acquire does not
-        block: crispasr_chat.h allows one call at a time per session, so a
+        block: stelnettts_chat.h allows one call at a time per session, so a
         thread arriving here is misusing the session and gets told which rule
         it broke, rather than a wait that looks like working concurrency.
         """
@@ -4490,7 +4490,7 @@ class ChatSession:
             return
         raise RuntimeError(
             f"ChatSession.{method}: this session is already running a call on "
-            "another thread. crispasr_chat.h allows one call at a time per "
+            "another thread. stelnettts_chat.h allows one call at a time per "
             "session — use one session per worker thread.")
 
     def _register_abort(self, handle, should_continue, state: _ChatCallbackState):
@@ -4502,7 +4502,7 @@ class ChatSession:
         trampoline's last reference while C still held the pointer.
 
         Its answer goes to C as it is: True continues, False aborts, the same
-        way round as ``crispasr_chat_abort_callback`` in crispasr_chat.h. The
+        way round as ``stelnettts_chat_abort_callback`` in stelnettts_chat.h. The
         one thing this adds is the failure paths, which answer False without
         consulting the predicate at all — a predicate that raised cannot be
         asked again, and once the token callback has raised there is nobody
@@ -4521,7 +4521,7 @@ class ChatSession:
                 return False
 
         abort_cb = ChatSession._ABORT_CB_TYPE(_abort_trampoline)
-        self._lib.crispasr_chat_set_abort_callback(handle, abort_cb, None)
+        self._lib.stelnettts_chat_set_abort_callback(handle, abort_cb, None)
         return abort_cb
 
     def _clear_abort(self, handle, should_continue) -> None:
@@ -4529,7 +4529,7 @@ class ChatSession:
             return
         # A NULL instance of the callback type, not None: a function-pointer
         # argtype rejects None on newer CPython.
-        self._lib.crispasr_chat_set_abort_callback(
+        self._lib.stelnettts_chat_set_abort_callback(
             handle, ChatSession._ABORT_CB_TYPE(), None)
 
     @staticmethod
@@ -4573,7 +4573,7 @@ class ChatSession:
             chat_template=chat_template,
         )
         err = _ChatErrorAbi()
-        n = lib.crispasr_chat_memory_estimate(
+        n = lib.stelnettts_chat_memory_estimate(
             _chat_cstr(model_path, "model_path"), ctypes.byref(params), ctypes.byref(err))
         if n == 0:
             _chat_raise(err, f"could not estimate memory for chat model {model_path!r}")
@@ -4584,7 +4584,7 @@ class ChatSession:
         """The canonical "you are talking to an AI" wording (EU AI Act Art.
         50(1)). Show it visibly, at or before the first turn."""
         lib = _chat_lib(lib_path)
-        text = lib.crispasr_chat_ai_disclosure_text()
+        text = lib.stelnettts_chat_ai_disclosure_text()
         return text.decode("utf-8") if text else ""
 
     def close(self) -> None:
@@ -4602,7 +4602,7 @@ class ChatSession:
         queue.
 
         The wait covers EVERY call holding the handle, not only the generate
-        pair. ``crispasr_chat_close`` does its own waiting for the calls that
+        pair. ``stelnettts_chat_close`` does its own waiting for the calls that
         have already reached C, but it cannot see one that has read the handle
         here and not yet entered; :meth:`count_tokens`, :meth:`reset` and the
         properties are all in that state for a moment, so they are counted and
@@ -4617,7 +4617,7 @@ class ChatSession:
                 return
             while self._in_use:
                 self._lifetime.wait()
-            self._lib.crispasr_chat_close(handle)
+            self._lib.stelnettts_chat_close(handle)
 
     def __enter__(self):
         return self

@@ -11,7 +11,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 PORT=${PORT:-11457}
-CACHE_DIR="${CRISPASR_TEST_CACHE:-}"
+CACHE_DIR="${STELNETTTS_TEST_CACHE:-}"
 for arg in "$@"; do
     case "$arg" in
         --port=*) PORT="${arg#--port=}" ;;
@@ -22,26 +22,26 @@ CACHE_ARG=()
 [ -n "$CACHE_DIR" ] && CACHE_ARG=(--cache-dir "$CACHE_DIR")
 
 CRISPASR=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
-[ -n "$CRISPASR" ] || { echo "SKIP: crispasr binary not found"; exit 0; }
+[ -n "$CRISPASR" ] || { echo "SKIP: stelnettts binary not found"; exit 0; }
 
 # Locate an m2m100 GGUF.
 MODEL="${M2M100_MODEL:-}"
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     MODEL=""
-    for d in "$CACHE_DIR" "${CRISPASR_MODELS:-}" "${CRISPASR_MODELS_DIR:-}" \
-             /Volumes/backups/ai/crispasr-models /mnt/storage/gguf-models "$HOME/.cache/crispasr"; do
+    for d in "$CACHE_DIR" "${STELNETTTS_MODELS:-}" "${STELNETTTS_MODELS_DIR:-}" \
+             /Volumes/backups/ai/stelnettts-models /mnt/storage/gguf-models "$HOME/.cache/stelnettts"; do
         [ -n "$d" ] && [ -d "$d" ] || continue
         cand=$(ls "$d"/m2m100*.gguf 2>/dev/null | head -1)
         if [ -n "$cand" ] && [ -f "$cand" ]; then MODEL="$cand"; break; fi
     done
 fi
-[ -n "$MODEL" ] && [ -f "$MODEL" ] || { echo "SKIP: no m2m100 GGUF found (set M2M100_MODEL or CRISPASR_TEST_CACHE)"; exit 0; }
+[ -n "$MODEL" ] && [ -f "$MODEL" ] || { echo "SKIP: no m2m100 GGUF found (set M2M100_MODEL or STELNETTTS_TEST_CACHE)"; exit 0; }
 
 echo "Model: $MODEL"
-LOG=$(mktemp -t crispasr-translate.XXXXXX)
+LOG=$(mktemp -t stelnettts-translate.XXXXXX)
 trap 'kill "$SV" 2>/dev/null; rm -f "$LOG"' EXIT
 "$CRISPASR" --server -m "$MODEL" --backend m2m100 --host 127.0.0.1 --port "$PORT" \
     --auto-download ${CACHE_ARG[@]+"${CACHE_ARG[@]}"} > "$LOG" 2>&1 &

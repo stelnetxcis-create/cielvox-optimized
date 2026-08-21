@@ -2,7 +2,7 @@
 
 Loads the Mini-Omni2 model (Whisper-small encoder + SwiGLU adapter +
 Qwen2-0.5B LLM) and captures intermediates at each architectural
-boundary for crispasr-diff comparison.
+boundary for stelnettts-diff comparison.
 
 Architecture:
   Whisper-small encoder (80 mel, 12L, 768d) →

@@ -13,13 +13,13 @@ tags:
 - mimi
 - kyutai
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Pocket TTS — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`kyutai/pocket-tts`](https://huggingface.co/kyutai/pocket-tts) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`kyutai/pocket-tts`](https://huggingface.co/kyutai/pocket-tts) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Pocket TTS is a lightweight (~100M param) continuous-latent autoregressive TTS model from Kyutai, based on the CALM paper (arXiv:2509.06926). Unlike codebook-based TTS models, Pocket TTS emits continuous float vectors — no discrete tokens, no softmax sampling:
 - **FlowLM backbone** — causal transformer (1024D, 16 heads, 6 layers, RoPE, GELU) operating at 12.5 Hz
@@ -42,7 +42,7 @@ encoder and are ~20 MB smaller.
 
 ```bash
 # clone the timbre of ref.wav (any sample rate; mono is used)
-./build/bin/crispasr --backend pocket-tts -m pocket-tts-english-f16.gguf \
+./build/bin/stelnettts --backend pocket-tts -m pocket-tts-english-f16.gguf \
     --voice ref.wav \
     --tts "The quick brown fox jumps over the lazy dog." \
     --tts-output fox.wav --seed 42
@@ -69,24 +69,24 @@ Two families: **voice-cloning** (default, embeds the Mimi encoder) and **`novc`*
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Download a model (voice-cloning F16 shown)
-huggingface-cli download cstr/pocket-tts-GGUF pocket-tts-english-f16.gguf --local-dir .
+huggingface-cli download Xenna/pocket-tts-GGUF pocket-tts-english-f16.gguf --local-dir .
 
 # 3. Synthesize
-./build/bin/crispasr --backend pocket-tts -m pocket-tts-english-f16.gguf \
+./build/bin/stelnettts --backend pocket-tts -m pocket-tts-english-f16.gguf \
     --tts "Hello, how are you today?" \
     --tts-output hello.wav --seed 42
 ```
 
 Or with auto-download (pulls the voice-cloning F16):
 ```bash
-./build/bin/crispasr -m pocket-tts --auto-download \
+./build/bin/stelnettts -m pocket-tts --auto-download \
     --tts "The quick brown fox jumps over the lazy dog." \
     --tts-output fox.wav
 ```
@@ -94,7 +94,7 @@ Or with auto-download (pulls the voice-cloning F16):
 ## Python binding
 
 ```python
-from crispasr import Session
+from stelnettts import Session
 
 sess = Session("pocket-tts-english-f16.gguf")
 sess.set_tts_seed(42)
@@ -104,6 +104,6 @@ sess.write_wav("hello.wav", pcm)
 
 ## Conversion
 
-Converted with `models/convert-pocket-tts-to-gguf.py` from the CrispASR repo
+Converted with `models/convert-pocket-tts-to-gguf.py` from the StelnetTTS repo
 (`--voice-cloning` bakes in the Mimi encoder + speaker projection). The Mimi
 codec and SentencePiece tokenizer are embedded in the single GGUF.

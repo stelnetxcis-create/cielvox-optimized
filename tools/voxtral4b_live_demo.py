@@ -6,7 +6,7 @@ progressively as words emerge.
 
 Usage:
     python tools/voxtral4b_live_demo.py \\
-        -m /Volumes/backups/ai/crispasr-models/voxtral-mini-4b-realtime-q4_k.gguf
+        -m /Volumes/backups/ai/stelnettts-models/voxtral-mini-4b-realtime-q4_k.gguf
 
     # Speak. Press Ctrl+C to stop and print the final transcript.
 
@@ -31,7 +31,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "python"))
 
-import crispasr  # noqa: E402
+import stelnettts  # noqa: E402
 
 
 def main() -> int:
@@ -49,7 +49,7 @@ def main() -> int:
         return 2
 
     print(f"[demo] loading {args.model} ...", file=sys.stderr)
-    sess = crispasr.Session(backend="voxtral4b", model_path=args.model)
+    sess = stelnettts.Session(backend="voxtral4b", model_path=args.model)
     stream = sess.stream_open(step_ms=args.chunk_ms, length_ms=15000, live=not args.no_live)
 
     # Mic → queue → main-thread feed loop. Keeps the audio callback
@@ -69,7 +69,7 @@ def main() -> int:
     signal.signal(signal.SIGINT, on_sigint)
 
     print("[demo] opening mic ... (speak now; Ctrl+C to stop)", file=sys.stderr)
-    mic = crispasr.Mic(sample_rate=16000, channels=1, callback=mic_cb)
+    mic = stelnettts.Mic(sample_rate=16000, channels=1, callback=mic_cb)
     mic.start()
 
     try:

@@ -2,7 +2,7 @@
 
 Captures stage-by-stage activations from the official PyTorch
 ``MossAudioModel`` forward pass so the C++ runtime in
-src/moss_audio.cpp can be compared element-wise via crispasr-diff.
+src/moss_audio.cpp can be compared element-wise via stelnettts-diff.
 
 Architecture (OpenMOSS-Team/MOSS-Audio-4B-Instruct):
 

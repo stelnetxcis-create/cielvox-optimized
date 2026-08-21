@@ -22,7 +22,7 @@ tags:
 - transcription
 - gguf
 - conformer
-- crispasr
+- stelnettts
 base_model: CohereLabs/cohere-transcribe-03-2026
 ---
 
@@ -30,7 +30,7 @@ base_model: CohereLabs/cohere-transcribe-03-2026
 
 GGUF weights for **[CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)** — Cohere's open-source 2B-parameter ASR model, #1 on the [Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard) (avg WER 5.42, as of March 2026).
 
-This conversion enables high-performance CPU inference via **[CrispASR](https://github.com/CrispStrobe/CrispASR)** — a crispasr-style C++ runtime for the Cohere Conformer-encoder / Transformer-decoder architecture.
+This conversion enables high-performance CPU inference via **[StelnetTTS](https://github.com/Cyna/StelnetTTS)** — a stelnettts-style C++ runtime for the Cohere Conformer-encoder / Transformer-decoder architecture.
 
 > **License**: Apache 2.0 (inherited from source model). See [original model card](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) for full terms.
 
@@ -53,19 +53,19 @@ This conversion enables high-performance CPU inference via **[CrispASR](https://
 
 ## Quick Start
 
-### 1. Build CrispASR
+### 1. Build StelnetTTS
 
 ```bash
-git clone --recursive https://github.com/CrispStrobe/CrispASR
-cd CrispASR && mkdir build && cd build
+git clone --recursive https://github.com/Cyna/StelnetTTS
+cd StelnetTTS && mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -j $(nproc) --target crispasr-cli
+cmake --build . -j $(nproc) --target stelnettts-cli
 ```
 
 ### 2. Download a GGUF
 
 ```bash
-huggingface-cli download cstr/cohere-transcribe-03-2026-GGUF \
+huggingface-cli download Xenna/cohere-transcribe-03-2026-GGUF \
     cohere-transcribe-q4_k.gguf \
     --local-dir .
 ```
@@ -73,7 +73,7 @@ huggingface-cli download cstr/cohere-transcribe-03-2026-GGUF \
 ### 3. Transcribe
 
 ```bash
-./bin/crispasr --backend cohere \
+./bin/stelnettts --backend cohere \
     -m cohere-transcribe-q4_k.gguf \
     -f audio.wav \
     -l en \
@@ -90,9 +90,9 @@ zh vi ko`), but the tokenizer carries **all 183 ISO-639-1 `<|xx|>` tokens**. So
 `<|ru|>` decodes without error, and the model answers a wrong language
 *fluently* rather than failing — there is no runtime signal at all. The
 whitelist therefore has to travel with the weights: these GGUFs carry it as
-`cohere_transcribe.supported_languages`, and CrispASR substitutes loudly when
+`cohere_transcribe.supported_languages`, and StelnetTTS substitutes loudly when
 `-l` names something outside it. For a GGUF converted before that key existed,
-declare it with `CRISPASR_COHERE_LANGS=en,fr,de,…`.
+declare it with `STELNETTTS_COHERE_LANGS=en,fr,de,…`.
 
 This matters most because `-l auto` runs an external detector that knows 99
 languages against a model that accepts 14.
@@ -136,26 +136,26 @@ Transformer decoder FFN uses **ReLU** (not SiLU/Swish).
 ## Related
 
 - **Source model**: [CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)
-- **C++ runtime**: [CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR) — also hosts ports of `parakeet-tdt-0.6b-v3`, `canary-1b-v2`, and a universal multilingual forced aligner (`nfa-align`)
+- **C++ runtime**: [Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS) — also hosts ports of `parakeet-tdt-0.6b-v3`, `canary-1b-v2`, and a universal multilingual forced aligner (`nfa-align`)
 - **Open ASR Leaderboard**: [hf-audio/open_asr_leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)
 
 ### Sister GGUF releases in the same family
 
-- [`cstr/cohere-transcribe-onnx-int4`](https://huggingface.co/cstr/cohere-transcribe-onnx-int4) — ONNX INT4 export of the same Cohere model
-- [`cstr/cohere-transcribe-onnx-int8`](https://huggingface.co/cstr/cohere-transcribe-onnx-int8) — ONNX INT8 export of the same Cohere model
-- [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) — NVIDIA's 600M multilingual ASR with built-in word timestamps (faster, smaller, 25 EU languages)
-- [`cstr/parakeet_de_med-GGUF`](https://huggingface.co/cstr/parakeet_de_med-GGUF) — German medical PEFT fine-tune of the parakeet base
-- [`cstr/canary-1b-v2-GGUF`](https://huggingface.co/cstr/canary-1b-v2-GGUF) — NVIDIA's 978M multilingual ASR + speech translation with explicit `-sl/-tl` flags
-- [`cstr/canary-ctc-aligner-GGUF`](https://huggingface.co/cstr/canary-ctc-aligner-GGUF) — universal multilingual subword forced aligner (25 EU languages, ~78 ms MAE)
+- [`Xenna/cohere-transcribe-onnx-int4`](https://huggingface.co/Xenna/cohere-transcribe-onnx-int4) — ONNX INT4 export of the same Cohere model
+- [`Xenna/cohere-transcribe-onnx-int8`](https://huggingface.co/Xenna/cohere-transcribe-onnx-int8) — ONNX INT8 export of the same Cohere model
+- [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) — NVIDIA's 600M multilingual ASR with built-in word timestamps (faster, smaller, 25 EU languages)
+- [`Xenna/parakeet_de_med-GGUF`](https://huggingface.co/Xenna/parakeet_de_med-GGUF) — German medical PEFT fine-tune of the parakeet base
+- [`Xenna/canary-1b-v2-GGUF`](https://huggingface.co/Xenna/canary-1b-v2-GGUF) — NVIDIA's 978M multilingual ASR + speech translation with explicit `-sl/-tl` flags
+- [`Xenna/canary-ctc-aligner-GGUF`](https://huggingface.co/Xenna/canary-ctc-aligner-GGUF) — universal multilingual subword forced aligner (25 EU languages, ~78 ms MAE)
 
 ### Use case → which runtime?
 
 | Need | Right tool |
 | --- | --- |
 | **Lowest English WER** (Open ASR Leaderboard #1) | **`--backend cohere`** ← this repo |
-| Multilingual ASR + free word timestamps | `parakeet-main` ([cstr/parakeet-tdt-0.6b-v3-GGUF](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF)) |
-| Multilingual ASR + speech translation + explicit language control | `canary-main` ([cstr/canary-1b-v2-GGUF](https://huggingface.co/cstr/canary-1b-v2-GGUF)) |
-| Multilingual subword forced alignment of any transcript | `nfa-align` ([cstr/canary-ctc-aligner-GGUF](https://huggingface.co/cstr/canary-ctc-aligner-GGUF)) |
+| Multilingual ASR + free word timestamps | `parakeet-main` ([Xenna/parakeet-tdt-0.6b-v3-GGUF](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF)) |
+| Multilingual ASR + speech translation + explicit language control | `canary-main` ([Xenna/canary-1b-v2-GGUF](https://huggingface.co/Xenna/canary-1b-v2-GGUF)) |
+| Multilingual subword forced alignment of any transcript | `nfa-align` ([Xenna/canary-ctc-aligner-GGUF](https://huggingface.co/Xenna/canary-ctc-aligner-GGUF)) |
 | English-only character-level forced alignment (~30 ms MAE) | `cohere-align` (uses wav2vec2-large-xlsr-53-english) |
 
 ## Provenance and EU AI Act Art. 53 note

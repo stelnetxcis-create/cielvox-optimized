@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Convert Qwen/Qwen3-TTS-12Hz-{0.6B,1.7B}-{Base,CustomVoice,VoiceDesign}
-(HuggingFace safetensors) → GGUF F16 for the CrispASR `qwen3-tts` backend.
+(HuggingFace safetensors) → GGUF F16 for the StelnetTTS `cielvox2-tts` backend.
 
 Architecture — confirmed against the public config.json files (April 2026):
 
   Top-level config:
-    model_type            = "qwen3_tts"
+    model_type            = "cielvox2_tts"
     architectures         = ["Qwen3TTSForConditionalGeneration"]
-    tokenizer_type        = "qwen3_tts_tokenizer_12hz"
+    tokenizer_type        = "cielvox2_tts_tokenizer_12hz"
     tts_model_size        = "06b" | "1b7"
     tts_model_type        = "base" | "custom_voice" | "voice_design"
     tts_bos/eos/pad_token_id  = 151672 / 151673 / 151671   (text-side TTS sentinels)
@@ -18,7 +18,7 @@ Architecture — confirmed against the public config.json files (April 2026):
     sample_rate      = 24000
 
   talker_config — the autoregressive LM that generates audio codes:
-    model_type       = "qwen3_tts_talker"
+    model_type       = "cielvox2_tts_talker"
     hidden_size      = 1024  (0.6B)  /  2048  (1.7B)
     num_hidden_layers = 28
     num_attention_heads = 16
@@ -47,13 +47,13 @@ Architecture — confirmed against the public config.json files (April 2026):
 
 The audio decoder (RVQ → waveform) lives in the SEPARATE
 `Qwen/Qwen3-TTS-Tokenizer-12Hz` repo and gets its own converter
-(`convert-qwen3-tts-tokenizer-to-gguf.py`).
+(`convert-cielvox2-tts-tokenizer-to-gguf.py`).
 
 Usage:
 
-    python models/convert-qwen3-tts-to-gguf.py \\
+    python models/convert-cielvox2-tts-to-gguf.py \\
         --input Qwen/Qwen3-TTS-12Hz-0.6B-Base \\
-        --output qwen3-tts-0.6b-base.gguf
+        --output cielvox2-tts-0.6b-base.gguf
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def map_tensor_name(hf_name: str) -> str | None:
     # the talker's last-hidden into the code predictor's narrower input
     # space. Identity (and absent from the checkpoint) when both sides
     # share hidden_size — i.e. for 0.6B variants. See
-    # modeling_qwen3_tts.py:1171.
+    # modeling_cielvox2_tts.py:1171.
     n = n.replace("talker.code_predictor.small_to_mtp_projection.", "code_pred.small_to_mtp.")
 
     # ── Talker (the audio-code AR LM) ──────────────────────────────────
@@ -214,58 +214,58 @@ def main():
     # for 1.7B variants on tight disks (the temp file would hit /tmp on
     # macOS where boot is also small, or /Volumes/backups where the
     # output already lives).
-    w = GGUFWriter(str(out_path), arch="qwen3tts", use_temp_file=False)
+    w = GGUFWriter(str(out_path), arch="cielvox2tts", use_temp_file=False)
 
     # ----- metadata -----------------------------------------------------
-    w.add_name(f"qwen3-tts-{cfg.get('tts_model_size', '?')}-{cfg.get('tts_model_type', '?')}")
+    w.add_name(f"cielvox2-tts-{cfg.get('tts_model_size', '?')}-{cfg.get('tts_model_type', '?')}")
 
     def u32(k, v): w.add_uint32(k, int(v))
     def f32(k, v): w.add_float32(k, float(v))
     def boolv(k, v): w.add_bool(k, bool(v))
 
     # talker
-    u32("qwen3tts.talker.n_layers",   talker.get("num_hidden_layers", 28))
-    u32("qwen3tts.talker.d_model",    talker.get("hidden_size", 1024))
-    u32("qwen3tts.talker.n_heads",    talker.get("num_attention_heads", 16))
-    u32("qwen3tts.talker.n_kv_heads", talker.get("num_key_value_heads", 8))
-    u32("qwen3tts.talker.head_dim",   talker.get("head_dim", 128))
-    u32("qwen3tts.talker.ff_dim",     talker.get("intermediate_size", 3072))
-    u32("qwen3tts.talker.vocab_size", talker.get("vocab_size", 3072))
-    u32("qwen3tts.talker.text_vocab_size", talker.get("text_vocab_size", 151936))
-    u32("qwen3tts.talker.text_hidden_size", talker.get("text_hidden_size", 2048))
-    u32("qwen3tts.talker.n_code_groups", talker.get("num_code_groups", 16))
-    u32("qwen3tts.talker.max_pos",    talker.get("max_position_embeddings", 32768))
-    u32("qwen3tts.talker.position_id_per_seconds",
+    u32("cielvox2tts.talker.n_layers",   talker.get("num_hidden_layers", 28))
+    u32("cielvox2tts.talker.d_model",    talker.get("hidden_size", 1024))
+    u32("cielvox2tts.talker.n_heads",    talker.get("num_attention_heads", 16))
+    u32("cielvox2tts.talker.n_kv_heads", talker.get("num_key_value_heads", 8))
+    u32("cielvox2tts.talker.head_dim",   talker.get("head_dim", 128))
+    u32("cielvox2tts.talker.ff_dim",     talker.get("intermediate_size", 3072))
+    u32("cielvox2tts.talker.vocab_size", talker.get("vocab_size", 3072))
+    u32("cielvox2tts.talker.text_vocab_size", talker.get("text_vocab_size", 151936))
+    u32("cielvox2tts.talker.text_hidden_size", talker.get("text_hidden_size", 2048))
+    u32("cielvox2tts.talker.n_code_groups", talker.get("num_code_groups", 16))
+    u32("cielvox2tts.talker.max_pos",    talker.get("max_position_embeddings", 32768))
+    u32("cielvox2tts.talker.position_id_per_seconds",
         talker.get("position_id_per_seconds", 13))
-    f32("qwen3tts.talker.rope_theta", talker.get("rope_theta", 1_000_000))
-    f32("qwen3tts.talker.rms_norm_eps", talker.get("rms_norm_eps", 1e-6))
-    boolv("qwen3tts.talker.use_sliding_window", talker.get("use_sliding_window", False))
+    f32("cielvox2tts.talker.rope_theta", talker.get("rope_theta", 1_000_000))
+    f32("cielvox2tts.talker.rms_norm_eps", talker.get("rms_norm_eps", 1e-6))
+    boolv("cielvox2tts.talker.use_sliding_window", talker.get("use_sliding_window", False))
 
     rope = talker.get("rope_scaling", {}) or {}
-    boolv("qwen3tts.talker.rope_interleaved", rope.get("interleaved", True))
+    boolv("cielvox2tts.talker.rope_interleaved", rope.get("interleaved", True))
     mrope = rope.get("mrope_section", [])
     if mrope:
-        w.add_array("qwen3tts.talker.mrope_section", list(mrope))
+        w.add_array("cielvox2tts.talker.mrope_section", list(mrope))
 
     # code predictor
-    u32("qwen3tts.code_pred.n_layers",     cp.get("num_hidden_layers", 5))
-    u32("qwen3tts.code_pred.d_model",      cp.get("hidden_size", 1024))
-    u32("qwen3tts.code_pred.n_heads",      cp.get("num_attention_heads", 16))
-    u32("qwen3tts.code_pred.n_kv_heads",   cp.get("num_key_value_heads", 8))
-    u32("qwen3tts.code_pred.n_code_groups", cp.get("num_code_groups", 16))
-    u32("qwen3tts.code_pred.vocab_size",   cp.get("vocab_size", 2048))
-    u32("qwen3tts.code_pred.max_length",   cp.get("max_length", 20))
+    u32("cielvox2tts.code_pred.n_layers",     cp.get("num_hidden_layers", 5))
+    u32("cielvox2tts.code_pred.d_model",      cp.get("hidden_size", 1024))
+    u32("cielvox2tts.code_pred.n_heads",      cp.get("num_attention_heads", 16))
+    u32("cielvox2tts.code_pred.n_kv_heads",   cp.get("num_key_value_heads", 8))
+    u32("cielvox2tts.code_pred.n_code_groups", cp.get("num_code_groups", 16))
+    u32("cielvox2tts.code_pred.vocab_size",   cp.get("vocab_size", 2048))
+    u32("cielvox2tts.code_pred.max_length",   cp.get("max_length", 20))
 
     # speaker encoder (only present for tts_model_type=base; CustomVoice
     # has no ECAPA — speaker_embed comes from talker.token_embd[spk_id])
     if speaker:
-        u32("qwen3tts.speaker.enc_dim",     speaker.get("enc_dim", 1024))
-        u32("qwen3tts.speaker.sample_rate", speaker.get("sample_rate", 24000))
+        u32("cielvox2tts.speaker.enc_dim",     speaker.get("enc_dim", 1024))
+        u32("cielvox2tts.speaker.sample_rate", speaker.get("sample_rate", 24000))
 
     # tts_model_type — drives the runtime prefill path (base = ICL/voice
     # cloning, custom_voice = fixed-speaker token lookup, voice_design =
     # instruct-tuned text-to-voice)
-    w.add_string("qwen3tts.tts_model_type", str(cfg.get("tts_model_type", "base")))
+    w.add_string("cielvox2tts.tts_model_type", str(cfg.get("tts_model_type", "base")))
 
     # CustomVoice: fixed speakers + optional dialect overrides
     spk_id_map = talker.get("spk_id", {}) or {}
@@ -283,37 +283,37 @@ def main():
                 spk_dialect_token_ids.append(int(codec_lang_id[d]))
             else:
                 spk_dialect_token_ids.append(0)
-        w.add_array("qwen3tts.spk_names", names)
-        w.add_array("qwen3tts.spk_token_ids", spk_token_ids)
-        w.add_array("qwen3tts.spk_dialect_token_ids", spk_dialect_token_ids)
+        w.add_array("cielvox2tts.spk_names", names)
+        w.add_array("cielvox2tts.spk_token_ids", spk_token_ids)
+        w.add_array("cielvox2tts.spk_dialect_token_ids", spk_dialect_token_ids)
         print(f"  Speakers:      {len(names)} fixed ({', '.join(names)})")
 
     # codec_language_id map — useful for `--language` CLI flag (Base
-    # already uses qwen3_tts_set_language with a raw int; this lets the
+    # already uses cielvox2_tts_set_language with a raw int; this lets the
     # runtime resolve names like "english"/"chinese" too).
     codec_lang_id = talker.get("codec_language_id", {}) or {}
     if codec_lang_id:
         lang_names = sorted(codec_lang_id.keys())
         lang_ids = [int(codec_lang_id[n]) for n in lang_names]
-        w.add_array("qwen3tts.codec_language_names", lang_names)
-        w.add_array("qwen3tts.codec_language_ids", lang_ids)
+        w.add_array("cielvox2tts.codec_language_names", lang_names)
+        w.add_array("cielvox2tts.codec_language_ids", lang_ids)
 
     # token sentinels
-    u32("qwen3tts.tts_bos_token_id", cfg.get("tts_bos_token_id", 151672))
-    u32("qwen3tts.tts_eos_token_id", cfg.get("tts_eos_token_id", 151673))
-    u32("qwen3tts.tts_pad_token_id", cfg.get("tts_pad_token_id", 151671))
-    u32("qwen3tts.im_start_token_id", cfg.get("im_start_token_id", 151644))
-    u32("qwen3tts.im_end_token_id",  cfg.get("im_end_token_id", 151645))
-    u32("qwen3tts.assistant_token_id", cfg.get("assistant_token_id", 77091))
+    u32("cielvox2tts.tts_bos_token_id", cfg.get("tts_bos_token_id", 151672))
+    u32("cielvox2tts.tts_eos_token_id", cfg.get("tts_eos_token_id", 151673))
+    u32("cielvox2tts.tts_pad_token_id", cfg.get("tts_pad_token_id", 151671))
+    u32("cielvox2tts.im_start_token_id", cfg.get("im_start_token_id", 151644))
+    u32("cielvox2tts.im_end_token_id",  cfg.get("im_end_token_id", 151645))
+    u32("cielvox2tts.assistant_token_id", cfg.get("assistant_token_id", 77091))
 
     # codec sentinels (audio-code vocab)
     for k in ("codec_bos_id", "codec_eos_token_id", "codec_pad_id",
               "codec_think_id", "codec_nothink_id",
               "codec_think_bos_id", "codec_think_eos_id"):
         if k in talker:
-            u32(f"qwen3tts.talker.{k}", talker[k])
+            u32(f"cielvox2tts.talker.{k}", talker[k])
 
-    # tokenizer (BPE: vocab.json + merges.txt — same as qwen3-asr)
+    # tokenizer (BPE: vocab.json + merges.txt — same as cielvox2-asr)
     vocab_p = model_dir / "vocab.json"
     merges_p = model_dir / "merges.txt"
     if vocab_p.exists():
@@ -334,7 +334,7 @@ def main():
         # Persist BPE merges so the runtime can do greedy lowest-rank
         # subword merging (otherwise core_bpe::bpe_one falls back to
         # per-byte, which over-tokenises common words). Same call the
-        # qwen3-asr converter uses — the reader handles it fine.
+        # cielvox2-asr converter uses — the reader handles it fine.
         w.add_token_merges(merges)
         print(f"  Merges:        {len(merges)} entries from merges.txt")
 

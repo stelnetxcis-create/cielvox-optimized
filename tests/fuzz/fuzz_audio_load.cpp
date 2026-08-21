@@ -1,15 +1,15 @@
-// fuzz_audio_load.cpp — libFuzzer harness over crispasr_audio_load.
+// fuzz_audio_load.cpp — libFuzzer harness over stelnettts_audio_load.
 //
-// crispasr_audio_load() runs an attacker-controllable file through the full
+// stelnettts_audio_load() runs an attacker-controllable file through the full
 // decoder dispatch (miniaudio WAV/MP3/FLAC/OGG, then the hand-rolled Sun-AU,
 // AMR, WebM/EBML and MP4 fallbacks). Those hand-rolled parsers are the audio
 // attack surface, so we fuzz the one entry point that reaches all of them.
 //
 // Build + run (requires clang):
-//   cmake -B build-fuzz -DCRISPASR_FUZZ=ON -DCRISPASR_SANITIZE_ADDRESS=ON \
+//   cmake -B build-fuzz -DSTELNETTTS_FUZZ=ON -DSTELNETTTS_SANITIZE_ADDRESS=ON \
 //         -DCMAKE_BUILD_TYPE=Debug
-//   cmake --build build-fuzz --target crispasr-fuzz-audio
-//   ./build-fuzz/bin/crispasr-fuzz-audio -max_len=65536 tests/fuzz/corpus
+//   cmake --build build-fuzz --target stelnettts-fuzz-audio
+//   ./build-fuzz/bin/stelnettts-fuzz-audio -max_len=65536 tests/fuzz/corpus
 //
 // The API is path-based, so each input is written to a fixed scratch file
 // (libFuzzer drives one input per process iteration, single-threaded).
@@ -18,8 +18,8 @@
 #include <cstdint>
 #include <cstdio>
 
-extern "C" int crispasr_audio_load(const char* path, float** out_pcm, int* out_samples, int* out_sample_rate);
-extern "C" void crispasr_audio_free(float* pcm);
+extern "C" int stelnettts_audio_load(const char* path, float** out_pcm, int* out_samples, int* out_sample_rate);
+extern "C" void stelnettts_audio_free(float* pcm);
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // Cap size so a pathological length field can't turn the fuzzer itself into
@@ -27,7 +27,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (size > 8u * 1024u * 1024u)
         return 0;
 
-    const char* path = "crispasr_fuzz_input.bin";
+    const char* path = "stelnettts_fuzz_input.bin";
     FILE* f = std::fopen(path, "wb");
     if (!f)
         return 0;
@@ -37,8 +37,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     float* pcm = nullptr;
     int n_samples = 0, sample_rate = 0;
-    if (crispasr_audio_load(path, &pcm, &n_samples, &sample_rate) == 0)
-        crispasr_audio_free(pcm);
+    if (stelnettts_audio_load(path, &pcm, &n_samples, &sample_rate) == 0)
+        stelnettts_audio_free(pcm);
 
     return 0;
 }

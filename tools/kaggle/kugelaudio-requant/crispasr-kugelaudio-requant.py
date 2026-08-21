@@ -33,9 +33,9 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build"
-GGUF_REPO = "cstr/kugelaudio-0-open-GGUF"
+GGUF_REPO = "Xenna/kugelaudio-0-open-GGUF"
 F16_NAME = "kugelaudio-0-open-f16.gguf"
 TEXT = ("The quick brown fox jumps over the lazy dog while the morning light "
         "spills across the empty street.")
@@ -55,7 +55,7 @@ CANDIDATES = [
 
 if not REPO.exists():
     subprocess.run(["git", "clone", "--depth", "1", "--recurse-submodules",
-                    "--shallow-submodules", "https://github.com/CrispStrobe/CrispASR.git", str(REPO)],
+                    "--shallow-submodules", "https://github.com/Cyna/StelnetTTS.git", str(REPO)],
                    check=True, timeout=2400)
 
 _h = REPO / "tools" / "kaggle"
@@ -83,18 +83,18 @@ if token:
 
 cuda = kh.detect_cuda_arch()
 kh.step("cmake", cuda_arch=cuda)
-flags = ["-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_BUILD_TESTS=OFF",
-         "-DCRISPASR_BUILD_EXAMPLES=ON", "-DCRISPASR_BUILD_SERVER=OFF",
+flags = ["-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_BUILD_TESTS=OFF",
+         "-DSTELNETTTS_BUILD_EXAMPLES=ON", "-DSTELNETTTS_BUILD_SERVER=OFF",
          "-DGGML_CUDA=ON", f"-DCMAKE_CUDA_ARCHITECTURES={cuda}"] + kh.cache_and_link_flags()
 with kh.build_heartbeat("cmake.configure"):
     rc, out = sh(f"cmake -S {REPO} -B {BUILD} -G Ninja " + " ".join(flags))
 if rc != 0:
     print(out[-6000:], flush=True); raise SystemExit("configure failed")
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli crispasr-quantize "
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli stelnettts-quantize "
                         f"-j{kh.safe_build_jobs(gpu=True)}")
-cli = BUILD / "bin" / "crispasr"
-quantize = BUILD / "bin" / "crispasr-quantize"
+cli = BUILD / "bin" / "stelnettts"
+quantize = BUILD / "bin" / "stelnettts-quantize"
 for exe in (cli, quantize):
     if not exe.exists():
         raise SystemExit(f"{exe.name} missing after build")

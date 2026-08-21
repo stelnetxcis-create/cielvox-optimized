@@ -1,17 +1,17 @@
 """
-CrispASR -- orpheus talker CUDA pipeline: build + quantize + diff + upload.
+StelnetTTS -- orpheus talker CUDA pipeline: build + quantize + diff + upload.
 
 Orpheus passes on M1 Metal/CPU but the sweep reported a 0-byte on CUDA
 (PLAN §201). This kernel, in one CUDA run (resilient — a failing step is
 recorded and the rest continue, so the run always commits its output):
 
-  1. Build CrispASR (CUDA): crispasr-diff + crispasr-quantize, warm ccache.
+  1. Build StelnetTTS (CUDA): stelnettts-diff + stelnettts-quantize, warm ccache.
   2. Download unsloth/orpheus-3b-0.1-ft (tara) + convert to F16 GGUF.
-  3. Quantize with **crispasr-quantize** -> Q8_0 and Q4_K.
+  3. Quantize with **stelnettts-quantize** -> Q8_0 and Q4_K.
   4. Generate the talker reference (greedy codec stream; GPU+F32 on T4,
      CPU+bf16 on P100 since its sm_60 is unsupported by modern torch).
   5. Diff the talker AR decode: CPU vs GPU vs ground truth, + SNAC vocoder.
-  6. Upload f16/q8_0/q4_k GGUFs + the talker ref to cstr/orpheus-3b-0.1-ft-GGUF.
+  6. Upload f16/q8_0/q4_k GGUFs + the talker ref to Xenna/orpheus-3b-0.1-ft-GGUF.
   7. Save the warmed ccache to /kaggle/working/ccache.tar for dataset refresh.
 """
 
@@ -31,7 +31,7 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
@@ -41,10 +41,10 @@ Q8 = WORK / "orpheus-3b-0.1-ft-q8_0.gguf"
 Q4 = WORK / "orpheus-3b-0.1-ft-q4_k.gguf"
 REF = WORK / "orpheus-talker-ref.gguf"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 HF_MODEL = os.environ.get("ORPHEUS_HF_MODEL", "unsloth/orpheus-3b-0.1-ft")
-HF_REPO = os.environ.get("ORPHEUS_HF_REPO", "cstr/orpheus-3b-0.1-ft-GGUF")
+HF_REPO = os.environ.get("ORPHEUS_HF_REPO", "Xenna/orpheus-3b-0.1-ft-GGUF")
 TEXT = os.environ.get("ORPHEUS_TEXT", "Hey there, my name is Tara.")
 SPEAKER = os.environ.get("ORPHEUS_SPEAKER", "tara")
 MAXGEN = os.environ.get("ORPHEUS_DIFF_MAXGEN", "48")
@@ -95,11 +95,11 @@ def safe(label, fn, *a, **k):
 
 
 # ── Clone + build (fatal — nothing works without the binaries) ─────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
@@ -122,7 +122,7 @@ run(["cmake", "-S", str(REPO), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release",
 step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-diff crispasr-quantize crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-diff stelnettts-quantize stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 step("build_done")
 
@@ -137,9 +137,9 @@ def _find(name):
     return c[0]
 
 
-DIFF = _find("crispasr-diff")
-QUANT = _find("crispasr-quantize")
-CLI = _find("crispasr")  # crispasr-cli target -> OUTPUT_NAME crispasr
+DIFF = _find("stelnettts-diff")
+QUANT = _find("stelnettts-quantize")
+CLI = _find("stelnettts")  # stelnettts-cli target -> OUTPUT_NAME stelnettts
 step("binaries", diff=str(DIFF), quant=str(QUANT), cli=str(CLI))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 
@@ -246,8 +246,8 @@ SNAC = WORK / "snac-24khz.gguf"
 
 def do_snac():
     from huggingface_hub import hf_hub_download
-    hf_hub_download("cstr/snac-24khz-GGUF", "snac-24khz.gguf", local_dir=str(WORK), token=hf_token)
-    hf_hub_download("cstr/snac-24khz-GGUF", "diff-harness-ref/orpheus-snac-ref.gguf", local_dir=str(WORK), token=hf_token)
+    hf_hub_download("Xenna/snac-24khz-GGUF", "snac-24khz.gguf", local_dir=str(WORK), token=hf_token)
+    hf_hub_download("Xenna/snac-24khz-GGUF", "diff-harness-ref/orpheus-snac-ref.gguf", local_dir=str(WORK), token=hf_token)
     snac_ref = WORK / "diff-harness-ref" / "orpheus-snac-ref.gguf"
     run_diff("snac_cpu", "orpheus", SNAC, snac_ref, {})
     run_diff("snac_gpu", "orpheus", SNAC, snac_ref, {"ORPHEUS_SNAC_GPU": "1"})
@@ -260,7 +260,7 @@ safe("snac", do_snac)
 #    non-zero WAV on CUDA?  The sweep (§201) reported a 0-byte on CUDA while
 #    talker+SNAC both pass in isolation, so the bug (if any remains) lives in
 #    the full-synthesize glue. Runs the exact CLI path the sweep used:
-#    crispasr --backend orpheus -m <talker> --codec-model <snac> --voice tara
+#    stelnettts --backend orpheus -m <talker> --codec-model <snac> --voice tara
 #    GPU is on by default (cli.cpp use_gpu=true); --no-gpu forces CPU.
 def run_synth(label, model, gpu, bucket=False):
     out = WORK / f"orpheus-e2e-{label}.wav"
@@ -275,7 +275,7 @@ def run_synth(label, model, gpu, bucket=False):
         cmd.append("--no-gpu")
     env = dict(os.environ)
     if bucket:
-        env["CRISPASR_ORPHEUS_BUCKET"] = "1"  # §215: exercise the Lk-bucket decode
+        env["STELNETTTS_ORPHEUS_BUCKET"] = "1"  # §215: exercise the Lk-bucket decode
     step(f"{label}_start")
     t0 = time.time()
     try:

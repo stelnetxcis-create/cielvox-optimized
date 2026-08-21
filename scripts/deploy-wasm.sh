@@ -21,11 +21,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # copy all wasm files to the node
-scp bin/crispasr.wasm/* root@linode0:/var/www/html/crispasr/          && scp bin/libmain.worker.js    root@linode0:/var/www/html/crispasr/
-scp bin/stream.wasm/*   root@linode0:/var/www/html/crispasr/stream/   && scp bin/libstream.worker.js  root@linode0:/var/www/html/crispasr/stream/
-scp bin/command.wasm/*  root@linode0:/var/www/html/crispasr/command/  && scp bin/libcommand.worker.js root@linode0:/var/www/html/crispasr/command/
-scp bin/talk.wasm/*     root@linode0:/var/www/html/crispasr/talk/     && scp bin/libtalk.worker.js    root@linode0:/var/www/html/crispasr/talk/
-scp bin/bench.wasm/*    root@linode0:/var/www/html/crispasr/bench/    && scp bin/libbench.worker.js   root@linode0:/var/www/html/crispasr/bench/
+scp bin/stelnettts.wasm/* root@linode0:/var/www/html/stelnettts/          && scp bin/libmain.worker.js    root@linode0:/var/www/html/stelnettts/
+scp bin/stream.wasm/*   root@linode0:/var/www/html/stelnettts/stream/   && scp bin/libstream.worker.js  root@linode0:/var/www/html/stelnettts/stream/
+scp bin/command.wasm/*  root@linode0:/var/www/html/stelnettts/command/  && scp bin/libcommand.worker.js root@linode0:/var/www/html/stelnettts/command/
+scp bin/talk.wasm/*     root@linode0:/var/www/html/stelnettts/talk/     && scp bin/libtalk.worker.js    root@linode0:/var/www/html/stelnettts/talk/
+scp bin/bench.wasm/*    root@linode0:/var/www/html/stelnettts/bench/    && scp bin/libbench.worker.js   root@linode0:/var/www/html/stelnettts/bench/
 
 echo "Done"
 exit

@@ -22,17 +22,17 @@ def log(msg):
 log("=== OmniVoice Parity Test Starting ===")
 
 try:
-    # ── Clone CrispASR ──────────────────────────────────────────────
-    log("Cloning CrispASR...")
-    CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-    CRISPASR_BRANCH = os.environ.get("CRISPASR_BRANCH", "feat/omnivoice-gen-fix")
-    _CRISPASR_DIR = WORK / "CrispASR"
-    if not _CRISPASR_DIR.exists():
+    # ── Clone StelnetTTS ──────────────────────────────────────────────
+    log("Cloning StelnetTTS...")
+    STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+    STELNETTTS_BRANCH = os.environ.get("STELNETTTS_BRANCH", "feat/omnivoice-gen-fix")
+    _STELNETTTS_DIR = WORK / "StelnetTTS"
+    if not _STELNETTTS_DIR.exists():
         subprocess.check_call(["git", "clone", "--depth", "1",
-            "--branch", CRISPASR_BRANCH,
-            CRISPASR_URL, str(_CRISPASR_DIR)])
-    log(f"Branch: {CRISPASR_BRANCH}")
-    sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+            "--branch", STELNETTTS_BRANCH,
+            STELNETTTS_URL, str(_STELNETTTS_DIR)])
+    log(f"Branch: {STELNETTTS_BRANCH}")
+    sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
 
     try:
         import kaggle_harness as kh
@@ -70,8 +70,8 @@ try:
     log("Setting up HF auth...")
     hf_token = None
     for path in [
-        "/kaggle/input/crispasr-hf-token/hf_token.txt",
-        "/kaggle/input/datasets/chr1str/crispasr-hf-token/hf_token.txt",
+        "/kaggle/input/stelnettts-hf-token/hf_token.txt",
+        "/kaggle/input/datasets/chr1str/stelnettts-hf-token/hf_token.txt",
     ]:
         if os.path.exists(path):
             hf_token = open(path).read().strip()
@@ -228,11 +228,11 @@ try:
     log(f"Reference GGUF: {ref_path} ({ref_path.stat().st_size/1e6:.1f} MB)")
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # Phase 2: Build CrispASR
+    # Phase 2: Build StelnetTTS
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    log("Phase 2: Building CrispASR...")
-    os.chdir(_CRISPASR_DIR)
+    log("Phase 2: Building StelnetTTS...")
+    os.chdir(_STELNETTTS_DIR)
     subprocess.run(["git", "submodule", "update", "--init", "ggml"], check=True)
 
     if HAS_KH:
@@ -247,7 +247,7 @@ try:
         build_cmd = (
             f"cmake -G Ninja -B build {cf} {cc} "
             f"-DCMAKE_BUILD_TYPE=Release && "
-            f"cmake --build build --target crispasr-cli -j{n_jobs}"
+            f"cmake --build build --target stelnettts-cli -j{n_jobs}"
         )
         with kh.build_heartbeat("omnivoice-build"):
             kh.sh_with_progress(build_cmd)
@@ -257,10 +257,10 @@ try:
         subprocess.run(
             "cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release "
             "-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && "
-            "cmake --build build --target crispasr-cli -j4",
+            "cmake --build build --target stelnettts-cli -j4",
             shell=True, check=True)
 
-    cli_bin = _CRISPASR_DIR / "build" / "bin" / "crispasr"
+    cli_bin = _STELNETTTS_DIR / "build" / "bin" / "stelnettts"
     assert cli_bin.exists(), f"CLI binary not found at {cli_bin}"
     log(f"CLI built: {cli_bin}")
 

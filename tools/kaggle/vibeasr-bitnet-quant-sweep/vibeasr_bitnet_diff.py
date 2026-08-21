@@ -21,7 +21,7 @@ from pathlib import Path
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 WORK = Path("/kaggle/working")
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 BUILD = REPO / "build"
 MODELS = Path("/kaggle/temp/models")
 REF_GGUF = MODELS / "vibevoice-bitnet-ref.gguf"
@@ -36,15 +36,15 @@ VARIANTS = [
     ("vibevoice-asr-bitnet-aggro",     "q4_0", "q8_0"),
 ]
 
-HF_REPO = "cstr/vibevoice-asr-bitnet-GGUF"
+HF_REPO = "Xenna/vibevoice-asr-bitnet-GGUF"
 
 # ── Clone + harness ──────────────────────────────────────────────────────
 
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 if not REPO.exists():
     try:
         subprocess.check_call(
-            ["git", "clone", "--depth", "1", CRISPASR_URL, str(REPO)])
+            ["git", "clone", "--depth", "1", STELNETTTS_URL, str(REPO)])
         subprocess.check_call(
             ["git", "submodule", "update", "--init", "ggml"], cwd=str(REPO))
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -81,14 +81,14 @@ if hf_token:
     print("HF token resolved")
 
 cmake_flags = " ".join(kh.cache_and_link_flags())
-crispasr_flags = " ".join(kh.crispasr_cmake_flags())
+stelnettts_flags = " ".join(kh.stelnettts_cmake_flags())
 cmake_cmd = (
     f"cmake -G Ninja -S {REPO} -B {BUILD} "
     f"-DCMAKE_BUILD_TYPE=Release "
-    f"{cmake_flags} {crispasr_flags} "
-    f"-DCRISPASR_BUILD_TESTS=OFF "
-    f"-DCRISPASR_BUILD_EXAMPLES=ON "
-    f"-DCRISPASR_BUILD_SERVER=OFF"
+    f"{cmake_flags} {stelnettts_flags} "
+    f"-DSTELNETTTS_BUILD_TESTS=OFF "
+    f"-DSTELNETTTS_BUILD_EXAMPLES=ON "
+    f"-DSTELNETTTS_BUILD_SERVER=OFF"
 )
 print(f"cmake: {cmake_cmd}")
 subprocess.check_call(cmake_cmd, shell=True)
@@ -98,11 +98,11 @@ print(f"Building with {jobs} jobs")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
         f"stdbuf -oL -eL cmake --build {BUILD} "
-        f"--target crispasr-cli --target vibevoice-test-stages -j{jobs}")
+        f"--target stelnettts-cli --target vibevoice-test-stages -j{jobs}")
 
-CRISPASR_BIN = BUILD / "bin" / "crispasr"
+STELNETTTS_BIN = BUILD / "bin" / "stelnettts"
 STAGES_BIN = BUILD / "bin" / "vibevoice-test-stages"
-assert CRISPASR_BIN.exists(), f"Build failed: {CRISPASR_BIN}"
+assert STELNETTTS_BIN.exists(), f"Build failed: {STELNETTTS_BIN}"
 assert STAGES_BIN.exists(), f"Build failed: {STAGES_BIN}"
 print(f"Build OK")
 
@@ -200,13 +200,13 @@ for label, vae_q, embed_q in VARIANTS:
     # Transcribe for text comparison
     print(f"  Transcribing...")
     tr = subprocess.run(
-        [str(CRISPASR_BIN), "-m", str(out_gguf), "--backend", "vibevoice",
+        [str(STELNETTTS_BIN), "-m", str(out_gguf), "--backend", "vibevoice",
          "-f", str(REPO / "samples" / "jfk.wav"), "-t", "4",
          "--language", "en", "--no-prints"],
         capture_output=True, text=True, timeout=600)
     text = ""
     for line in tr.stdout.strip().split("\n"):
-        if line and not any(k in line for k in ["firered", "whisper", "crispasr:"]):
+        if line and not any(k in line for k in ["firered", "whisper", "stelnettts:"]):
             text += line.strip() + " "
     text = text.strip()
     print(f"  Text: {text[:100]}")

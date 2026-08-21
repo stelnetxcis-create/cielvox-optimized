@@ -6,7 +6,7 @@
 //
 // Usage: init, feed 16kHz PCM audio, get speech segments.
 // The "model path" is a sentinel — pass "webrtc" or any path containing "webrtc".
-// Aggressiveness mode (0-3) is controlled via CRISPASR_WEBRTC_VAD_MODE env var.
+// Aggressiveness mode (0-3) is controlled via STELNETTTS_WEBRTC_VAD_MODE env var.
 
 #pragma once
 

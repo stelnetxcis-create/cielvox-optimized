@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert Microsoft SpeechT5 TTS + HiFi-GAN vocoder to GGUF for the CrispASR
+Convert Microsoft SpeechT5 TTS + HiFi-GAN vocoder to GGUF for the StelnetTTS
 ``speecht5`` backend.
 
 Architecture (microsoft/speecht5_tts):

@@ -80,9 +80,9 @@ GGUF tensor naming (all decoder tensors prefixed `codec.dec.`):
     codec.dec.out_conv_b                 (1,)           F32
 
 Usage:
-    python models/convert-qwen3-tts-tokenizer-to-gguf.py \\
+    python models/convert-cielvox2-tts-tokenizer-to-gguf.py \\
         --input /Volumes/backups/ai/huggingface-hub/models--Qwen--Qwen3-TTS-Tokenizer-12Hz/snapshots/<sha>/ \\
-        --output /Volumes/backups/ai/crispasr-models/qwen3-tts-tokenizer-12hz.gguf
+        --output /Volumes/backups/ai/stelnettts-models/cielvox2-tts-tokenizer-12hz.gguf
 """
 
 from __future__ import annotations
@@ -435,8 +435,8 @@ def main():
     name2h = open_tensors(model_dir)
 
     out_path = Path(args.output)
-    w = GGUFWriter(str(out_path), arch="qwen3tts_tokenizer", use_temp_file=True)
-    w.add_name("qwen3-tts-tokenizer-12hz")
+    w = GGUFWriter(str(out_path), arch="cielvox2tts_tokenizer", use_temp_file=True)
+    w.add_name("cielvox2-tts-tokenizer-12hz")
 
     def u32(k, v): w.add_uint32(k, int(v))
     def f32(k, v): w.add_float32(k, float(v))
@@ -444,37 +444,37 @@ def main():
     # -----------------------------------------------------------------------
     # KV metadata — top-level audio params
     # -----------------------------------------------------------------------
-    u32("qwen3tts_codec.input_sample_rate",
+    u32("cielvox2tts_codec.input_sample_rate",
         cfg.get("input_sample_rate", cfg.get("sampling_rate", 24000)))
-    u32("qwen3tts_codec.output_sample_rate",
+    u32("cielvox2tts_codec.output_sample_rate",
         cfg.get("output_sample_rate", cfg.get("sampling_rate", 24000)))
-    f32("qwen3tts_codec.frame_rate",
+    f32("cielvox2tts_codec.frame_rate",
         enc.get("_frame_rate", cfg.get("frame_rate", 12.5)))
-    u32("qwen3tts_codec.encode_downsample", cfg.get("encode_downsample_rate", 1920))
-    u32("qwen3tts_codec.decode_upsample",   cfg.get("decode_upsample_rate", 1920))
+    u32("cielvox2tts_codec.encode_downsample", cfg.get("encode_downsample_rate", 1920))
+    u32("cielvox2tts_codec.decode_upsample",   cfg.get("decode_upsample_rate", 1920))
 
     # decoder config
-    u32("qwen3tts_codec.dec.n_layers",      dec.get("num_hidden_layers", 8))
-    u32("qwen3tts_codec.dec.d_model",       dec.get("hidden_size", 512))
-    u32("qwen3tts_codec.dec.n_heads",       dec.get("num_attention_heads", 16))
-    u32("qwen3tts_codec.dec.ff_dim",        dec.get("intermediate_size", 1024))
-    u32("qwen3tts_codec.dec.n_quantizers",  dec.get("num_quantizers", 16))
-    u32("qwen3tts_codec.dec.codebook_size", dec.get("codebook_size", 2048))
-    u32("qwen3tts_codec.dec.latent_dim",    dec.get("latent_dim", 1024))
-    u32("qwen3tts_codec.dec.decoder_dim",   dec.get("decoder_dim", 1536))
-    u32("qwen3tts_codec.dec.sliding_window",dec.get("sliding_window", 72))
-    u32("qwen3tts_codec.dec.head_dim",      dec.get("head_dim", 64))
-    u32("qwen3tts_codec.dec.max_pos",       dec.get("max_position_embeddings", 8000))
-    f32("qwen3tts_codec.dec.rope_theta",    dec.get("rope_theta", 10000.0))
-    f32("qwen3tts_codec.dec.rms_norm_eps",  dec.get("rms_norm_eps", 1e-5))
-    f32("qwen3tts_codec.dec.layer_scale_initial", dec.get("layer_scale_initial_scale", 0.01))
+    u32("cielvox2tts_codec.dec.n_layers",      dec.get("num_hidden_layers", 8))
+    u32("cielvox2tts_codec.dec.d_model",       dec.get("hidden_size", 512))
+    u32("cielvox2tts_codec.dec.n_heads",       dec.get("num_attention_heads", 16))
+    u32("cielvox2tts_codec.dec.ff_dim",        dec.get("intermediate_size", 1024))
+    u32("cielvox2tts_codec.dec.n_quantizers",  dec.get("num_quantizers", 16))
+    u32("cielvox2tts_codec.dec.codebook_size", dec.get("codebook_size", 2048))
+    u32("cielvox2tts_codec.dec.latent_dim",    dec.get("latent_dim", 1024))
+    u32("cielvox2tts_codec.dec.decoder_dim",   dec.get("decoder_dim", 1536))
+    u32("cielvox2tts_codec.dec.sliding_window",dec.get("sliding_window", 72))
+    u32("cielvox2tts_codec.dec.head_dim",      dec.get("head_dim", 64))
+    u32("cielvox2tts_codec.dec.max_pos",       dec.get("max_position_embeddings", 8000))
+    f32("cielvox2tts_codec.dec.rope_theta",    dec.get("rope_theta", 10000.0))
+    f32("cielvox2tts_codec.dec.rms_norm_eps",  dec.get("rms_norm_eps", 1e-5))
+    f32("cielvox2tts_codec.dec.layer_scale_initial", dec.get("layer_scale_initial_scale", 0.01))
     if "upsample_rates" in dec:
-        w.add_array("qwen3tts_codec.dec.upsample_rates", list(dec["upsample_rates"]))
+        w.add_array("cielvox2tts_codec.dec.upsample_rates", list(dec["upsample_rates"]))
     if "upsampling_ratios" in dec:
-        w.add_array("qwen3tts_codec.dec.upsampling_ratios", list(dec["upsampling_ratios"]))
-    u32("qwen3tts_codec.dec.n_semantic_q",
+        w.add_array("cielvox2tts_codec.dec.upsampling_ratios", list(dec["upsampling_ratios"]))
+    u32("cielvox2tts_codec.dec.n_semantic_q",
         dec.get("num_semantic_quantizers", cfg.get("semantic_quantizers", 1)))
-    u32("qwen3tts_codec.dec.semantic_codebook_size",
+    u32("cielvox2tts_codec.dec.semantic_codebook_size",
         dec.get("semantic_codebook_size", cfg.get("semantic_codebook_size", 4096)))
 
     # -----------------------------------------------------------------------

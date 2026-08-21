@@ -25,7 +25,7 @@ std::string temp_gguf_path(const char* stem) {
     std::string d = (dir && *dir) ? std::string(dir) : std::string("/tmp");
     if (!d.empty() && d.back() == '/')
         d.pop_back();
-    return d + "/crispasr-test-" + stem + ".gguf";
+    return d + "/stelnettts-test-" + stem + ".gguf";
 }
 
 // Write a metadata-only GGUF carrying `langs` under the converter's key.

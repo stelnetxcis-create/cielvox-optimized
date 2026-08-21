@@ -1,11 +1,11 @@
-# CrispASR — MOSS-TTS-v1.5 Kaggle validation (#249, Phase 6)
+# StelnetTTS — MOSS-TTS-v1.5 Kaggle validation (#249, Phase 6)
 #
 # The 8B backbone + 1.6B codec won't fit the 8 GB VPS and are tight on the 16 GB
 # Mac, so end-to-end validation runs here on a CUDA box (P100/T4).
 #
 # Flow:
-#   1. Clone CrispASR @ CRISPASR_REF (default feat/moss-tts-249), build CUDA
-#      (crispasr-cli + crispasr-quantize), warm ccache from the dataset.
+#   1. Clone StelnetTTS @ STELNETTTS_REF (default feat/moss-tts-249), build CUDA
+#      (stelnettts-cli + stelnettts-quantize), warm ccache from the dataset.
 #   2. Download MOSS-TTS-v1.5 + MOSS-Audio-Tokenizer to /tmp (~70 GB layer;
 #      NEVER /kaggle/working which is ~20 GB — kaggle_usage #18/#21).
 #   3. Convert -> F16 backbone + F16 codec (under /tmp). Free the HF snapshot.
@@ -40,15 +40,15 @@ except (AttributeError, ValueError):
 
 WORK = Path("/kaggle/working")
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"                 # clone under /tmp (keeps /working small)
+REPO = TMP / "StelnetTTS"                 # clone under /tmp (keeps /working small)
 BUILD = REPO / "build"
 MODELS = TMP / "moss-models"            # HF snapshots + GGUFs live on the big layer
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 MODELS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-249")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-249")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 HF_MODEL = os.environ.get("MOSS_TTS_MODEL", "OpenMOSS-Team/MOSS-TTS-v1.5")
 HF_CODEC = os.environ.get("MOSS_TTS_CODEC", "OpenMOSS-Team/MOSS-Audio-Tokenizer")
 
@@ -109,7 +109,7 @@ def asr_roundtrip(cli: Path, wav: Path, timeout=900) -> str:
         (RESULTS / f"{wav.stem}.asr.log").write_text(r.stdout)
         lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
         text = " ".join(ln for ln in lines
-                        if not ln.startswith(("[", "whisper", "ggml", "load", "crispasr")))
+                        if not ln.startswith(("[", "whisper", "ggml", "load", "stelnettts")))
         return text[-400:]
     except Exception as ex:  # noqa: BLE001
         return f"<asr-error: {type(ex).__name__}>"
@@ -152,14 +152,14 @@ LONG_TEXT = ("The quick brown fox jumps over the lazy dog. "
 
 
 def main():
-    summary = {"ts": datetime.now(timezone.utc).isoformat(), "ref": CRISPASR_REF,
+    summary = {"ts": datetime.now(timezone.utc).isoformat(), "ref": STELNETTTS_REF,
                "phases": {}, "roundtrip": {}, "gates": {}}
 
     # ── 1. clone + build ───────────────────────────────────────────────────
-    log(f"clone {CRISPASR_REF}")
+    log(f"clone {STELNETTTS_REF}")
     if not REPO.exists():
-        run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-             CRISPASR_REPO, str(REPO)])
+        run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+             STELNETTTS_REPO, str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()
@@ -186,12 +186,12 @@ def main():
     with kh.build_heartbeat("moss-tts CUDA build"):
         kh.sh_with_progress(
             f"stdbuf -oL -eL cmake --build {BUILD} "
-            f"--target crispasr-cli crispasr-quantize -j{jobs}")
-    cli = BUILD / "bin" / "crispasr"
+            f"--target stelnettts-cli stelnettts-quantize -j{jobs}")
+    cli = BUILD / "bin" / "stelnettts"
     if not cli.exists():
-        cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
+        cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
         cli = cands[0] if cands else cli
-    quant = BUILD / "bin" / "crispasr-quantize"
+    quant = BUILD / "bin" / "stelnettts-quantize"
     if not cli.exists() or not quant.exists():
         raise SystemExit(f"binaries missing: cli={cli.exists()} quant={quant.exists()}")
     os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"

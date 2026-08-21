@@ -1,5 +1,5 @@
 #!/bin/bash
-# CrispASR RunPod GPU test — spins up an RTX 3090, builds CUDA, runs mimo-asr
+# StelnetTTS RunPod GPU test — spins up an RTX 3090, builds CUDA, runs mimo-asr
 #
 # Prerequisites:
 #   pip install runpod
@@ -21,7 +21,7 @@ GPU_TYPE="NVIDIA GeForce RTX 3090"
 GPU_ARCH=86  # sm_86 for RTX 3090
 IMAGE="runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub 2>/dev/null || echo "")
-POD_FILE="/tmp/crispasr-runpod-pod-id.txt"
+POD_FILE="/tmp/stelnettts-runpod-pod-id.txt"
 BRANCH="${1:-main}"
 
 if [ "$BRANCH" = "teardown" ]; then
@@ -50,7 +50,7 @@ POD_INFO=$(python3 << PYEOF
 import runpod, json
 runpod.api_key = '$RPOD_API'
 pod = runpod.create_pod(
-    name="crispasr-gpu-test",
+    name="stelnettts-gpu-test",
     image_name="$IMAGE",
     gpu_type_id="$GPU_TYPE",
     gpu_count=1,
@@ -107,28 +107,28 @@ export CMAKE=\$(find /usr -path '*/cmake/data/bin/cmake' 2>/dev/null | head -1)
 [ -z "\$CMAKE" ] && CMAKE=cmake
 
 cd /runpod-volume
-rm -rf CrispASR build
-git clone --depth 1 --branch $BRANCH https://github.com/CrispStrobe/CrispASR.git
-cd CrispASR && git submodule update --init --depth 1 ggml
+rm -rf StelnetTTS build
+git clone --depth 1 --branch $BRANCH https://github.com/Cyna/StelnetTTS.git
+cd StelnetTTS && git submodule update --init --depth 1 ggml
 echo "SHA: \$(git rev-parse --short HEAD)"
 
 mkdir -p /runpod-volume/build
-\$CMAKE -G Ninja -S /runpod-volume/CrispASR -B /runpod-volume/build \
+\$CMAKE -G Ninja -S /runpod-volume/StelnetTTS -B /runpod-volume/build \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-  -DCRISPASR_BUILD_TESTS=OFF \
+  -DSTELNETTTS_BUILD_TESTS=OFF \
   -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=$GPU_ARCH
-ninja -C /runpod-volume/build -j\$(nproc) crispasr-cli
+ninja -C /runpod-volume/build -j\$(nproc) stelnettts-cli
 echo "=== Build OK ==="
-ls -la /runpod-volume/build/bin/crispasr
+ls -la /runpod-volume/build/bin/stelnettts
 REMOTE
 
 # ── Run tests ──────────────────────────────────────────────────────
 echo "=== Running mimo-asr CPU test ==="
 $SSH << 'REMOTE'
 export LD_LIBRARY_PATH=/runpod-volume/build/src:/runpod-volume/build/ggml/src:/runpod-volume/build/ggml/src/ggml-cuda
-CLI=/runpod-volume/build/bin/crispasr
+CLI=/runpod-volume/build/bin/stelnettts
 $CLI --backend mimo-asr -m auto --auto-download --cache-dir /runpod-volume/cache \
-  -f /runpod-volume/CrispASR/samples/jfk.wav -otxt -of /tmp/mimo-cpu 2>&1 | tail -15
+  -f /runpod-volume/StelnetTTS/samples/jfk.wav -otxt -of /tmp/mimo-cpu 2>&1 | tail -15
 echo "=== CPU transcript ==="
 cat /tmp/mimo-cpu.txt 2>/dev/null || echo "(empty)"
 REMOTE
@@ -136,10 +136,10 @@ REMOTE
 echo "=== Running mimo-asr GPU test ==="
 $SSH << 'REMOTE'
 export LD_LIBRARY_PATH=/runpod-volume/build/src:/runpod-volume/build/ggml/src:/runpod-volume/build/ggml/src/ggml-cuda
-CLI=/runpod-volume/build/bin/crispasr
+CLI=/runpod-volume/build/bin/stelnettts
 MIMO_ASR_BENCH=1 \
   $CLI --backend mimo-asr -m auto --auto-download --cache-dir /runpod-volume/cache \
-  -f /runpod-volume/CrispASR/samples/jfk.wav -otxt -of /tmp/mimo-gpu 2>&1 | tail -15
+  -f /runpod-volume/StelnetTTS/samples/jfk.wav -otxt -of /tmp/mimo-gpu 2>&1 | tail -15
 echo "=== GPU transcript ==="
 cat /tmp/mimo-gpu.txt 2>/dev/null || echo "(empty)"
 REMOTE

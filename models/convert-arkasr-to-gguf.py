@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert AutoArk-AI/ARK-ASR-3B to GGUF format for CrispASR.
+"""Convert AutoArk-AI/ARK-ASR-3B to GGUF format for StelnetTTS.
 
 Architecture (see PLAN.md §ARK):
   * Audio encoder: Whisper-large-v3 (128 mel, d_model 1280, 32 layers, 20 heads)

@@ -33,12 +33,12 @@ _T0 = time.time()
 # the diagnostics even when the run errors.
 TEMP = Path("/kaggle/temp")
 OUT = Path("/kaggle/working")
-REPO = TEMP / "CrispASR"
+REPO = TEMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TEMP / "models"
 for d in (TEMP, OUT, MODELS):
     d.mkdir(parents=True, exist_ok=True)
-HF_REPO = "cstr/canary-qwen-2.5b-GGUF"
+HF_REPO = "Xenna/canary-qwen-2.5b-GGUF"
 
 # Any uncaught exception -> a small retrievable file in /kaggle/working.
 import traceback as _tb  # noqa: E402
@@ -66,7 +66,7 @@ print(json.dumps({"step": "start"}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
 run(["git", "clone", "--recursive", "--depth", "1",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)], capture_output=False)
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)], capture_output=False)
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive", "--depth", "1"],
     capture_output=False, timeout=1800)
 
@@ -84,25 +84,25 @@ kh.install_build_toolchain()
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
 from huggingface_hub import HfApi, hf_hub_download, CommitOperationAdd, CommitOperationDelete  # noqa: E402
 
-# ── build (CPU): crispasr-cli + crispasr-quantize ───────────────────────────
+# ── build (CPU): stelnettts-cli + stelnettts-quantize ───────────────────────────
 # Stream the build to the console log (capture_output=False) so any Kaggle-only
 # compile/link error is visible — the previous run captured stdout and logged
 # only the (empty) stderr, hiding the real cause. Build targets one at a time
 # (older cmake mishandles multi-target `--target`).
 kh.step("configure")
 cfg = ["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-       "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON"] + kh.cache_and_link_flags()
+       "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON"] + kh.cache_and_link_flags()
 r = run(cfg, capture_output=False)
 if r.returncode != 0:
     kh.step("configure.FAIL"); raise SystemExit(1)
 jobs = str(min(4, os.cpu_count() or 2))  # CPU C++ TUs on the ~16 GB Kaggle box
-for tgt in ("crispasr-cli", "crispasr-quantize"):
+for tgt in ("stelnettts-cli", "stelnettts-quantize"):
     kh.step(f"build.{tgt}")
     with kh.build_heartbeat(f"build.{tgt}"):
         r = run(["cmake", "--build", str(BUILD), "--target", tgt, "-j", jobs], capture_output=False)
     if r.returncode != 0:
         kh.step(f"build.{tgt}.FAIL", rc=r.returncode); raise SystemExit(1)
-# The CLI target is `crispasr-cli` but OUTPUT_NAME is `crispasr`, emitted into
+# The CLI target is `stelnettts-cli` but OUTPUT_NAME is `stelnettts`, emitted into
 # RUNTIME_OUTPUT_DIRECTORY (build/bin). Resolve robustly across layouts.
 def find_bin(name):
     p = BUILD / "bin" / name
@@ -112,8 +112,8 @@ def find_bin(name):
     return cands[0] if cands else None
 
 
-CLI = find_bin("crispasr")
-QUANT = find_bin("crispasr-quantize")
+CLI = find_bin("stelnettts")
+QUANT = find_bin("stelnettts-quantize")
 if CLI is None or QUANT is None:
     kh.step("build.MISSING", cli=str(CLI), quant=str(QUANT)); raise SystemExit(1)
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"

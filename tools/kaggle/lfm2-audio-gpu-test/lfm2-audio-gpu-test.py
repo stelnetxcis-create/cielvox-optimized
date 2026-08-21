@@ -1,8 +1,8 @@
 """
-CrispASR — LFM2-Audio GPU end-to-end test
+StelnetTTS — LFM2-Audio GPU end-to-end test
 
 Tests the full LFM2-Audio pipeline on GPU (T4/P100):
-  1. CUDA build of crispasr-cli
+  1. CUDA build of stelnettts-cli
   2. Download EN Q5_K + JP Q4_K + detokenizer GGUFs
   3. ASR: transcribe JFK audio (EN) — verify output contains key phrases
   4. ASR: transcribe demo audio (JP) — verify non-empty output
@@ -11,10 +11,10 @@ Tests the full LFM2-Audio pipeline on GPU (T4/P100):
   7. Report: timing (CPU vs GPU), output quality
 
 Models:
-  - cstr/lfm2-audio-1.5b-GGUF/lfm2-audio-1.5b-q5_k.gguf (~1.6 GB)
-  - cstr/lfm2-audio-1.5b-jp-GGUF/lfm2-audio-1.5b-jp-q4_k.gguf (~1.5 GB)
-  - cstr/lfm2-audio-1.5b-GGUF/lfm2-audio-1.5b-f16-detokenizer.gguf (~157 MB)
-  - cstr/lfm2-audio-1.5b-jp-GGUF/lfm2-audio-1.5b-jp-f16-detokenizer.gguf (~157 MB)
+  - Xenna/lfm2-audio-1.5b-GGUF/lfm2-audio-1.5b-q5_k.gguf (~1.6 GB)
+  - Xenna/lfm2-audio-1.5b-jp-GGUF/lfm2-audio-1.5b-jp-q4_k.gguf (~1.5 GB)
+  - Xenna/lfm2-audio-1.5b-GGUF/lfm2-audio-1.5b-f16-detokenizer.gguf (~157 MB)
+  - Xenna/lfm2-audio-1.5b-jp-GGUF/lfm2-audio-1.5b-jp-f16-detokenizer.gguf (~157 MB)
 """
 
 import json
@@ -26,14 +26,14 @@ import wave
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 
 
@@ -56,12 +56,12 @@ def run(cmd, check=True, env=None, timeout=None, capture=False):
 
 
 # ── Clone + CUDA build ──────────────────────────────────────────────
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-     "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+     "--recursive", STELNETTTS_REPO, str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh
@@ -72,7 +72,7 @@ kh.resolve_hf_token()
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
 ).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 kh.install_build_toolchain()
@@ -83,7 +83,7 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = (
     ["cmake", "-S", str(REPO), "-B", str(BUILD),
      "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-     "-DCRISPASR_BUILD_TESTS=OFF"]
+     "-DSTELNETTTS_BUILD_TESTS=OFF"]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
 )
@@ -91,15 +91,15 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr")
+    cands = [c for c in BUILD.rglob("stelnettts")
              if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found after build"
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 ld_path = f"{BUILD / 'src'}:{BUILD / 'ggml' / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 os.environ["LD_LIBRARY_PATH"] = ld_path
@@ -121,11 +121,11 @@ MODELS.mkdir(exist_ok=True)
 
 # EN Q5_K + detokenizer
 en_model = Path(hf_hub_download(
-    "cstr/lfm2-audio-1.5b-GGUF", "lfm2-audio-1.5b-q5_k.gguf",
+    "Xenna/lfm2-audio-1.5b-GGUF", "lfm2-audio-1.5b-q5_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 en_detok = Path(hf_hub_download(
-    "cstr/lfm2-audio-1.5b-GGUF", "lfm2-audio-1.5b-f16-detokenizer.gguf",
+    "Xenna/lfm2-audio-1.5b-GGUF", "lfm2-audio-1.5b-f16-detokenizer.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 # Place detokenizer next to model for auto-discovery
@@ -136,11 +136,11 @@ if not en_detok_target.exists():
 
 # JP Q4_K + detokenizer
 jp_model = Path(hf_hub_download(
-    "cstr/lfm2-audio-1.5b-jp-GGUF", "lfm2-audio-1.5b-jp-q4_k.gguf",
+    "Xenna/lfm2-audio-1.5b-jp-GGUF", "lfm2-audio-1.5b-jp-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 jp_detok = Path(hf_hub_download(
-    "cstr/lfm2-audio-1.5b-jp-GGUF", "lfm2-audio-1.5b-jp-f16-detokenizer.gguf",
+    "Xenna/lfm2-audio-1.5b-jp-GGUF", "lfm2-audio-1.5b-jp-f16-detokenizer.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 jp_detok_target = jp_model.parent / "lfm2-audio-1.5b-jp-f16-detokenizer.gguf"

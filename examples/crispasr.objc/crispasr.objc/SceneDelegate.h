@@ -1,6 +1,6 @@
 //
 //  SceneDelegate.h
-//  crispasr.objc
+//  stelnettts.objc
 //
 //  Created by Georgi Gerganov on 23.10.22.
 //

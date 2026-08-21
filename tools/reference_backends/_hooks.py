@@ -1,7 +1,7 @@
 """Forward-hook helpers for capturing per-stage activations.
 
 Reference backends in this directory dump intermediate tensors from a
-PyTorch reference model so `crispasr-diff` can locate where the C++
+PyTorch reference model so `stelnettts-diff` can locate where the C++
 forward path diverges. The capture set typically includes
 `encoder_layer_0..N-1`, `pre_encode_output`, attention/conv submodule
 outputs, etc.
@@ -13,7 +13,7 @@ after the forward pass. This module factors that out so each backend's
 `dump()` only declares *which* submodules it cares about.
 
 Output tensors are normalised to `(T, D)` float32 row-major to match
-crispasr's flat layout — that's what the diff harness expects from
+stelnettts's flat layout — that's what the diff harness expects from
 `ref.compare(name, ...)`. Drop the batch dim, transpose `(B, D, T)`
 returns, and slice off any padded suffix (use `T_max=` for that).
 
@@ -86,7 +86,7 @@ def capture_modules(
     harness must be lowercase ASCII (no spaces) — they end up as GGUF
     tensor names.
 
-    `first_call_only=True` is the qwen3-tts pattern: the hooked module
+    `first_call_only=True` is the cielvox2-tts pattern: the hooked module
     fires repeatedly inside `generate()` and only the prefill call's
     output is meaningful. Set this when the module is invoked more than
     once per `dump()` and you want to keep the first.
@@ -121,7 +121,7 @@ def capture_per_call(
     conditioned on different history and the diff measures the divergence
     rather than the arithmetic. So a per-step capture is half of a pair:
     the other half is replaying THIS run's sampled ids through the runtime
-    (crispasr: `CRISPASR_QWEN3_TTS_REPLAY_CODES`). Capture the ids you
+    (stelnettts: `STELNETTTS_CIELVOX2_TTS_REPLAY_CODES`). Capture the ids you
     generate alongside the logits, or the dump is not usable as a
     reference.
 

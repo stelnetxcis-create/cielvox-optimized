@@ -5,17 +5,17 @@ the other direction, and it exists because of a concrete miss: `core_adaln` fail
 on ARM for weeks because our vendored ggml predated **two** upstream SVE fixes.
 Nobody was watching the inbound direction at all.
 
-**State (audited 2026-07-29)** — `CrispStrobe/ggml @ crispstrobe-ops`:
+**State (audited 2026-07-29)** — `Cyna/ggml @ crispstrobe-ops`:
 
     11 commits ahead, 435 behind ggml-org/ggml master
     our base is v0.10.2; upstream master is v0.17.0 — seven minor versions
 
 Of the 11 ahead, 2 are upstream cherry-picks made today (`6aab1bcb`, `f69bdbb3`),
-so **9 are genuinely ours**: the CrispStrobe-ops base patch, conv_1d/conv_1d_dw
+so **9 are genuinely ours**: the Cyna-ops base patch, conv_1d/conv_1d_dw
 batch N>1, Metal im2col batch-1 occupancy, the Metal profiler, the Metal teardown
 warning, a CUDA CCCL include, gguf empty-key rejection, and webgpu NORM.
 
-## Priority 1 — correctness in paths CrispASR actually exercises
+## Priority 1 — correctness in paths StelnetTTS actually exercises
 
 Ranked by how directly they touch what this project runs: conv1d/im2col for audio
 codecs and VAD, norm chains in DiT blocks, and CPU tail paths.
@@ -31,7 +31,7 @@ codecs and VAD, norm chains in DiT blocks, and CPU tail paths.
 
 ## Priority 2 — Vulkan
 
-CrispASR ships Vulkan on Windows and has a standing list of Vulkan-only TTS
+StelnetTTS ships Vulkan on Windows and has a standing list of Vulkan-only TTS
 failures (#304 CosyVoice3, #192 TADA, #215 moss, #171 VibeVoice). Any of these may
 be load-bearing:
 
@@ -76,7 +76,7 @@ RMS_NORM+MUL fusion, `540ffc4f`/`e9eaaef3` concat f16/bf16.
    ours". That was wrong — it was written from the commit subject before the two
    headers were compared. Adopting upstream's op REQUIRES rewriting `convt1d_decomp`
    to pass p0=0 and do both crops with views, and that rewrite must be validated
-   against TTS audio (f5-tts, cosyvoice3, TADA, vocoders) before CrispASR's pin
+   against TTS audio (f5-tts, cosyvoice3, TADA, vocoders) before StelnetTTS's pin
    moves. Until then the merge keeps BOTH ops disambiguated, not one silently
    replacing the other.
 

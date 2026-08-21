@@ -31,8 +31,8 @@
 
 #include "core/utf8.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "core/pinyin_g2p.h" // #294: Chinese g2p (jieba-min + pypinyin TONE3)
 
 #if defined(HAVE_ACCELERATE)
@@ -63,7 +63,7 @@
 static bool f5_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_F5_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_F5_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -73,7 +73,7 @@ static bool f5_bench_enabled() {
 static bool f5_batch_cfg_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_F5_BATCH_CFG");
+        const char* e = stelnettts_env::get("STELNETTTS_F5_BATCH_CFG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -94,7 +94,7 @@ static bool f5_batch_cfg_enabled() {
 static bool f5_f16_act_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_F5_F16_ACT");
+        const char* e = stelnettts_env::get("STELNETTTS_F5_F16_ACT");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -112,7 +112,7 @@ static bool f5_f16_act_enabled() {
 static bool f5_embed_gpu_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_F5_EMBED_GPU");
+        const char* e = stelnettts_env::get("STELNETTTS_F5_EMBED_GPU");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -134,7 +134,7 @@ struct f5_bench_stage {
 // ── Hyperparameters ──────────────────────────────────────────────
 
 // Text length for the duration estimate: CODEPOINTS by default, bytes under
-// CRISPASR_F5_TEXT_LEN_BYTES=1.
+// STELNETTTS_F5_TEXT_LEN_BYTES=1.
 //
 // Upstream F5-TTS uses `len(text.encode("utf-8"))` — bytes — on both sides of
 // the rate, and so does our reference dumper
@@ -145,13 +145,13 @@ struct f5_bench_stage {
 // minutes (#372).
 //
 // Codepoints are the better default, so that is the default. The gate exists so
-// the exact upstream arithmetic stays reachable: `crispasr-diff f5-tts` compares
+// the exact upstream arithmetic stays reachable: `stelnettts-diff f5-tts` compares
 // against a reference that is deliberately STILL on bytes, because a reference
 // that adopted our change could no longer disagree with us. Same reasoning and
-// same shape as CRISPASR_F5_DURATION_CLAMP=0 further down.
+// same shape as STELNETTTS_F5_DURATION_CLAMP=0 further down.
 static size_t f5_text_len(const char* s) {
     static const bool s_bytes = []() {
-        const char* e = crispasr_env::get("CRISPASR_F5_TEXT_LEN_BYTES");
+        const char* e = stelnettts_env::get("STELNETTTS_F5_TEXT_LEN_BYTES");
         return e && e[0] == '1';
     }();
     if (!s)
@@ -335,7 +335,7 @@ struct f5_dit_graph_cache {
     ~f5_dit_graph_cache() { reset(); }
 };
 
-// #294: GPU InputEmbedding graph (opt-in CRISPASR_F5_EMBED_GPU). Built once per
+// #294: GPU InputEmbedding graph (opt-in STELNETTTS_F5_EMBED_GPU). Built once per
 // (T,B), reused across forwards. Input = the concatenated [x|cond'|text] (cat_dim,
 // T, B); output = hidden (dim, T, B). input_proj + conv-pos weights already live on
 // ctx->backend, so this keeps the whole embed on-device.
@@ -952,7 +952,7 @@ static std::vector<float> compute_mel_spectrogram(const float* pcm_24k, int n_sa
 // F5_FORCE_SCALAR=1.
 static bool f5_use_scalar() {
 #if defined(HAVE_ACCELERATE)
-    static const bool force_scalar = crispasr_env::get("CRISPASR_F5_FORCE_SCALAR") != nullptr;
+    static const bool force_scalar = stelnettts_env::get("STELNETTTS_F5_FORCE_SCALAR") != nullptr;
     return force_scalar;
 #else
     return true;
@@ -1773,9 +1773,9 @@ static std::vector<float> euler_solve(f5_tts_context* ctx,
     // 2-forward path (which is already the default; the batched F5_BATCH_CFG path
     // fuses cond+uncond in one B=2 graph, nothing to skip — so interval overrides it).
     // Only active when K>1 && CFG is on, so at the default the legacy paths below are
-    // byte-for-byte unchanged. Gated CRISPASR_F5_CFG_INTERVAL.
+    // byte-for-byte unchanged. Gated STELNETTTS_F5_CFG_INTERVAL.
     const int cfg_interval = [] {
-        const char* e = std::getenv("CRISPASR_F5_CFG_INTERVAL");
+        const char* e = std::getenv("STELNETTTS_F5_CFG_INTERVAL");
         const int k = e ? atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
@@ -1792,7 +1792,7 @@ static std::vector<float> euler_solve(f5_tts_context* ctx,
     // caller may have a reason. Threshold picked from the 7-vs-16 A/B.
     if (interval_on && n_steps < 16)
         fprintf(stderr,
-                "f5_tts: WARNING interval-CFG (CRISPASR_F5_CFG_INTERVAL=%d) with only %d ODE steps degrades "
+                "f5_tts: WARNING interval-CFG (STELNETTTS_F5_CFG_INTERVAL=%d) with only %d ODE steps degrades "
                 "quality — use one lever or the other (low --tts-steps OR interval CFG), not both.\n",
                 cfg_interval, n_steps);
 
@@ -1804,7 +1804,7 @@ static std::vector<float> euler_solve(f5_tts_context* ctx,
     // Same stale-reuse risk as interval-CFG: fine near the default step count, breaks
     // at aggressive low NFE. Default OFF (K=1 = exact, legacy path byte-identical).
     const int dit_skip = [] {
-        const char* e = std::getenv("CRISPASR_F5_DIT_SKIP");
+        const char* e = std::getenv("STELNETTTS_F5_DIT_SKIP");
         const int k = e ? atoi(e) : 1;
         return k < 1 ? 1 : k;
     }();
@@ -1815,7 +1815,7 @@ static std::vector<float> euler_solve(f5_tts_context* ctx,
                 dit_skip, dit_skip);
     if (dit_skip_on && n_steps < 16)
         fprintf(stderr,
-                "f5_tts: WARNING DiT temporal-skip (CRISPASR_F5_DIT_SKIP=%d) with only %d ODE steps degrades "
+                "f5_tts: WARNING DiT temporal-skip (STELNETTTS_F5_DIT_SKIP=%d) with only %d ODE steps degrades "
                 "quality — pair it with a higher --tts-steps, not an aggressive low count.\n",
                 dit_skip, n_steps);
 
@@ -2138,7 +2138,7 @@ struct f5_tts_context* f5_tts_init_from_file(const char* path_model, struct f5_t
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -2334,12 +2334,12 @@ int f5_tts_set_reference(struct f5_tts_context* ctx, const float* pcm_24k, int n
 
     // Reference preprocessing (upstream parity): silence-strip + clip. Gated so
     // it can be turned off for byte-exact comparison against pre-#294 behavior.
-    // CRISPASR_F5_REF_MAX_SEC: clip length in seconds (default 12, matches
-    //   upstream; 0 disables the clip). CRISPASR_F5_REF_TRIM_SILENCE: 0 disables
+    // STELNETTTS_F5_REF_MAX_SEC: clip length in seconds (default 12, matches
+    //   upstream; 0 disables the clip). STELNETTTS_F5_REF_TRIM_SILENCE: 0 disables
     //   the silence strip (default on).
-    const char* max_env = crispasr_env::get("CRISPASR_F5_REF_MAX_SEC");
+    const char* max_env = stelnettts_env::get("STELNETTTS_F5_REF_MAX_SEC");
     float ref_max_sec = max_env ? (float)atof(max_env) : 12.0f;
-    const char* trim_env = crispasr_env::get("CRISPASR_F5_REF_TRIM_SILENCE");
+    const char* trim_env = stelnettts_env::get("STELNETTTS_F5_REF_TRIM_SILENCE");
     bool ref_trim = !(trim_env && std::strcmp(trim_env, "0") == 0);
     std::vector<float> ref_pcm =
         f5_preprocess_ref_audio(pcm_24k, n_samples, ctx->hp.sample_rate, ref_max_sec, ref_trim);
@@ -2431,9 +2431,9 @@ int f5_tts_synthesize(struct f5_tts_context* ctx, const char* text, float** pcm_
     // transcript (which would explode the duration) — not genuinely slow speech.
     float rate = (float)ref_T / (float)std::max(1, ref_text_len);
     // The clamp is an ADD-ON over the upstream formula (which has no clamp); gate
-    // it so it can be switched off. CRISPASR_F5_DURATION_CLAMP=0 restores the
+    // it so it can be switched off. STELNETTTS_F5_DURATION_CLAMP=0 restores the
     // exact upstream `ref_T / ref_text_len * gen_text_len / speed` estimate.
-    const char* clamp_env = crispasr_env::get("CRISPASR_F5_DURATION_CLAMP");
+    const char* clamp_env = stelnettts_env::get("STELNETTTS_F5_DURATION_CLAMP");
     bool duration_clamp = !(clamp_env && std::strcmp(clamp_env, "0") == 0);
     if (duration_clamp)
         rate = std::min(std::max(rate, fixed_rate * 0.75f), fixed_rate * 8.0f);

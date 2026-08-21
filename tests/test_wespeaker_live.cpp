@@ -5,7 +5,7 @@
 // Run: ctest -R test-wespeaker --output-on-failure
 //
 // Env vars (see tests/env-live-tests.sh):
-//   CRISPASR_MODEL_WESPEAKER — GGUF path
+//   STELNETTTS_MODEL_WESPEAKER — GGUF path
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -100,7 +100,7 @@ static std::vector<float> embed_window(wespeaker_context* ctx, const std::vector
 }
 
 static wespeaker_context* open_model() {
-    const std::string model = get_env("CRISPASR_MODEL_WESPEAKER");
+    const std::string model = get_env("STELNETTTS_MODEL_WESPEAKER");
     if (model.empty())
         return nullptr;
     wespeaker_context_params cp = wespeaker_context_default_params();
@@ -110,8 +110,8 @@ static wespeaker_context* open_model() {
 }
 
 TEST_CASE("wespeaker: init reports the model's shape", "[wespeaker][.live]") {
-    if (get_env("CRISPASR_MODEL_WESPEAKER").empty())
-        SKIP("CRISPASR_MODEL_WESPEAKER not set");
+    if (get_env("STELNETTTS_MODEL_WESPEAKER").empty())
+        SKIP("STELNETTTS_MODEL_WESPEAKER not set");
     wespeaker_context* ctx = open_model();
     REQUIRE(ctx != nullptr);
     CHECK(wespeaker_embed_dim(ctx) == 256);
@@ -122,8 +122,8 @@ TEST_CASE("wespeaker: init reports the model's shape", "[wespeaker][.live]") {
 }
 
 TEST_CASE("wespeaker: embedding is finite and non-degenerate", "[wespeaker][.live]") {
-    if (get_env("CRISPASR_MODEL_WESPEAKER").empty())
-        SKIP("CRISPASR_MODEL_WESPEAKER not set");
+    if (get_env("STELNETTTS_MODEL_WESPEAKER").empty())
+        SKIP("STELNETTTS_MODEL_WESPEAKER not set");
     auto pcm = load_wav_16k_mono("samples/jfk.wav");
     REQUIRE(!pcm.empty());
     wespeaker_context* ctx = open_model();
@@ -147,8 +147,8 @@ TEST_CASE("wespeaker: embedding is finite and non-degenerate", "[wespeaker][.liv
 }
 
 TEST_CASE("wespeaker: embedding is deterministic", "[wespeaker][.live]") {
-    if (get_env("CRISPASR_MODEL_WESPEAKER").empty())
-        SKIP("CRISPASR_MODEL_WESPEAKER not set");
+    if (get_env("STELNETTTS_MODEL_WESPEAKER").empty())
+        SKIP("STELNETTTS_MODEL_WESPEAKER not set");
     auto pcm = load_wav_16k_mono("samples/jfk.wav");
     REQUIRE(!pcm.empty());
     wespeaker_context* ctx = open_model();
@@ -163,8 +163,8 @@ TEST_CASE("wespeaker: embedding is deterministic", "[wespeaker][.live]") {
 }
 
 TEST_CASE("wespeaker: audio below the minimum is rejected", "[wespeaker][.live]") {
-    if (get_env("CRISPASR_MODEL_WESPEAKER").empty())
-        SKIP("CRISPASR_MODEL_WESPEAKER not set");
+    if (get_env("STELNETTTS_MODEL_WESPEAKER").empty())
+        SKIP("STELNETTTS_MODEL_WESPEAKER not set");
     wespeaker_context* ctx = open_model();
     REQUIRE(ctx != nullptr);
     std::vector<float> tiny((size_t)wespeaker_min_samples(ctx) / 2, 0.0f);
@@ -181,8 +181,8 @@ TEST_CASE("wespeaker: audio below the minimum is rejected", "[wespeaker][.live]"
 // numbers — a transposed feature map or a mis-ordered TSTP flatten passes every
 // test above and fails this one.
 TEST_CASE("wespeaker: same speaker is closer than a different speaker", "[wespeaker][.live]") {
-    if (get_env("CRISPASR_MODEL_WESPEAKER").empty())
-        SKIP("CRISPASR_MODEL_WESPEAKER not set");
+    if (get_env("STELNETTTS_MODEL_WESPEAKER").empty())
+        SKIP("STELNETTTS_MODEL_WESPEAKER not set");
     auto jfk = load_wav_16k_mono("samples/jfk.wav");
     auto multi = load_wav_16k_mono("samples/multispeaker.wav");
     REQUIRE(jfk.size() > 16000 * 6);

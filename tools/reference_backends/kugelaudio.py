@@ -1,4 +1,4 @@
-"""KugelAudio-0-Open TTS reference dump for crispasr-diff.
+"""KugelAudio-0-Open TTS reference dump for stelnettts-diff.
 
 Captures intermediate activations at each pipeline stage:
   - text_token_ids: tokenized prompt

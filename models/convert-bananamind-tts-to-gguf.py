@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert BananaMind-TTS-V2.1-Preview (Tacotron-lite + HiFi-GAN) -> GGUF
-for the CrispASR `bananamind-tts` backend.
+for the StelnetTTS `bananamind-tts` backend.
 
 Architecture:
   - Text encoder: Embedding -> 3x Conv1d(256, k=5) + BatchNorm + ReLU -> BiLSTM(256->128+128)
@@ -506,7 +506,7 @@ def main():
         # writes f32 bytes tagged F16, and a reader takes the first half of them
         # and reinterprets each 4-byte float as two 2-byte ones. See
         # tests/test_gguf_dtype_cast.py; this shipped for real in
-        # cstr/fastpitch-en-GGUF's f16 build (943,872 NaNs).
+        # Xenna/fastpitch-en-GGUF's f16 build (943,872 NaNs).
         #
         # Latent here rather than shipped: every published bananamind file is
         # f32 or q8_0, so --ftype f16 was never exercised.

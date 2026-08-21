@@ -281,7 +281,7 @@ miotts_context* miotts_init_from_file(const char* path_model, miotts_context_par
     // Init backend — via the process-global preference helper so
     // --gpu-backend (incl. the "cpu" short-circuit) is honoured here too;
     // this was the one direct init_best() bypass left in the tree.
-    c->backend = crispasr_init_gpu_backend();
+    c->backend = stelnettts_init_gpu_backend();
     if (!c->backend) {
         fprintf(stderr, "miotts: failed to init backend\n");
         return nullptr;

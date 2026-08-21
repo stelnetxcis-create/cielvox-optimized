@@ -22,10 +22,10 @@ if [ -z "$PY" ]; then
     exit 0
 fi
 
-WAV="$(mktemp -t crispasr-c2pa-native-XXXXXX).wav"
+WAV="$(mktemp -t stelnettts-c2pa-native-XXXXXX).wav"
 trap 'rm -f "$WAV"' EXIT
 
-CRISPASR_C2PA_EMIT="$WAV" "$BIN" "[emit]" >/dev/null 2>&1 || { echo "FAIL: emit failed"; exit 1; }
+STELNETTTS_C2PA_EMIT="$WAV" "$BIN" "[emit]" >/dev/null 2>&1 || { echo "FAIL: emit failed"; exit 1; }
 [ -s "$WAV" ] || { echo "FAIL: no WAV emitted"; exit 1; }
 
 "$PY" - "$WAV" <<'PY'
@@ -38,7 +38,7 @@ bad = [c for c in statuses if c != "signingCredential.untrusted"]
 if bad:
     print("FAIL: unexpected validation status:", bad); sys.exit(1)
 am = m["manifests"][m["active_manifest"]]
-assert am["claim_generator_info"][0]["name"] == "CrispASR", "generator mismatch"
+assert am["claim_generator_info"][0]["name"] == "StelnetTTS", "generator mismatch"
 actions = [a for a in am["assertions"] if a["label"] == "c2pa.actions.v2"]
 assert actions, "missing c2pa.actions.v2"
 act = actions[0]["data"]["actions"][0]

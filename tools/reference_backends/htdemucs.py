@@ -1,4 +1,4 @@
-"""HTDemucs reference backend — per-stage intermediate dumper for crispasr-diff.
+"""HTDemucs reference backend — per-stage intermediate dumper for stelnettts-diff.
 
 Loads the pretrained HTDemucs model, runs forward with intermediate
 capture, returns a dict of {stage_name: numpy_array} for the diff harness.

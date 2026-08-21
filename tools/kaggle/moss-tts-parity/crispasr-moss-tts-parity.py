@@ -1,6 +1,6 @@
-# CrispASR — MOSS-TTS greedy code-parity (#249, Phase-3 gate)
+# StelnetTTS — MOSS-TTS greedy code-parity (#249, Phase-3 gate)
 #
-# The ship kernel's parity step OOM'd (torch 8B + the crispasr process on one
+# The ship kernel's parity step OOM'd (torch 8B + the stelnettts process on one
 # 16 GB P100). Fix: (1) download the already-shipped GGUFs instead of
 # re-converting; (2) run the HF reference STANDALONE first, then free the GPU
 # BEFORE the ggml side loads; (3) compare the greedy code grids.
@@ -25,15 +25,15 @@ from pathlib import Path
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 TMP = Path("/tmp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = REPO / "build"
 MODELS = TMP / "moss-models"
 WORK = Path("/kaggle/working")
 MODELS.mkdir(parents=True, exist_ok=True)
 
-REF = os.environ.get("CRISPASR_REF", "feat/moss-tts-parity-diff")
+REF = os.environ.get("STELNETTTS_REF", "feat/moss-tts-parity-diff")
 HF_MODEL = os.environ.get("MOSS_TTS_MODEL", "OpenMOSS-Team/MOSS-TTS-v1.5")
-HF_GGUF = os.environ.get("MOSS_TTS_GGUF_REPO", "cstr/moss-tts-v1.5-GGUF")
+HF_GGUF = os.environ.get("MOSS_TTS_GGUF_REPO", "Xenna/moss-tts-v1.5-GGUF")
 TEXT = os.environ.get("MOSS_TTS_TEXT", "The quick brown fox jumps over the lazy dog.")
 MAXNEW = int(os.environ.get("MOSS_TTS_MAXNEW", "160"))
 
@@ -122,14 +122,14 @@ def main():
     log(f"clone {REF}")
     if not REPO.exists():
         subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF, "--recursive",
-                               "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                               "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     import kaggle_harness as kh
     kh.init_progress()
 
     subprocess.run(["nvidia-smi", "-L"], check=False)
 
-    # ── build crispasr-lib (ctypes target; faster than the full CLI) ──
+    # ── build stelnettts-lib (ctypes target; faster than the full CLI) ──
     kh.install_build_toolchain()
     arch = kh.detect_cuda_arch()
     env = os.environ.copy()
@@ -138,12 +138,12 @@ def main():
                     "-DBUILD_SHARED_LIBS=ON"] + list(kh.cache_and_link_flags()) + list(kh.cuda_build_flags(arch)),
                    env=env, check=True, timeout=300)
     with kh.build_heartbeat("moss-tts parity build"):
-        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-lib "
+        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-lib "
                             f"-j{kh.safe_build_jobs(gpu=True)}")
     import glob
-    libs = glob.glob(str(BUILD / "src" / "libcrispasr.so*"))
+    libs = glob.glob(str(BUILD / "src" / "libstelnettts.so*"))
     if not libs:
-        raise SystemExit("libcrispasr.so not built")
+        raise SystemExit("libstelnettts.so not built")
     lib_path = libs[0]
     os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
     log(f"built {lib_path}")

@@ -2,9 +2,9 @@
 # Live smoke for unified autoregressive generation controls.
 #
 # Requires:
-#   CRISPASR_TEST_GENERATION_MODEL=/path/to/ar-backend.gguf
+#   STELNETTTS_TEST_GENERATION_MODEL=/path/to/ar-backend.gguf
 # Optional:
-#   CRISPASR_TEST_GENERATION_BACKEND=cohere|qwen3|granite|voxtral|voxtral4b
+#   STELNETTTS_TEST_GENERATION_BACKEND=cohere|qwen3|granite|voxtral|voxtral4b
 #   PORT=11443
 #
 # Skips cleanly when no model is configured.
@@ -13,21 +13,21 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 CRISPASR=""
-for cand in build-ninja-compile/bin/crispasr build/bin/crispasr ./bin/crispasr; do
+for cand in build-ninja-compile/bin/stelnettts build/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
 if [ -z "$CRISPASR" ]; then
-    echo "ERROR: crispasr binary not found. Build first."
+    echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
 
-MODEL="${CRISPASR_TEST_GENERATION_MODEL:-}"
-BACKEND="${CRISPASR_TEST_GENERATION_BACKEND:-cohere}"
-SAMPLE="${CRISPASR_TEST_GENERATION_AUDIO:-samples/jfk.wav}"
+MODEL="${STELNETTTS_TEST_GENERATION_MODEL:-}"
+BACKEND="${STELNETTTS_TEST_GENERATION_BACKEND:-cohere}"
+SAMPLE="${STELNETTTS_TEST_GENERATION_AUDIO:-samples/jfk.wav}"
 PORT="${PORT:-11443}"
 
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
-    echo "SKIP: set CRISPASR_TEST_GENERATION_MODEL to an autoregressive ASR GGUF"
+    echo "SKIP: set STELNETTTS_TEST_GENERATION_MODEL to an autoregressive ASR GGUF"
     exit 0
 fi
 if [ ! -f "$SAMPLE" ]; then
@@ -97,45 +97,45 @@ json_text() {
 
 echo "=== CLI generation controls ($BACKEND) ==="
 CLI_OUT=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
-    --no-prints -n 8 --frequency-penalty 0.5 2>/tmp/crispasr-gen-cli.err)
+    --no-prints -n 8 --frequency-penalty 0.5 2>/tmp/stelnettts-gen-cli.err)
 if [ $? -ne 0 ]; then
     echo "  FAIL CLI command exited non-zero"
-    cat /tmp/crispasr-gen-cli.err
+    cat /tmp/stelnettts-gen-cli.err
     FAIL=$((FAIL + 1))
 else
     assert_nonempty "CLI accepts -n + --frequency-penalty" "$CLI_OUT"
 fi
-rm -f /tmp/crispasr-gen-cli.err
+rm -f /tmp/stelnettts-gen-cli.err
 
 CLI_SHORT=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
-    --no-prints -n 1 2>/tmp/crispasr-gen-cli-short.err)
+    --no-prints -n 1 2>/tmp/stelnettts-gen-cli-short.err)
 CLI_LONG=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
-    --no-prints -n 8 2>/tmp/crispasr-gen-cli-long.err)
+    --no-prints -n 8 2>/tmp/stelnettts-gen-cli-long.err)
 if [ $? -eq 0 ]; then
     assert_greater_len "CLI max-new-tokens changes generated text length" "$CLI_SHORT" "$CLI_LONG"
 else
     echo "  FAIL CLI token-cap effect command exited non-zero"
-    cat /tmp/crispasr-gen-cli-short.err /tmp/crispasr-gen-cli-long.err
+    cat /tmp/stelnettts-gen-cli-short.err /tmp/stelnettts-gen-cli-long.err
     FAIL=$((FAIL + 1))
 fi
-rm -f /tmp/crispasr-gen-cli-short.err /tmp/crispasr-gen-cli-long.err
+rm -f /tmp/stelnettts-gen-cli-short.err /tmp/stelnettts-gen-cli-long.err
 
 CLI_SEED_A=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
-    --no-prints -n 16 --temperature 1.0 --seed 123 2>/tmp/crispasr-gen-cli-seed-a.err)
+    --no-prints -n 16 --temperature 1.0 --seed 123 2>/tmp/stelnettts-gen-cli-seed-a.err)
 CLI_SEED_B=$("$CRISPASR" --backend "$BACKEND" -m "$MODEL" -f "$SAMPLE" \
-    --no-prints -n 16 --temperature 1.0 --seed 123 2>/tmp/crispasr-gen-cli-seed-b.err)
+    --no-prints -n 16 --temperature 1.0 --seed 123 2>/tmp/stelnettts-gen-cli-seed-b.err)
 if [ $? -eq 0 ]; then
     assert_equal "CLI seed is reproducible under sampling" "$CLI_SEED_A" "$CLI_SEED_B"
 else
     echo "  FAIL CLI seed reproducibility command exited non-zero"
-    cat /tmp/crispasr-gen-cli-seed-a.err /tmp/crispasr-gen-cli-seed-b.err
+    cat /tmp/stelnettts-gen-cli-seed-a.err /tmp/stelnettts-gen-cli-seed-b.err
     FAIL=$((FAIL + 1))
 fi
-rm -f /tmp/crispasr-gen-cli-seed-a.err /tmp/crispasr-gen-cli-seed-b.err
+rm -f /tmp/stelnettts-gen-cli-seed-a.err /tmp/stelnettts-gen-cli-seed-b.err
 
 echo
 echo "=== Server /v1/audio/transcriptions generation controls ($BACKEND) ==="
-SERVER_LOG=$(mktemp -t crispasr-gen-server.XXXXXX)
+SERVER_LOG=$(mktemp -t stelnettts-gen-server.XXXXXX)
 "$CRISPASR" --server --backend "$BACKEND" -m "$MODEL" \
     --host 127.0.0.1 --port "$PORT" --no-prints > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!

@@ -9,5 +9,5 @@ command -v kaggle >/dev/null 2>&1 || { echo "kaggle CLI not found (pip install k
 echo "Pushing $(python3 -c 'import json;print(json.load(open("kernel-metadata.json"))["id"])') ..."
 kaggle kernels push -p "$dir"
 echo; echo "Monitor:"
-echo "  kaggle kernels status chr1str/crispasr-hifigan-conv-profile-cuda"
-echo "  kaggle kernels output chr1str/crispasr-hifigan-conv-profile-cuda -p ./out"
+echo "  kaggle kernels status chr1str/stelnettts-hifigan-conv-profile-cuda"
+echo "  kaggle kernels output chr1str/stelnettts-hifigan-conv-profile-cuda -p ./out"

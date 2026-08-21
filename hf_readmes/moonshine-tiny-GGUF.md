@@ -16,7 +16,7 @@ base_model: UsefulSensors/moonshine-tiny
 
 # Moonshine Tiny -- GGUF
 
-GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny`](https://huggingface.co/UsefulSensors/moonshine-tiny) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny`](https://huggingface.co/UsefulSensors/moonshine-tiny) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -38,9 +38,9 @@ All variants produce correct transcription on test audio.
 - **License:** MIT
 - **Source:** [moonshine.cpp](https://github.com/csexton-ua/moonshine.cpp) (MIT)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-./build/bin/crispasr -m moonshine-tiny-q4_k.gguf -f audio.wav
-./build/bin/crispasr --backend moonshine -m moonshine-tiny-q4_k.gguf -f audio.wav -osrt
+./build/bin/stelnettts -m moonshine-tiny-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend moonshine -m moonshine-tiny-q4_k.gguf -f audio.wav -osrt
 ```

@@ -2,14 +2,14 @@
 """check-backend-wiring.py — audit that every backend is wired across the surface.
 
 Generalises the manual cross-check done when adding a backend (docs/contributing.md
-checklist). Uses `crispasr --list-backends-json` as the authoritative backend +
+checklist). Uses `stelnettts --list-backends-json` as the authoritative backend +
 capability list, then verifies each backend is present everywhere it must be.
 
 Two tiers:
 
   REQUIRED (exact string match on the CLI name; a miss is a real bug → exit 1):
-    - CLI factory dispatch        examples/cli/crispasr_backend.cpp
-    - c_api open/detect           src/crispasr_c_api.cpp
+    - CLI factory dispatch        examples/cli/stelnettts_backend.cpp
+    - c_api open/detect           src/stelnettts_c_api.cpp
     - c_api available_backends    the `list += ",<name>"` line (the easy-to-miss one)
     - feature matrix              docs/feature-matrix.md (auto-generated; stale if missing)
     - cli.md beam list            only when the backend declares the beam-search cap
@@ -21,14 +21,14 @@ Two tiers:
     - a test file                 tests/test_<x>_live.cpp OR tests/test-<x>-params.cpp
     - a reference dumper          tools/reference_backends/<x>*.py (standalone OR registered)
     - an env-live-tests entry     tests/env-live-tests.sh
-    - a registry entry            src/crispasr_model_registry.cpp
+    - a registry entry            src/stelnettts_model_registry.cpp
     - streaming.md row            only when the backend declares the streaming cap
 
 The Go cgo LDFLAGS check is delegated to the existing authoritative tool
 (`tools/sync_go_cgo_ldflags.py --check`), which CI also runs.
 
 Usage:
-    python tools/check-backend-wiring.py [--crispasr ./build/bin/crispasr] [--verbose]
+    python tools/check-backend-wiring.py [--stelnettts ./build/bin/stelnettts] [--verbose]
 
 Exit code: 0 if all REQUIRED checks pass, 1 otherwise (advisory gaps never fail).
 """
@@ -58,11 +58,11 @@ def stem_variants(name):
     return {name, u, name.replace("-", "")}
 
 
-def list_backends(crispasr):
-    out = subprocess.run([crispasr, "--list-backends-json"],
+def list_backends(stelnettts):
+    out = subprocess.run([stelnettts, "--list-backends-json"],
                          capture_output=True, text=True)
     if out.returncode != 0 or not out.stdout.strip():
-        sys.exit(f"error: `{crispasr} --list-backends-json` failed; build crispasr first.\n"
+        sys.exit(f"error: `{stelnettts} --list-backends-json` failed; build stelnettts first.\n"
                  f"{out.stderr[:400]}")
     d = json.loads(out.stdout)
     items = d if isinstance(d, list) else d.get("backends", d)
@@ -71,21 +71,21 @@ def list_backends(crispasr):
 
 def main():
     ap = argparse.ArgumentParser(description="Audit backend wiring completeness.")
-    ap.add_argument("--crispasr", default=str(ROOT / "build/bin/crispasr"),
-                    help="path to the crispasr binary (default: build/bin/crispasr)")
+    ap.add_argument("--stelnettts", default=str(ROOT / "build/bin/stelnettts"),
+                    help="path to the stelnettts binary (default: build/bin/stelnettts)")
     ap.add_argument("--verbose", action="store_true",
                     help="print every backend, not just problems")
     args = ap.parse_args()
 
-    if not Path(args.crispasr).exists():
-        sys.exit(f"error: {args.crispasr} not found — build it first "
-                 f"(cmake --build build --target crispasr).")
+    if not Path(args.stelnettts).exists():
+        sys.exit(f"error: {args.stelnettts} not found — build it first "
+                 f"(cmake --build build --target stelnettts).")
 
-    backends = list_backends(args.crispasr)
+    backends = list_backends(args.stelnettts)
 
-    factory = read("examples/cli/crispasr_backend.cpp")
-    capi = read("src/crispasr_c_api.cpp")
-    registry = read("src/crispasr_model_registry.cpp")
+    factory = read("examples/cli/stelnettts_backend.cpp")
+    capi = read("src/stelnettts_c_api.cpp")
+    registry = read("src/stelnettts_model_registry.cpp")
     fmatrix = read("docs/feature-matrix.md")
     cli_md = read("docs/cli.md")
     streaming = read("docs/streaming.md")
@@ -93,12 +93,12 @@ def main():
     tts_md = read("docs/tts.md")
     arch_md = read("docs/architecture.md")
     src_cmake = read("src/CMakeLists.txt")
-    py_binding = read("python/crispasr/_binding.py")
+    py_binding = read("python/stelnettts/_binding.py")
     env_live = read("tests/env-live-tests.sh")
 
     tests_dir = sorted(p.name for p in (ROOT / "tests").glob("*"))
     refs_dir = sorted(p.name for p in (ROOT / "tools/reference_backends").glob("*.py"))
-    adapters = {p.name for p in (ROOT / "examples/cli").glob("crispasr_backend_*.cpp")}
+    adapters = {p.name for p in (ROOT / "examples/cli").glob("stelnettts_backend_*.cpp")}
 
     # Prose names a backend the way a READER would, not the way the CLI does:
     # `crepe` appears as "CREPE", `tabcnn` as "TabCNN", `beat-this` as
@@ -133,7 +133,7 @@ def main():
         return any(any(s in f for s in stem_variants(name)) for f in files)
 
     def has_adapter(name):
-        return f"crispasr_backend_{name.replace('-', '_')}.cpp" in adapters
+        return f"stelnettts_backend_{name.replace('-', '_')}.cpp" in adapters
 
     # REVERSE CHECK: backends the C ABI advertises but the CLI does not know.
     #
@@ -158,7 +158,7 @@ def main():
     # or through multi-alias conditions that no regex will reliably cover.
     # Only the handful not already in the roster need probing.
     def cli_resolves(name):
-        r = subprocess.run([args.crispasr, "--backend", name, "-m", os.devnull, "-f", os.devnull],
+        r = subprocess.run([args.stelnettts, "--backend", name, "-m", os.devnull, "-f", os.devnull],
                            capture_output=True, text=True)
         return f"unknown backend '{name}'" not in (r.stderr + r.stdout)
 
@@ -168,12 +168,12 @@ def main():
     # SHIPPED-LIBRARY check: is the backend's runtime actually IN the dylib?
     #
     # Every other check in this file reads SOURCE TEXT, and source text cannot
-    # see this failure. mel-band-roformer was linked into crispasr-lib by
+    # see this failure. mel-band-roformer was linked into stelnettts-lib by
     # CMake, exactly as it looked in the CMakeLists -- but nothing in
-    # crispasr_c_api.cpp referenced its symbols, so the linker dropped the
+    # stelnettts_c_api.cpp referenced its symbols, so the linker dropped the
     # whole object from the shared library. It was not merely unreachable from
     # the session API: it was NOT PRESENT IN THE SHIPPED .dylib AT ALL, while
-    # the CLI worked because crispasr-cli links the static lib directly.
+    # the CLI worked because stelnettts-cli links the static lib directly.
     # Confirmed against the released v0.8.17 artifact, where
     # mel_band_roformer_separate is absent.
     #
@@ -193,8 +193,8 @@ def main():
 
     lib_fail = []
     libpath = None
-    for c in ("build/src/libcrispasr.dylib", "build/src/libcrispasr.so",
-              "build/src/libcrispasr.1.dylib"):
+    for c in ("build/src/libstelnettts.dylib", "build/src/libstelnettts.so",
+              "build/src/libstelnettts.1.dylib"):
         if (ROOT / c).exists():
             libpath = ROOT / c
             break
@@ -260,7 +260,7 @@ def main():
 
     for name, caps in backends:
         # Only audit CANONICAL backends — those that own a dedicated CLI adapter
-        # (`crispasr_backend_<x>.cpp`). Aliases / family variants (bark-tts,
+        # (`stelnettts_backend_<x>.cpp`). Aliases / family variants (bark-tts,
         # qwen3-1.7b, chatterbox-turbo, …) resolve through a canonical backend's
         # dispatch, so the binary *listing* them already proves reachability;
         # requiring each to have its own literal wiring entry would be all
@@ -308,12 +308,12 @@ def main():
         # are dispatched generically via transcribe() and don't need listing)
         if "tts" in caps and name not in py_binding:
             adv_missing.append("py-binding-doc")
-        # src/CMakeLists.txt should link the backend lib into crispasr-lib.
+        # src/CMakeLists.txt should link the backend lib into stelnettts-lib.
         # Some backends share a lib (e.g. fastconformer-ctc → canary_ctc,
         # wav2vec2 → wav2vec2-ggml), so also check the CLI adapter's includes.
         in_src_cmake = any(s in src_cmake for s in stem_variants(name))
         if not in_src_cmake:
-            adapter_path = ROOT / "examples/cli" / f"crispasr_backend_{name.replace('-', '_')}.cpp"
+            adapter_path = ROOT / "examples/cli" / f"stelnettts_backend_{name.replace('-', '_')}.cpp"
             adapter_src = adapter_path.read_text(errors="ignore") if adapter_path.exists() else ""
             # grep for #include "<lib>.h" and check that lib is in CMake
             import re as _re
@@ -354,18 +354,18 @@ def main():
         for name, stem in lib_fail:
             print(f"   {name:24} {stem}_init_from_file not in {libpath.name if libpath else '?'}")
         print("   The linker drops a static-lib object nothing references, so CMake linkage\n"
-              "   is NOT evidence the code ships. Reference it from src/crispasr_c_api.cpp\n"
+              "   is NOT evidence the code ships. Reference it from src/stelnettts_c_api.cpp\n"
               "   (a session arm), then rebuild and re-check.")
     elif not libpath:
-        print("\n(shipped-library check skipped: no built libcrispasr found — build it to enable)")
+        print("\n(shipped-library check skipped: no built libstelnettts found — build it to enable)")
 
     if capi_only:
         print(f"\n❌ Advertised by the C ABI but ABSENT from the CLI roster ({len(capi_only)}):")
         for name in capi_only:
-            print(f"   {name:24} add a factory entry + roster line in examples/cli/crispasr_backend.cpp")
+            print(f"   {name:24} add a factory entry + roster line in examples/cli/stelnettts_backend.cpp")
         print("   (A task-shaped backend still needs a redirect shim + capability bit so it\n"
               "    appears in --list-backends and the generated docs/feature-matrix.md.\n"
-              "    See examples/cli/crispasr_backend_btc.cpp for the pattern.)")
+              "    See examples/cli/stelnettts_backend_btc.cpp for the pattern.)")
 
     if comp_missing:
         print(f"\n⚠️  component allowlist not found at {comp_missing} — orphan-runtime check skipped")

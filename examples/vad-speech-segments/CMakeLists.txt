@@ -1,4 +1,4 @@
-set(TARGET crispasr-vad-speech-segments)
+set(TARGET stelnettts-vad-speech-segments)
 add_executable(${TARGET} speech.cpp)
 
 include(DefaultTargetOptions)

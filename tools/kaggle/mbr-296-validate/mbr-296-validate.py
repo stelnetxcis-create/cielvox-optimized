@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 TEMP = Path("/kaggle/temp"); OUT = Path("/kaggle/working")
-REPO = TEMP / "CrispASR"; MODELS = TEMP / "models"
+REPO = TEMP / "StelnetTTS"; MODELS = TEMP / "models"
 for d in (TEMP, OUT, MODELS): d.mkdir(parents=True, exist_ok=True)
 REF = "b8e015a79"; FIX = "8ca36951f"
 import traceback as _tb
@@ -18,7 +18,7 @@ def run(cmd, **kw):
     return subprocess.run(cmd, **kw)
 print(json.dumps({"step":"start"}), flush=True)
 if REPO.exists(): shutil.rmtree(REPO)
-run(["git","clone","--depth","5","https://github.com/CrispStrobe/CrispASR.git",str(REPO)], capture_output=False)
+run(["git","clone","--depth","5","https://github.com/Cyna/StelnetTTS.git",str(REPO)], capture_output=False)
 run(["git","-C",str(REPO),"submodule","update","--init","--recursive","--depth","1"], capture_output=False, timeout=1800)
 sys.path.insert(0, os.path.join(str(REPO),"tools","kaggle"))
 import kaggle_harness as kh
@@ -28,23 +28,23 @@ run(["apt-get","install","-y","-q","libopenblas-dev"], capture_output=False)
 JOBS=str(min(4, os.cpu_count() or 2))
 def build_at(commit, bdir):
     run(["git","-C",str(REPO),"checkout","-q",commit], capture_output=False)
-    r=run(["cmake","-G","Ninja","-B",str(bdir),"-S",str(REPO),"-DCMAKE_BUILD_TYPE=Release","-DCRISPASR_NO_C2PA_NATIVE=ON"]+kh.cache_and_link_flags(), capture_output=False)
+    r=run(["cmake","-G","Ninja","-B",str(bdir),"-S",str(REPO),"-DCMAKE_BUILD_TYPE=Release","-DSTELNETTTS_NO_C2PA_NATIVE=ON"]+kh.cache_and_link_flags(), capture_output=False)
     if r.returncode: kh.step(f"cfg.FAIL.{commit}"); raise SystemExit(1)
     with kh.build_heartbeat(f"build.{commit}"):
-        r=run(["cmake","--build",str(bdir),"--target","crispasr-cli","-j",JOBS], capture_output=False)
+        r=run(["cmake","--build",str(bdir),"--target","stelnettts-cli","-j",JOBS], capture_output=False)
     if r.returncode: kh.step(f"build.FAIL.{commit}"); raise SystemExit(1)
-    cli=bdir/"bin"/"crispasr"
+    cli=bdir/"bin"/"stelnettts"
     if not cli.exists():
-        c=[p for p in bdir.rglob("crispasr") if p.is_file() and os.access(p,os.X_OK)]; cli=c[0] if c else None
+        c=[p for p in bdir.rglob("stelnettts") if p.is_file() and os.access(p,os.X_OK)]; cli=c[0] if c else None
     if cli is None: kh.step(f"MISSING.{commit}"); raise SystemExit(1)
     return cli
 from huggingface_hub import hf_hub_download
-MODEL=Path(hf_hub_download(repo_id="cstr/mel-band-roformer-vocals-GGUF", filename="mel-band-roformer-vocals-f16.gguf", local_dir=str(MODELS)))
+MODEL=Path(hf_hub_download(repo_id="Xenna/mel-band-roformer-vocals-GGUF", filename="mel-band-roformer-vocals-f16.gguf", local_dir=str(MODELS)))
 JFK=REPO/"samples"/"jfk.wav"; CLIP4=TEMP/"jfk4.wav"
 run(["ffmpeg","-y","-i",str(JFK),"-t","4",str(CLIP4)], capture_output=False)
 def sep(cli, bdir, clip, tag, profile=False):
     env={**os.environ,"LD_LIBRARY_PATH":f"{bdir}/src:"+os.environ.get("LD_LIBRARY_PATH","")}
-    if profile: env["CRISPASR_MBR_PROFILE"]="1"
+    if profile: env["STELNETTTS_MBR_PROFILE"]="1"
     od=TEMP/f"st_{tag}"; od.mkdir(exist_ok=True)
     t0=time.time(); r=run([str(cli),"--separate","-m",str(MODEL),"-f",str(clip),"--sep-output-dir",str(od)], env=env, timeout=2400)
     return time.time()-t0, od/(Path(clip).stem+"_vocals.wav"), r

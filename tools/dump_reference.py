@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-CrispASR — unified reference activation dumper.
+StelnetTTS — unified reference activation dumper.
 
 Loads a HuggingFace ASR model in PyTorch, runs it on an audio file, captures
 intermediate activations at every architectural boundary via forward hooks,
 and writes the collection to a single **GGUF tensor archive**. The C++ diff
-harness (`crispasr-diff`) then loads that GGUF via `core_gguf::load_weights`
+harness (`stelnettts-diff`) then loads that GGUF via `core_gguf::load_weights`
 and compares each captured tensor against what the ggml forward pass
 produces — element-wise, with cosine similarity, max-abs diff, and top-1
 argmax match for logits.
@@ -45,7 +45,7 @@ Usage:
 
   python tools/dump_reference.py --list-backends
   python tools/dump_reference.py --backend qwen3   \\
-      --model-dir /hf/qwen3-asr-0.6b               \\
+      --model-dir /hf/cielvox2-asr-0.6b               \\
       --audio samples/jfk.wav                      \\
       --output /tmp/qwen3-ref.gguf
   python tools/dump_reference.py --backend voxtral \\
@@ -86,7 +86,7 @@ import numpy as np
 # For per-layer encoder/LLM captures, use `reference_backends/_hooks.py`
 # (capture_modules / drop_hooks / finalize) — it handles forward-hook
 # bookkeeping and normalises (B, T, D) → (T, D) row-major to match
-# crispasr's flat layout. See parakeet.py for a worked example.
+# stelnettts's flat layout. See parakeet.py for a worked example.
 #
 # Adding a new backend is:
 #   1. tools/reference_backends/<name>.py  with dump() + DEFAULT_STAGES
@@ -154,17 +154,17 @@ REGISTERED_BACKENDS: Dict[str, str] = {
     "gemma4":     "reference_backends.gemma4",
     # Qwen3-TTS-12Hz Base. The audio arg is the voice-clone reference WAV
     # (16 kHz mono); synth text + ref text come from env vars. See
-    # reference_backends/qwen3_tts.py for the full prompt contract.
-    "qwen3-tts":  "reference_backends.qwen3_tts",
+    # reference_backends/cielvox2_tts.py for the full prompt contract.
+    "cielvox2-tts":  "reference_backends.cielvox2_tts",
     # Qwen3-TTS-Tokenizer-12Hz codec decoder only (codes → PCM).
     # model_dir = the Tokenizer-12Hz HF snapshot; audio arg is unused.
-    "qwen3-tts-codec": "reference_backends.qwen3_tts_codec",
+    "cielvox2-tts-codec": "reference_backends.cielvox2_tts_codec",
     # Qwen3-TTS ECAPA speaker encoder only.
     # model_dir = the talker HF snapshot (contains speaker_encoder.*).
-    "qwen3-tts-spk":   "reference_backends.qwen3_tts_spk",
+    "cielvox2-tts-spk":   "reference_backends.cielvox2_tts_spk",
     # Qwen3-TTS-Tokenizer-12Hz codec ENCODER (audio → codes).
     # model_dir = the Tokenizer-12Hz HF snapshot. audio is unused.
-    "qwen3-tts-cenc":  "reference_backends.qwen3_tts_cenc",
+    "cielvox2-tts-cenc":  "reference_backends.cielvox2_tts_cenc",
     # OmniVoice: k2-fsa/OmniVoice — Qwen3 + masked iterative TTS.
     # model_dir = k2-fsa/OmniVoice (HF id) or local snapshot.
     # audio arg is unused (TTS). Text from OMNIVOICE_SYN_TEXT env.
@@ -238,7 +238,7 @@ REGISTERED_BACKENDS: Dict[str, str] = {
     # Captures encoder_output (T, 288) matching moonshine_encode() streaming path.
     "moonshine-streaming": "reference_backends.moonshine_streaming",
     # GLM-ASR (GGUF-direct, no PyTorch). model_dir = path to an F32 GLM-ASR GGUF
-    # (e.g. cstr/glm-asr-nano-GGUF / glm-asr-nano.gguf) or a directory containing
+    # (e.g. Xenna/glm-asr-nano-GGUF / glm-asr-nano.gguf) or a directory containing
     # it. Captures mel_spectrogram (128, T_mel) and encoder_output (T_proj, 2048).
     "glm-asr": "reference_backends.glm_asr",
     # FireRedASR-AED. model_dir = "FireRedTeam/FireRedASR2-AED" (HF id) or a local
@@ -449,19 +449,19 @@ def write_gguf_archive(captures: Dict[str, np.ndarray],
             "(it ships with llama.cpp and ggml; installs quickly).") from e
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    w = gguf.GGUFWriter(str(output_path), arch="crispasr.reference")
-    w.add_description("CrispASR reference activation dump")
+    w = gguf.GGUFWriter(str(output_path), arch="stelnettts.reference")
+    w.add_description("StelnetTTS reference activation dump")
 
     # Metadata
     for k, v in meta.items():
         if isinstance(v, bool):
-            w.add_bool(f"crispasr.ref.{k}", v)
+            w.add_bool(f"stelnettts.ref.{k}", v)
         elif isinstance(v, int):
-            w.add_int32(f"crispasr.ref.{k}", v)
+            w.add_int32(f"stelnettts.ref.{k}", v)
         elif isinstance(v, float):
-            w.add_float32(f"crispasr.ref.{k}", v)
+            w.add_float32(f"stelnettts.ref.{k}", v)
         elif isinstance(v, str):
-            w.add_string(f"crispasr.ref.{k}", v)
+            w.add_string(f"stelnettts.ref.{k}", v)
         # silently skip other types
 
     # Tensors. GGUF orders them as the caller adds them.
@@ -498,7 +498,7 @@ def _resolve_backend(name: str):
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="CrispASR unified reference activation dumper",
+        description="StelnetTTS unified reference activation dumper",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("--backend", help="backend name (see --list-backends)")
@@ -582,7 +582,7 @@ def main() -> None:
             meta[name] = captures.pop(name)
     # Pass through env-configurable prompt/text/voice metadata so diff
     # harnesses on the C++ side can replay the exact synthesis context.
-    for env_key in ("QWEN3_TTS_SYN_TEXT", "QWEN3_TTS_REF_TEXT", "QWEN3_TTS_LANG", "QWEN3_TTS_VOICE",
+    for env_key in ("CIELVOX2_TTS_SYN_TEXT", "CIELVOX2_TTS_REF_TEXT", "CIELVOX2_TTS_LANG", "CIELVOX2_TTS_VOICE",
                     "KOKORO_PHONEMES", "KOKORO_VOICE", "KOKORO_SEED", "CHATTERBOX_SYN_TEXT",
                     "CHATTERBOX_LANG",
                     "CHATTERBOX_SEED",

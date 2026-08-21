@@ -6,10 +6,10 @@ Usage:
     python tools/cmake_graphviz_targets.py <root_label> <dot_file>
 
 Example:
-    cmake -S . -B /tmp/bg --graphviz=/tmp/crispasr.dot \
-          -DBUILD_SHARED_LIBS=OFF -DCRISPASR_BUILD_TESTS=OFF \
-          -DCRISPASR_BUILD_EXAMPLES=OFF -DCRISPASR_BUILD_SERVER=OFF
-    python tools/cmake_graphviz_targets.py crispasr-lib /tmp/crispasr.dot
+    cmake -S . -B /tmp/bg --graphviz=/tmp/stelnettts.dot \
+          -DBUILD_SHARED_LIBS=OFF -DSTELNETTTS_BUILD_TESTS=OFF \
+          -DSTELNETTTS_BUILD_EXAMPLES=OFF -DSTELNETTTS_BUILD_SERVER=OFF
+    python tools/cmake_graphviz_targets.py stelnettts-lib /tmp/stelnettts.dot
 
 Prints one library name per line (no lib prefix, no .a suffix).
 """

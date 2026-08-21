@@ -63,7 +63,7 @@ const char* cohere_supported_language(struct cohere_context* ctx, int i);
 //
 // The cost is one encode + one short decode PER CANDIDATE, so it is a good
 // trade for the Arabic finetune (2 candidates) and an expensive one for the
-// 14-language base model. Callers decide; see CRISPASR_COHERE_PROBE_MAX_LANGS
+// 14-language base model. Callers decide; see STELNETTTS_COHERE_PROBE_MAX_LANGS
 // in the CLI.
 
 // Optional text-language-detector hook. Given a probe transcript and the
@@ -143,7 +143,7 @@ void cohere_result_free(struct cohere_result* r);
 struct cohere_result* cohere_transcribe_ex(struct cohere_context* ctx, const float* samples, int n_samples,
                                            const char* lang, int64_t t_offset_cs);
 
-// ---- Stage-level entry points (for crispasr-diff testing) ----
+// ---- Stage-level entry points (for stelnettts-diff testing) ----
 // Returns malloc'd F32 buffers the caller must free(). NULL on failure.
 
 // Log-mel spectrogram of raw 16 kHz mono PCM, row-major (n_mels, T_mel).
@@ -159,7 +159,7 @@ float* cohere_compute_mel(struct cohere_context* ctx, const float* samples, int 
 float* cohere_run_encoder(struct cohere_context* ctx, const float* mel, int n_mels, int T_mel, int* out_T_enc,
                           int* out_d_model);
 
-// Staged encoder: runs the encoder with per-layer snapshots for crispasr-diff.
+// Staged encoder: runs the encoder with per-layer snapshots for stelnettts-diff.
 // Callback receives each snapshot: name, data, T_enc, d_model.
 typedef void (*cohere_stage_cb)(const char* name, const float* data, int T_enc, int d_model, void* userdata);
 int cohere_run_encoder_staged(struct cohere_context* ctx, const float* mel, int n_mels, int T_mel, cohere_stage_cb cb,

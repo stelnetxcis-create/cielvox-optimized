@@ -19,8 +19,8 @@
 #include "core/conv.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "vibevoice_wav_ref.h"
 
 #include "ggml-backend.h"
@@ -50,7 +50,7 @@
 static bool vibevoice_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_VIBEVOICE_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_VIBEVOICE_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -120,7 +120,7 @@ struct vibevoice_context {
     ggml_backend_t backend_cpu = nullptr;
     ggml_backend_buffer_t buf = nullptr;
     // PLAN #69a: optional second buffer for layers spilled to CPU.
-    // Non-null only when CRISPASR_N_GPU_LAYERS triggered a split load.
+    // Non-null only when STELNETTTS_N_GPU_LAYERS triggered a split load.
     ggml_backend_buffer_t buf_cpu = nullptr;
     ggml_backend_sched_t sched = nullptr;
     ggml_context* weight_ctx = nullptr;
@@ -317,7 +317,7 @@ extern "C" struct vibevoice_context* vibevoice_init_from_file(const char* path_m
     // Backend selection: GPU first, CPU fallback. The scheduler requires
     // a CPU backend to be present as the final backend when the primary
     // backend is Metal/CUDA/Vulkan.
-    ctx->backend = hp.d_lm > 0 ? (params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init())
+    ctx->backend = hp.d_lm > 0 ? (params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init())
                                : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
@@ -331,7 +331,7 @@ extern "C" struct vibevoice_context* vibevoice_init_from_file(const char* path_m
         return nullptr;
     }
 
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < the active LM
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < the active LM
     // layer count, route the heavy LM layers above N onto the CPU
     // backend. Vibevoice has two modes — ASR-only (lm.layers.<N>.*,
     // n_lm_layers) and TTS (tts_lm.layers.<N>.*, tts_n_layers); we pick
@@ -340,7 +340,7 @@ extern "C" struct vibevoice_context* vibevoice_init_from_file(const char* path_m
     // (4 layers used only for base-hidden splicing) stay on GPU.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const bool tts_mode = hp.tts_n_layers > 0;
@@ -356,7 +356,7 @@ extern "C" struct vibevoice_context* vibevoice_init_from_file(const char* path_m
             delete ctx;
             return nullptr;
         }
-        fprintf(stderr, "vibevoice: layer offload (%s): gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "vibevoice: layer offload (%s): gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 split_prefix, n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path_model, ctx->backend, "vibevoice", wl)) {
@@ -720,7 +720,7 @@ static ggml_cgraph* build_tokenizer_encoder_graph(vibevoice_context* ctx, const 
 // @ 24kHz overflows the CUDA kernel launch ("invalid argument"). 300s is
 // comfortably under that, with ~2.3x margin for any other similarly-shaped
 // op, and needs only ~12 chunks for a full 60-minute recording.
-// Override: CRISPASR_VIBEVOICE_ENCODER_CHUNK_SECONDS (default 300).
+// Override: STELNETTTS_VIBEVOICE_ENCODER_CHUNK_SECONDS (default 300).
 static constexpr int VIBEVOICE_ENCODER_MAX_CHUNK_SAMPLES_DEFAULT = 300 * 24000;
 
 // Left-context audio prepended to every chunk after the first, in samples.
@@ -729,11 +729,11 @@ static constexpr int VIBEVOICE_ENCODER_MAX_CHUNK_SAMPLES_DEFAULT = 300 * 24000;
 // feed the first several output frames zero history instead of real
 // preceding audio. 10s is a generous bound on the encoder's true receptive
 // field summed across all 7 ConvNeXt stages.
-// Override: CRISPASR_VIBEVOICE_ENCODER_CONTEXT_SECONDS (default 10).
+// Override: STELNETTTS_VIBEVOICE_ENCODER_CONTEXT_SECONDS (default 10).
 static constexpr int VIBEVOICE_ENCODER_LEFT_CONTEXT_SAMPLES_DEFAULT = 10 * 24000;
 
 static int vibevoice_encoder_max_chunk_samples() {
-    const char* v = getenv("CRISPASR_VIBEVOICE_ENCODER_CHUNK_SECONDS");
+    const char* v = getenv("STELNETTTS_VIBEVOICE_ENCODER_CHUNK_SECONDS");
     if (v && v[0]) {
         int s = atoi(v);
         if (s > 0)
@@ -743,7 +743,7 @@ static int vibevoice_encoder_max_chunk_samples() {
 }
 
 static int vibevoice_encoder_left_context_samples() {
-    const char* v = getenv("CRISPASR_VIBEVOICE_ENCODER_CONTEXT_SECONDS");
+    const char* v = getenv("STELNETTTS_VIBEVOICE_ENCODER_CONTEXT_SECONDS");
     if (v && v[0]) {
         int s = atoi(v);
         if (s > 0)
@@ -1180,7 +1180,7 @@ static char* vibevoice_transcribe_impl(struct vibevoice_context* ctx, const floa
 
     auto& m = ctx->model;
     auto& hp = m.hp;
-    const char* dump_dir = crispasr_env::get("CRISPASR_VIBEVOICE_DUMP_DIR");
+    const char* dump_dir = stelnettts_env::get("STELNETTTS_VIBEVOICE_DUMP_DIR");
 
     auto G = [&](const std::string& name) -> ggml_tensor* {
         auto it = m.tensors.find(name);
@@ -1243,7 +1243,7 @@ static char* vibevoice_transcribe_impl(struct vibevoice_context* ctx, const floa
     // Debug: optionally inject Python reference features (whole-buffer
     // override of the features computed above; only used for short
     // single-chunk reference clips in stage-diff testing).
-    const char* ref_features_path = crispasr_env::get("CRISPASR_VIBEVOICE_REF_FEATURES");
+    const char* ref_features_path = stelnettts_env::get("STELNETTTS_VIBEVOICE_REF_FEATURES");
     if (ref_features_path && ref_features_path[0]) {
         FILE* f = fopen(ref_features_path, "rb");
         if (f) {
@@ -1738,7 +1738,7 @@ static char* vibevoice_transcribe_impl(struct vibevoice_context* ctx, const floa
     }
 
     // Debug: dump first 20 generated tokens
-    if (crispasr_env::get("CRISPASR_VIBEVOICE_DEBUG")) {
+    if (stelnettts_env::get("STELNETTTS_VIBEVOICE_DEBUG")) {
         fprintf(stderr, "vibevoice: first 20 tokens: [");
         for (int i = 0; i < std::min((int)output_tokens.size(), 20); i++) {
             int tid = output_tokens[i];
@@ -1765,7 +1765,7 @@ static char* vibevoice_transcribe_impl(struct vibevoice_context* ctx, const floa
     }
 
     if (result.empty()) {
-        if (crispasr_env::get("CRISPASR_VIBEVOICE_DEBUG")) {
+        if (stelnettts_env::get("STELNETTTS_VIBEVOICE_DEBUG")) {
             fprintf(stderr, "vibevoice: result is EMPTY after detokenization (all tokens were special)\n");
         }
         return nullptr;
@@ -2246,7 +2246,7 @@ static bool backend_is_vulkan_intel_igpu(ggml_backend_t b) {
 static bool vibevoice_vae_should_use_cpu(ggml_backend_t backend, ggml_backend_t backend_cpu) {
     if (!backend_cpu)
         return false; // no CPU backend wired — can't fallback
-    const char* env = crispasr_env::get("CRISPASR_VIBEVOICE_VAE_BACKEND");
+    const char* env = stelnettts_env::get("STELNETTTS_VIBEVOICE_VAE_BACKEND");
     if (env && std::strcmp(env, "cpu") == 0)
         return true;
     if (env && std::strcmp(env, "gpu") == 0)
@@ -2273,7 +2273,7 @@ static bool vibevoice_vae_should_use_cpu(ggml_backend_t backend, ggml_backend_t 
 // half of the graph — together the two knobs bisect the TTS compute on a GPU.
 static bool vibevoice_tts_use_flash_attn() {
     static const bool v = []() {
-        const char* e = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_FLASH_ATTN");
+        const char* e = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_FLASH_ATTN");
         return !(e && (e[0] == '0' || e[0] == 'n' || e[0] == 'N' || e[0] == 'f' || e[0] == 'F'));
     }();
     return v;
@@ -2328,7 +2328,7 @@ static ggml_tensor* vibevoice_sdpa(ggml_context* ctx, ggml_tensor* Q, ggml_tenso
 // upstream sched.cpp `src_backend_id` reset path and confirms the
 // shape).
 //
-// Escape hatch: `CRISPASR_VIBEVOICE_REUSE_PRED_GRAPH=1` forces the
+// Escape hatch: `STELNETTTS_VIBEVOICE_REUSE_PRED_GRAPH=1` forces the
 // cache-reuse fast path regardless of backend. Use this to A/B-test
 // whether the upstream scheduler bug has been fixed for a given GPU
 // backend, or to benchmark the cache-reuse savings on a known-good
@@ -2336,7 +2336,7 @@ static ggml_tensor* vibevoice_sdpa(ggml_context* ctx, ggml_tensor* Q, ggml_tenso
 static bool backend_needs_fresh_pred_graph(ggml_backend_t b) {
     if (!b)
         return false;
-    const char* override_str = std::getenv("CRISPASR_VIBEVOICE_REUSE_PRED_GRAPH");
+    const char* override_str = std::getenv("STELNETTTS_VIBEVOICE_REUSE_PRED_GRAPH");
     if (override_str && (override_str[0] == '1' || override_str[0] == 't' || override_str[0] == 'T'))
         return false;
     // =0 forces rebuild-each-call even on CPU — the other half of the A/B:
@@ -2362,7 +2362,7 @@ static bool backend_needs_fresh_pred_graph(ggml_backend_t b) {
 // ggml_backend_sched_split_graph — some tensor view's buffer-id linkage
 // doesn't survive the reset on those schedulers. Reproducible with the
 // streaming Q4_0 we built locally AND with the canonical Q4_K from
-// cstr/VibeVoice-7B-GGUF, so it's the cache + scheduler interaction, not
+// Xenna/VibeVoice-7B-GGUF, so it's the cache + scheduler interaction, not
 // the model file. For these backends we fall back to rebuild-each-call
 // (matches what build_decoder_graph does) — a few percent slower per
 // diffusion sub-step but TTS actually runs.
@@ -2408,11 +2408,11 @@ static ggml_cgraph* get_pred_head_graph(vibevoice_context* ctx, int n_frames) {
 // segfault (ASan: heap-use-after-free in sched_backend_from_buffer).
 // When the graph is rebuilt each call (Metal/Vulkan/CUDA bypass), the
 // shared ctx->sched is safe and keeps the historical behavior.
-// CRISPASR_VIBEVOICE_PRED_SCHED=0 forces the old shared-sched behavior
+// STELNETTTS_VIBEVOICE_PRED_SCHED=0 forces the old shared-sched behavior
 // (regression-bisection escape hatch; reintroduces the UAF when cached).
 static ggml_backend_sched_t get_pred_head_sched(vibevoice_context* ctx) {
     const bool reuse_ok = !backend_needs_fresh_pred_graph(ctx->backend);
-    const char* env = std::getenv("CRISPASR_VIBEVOICE_PRED_SCHED");
+    const char* env = std::getenv("STELNETTTS_VIBEVOICE_PRED_SCHED");
     if (!reuse_ok || (env && env[0] == '0'))
         return ctx->sched;
     if (!ctx->pred_sched) {
@@ -2664,7 +2664,7 @@ static ggml_tensor* build_transposed_conv1d(ggml_context* ctx, ggml_tensor* x, g
 static ggml_cgraph* build_vae_decoder_graph(vibevoice_context* ctx, int n_frames) {
     auto& hp = ctx->model.hp;
     auto& ts = ctx->model.tensors;
-    const bool dump_decoder = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_DECODER") != nullptr;
+    const bool dump_decoder = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_DECODER") != nullptr;
     auto G = [&](const std::string& name) -> ggml_tensor* {
         auto it = ts.find(name);
         return it != ts.end() ? it->second : nullptr;
@@ -3064,7 +3064,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
     int verbosity = ctx->params.verbosity;
     int vae_dim = hp.vae_dim_acoustic;
     int d_lm = hp.d_lm;
-    const char* dump_dir = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP");
+    const char* dump_dir = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP");
     const auto tts_t0 = std::chrono::high_resolution_clock::now();
 
     // VibeVoice TTS hits Apple's GPU watchdog
@@ -3148,7 +3148,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
         // loaded — that pack is unusable here, and gating on tts_seq_len==0 would
         // otherwise suppress a perfectly good WAV reference.
         if (is_base_model || ctx->voice.tts_seq_len == 0) {
-            const char* voice_wav = crispasr_env::get("CRISPASR_VIBEVOICE_VOICE_AUDIO");
+            const char* voice_wav = stelnettts_env::get("STELNETTTS_VIBEVOICE_VOICE_AUDIO");
             if (voice_wav && voice_wav[0]) {
                 FILE* fv = fopen(voice_wav, "rb");
                 std::vector<float> ref_pcm;
@@ -3256,7 +3256,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
                             "'vibevoice-voice-*.gguf' are built for vibevoice-realtime (they carry tts_lm "
                             "KV, not a reference the base model can encode). It needs a reference WAV:\n"
                             "    --voice /path/to/reference.wav\n"
-                            "  or set CRISPASR_VIBEVOICE_VOICE_AUDIO=/path/to/reference.wav\n"
+                            "  or set STELNETTTS_VIBEVOICE_VOICE_AUDIO=/path/to/reference.wav\n"
                             "  (or use the vibevoice-realtime model with these voice packs).\n");
             return nullptr;
         }
@@ -3536,7 +3536,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
         mt19937_state rng;
         {
             uint32_t seed = 42;
-            if (const char* sv = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_SEED")) {
+            if (const char* sv = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_SEED")) {
                 seed = (uint32_t)strtoul(sv, nullptr, 0);
             }
             if (ctx->params.seed != 0)
@@ -3716,7 +3716,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
         memcpy(out_buf, raw_audio.data() + trim_start, (size_t)trimmed_len * sizeof(float));
         if (out_n_samples)
             *out_n_samples = trimmed_len;
-        if (crispasr_env::get("CRISPASR_VIBEVOICE_BENCH")) {
+        if (stelnettts_env::get("STELNETTTS_VIBEVOICE_BENCH")) {
             const auto t_pure_infer_end = std::chrono::high_resolution_clock::now();
             double infer_sec = std::chrono::duration<double>(t_pure_infer_end - t_pure_infer_start).count();
             double audio_sec = trimmed_len / 24000.0;
@@ -4405,12 +4405,12 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
         // looked fine and long ones crashed (issue #171). The dynamic path below
         // is correct on every backend (and validated on CPU with buckets too),
         // so restrict the fast path to the CPU backend by default. Override with
-        // CRISPASR_VIBEVOICE_LM_BUCKETS=0/1 (forces off/on); the legacy
-        // CRISPASR_VIBEVOICE_NO_LM_BUCKETS=1 still forces off.
+        // STELNETTTS_VIBEVOICE_LM_BUCKETS=0/1 (forces off/on); the legacy
+        // STELNETTTS_VIBEVOICE_NO_LM_BUCKETS=1 still forces off.
         bool use_buckets = !(ctx->backend && ctx->backend != ctx->backend_cpu);
-        if (const char* bk_env = std::getenv("CRISPASR_VIBEVOICE_LM_BUCKETS"))
+        if (const char* bk_env = std::getenv("STELNETTTS_VIBEVOICE_LM_BUCKETS"))
             use_buckets = (bk_env[0] == '1');
-        else if (std::getenv("CRISPASR_VIBEVOICE_NO_LM_BUCKETS"))
+        else if (std::getenv("STELNETTTS_VIBEVOICE_NO_LM_BUCKETS"))
             use_buckets = false;
         if (use_buckets && n_tokens == 1 && (!dump_dir || !dump_dir[0])) {
             const int idx = lm_pick_bucket(n_past + 1);
@@ -4684,7 +4684,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
             fprintf(stderr, "vibevoice TTS: neg TTS LM prefill failed\n");
             return nullptr;
         }
-        if (verbosity >= 2 || crispasr_env::get("CRISPASR_VIBEVOICE_TTS_TRACE")) {
+        if (verbosity >= 2 || stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_TRACE")) {
             float rms = sqrtf(
                 std::inner_product(neg_condition.begin(), neg_condition.end(), neg_condition.begin(), 0.0f) / d_lm);
             fprintf(stderr, "  neg_condition prefill (IMAGE_PAD): rms=%.4f\n", rms);
@@ -4749,7 +4749,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
             ggml_backend_tensor_get(sf, &scaling_factor, 0, sizeof(float));
         if (bf)
             ggml_backend_tensor_get(bf, &bias_factor, 0, sizeof(float));
-        if (verbosity >= 2 || crispasr_env::get("CRISPASR_VIBEVOICE_TTS_TRACE"))
+        if (verbosity >= 2 || stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_TRACE"))
             fprintf(stderr, "  speech_scaling=%g speech_bias=%g  (sf=%p bf=%p)\n", scaling_factor, bias_factor,
                     (void*)sf, (void*)bf);
     }
@@ -4789,7 +4789,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
     float cfg_scale = is_base_model ? 1.3f : 3.0f;
     if (ctx->params.cfg_scale > 0.0f) {
         cfg_scale = ctx->params.cfg_scale;
-    } else if (const char* ce = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_CFG_SCALE")) {
+    } else if (const char* ce = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_CFG_SCALE")) {
         float v = (float)atof(ce);
         if (v > 0.0f)
             cfg_scale = v;
@@ -4799,7 +4799,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
     mt19937_state rng;
     {
         uint32_t seed = 42;
-        if (const char* sv = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_SEED")) {
+        if (const char* sv = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_SEED")) {
             seed = (uint32_t)strtoul(sv, nullptr, 0);
         }
         if (ctx->params.seed != 0)
@@ -4808,7 +4808,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
     }
 
     std::vector<float> preloaded_noise;
-    const char* noise_file = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_NOISE");
+    const char* noise_file = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_NOISE");
     if (noise_file && noise_file[0]) {
         FILE* nf = fopen(noise_file, "rb");
         if (nf) {
@@ -4825,7 +4825,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
     int total_frames = 0;
     bool finished = false;
     int trace_frame = -1;
-    if (const char* tf = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_TRACE_FRAME"))
+    if (const char* tf = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_TRACE_FRAME"))
         trace_frame = atoi(tf);
     double bench_sum_diff = 0, bench_sum_lm = 0;
     int bench_frames = 0;
@@ -4872,7 +4872,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
             if (fi == 0)
                 vibevoice_dump_f32(dump_dir, "tts_noise_frame0", z.data(), z.size());
             // Per-frame conditions/noise dump (VIBEVOICE_TTS_DUMP_PERFRAME=1).
-            if (crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_PERFRAME")) {
+            if (stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_PERFRAME")) {
                 char nm[64];
                 snprintf(nm, sizeof(nm), "perframe_pos_cond_f%03d", fi);
                 vibevoice_dump_f32(dump_dir, nm, hidden.data(), hidden.size());
@@ -4929,7 +4929,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
                 if (fi == 0 && step == 0)
                     vibevoice_dump_f32(dump_dir, "tts_v_cfg_step0", v_cfg.data(), v_cfg.size());
                 // Per-frame step-0 v_cfg dump (VIBEVOICE_TTS_DUMP_PERFRAME=1).
-                if (step == 0 && crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_PERFRAME")) {
+                if (step == 0 && stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_PERFRAME")) {
                     char nm[64];
                     snprintf(nm, sizeof(nm), "perframe_v_cfg_step0_f%03d", fi);
                     vibevoice_dump_f32(dump_dir, nm, v_cfg.data(), v_cfg.size());
@@ -4973,7 +4973,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
             if (fi == 0) {
                 vibevoice_dump_f32(dump_dir, "tts_latent_frame0", z.data(), z.size());
             }
-            if (crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_PERFRAME")) {
+            if (stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_PERFRAME")) {
                 char nm[64];
                 snprintf(nm, sizeof(nm), "perframe_latent_f%03d", fi);
                 vibevoice_dump_f32(dump_dir, nm, z.data(), z.size());
@@ -4990,7 +4990,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
             if (fi == 0) {
                 vibevoice_dump_f32(dump_dir, "tts_acoustic_embed_frame0", speech_embed.data(), speech_embed.size());
             }
-            if (crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_PERFRAME")) {
+            if (stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_PERFRAME")) {
                 char nm[64];
                 snprintf(nm, sizeof(nm), "perframe_acoustic_embed_f%03d", fi);
                 vibevoice_dump_f32(dump_dir, nm, speech_embed.data(), speech_embed.size());
@@ -5065,7 +5065,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
                             ggml_backend_tensor_get(ggml_graph_get_tensor(gf_e, "eos_out"), &eos_logit, 0,
                                                     sizeof(float));
                             float eos_prob = 1.0f / (1.0f + expf(-eos_logit)); // sigmoid
-                            if (crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_PERFRAME")) {
+                            if (stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_PERFRAME")) {
                                 char nm[64];
                                 snprintf(nm, sizeof(nm), "perframe_eos_logit_f%03d", fi);
                                 vibevoice_dump_f32(dump_dir, nm, &eos_logit, 1);
@@ -5082,7 +5082,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
                 }
             }
             // Per-frame timing accumulation
-            if (crispasr_env::get("CRISPASR_VIBEVOICE_BENCH")) {
+            if (stelnettts_env::get("STELNETTTS_VIBEVOICE_BENCH")) {
                 auto t_frame_end = std::chrono::high_resolution_clock::now();
                 double diff_ms = std::chrono::duration<double, std::milli>(t_diff_end - t_frame_start).count();
                 double rest_ms = std::chrono::duration<double, std::milli>(t_frame_end - t_diff_end).count();
@@ -5103,7 +5103,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
 
     } // end text/speech interleave loop
 
-    if (const char* latent_file = crispasr_env::get("CRISPASR_VIBEVOICE_TTS_LATENTS")) {
+    if (const char* latent_file = stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_LATENTS")) {
         std::vector<float> override_latents;
         if (!vibevoice_load_f32_file(latent_file, override_latents) || override_latents.empty() ||
             (override_latents.size() % (size_t)vae_dim) != 0) {
@@ -5133,7 +5133,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
 
     // 6. Scale and decode
     const auto t_ar_done = std::chrono::high_resolution_clock::now();
-    if (crispasr_env::get("CRISPASR_VIBEVOICE_BENCH") && lm_step_count > 0) {
+    if (stelnettts_env::get("STELNETTTS_VIBEVOICE_BENCH") && lm_step_count > 0) {
         fprintf(stderr,
                 "  BENCH LM step (%d calls): build=%.0fms (%.1f/call), alloc=%.0fms (%.1f/call), compute=%.0fms "
                 "(%.1f/call)\n",
@@ -5187,7 +5187,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
         return nullptr;
     }
     auto t_vae_compute1 = std::chrono::high_resolution_clock::now();
-    if (crispasr_env::get("CRISPASR_VIBEVOICE_BENCH")) {
+    if (stelnettts_env::get("STELNETTTS_VIBEVOICE_BENCH")) {
         fprintf(stderr, "  BENCH VAE (%d frames→%dx): build=%.0fms, alloc=%.0fms, compute=%.0fms, ops=%d\n",
                 actual_frames, actual_frames * 3200,
                 std::chrono::duration<double, std::milli>(t_vae_alloc0 - t_vae_build0).count(),
@@ -5208,7 +5208,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
         fprintf(stderr, "vibevoice TTS: output %d samples (%.2f sec at 24kHz) in %.1f ms (%.2fx realtime)\n",
                 total_audio, audio_sec, tts_ms, audio_sec / (tts_ms / 1000.0));
     }
-    if (crispasr_env::get("CRISPASR_VIBEVOICE_BENCH")) {
+    if (stelnettts_env::get("STELNETTTS_VIBEVOICE_BENCH")) {
         double prefill_ms = std::chrono::duration<double, std::milli>(t_prefill_done - tts_t0).count();
         double ar_ms = std::chrono::duration<double, std::milli>(t_ar_done - t_prefill_done).count();
         double vae_ms = std::chrono::duration<double, std::milli>(tts_t1 - t_ar_done).count();
@@ -5222,7 +5222,7 @@ extern "C" float* vibevoice_synthesize(struct vibevoice_context* ctx, const char
     ggml_backend_tensor_get(audio_out, raw_audio.data(), 0, (size_t)total_audio * sizeof(float));
     if (dump_dir) {
         vibevoice_dump_f32(dump_dir, "tts_raw_audio", raw_audio.data(), raw_audio.size());
-        if (crispasr_env::get("CRISPASR_VIBEVOICE_TTS_DUMP_DECODER")) {
+        if (stelnettts_env::get("STELNETTTS_VIBEVOICE_TTS_DUMP_DECODER")) {
             const char* names[] = {"dec_stem",   "dec_stage0", "dec_up1",    "dec_stage1", "dec_up2",
                                    "dec_stage2", "dec_up3",    "dec_stage3", "dec_up4",    "dec_stage4",
                                    "dec_up5",    "dec_stage5", "dec_up6",    "dec_stage6"};

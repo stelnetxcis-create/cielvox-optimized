@@ -1,7 +1,7 @@
 """WeSpeaker ResNet34-LM speaker-embedding reference dump backend.
 
 Runs the UPSTREAM model as an oracle and captures per-stage activations, so
-`crispasr-diff wespeaker` is comparing the ggml runtime against the real
+`stelnettts-diff wespeaker` is comparing the ggml runtime against the real
 WeSpeaker forward rather than against a second implementation of my own.
 Reimplementing the ResNet here would make the diff circular and prove nothing.
 

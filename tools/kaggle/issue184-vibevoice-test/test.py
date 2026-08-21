@@ -1,5 +1,5 @@
 """
-CrispASR -- Issue #184: vibevoice ggml_cont fix regression test on CUDA
+StelnetTTS -- Issue #184: vibevoice ggml_cont fix regression test on CUDA
 
 Verifies that the ggml_cont fix for strided AdaLN views doesn't break
 vibevoice TTS on CUDA. Runs synthesis + ASR roundtrip.
@@ -37,7 +37,7 @@ def _excepthook(exc_type, exc_val, exc_tb):
 sys.excepthook = _excepthook
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 
 
@@ -58,9 +58,9 @@ Path("/kaggle/working/started.txt").write_text("started\n")
 
 if REPO.exists():
     shutil.rmtree(REPO)
-BRANCH = os.environ.get("CRISPASR_REF", "worktree-issue-184-vibevoice-tts-crash")
+BRANCH = os.environ.get("STELNETTTS_REF", "worktree-issue-184-vibevoice-tts-crash")
 run(["git", "clone", "--depth", "1", "--branch", BRANCH,
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 try:
@@ -91,7 +91,7 @@ cmake_args = (
     [
         "cmake", "-S", str(REPO), "-B", str(BUILD),
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-        "-DCRISPASR_BUILD_TESTS=OFF", "-DCRISPASR_AMR=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF", "-DSTELNETTTS_AMR=OFF",
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -100,14 +100,14 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found"
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
+    assert cands, "stelnettts binary not found"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("build_done")
@@ -124,17 +124,17 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 vibe_model = Path(hf_hub_download(
-    "cstr/vibevoice-realtime-0.5b-GGUF",
+    "Xenna/vibevoice-realtime-0.5b-GGUF",
     "vibevoice-realtime-0.5b-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 vibe_voice = Path(hf_hub_download(
-    "cstr/vibevoice-realtime-0.5b-GGUF",
+    "Xenna/vibevoice-realtime-0.5b-GGUF",
     "vibevoice-voice-emma.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 asr_model = Path(hf_hub_download(
-    "cstr/parakeet-tdt-0.6b-v2-GGUF",
+    "Xenna/parakeet-tdt-0.6b-v2-GGUF",
     "parakeet-tdt-0.6b-v2-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
@@ -190,7 +190,7 @@ kh.step("tts.start")
 print("\n=== Test 1: buckets ON + debug + blocking ===", flush=True)
 r1 = run_tts("debug", extra_env={
     "CUDA_LAUNCH_BLOCKING": "1",
-    "CRISPASR_VIBEVOICE_LM_BUCKETS": "1",
+    "STELNETTTS_VIBEVOICE_LM_BUCKETS": "1",
     "VIBEVOICE_LM_BUCKET_DEBUG": "1",
 })
 

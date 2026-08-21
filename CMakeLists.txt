@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.10...3.29)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PROJECT_VERSION_CONTENT)
 string(STRIP "${PROJECT_VERSION_CONTENT}" PROJECT_VERSION_CONTENT)
 
-project(crispasr VERSION ${PROJECT_VERSION_CONTENT} LANGUAGES C CXX)
+project(stelnettts VERSION ${PROJECT_VERSION_CONTENT} LANGUAGES C CXX)
 
-# src/CMakeLists.txt promotes crispasr_audio.cpp and crispasr_mic.cpp to
+# src/CMakeLists.txt promotes stelnettts_audio.cpp and stelnettts_mic.cpp to
 # LANGUAGE OBJCXX on Apple so miniaudio's CoreAudio backend can include
 # <AVFoundation/AVFoundation.h>. CMake refuses to honor that property
 # unless the language is enabled at project scope.
@@ -31,14 +31,14 @@ endif()
 # Add path to modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
-# C2PA (Content Credentials) enablement — defines crispasr_enable_c2pa(<target>),
+# C2PA (Content Credentials) enablement — defines stelnettts_enable_c2pa(<target>),
 # called for both the core lib (src/) and the CLI (examples/cli/).
-include(CrispasrC2pa)
+include(StelnetttsC2pa)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    set(CRISPASR_STANDALONE ON)
+    set(STELNETTTS_STANDALONE ON)
 
     include(git-vars)
 
@@ -46,7 +46,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     configure_file(${CMAKE_SOURCE_DIR}/bindings/javascript/package-tmpl.json ${CMAKE_SOURCE_DIR}/bindings/javascript/package.json @ONLY)
 
     # Sync the pure-JS C2PA signer/verifier from the c2pa-audio submodule (single
-    # source of truth) into bindings/javascript so `crispasr/c2pa` and the JS
+    # source of truth) into bindings/javascript so `stelnettts/c2pa` and the JS
     # tests use the current WAV/MP3/M4A/FLAC implementation. The copies are
     # generated (gitignored); the originals live in third_party/c2pa-audio/js.
     set(_c2pa_js_src ${CMAKE_SOURCE_DIR}/third_party/c2pa-audio/js)
@@ -56,7 +56,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         endforeach()
     endif()
 else()
-    set(CRISPASR_STANDALONE OFF)
+    set(STELNETTTS_STANDALONE OFF)
 endif()
 
 # Always populate GIT_SHA1 / GIT_DATE / GIT_COMMIT_SUBJECT — the CLI
@@ -71,18 +71,18 @@ if (EMSCRIPTEN)
     set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-    option(CRISPASR_WASM            "crispasr: build WASM/JS target (Emscripten)"              ON)
-    option(CRISPASR_WASM_SINGLE_FILE "crispasr: embed WASM inside the generated crispasr.js"   ON)
+    option(STELNETTTS_WASM            "stelnettts: build WASM/JS target (Emscripten)"              ON)
+    option(STELNETTTS_WASM_SINGLE_FILE "stelnettts: embed WASM inside the generated stelnettts.js"   ON)
     # Single-threaded WASM: no pthreads, so NO SharedArrayBuffer / COOP-COEP required, and no
     # blocking-compute deadlock when driven from a Web Worker. Slower (1 thread), but it just runs
     # anywhere. Multithreaded (-pthread) stays the default.
-    option(CRISPASR_WASM_SINGLE_THREAD "crispasr: single-threaded WASM (no pthreads, no COOP/COEP)" OFF)
+    option(STELNETTTS_WASM_SINGLE_THREAD "stelnettts: single-threaded WASM (no pthreads, no COOP/COEP)" OFF)
 
     # Multithreaded WASM: -pthread enables SharedArrayBuffer-based threading
     # in the browser. The hosting page MUST set COOP/COEP headers:
     #   Cross-Origin-Opener-Policy: same-origin
     #   Cross-Origin-Embedder-Policy: require-corp
-    if (NOT CRISPASR_WASM_SINGLE_THREAD)
+    if (NOT STELNETTTS_WASM_SINGLE_THREAD)
         set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -pthread")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
     endif()
@@ -106,52 +106,52 @@ option(BUILD_SHARED_LIBS "build shared libraries" ${BUILD_SHARED_LIBS_DEFAULT})
 #
 
 # debug
-option(CRISPASR_ALL_WARNINGS           "crispasr: enable all compiler warnings"                   ON)
-option(CRISPASR_ALL_WARNINGS_3RD_PARTY "crispasr: enable all compiler warnings in 3rd party libs" OFF)
+option(STELNETTTS_ALL_WARNINGS           "stelnettts: enable all compiler warnings"                   ON)
+option(STELNETTTS_ALL_WARNINGS_3RD_PARTY "stelnettts: enable all compiler warnings in 3rd party libs" OFF)
 
 # build
-option(CRISPASR_FATAL_WARNINGS  "crispasr: enable -Werror flag"               OFF)
-option(CRISPASR_USE_SYSTEM_GGML "crispasr: use system-installed GGML library" OFF)
-option(CRISPASR_PORTABLE_CPU
-       "crispasr: compile bundled ggml-cpu for generic x86-64 (no optional ISA)"
+option(STELNETTTS_FATAL_WARNINGS  "stelnettts: enable -Werror flag"               OFF)
+option(STELNETTTS_USE_SYSTEM_GGML "stelnettts: use system-installed GGML library" OFF)
+option(STELNETTTS_PORTABLE_CPU
+       "stelnettts: compile bundled ggml-cpu for generic x86-64 (no optional ISA)"
        OFF)
 
 # sanitizers
-option(CRISPASR_SANITIZE_THREAD    "crispasr: enable thread sanitizer"    OFF)
-option(CRISPASR_SANITIZE_ADDRESS   "crispasr: enable address sanitizer"   OFF)
-option(CRISPASR_SANITIZE_UNDEFINED "crispasr: enable undefined sanitizer" OFF)
+option(STELNETTTS_SANITIZE_THREAD    "stelnettts: enable thread sanitizer"    OFF)
+option(STELNETTTS_SANITIZE_ADDRESS   "stelnettts: enable address sanitizer"   OFF)
+option(STELNETTTS_SANITIZE_UNDEFINED "stelnettts: enable undefined sanitizer" OFF)
 
-# libFuzzer harnesses (clang only). Combine with -DCRISPASR_SANITIZE_ADDRESS=ON
+# libFuzzer harnesses (clang only). Combine with -DSTELNETTTS_SANITIZE_ADDRESS=ON
 # for OOB detection. `-fsanitize=fuzzer-no-link` instruments every TU compiled
 # after this for coverage; each harness target adds `-fsanitize=fuzzer` for the
 # libFuzzer driver. See tests/fuzz/.
-option(CRISPASR_FUZZ "crispasr: build libFuzzer harnesses (clang only)" OFF)
-if (CRISPASR_FUZZ)
+option(STELNETTTS_FUZZ "stelnettts: build libFuzzer harnesses (clang only)" OFF)
+if (STELNETTTS_FUZZ)
     add_compile_options(-fsanitize=fuzzer-no-link)
 endif()
 
 # extra artifacts
-option(CRISPASR_BUILD_TESTS    "crispasr: build tests"          ${CRISPASR_STANDALONE})
-option(CRISPASR_BUILD_EXAMPLES "crispasr: build examples"       ${CRISPASR_STANDALONE})
-option(CRISPASR_BUILD_SERVER   "crispasr: build server example" ${CRISPASR_STANDALONE})
+option(STELNETTTS_BUILD_TESTS    "stelnettts: build tests"          ${STELNETTTS_STANDALONE})
+option(STELNETTTS_BUILD_EXAMPLES "stelnettts: build examples"       ${STELNETTTS_STANDALONE})
+option(STELNETTTS_BUILD_SERVER   "stelnettts: build server example" ${STELNETTTS_STANDALONE})
 
 # 3rd party libs
-option(CRISPASR_CURL "crispasr: use libcurl to download model from an URL" OFF)
-option(CRISPASR_SDL2 "crispasr: support for libSDL2" OFF)
+option(STELNETTTS_CURL "stelnettts: use libcurl to download model from an URL" OFF)
+option(STELNETTTS_SDL2 "stelnettts: support for libSDL2" OFF)
 
-if (CRISPASR_CURL)
+if (STELNETTTS_CURL)
     find_package(CURL REQUIRED)
     message(STATUS "libcurl found: ${CURL_VERSION_STRING} (${CURL_LIBRARIES})")
 endif()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    option(CRISPASR_FFMPEG "crispasr: support building and linking with ffmpeg libs (avcodec, swresample, ...)" OFF)
+    option(STELNETTTS_FFMPEG "stelnettts: support building and linking with ffmpeg libs (avcodec, swresample, ...)" OFF)
 endif()
 
-option(CRISPASR_MEDIA_NDK              "crispasr: enable Android Media NDK (auto-detected)" ON)
-option(CRISPASR_COREML                "crispasr: enable Core ML framework"  OFF)
-option(CRISPASR_COREML_ALLOW_FALLBACK "crispasr: allow non-CoreML fallback" OFF)
-option(CRISPASR_OPENVINO              "crispasr: support for OpenVINO"      OFF)
+option(STELNETTTS_MEDIA_NDK              "stelnettts: enable Android Media NDK (auto-detected)" ON)
+option(STELNETTTS_COREML                "stelnettts: enable Core ML framework"  OFF)
+option(STELNETTTS_COREML_ALLOW_FALLBACK "stelnettts: allow non-CoreML fallback" OFF)
+option(STELNETTTS_OPENVINO              "stelnettts: support for OpenVINO"      OFF)
 
 # ---------------------------------------------------------------------------
 # Cohere Transcribe options
@@ -203,11 +203,11 @@ if (COHERE_MKL)
 endif()
 
 # override ggml options
-set(GGML_SANITIZE_THREAD    ${CRISPASR_SANITIZE_THREAD})
-set(GGML_SANITIZE_ADDRESS   ${CRISPASR_SANITIZE_ADDRESS})
-set(GGML_SANITIZE_UNDEFINED ${CRISPASR_SANITIZE_UNDEFINED})
-set(GGML_ALL_WARNINGS       ${CRISPASR_ALL_WARNINGS})
-set(GGML_FATAL_WARNINGS     ${CRISPASR_FATAL_WARNINGS})
+set(GGML_SANITIZE_THREAD    ${STELNETTTS_SANITIZE_THREAD})
+set(GGML_SANITIZE_ADDRESS   ${STELNETTTS_SANITIZE_ADDRESS})
+set(GGML_SANITIZE_UNDEFINED ${STELNETTTS_SANITIZE_UNDEFINED})
+set(GGML_ALL_WARNINGS       ${STELNETTTS_ALL_WARNINGS})
+set(GGML_FATAL_WARNINGS     ${STELNETTTS_FATAL_WARNINGS})
 
 # #261/#302: GPU inference still enumerates and initializes ggml-cpu before it
 # selects CUDA/Vulkan. A GPU artifact whose CPU helper was compiled for AVX2 or
@@ -218,10 +218,10 @@ set(GGML_FATAL_WARNINGS     ${CRISPASR_FATAL_WARNINGS})
 # option so release jobs cannot omit one of the growing set of ggml ISA knobs.
 # This is the generic x86-64/SSE2 floor; non-x86 builds simply leave irrelevant
 # cache entries disabled.
-if (CRISPASR_PORTABLE_CPU)
-    if (CRISPASR_USE_SYSTEM_GGML)
+if (STELNETTTS_PORTABLE_CPU)
+    if (STELNETTTS_USE_SYSTEM_GGML)
         message(FATAL_ERROR
-            "CRISPASR_PORTABLE_CPU cannot control a system-installed ggml; "
+            "STELNETTTS_PORTABLE_CPU cannot control a system-installed ggml; "
             "use the bundled submodule or provide a baseline-built ggml")
     endif()
 
@@ -242,10 +242,10 @@ if (CRISPASR_PORTABLE_CPU)
             AMX_INT8
             AMX_BF16)
         set(GGML_${_ggml_isa} OFF CACHE BOOL
-            "Disabled by CRISPASR_PORTABLE_CPU" FORCE)
+            "Disabled by STELNETTTS_PORTABLE_CPU" FORCE)
     endforeach()
     message(STATUS
-        "CRISPASR_PORTABLE_CPU=ON: ggml-cpu uses the generic x86-64 baseline")
+        "STELNETTTS_PORTABLE_CPU=ON: ggml-cpu uses the generic x86-64 baseline")
 endif()
 
 # §232: Enable tinyBLAS/llamafile GEMM by default — ~15-29% faster CPU encoder
@@ -254,24 +254,24 @@ endif()
 set(GGML_LLAMAFILE_DEFAULT ON)
 
 # transition helpers
-function (crispasr_option_depr TYPE OLD NEW)
+function (stelnettts_option_depr TYPE OLD NEW)
     if (${OLD})
         message(${TYPE} "${OLD} is deprecated and will be removed in the future.\nUse ${NEW} instead\n")
         set(${NEW} ON)
     endif()
 endfunction()
 
-crispasr_option_depr(FATAL_ERROR CRISPASR_CUBLAS              GGML_CUDA)
-crispasr_option_depr(WARNING     CRISPASR_CUDA                GGML_CUDA)
-crispasr_option_depr(WARNING     CRISPASR_KOMPUTE             GGML_KOMPUTE)
-crispasr_option_depr(WARNING     CRISPASR_METAL               GGML_METAL)
-crispasr_option_depr(WARNING     CRISPASR_METAL_EMBED_LIBRARY GGML_METAL_EMBED_LIBRARY)
-crispasr_option_depr(WARNING     CRISPASR_NATIVE              GGML_NATIVE)
-crispasr_option_depr(WARNING     CRISPASR_OPENMP              GGML_OPENMP)
-crispasr_option_depr(WARNING     CRISPASR_RPC                 GGML_RPC)
-crispasr_option_depr(WARNING     CRISPASR_SYCL                GGML_SYCL)
-crispasr_option_depr(WARNING     CRISPASR_SYCL_F16            GGML_SYCL_F16)
-crispasr_option_depr(WARNING     CRISPASR_CCACHE              GGML_CCACHE)
+stelnettts_option_depr(FATAL_ERROR STELNETTTS_CUBLAS              GGML_CUDA)
+stelnettts_option_depr(WARNING     STELNETTTS_CUDA                GGML_CUDA)
+stelnettts_option_depr(WARNING     STELNETTTS_KOMPUTE             GGML_KOMPUTE)
+stelnettts_option_depr(WARNING     STELNETTTS_METAL               GGML_METAL)
+stelnettts_option_depr(WARNING     STELNETTTS_METAL_EMBED_LIBRARY GGML_METAL_EMBED_LIBRARY)
+stelnettts_option_depr(WARNING     STELNETTTS_NATIVE              GGML_NATIVE)
+stelnettts_option_depr(WARNING     STELNETTTS_OPENMP              GGML_OPENMP)
+stelnettts_option_depr(WARNING     STELNETTTS_RPC                 GGML_RPC)
+stelnettts_option_depr(WARNING     STELNETTTS_SYCL                GGML_SYCL)
+stelnettts_option_depr(WARNING     STELNETTTS_SYCL_F16            GGML_SYCL_F16)
+stelnettts_option_depr(WARNING     STELNETTTS_CCACHE              GGML_CCACHE)
 
 if (GGML_CUDA AND NOT MSVC)
     #GGML_CUDA enabled, add the necessary compile options -Wno-deprecated-gpu-targets
@@ -283,7 +283,7 @@ endif()
 #
 
 if (NOT TARGET ggml)
-    if (CRISPASR_USE_SYSTEM_GGML)
+    if (STELNETTTS_USE_SYSTEM_GGML)
         find_package(ggml REQUIRED)
         if (NOT ggml_FOUND)
             message(FATAL_ERROR "System-installed GGML library not found.")
@@ -301,7 +301,7 @@ if (NOT TARGET ggml)
                 "Fetch the submodules and re-run cmake:\n"
                 "    git submodule update --init --recursive\n"
                 "or re-clone with:\n"
-                "    git clone --recursive https://github.com/CrispStrobe/CrispASR")
+                "    git clone --recursive https://github.com/Cyna/StelnetTTS")
         endif()
         add_subdirectory(ggml)
         if(WIN32)
@@ -316,7 +316,7 @@ if (NOT TARGET ggml)
             #  must be at least as new as the latest toolset used by any app component.
             #  You can define _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR as an escape hatch.
             #
-            # Specifically to crispasr this would cause a crash when using the Java bindings.
+            # Specifically to stelnettts this would cause a crash when using the Java bindings.
             # resulting in a Invalid memory access error.
             target_compile_definitions(ggml-base PRIVATE _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
         endif()
@@ -350,24 +350,24 @@ include(GNUInstallDirs)
 # point is that a missing backend is a runtime no-op rather than a load-time
 # abort. So route the link sites through interface targets that are empty in a
 # DL build and the real backend otherwise.
-add_library(crispasr_link_ggml_metal INTERFACE)
-add_library(crispasr_link_ggml_cuda INTERFACE)
-add_library(crispasr_link_ggml_vulkan INTERFACE)
+add_library(stelnettts_link_ggml_metal INTERFACE)
+add_library(stelnettts_link_ggml_cuda INTERFACE)
+add_library(stelnettts_link_ggml_vulkan INTERFACE)
 # ggml-cpu is a MODULE under DL too — the CPU backend is dlopen'd like any
 # other, which is what makes the fallback work when CUDA is absent. The call
 # sites go through src/core/ggml_cpu_backend.h.
-add_library(crispasr_link_ggml_cpu INTERFACE)
+add_library(stelnettts_link_ggml_cpu INTERFACE)
 if(NOT GGML_BACKEND_DL)
     if(GGML_METAL)
-        target_link_libraries(crispasr_link_ggml_metal INTERFACE ggml-metal)
+        target_link_libraries(stelnettts_link_ggml_metal INTERFACE ggml-metal)
     endif()
     if(GGML_CUDA)
-        target_link_libraries(crispasr_link_ggml_cuda INTERFACE ggml-cuda)
+        target_link_libraries(stelnettts_link_ggml_cuda INTERFACE ggml-cuda)
     endif()
     if(GGML_VULKAN)
-        target_link_libraries(crispasr_link_ggml_vulkan INTERFACE ggml-vulkan)
+        target_link_libraries(stelnettts_link_ggml_vulkan INTERFACE ggml-vulkan)
     endif()
-    target_link_libraries(crispasr_link_ggml_cpu INTERFACE ggml-cpu)
+    target_link_libraries(stelnettts_link_ggml_cpu INTERFACE ggml-cpu)
 endif()
 
 add_subdirectory(src)
@@ -375,7 +375,7 @@ add_subdirectory(src)
 # ---------------------------------------------------------------------------
 # WASM / JS bindings (Emscripten only, all backends)
 # ---------------------------------------------------------------------------
-if(EMSCRIPTEN AND CRISPASR_WASM)
+if(EMSCRIPTEN AND STELNETTTS_WASM)
     add_subdirectory(bindings/javascript)
 endif()
 
@@ -386,46 +386,46 @@ endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-set(CRISPASR_BUILD_NUMBER        ${BUILD_NUMBER})
-set(CRISPASR_BUILD_COMMIT        ${BUILD_COMMIT})
-set(CRISPASR_INSTALL_VERSION     ${CMAKE_PROJECT_VERSION})
+set(STELNETTTS_BUILD_NUMBER        ${BUILD_NUMBER})
+set(STELNETTTS_BUILD_COMMIT        ${BUILD_COMMIT})
+set(STELNETTTS_INSTALL_VERSION     ${CMAKE_PROJECT_VERSION})
 
-set(CRISPASR_INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR} CACHE PATH "Location of header  files")
-set(CRISPASR_LIB_INSTALL_DIR     ${CMAKE_INSTALL_LIBDIR}     CACHE PATH "Location of library files")
-set(CRISPASR_BIN_INSTALL_DIR     ${CMAKE_INSTALL_BINDIR}     CACHE PATH "Location of binary  files")
+set(STELNETTTS_INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR} CACHE PATH "Location of header  files")
+set(STELNETTTS_LIB_INSTALL_DIR     ${CMAKE_INSTALL_LIBDIR}     CACHE PATH "Location of library files")
+set(STELNETTTS_BIN_INSTALL_DIR     ${CMAKE_INSTALL_BINDIR}     CACHE PATH "Location of binary  files")
 
-get_directory_property(CRISPASR_TRANSIENT_DEFINES COMPILE_DEFINITIONS)
+get_directory_property(STELNETTTS_TRANSIENT_DEFINES COMPILE_DEFINITIONS)
 
-set_target_properties(crispasr-lib PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/crispasr.h)
-install(TARGETS crispasr-lib LIBRARY PUBLIC_HEADER)
+set_target_properties(stelnettts-lib PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/stelnettts.h)
+install(TARGETS stelnettts-lib LIBRARY PUBLIC_HEADER)
 
-target_compile_definitions(crispasr-lib PRIVATE
-    CRISPASR_VERSION="${PROJECT_VERSION}"
+target_compile_definitions(stelnettts-lib PRIVATE
+    STELNETTTS_VERSION="${PROJECT_VERSION}"
 )
 
 configure_package_config_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/crispasr-config.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/crispasr-config.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/crispasr
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/stelnettts-config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/stelnettts-config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/stelnettts
     PATH_VARS
-    CRISPASR_INCLUDE_INSTALL_DIR
-    CRISPASR_LIB_INSTALL_DIR
-    CRISPASR_BIN_INSTALL_DIR )
+    STELNETTTS_INCLUDE_INSTALL_DIR
+    STELNETTTS_LIB_INSTALL_DIR
+    STELNETTTS_BIN_INSTALL_DIR )
 
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/crispasr-version.cmake
-    VERSION ${CRISPASR_INSTALL_VERSION}
+    ${CMAKE_CURRENT_BINARY_DIR}/stelnettts-version.cmake
+    VERSION ${STELNETTTS_INSTALL_VERSION}
     COMPATIBILITY SameMajorVersion)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/crispasr-config.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/crispasr-version.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/crispasr)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/stelnettts-config.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/stelnettts-version.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/stelnettts)
 
-configure_file(cmake/crispasr.pc.in
-        "${CMAKE_CURRENT_BINARY_DIR}/crispasr.pc"
+configure_file(cmake/stelnettts.pc.in
+        "${CMAKE_CURRENT_BINARY_DIR}/stelnettts.pc"
         @ONLY)
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/crispasr.pc"
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/stelnettts.pc"
         DESTINATION lib/pkgconfig)
 
 #
@@ -440,22 +440,22 @@ add_subdirectory(glint EXCLUDE_FROM_ALL)
 
 add_subdirectory(crisp_audio)
 
-if (CRISPASR_BUILD_TESTS AND NOT CMAKE_JS_VERSION)
+if (STELNETTTS_BUILD_TESTS AND NOT CMAKE_JS_VERSION)
     include(CTest)
     add_subdirectory(tests)
 endif ()
 
-if (CRISPASR_BUILD_EXAMPLES)
+if (STELNETTTS_BUILD_EXAMPLES)
     add_subdirectory(examples)
 else()
     # The Ruby/Python/Rust/Dart bindings need the `common` static
     # library (audio I/O helpers etc.) but NOT the example executables
     # (cli, server) and not Catch2. examples/CMakeLists.txt has a
-    # `if (CRISPASR_BUILD_COMMON_ONLY)` early-return that builds just
-    # the common+common-crispasr libraries when CRISPASR_BUILD_EXAMPLES
+    # `if (STELNETTTS_BUILD_COMMON_ONLY)` early-return that builds just
+    # the common+common-stelnettts libraries when STELNETTTS_BUILD_EXAMPLES
     # is OFF. Always include it — the early-return is cheap when no
     # binding is consuming it.
-    set(CRISPASR_BUILD_COMMON_ONLY ON)
+    set(STELNETTTS_BUILD_COMMON_ONLY ON)
     add_subdirectory(examples)
 endif()
 
@@ -476,18 +476,18 @@ if (MSVC)
         endif()
     endfunction()
 
-    if (CRISPASR_BUILD_EXAMPLES)
-        disable_msvc_warnings(crispasr-lib)
+    if (STELNETTTS_BUILD_EXAMPLES)
+        disable_msvc_warnings(stelnettts-lib)
         disable_msvc_warnings(common)
         disable_msvc_warnings(common-sdl)
         disable_msvc_warnings(lsp)
         disable_msvc_warnings(wchess-core)
-        disable_msvc_warnings(crispasr-command)
-        disable_msvc_warnings(crispasr-cli)
-        disable_msvc_warnings(crispasr-server)
-        disable_msvc_warnings(crispasr-stream)
-        disable_msvc_warnings(crispasr-talk-llama)
-        disable_msvc_warnings(crispasr-bench)
+        disable_msvc_warnings(stelnettts-command)
+        disable_msvc_warnings(stelnettts-cli)
+        disable_msvc_warnings(stelnettts-server)
+        disable_msvc_warnings(stelnettts-stream)
+        disable_msvc_warnings(stelnettts-talk-llama)
+        disable_msvc_warnings(stelnettts-bench)
         disable_msvc_warnings(quantize)
         disable_msvc_warnings(vad-speech-segments)
     endif()

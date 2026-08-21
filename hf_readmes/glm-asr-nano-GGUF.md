@@ -19,7 +19,7 @@ base_model: zai-org/GLM-ASR-Nano-2512
 
 # GLM-ASR-Nano-2512 — GGUF
 
-GGUF conversions and quantisations of [`zai-org/GLM-ASR-Nano-2512`](https://huggingface.co/zai-org/GLM-ASR-Nano-2512) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`zai-org/GLM-ASR-Nano-2512`](https://huggingface.co/zai-org/GLM-ASR-Nano-2512) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -34,11 +34,11 @@ All variants produce correct transcription on test audio.
 ### 2026-07 update — BPE merges baked in + long-form single-pass
 
 All files were re-published with the tokenizer's **BPE merges** in the GGUF
-metadata (`tokenizer.ggml.merges`, +2 MB). CrispASR ≥ this date uses them to
+metadata (`tokenizer.ggml.merges`, +2 MB). StelnetTTS ≥ this date uses them to
 encode the transcription prompt exactly like the HF blueprint — earlier
 GGUF+runtime combinations silently sent **no instruction at all**, which is
 what caused repetition loops on noisy audio and empty output on long clips
-([CrispASR #218](https://github.com/CrispStrobe/CrispASR/issues/218)).
+([StelnetTTS #218](https://github.com/Cyna/StelnetTTS/issues/218)).
 Old GGUFs still work with the new runtime (it falls back to a baked default
 prompt), but custom `--ask` / `--language` instructions need these files.
 
@@ -56,22 +56,22 @@ the default 30 s-chunked mode covers more of such clips.
 - **License:** MIT
 - **Outperforms OpenAI Whisper V3** on benchmarks (lowest avg error rate 4.10)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-git clone https://github.com/CrispStrobe/CrispASR && cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS && cd StelnetTTS
 cmake -S . -B build && cmake --build build -j8
 
 # Auto-detect backend from GGUF
-./build/bin/crispasr -m glm-asr-nano-q4_k.gguf -f audio.wav
+./build/bin/stelnettts -m glm-asr-nano-q4_k.gguf -f audio.wav
 
 # Explicit backend
-./build/bin/crispasr --backend glm-asr -m glm-asr-nano-q4_k.gguf -f audio.wav -osrt
+./build/bin/stelnettts --backend glm-asr -m glm-asr-nano-q4_k.gguf -f audio.wav -osrt
 ```
 
 ## Conversion
 
 ```bash
 python models/convert-glm-asr-to-gguf.py --input zai-org/GLM-ASR-Nano-2512 --output glm-asr-nano.gguf
-crispasr-quantize glm-asr-nano.gguf glm-asr-nano-q4_k.gguf q4_k
+stelnettts-quantize glm-asr-nano.gguf glm-asr-nano-q4_k.gguf q4_k
 ```

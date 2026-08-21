@@ -14,17 +14,17 @@ tags:
 - arabic
 - flow-matching
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # lahgtna-chatterbox-v1 — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`oddadmix/lahgtna-chatterbox-v1`](https://huggingface.co/oddadmix/lahgtna-chatterbox-v1) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`oddadmix/lahgtna-chatterbox-v1`](https://huggingface.co/oddadmix/lahgtna-chatterbox-v1) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Arabic T3 (text-to-speech-tokens) variant of Chatterbox TTS. The T3 language model is finetuned for Arabic text while sharing the same S3Gen vocoder as the base English model. Distributed under **MIT license**.
 
-This repo contains only the **T3 model** (Arabic text → speech tokens). You also need the shared **S3Gen model** from [`cstr/chatterbox-GGUF`](https://huggingface.co/cstr/chatterbox-GGUF) to produce audio.
+This repo contains only the **T3 model** (Arabic text → speech tokens). You also need the shared **S3Gen model** from [`Xenna/chatterbox-GGUF`](https://huggingface.co/Xenna/chatterbox-GGUF) to produce audio.
 
 ## Files
 
@@ -34,7 +34,7 @@ This repo contains only the **T3 model** (Arabic text → speech tokens). You al
 
 For S3Gen (vocoder), download from the base Chatterbox repo:
 ```bash
-huggingface-cli download cstr/chatterbox-GGUF chatterbox-s3gen-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/chatterbox-GGUF chatterbox-s3gen-q8_0.gguf --local-dir .
 ```
 
 ## Architecture
@@ -46,7 +46,7 @@ Same as base Chatterbox but with Arabic-trained T3:
 
 ## Related models
 
-- [`cstr/chatterbox-GGUF`](https://huggingface.co/cstr/chatterbox-GGUF) — Base English Chatterbox (required for S3Gen)
+- [`Xenna/chatterbox-GGUF`](https://huggingface.co/Xenna/chatterbox-GGUF) — Base English Chatterbox (required for S3Gen)
 - [`oddadmix/lahgtna-chatterbox-v1`](https://huggingface.co/oddadmix/lahgtna-chatterbox-v1) — Original weights
 
 ## Conversion

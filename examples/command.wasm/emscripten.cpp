@@ -1,6 +1,6 @@
 #include "ggml.h"
 #include "common.h"
-#include "crispasr.h"
+#include "stelnettts.h"
 
 #include <emscripten.h>
 #include <emscripten/bind.h>
@@ -90,7 +90,7 @@ void command_main(size_t index) {
     command_set_status("loading data ...");
 
     struct whisper_full_params wparams =
-        whisper_full_default_params(whisper_sampling_strategy::CRISPASR_SAMPLING_GREEDY);
+        whisper_full_default_params(whisper_sampling_strategy::STELNETTTS_SAMPLING_GREEDY);
 
     wparams.n_threads = std::min(N_THREAD, (int)std::thread::hardware_concurrency());
     wparams.offset_ms = 0;
@@ -153,14 +153,14 @@ void command_main(size_t index) {
         int64_t t_ms = 0;
 
         {
-            command_get_audio(vad_ms, CRISPASR_SAMPLE_RATE, pcmf32_cur);
+            command_get_audio(vad_ms, STELNETTTS_SAMPLE_RATE, pcmf32_cur);
 
-            if (::vad_simple(pcmf32_cur, CRISPASR_SAMPLE_RATE, 1000, vad_thold, freq_thold, print_energy)) {
+            if (::vad_simple(pcmf32_cur, STELNETTTS_SAMPLE_RATE, 1000, vad_thold, freq_thold, print_energy)) {
                 fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);
                 command_set_status("Speech detected! Processing ...");
 
                 if (!have_prompt) {
-                    command_get_audio(prompt_ms, CRISPASR_SAMPLE_RATE, pcmf32_cur);
+                    command_get_audio(prompt_ms, STELNETTTS_SAMPLE_RATE, pcmf32_cur);
 
                     const auto txt = ::trim(::command_transcribe(ctx, wparams, pcmf32_cur, prob0, t_ms));
 
@@ -190,7 +190,7 @@ void command_main(size_t index) {
                         have_prompt = true;
                     }
                 } else {
-                    command_get_audio(command_ms, CRISPASR_SAMPLE_RATE, pcmf32_cur);
+                    command_get_audio(command_ms, STELNETTTS_SAMPLE_RATE, pcmf32_cur);
 
                     // prepend the prompt audio
                     pcmf32_cur.insert(pcmf32_cur.begin(), pcmf32_prompt.begin(), pcmf32_prompt.end());

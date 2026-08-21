@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Dump per-stage intermediates of the OmniVoice audio-tokenizer ENCODE path
-(HiggsAudioV2TokenizerModel.encode) → ref.gguf for the crispasr-diff harness.
+(HiggsAudioV2TokenizerModel.encode) → ref.gguf for the stelnettts-diff harness.
 
 This is the reference for the C++ voice-clone `higgs_encode` port (#254). It runs
 the REAL transformers `encode()` with forward hooks so the captured stages are
@@ -12,9 +12,9 @@ soundfile.
 
 Usage:
     <venv>/bin/python tools/dump_omnivoice_encode_reference.py \
-        --model /Volumes/backups/ai/crispasr-gguf/omnivoice-ref-src/audio_tokenizer \
+        --model /Volumes/backups/ai/stelnettts-gguf/omnivoice-ref-src/audio_tokenizer \
         --audio samples/jfk.wav \
-        --output /Volumes/backups/ai/crispasr-gguf/omnivoice-encode-ref.gguf
+        --output /Volumes/backups/ai/stelnettts-gguf/omnivoice-encode-ref.gguf
 
 Stages dumped (all F32, ggml column-major = numpy row-major of (T, C) → ne=[C,T]):
     input_wav24k        (T_samp,)     mono 24 kHz, clipped to a multiple of 960

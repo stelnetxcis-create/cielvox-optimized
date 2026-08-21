@@ -12,22 +12,22 @@ tags:
 - piper
 - vits
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Piper voices — GGUF bundle
 
 [rhasspy/piper](https://github.com/rhasspy/piper) VITS voices converted to
-ggml's GGUF format (arch=`piper`) for the **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**
+ggml's GGUF format (arch=`piper`) for the **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**
 native runtime. Each voice is a single self-contained file — the
 phoneme-id map and the espeak-ng voice are embedded in the GGUF, so no
-companion is needed. Output is 22.05 kHz mono (CrispASR resamples to its
+companion is needed. Output is 22.05 kHz mono (StelnetTTS resamples to its
 24 kHz playback convention).
 
 Tiny and fast: ~15–60 MB per voice, single-digit-ms-per-sentence on CPU —
-the best fit for mobile (CrisperWeaver) and quick previews. Converted with
-[`models/convert-piper-to-gguf.py`](https://github.com/CrispStrobe/CrispASR/blob/main/models/convert-piper-to-gguf.py)
+the best fit for mobile (StelnetWeaver) and quick previews. Converted with
+[`models/convert-piper-to-gguf.py`](https://github.com/Cyna/StelnetTTS/blob/main/models/convert-piper-to-gguf.py)
 (F16; reads the upstream `.onnx` + `.onnx.json`).
 
 ## Voices
@@ -83,7 +83,7 @@ Two layers, both permissive here:
 
 - **Runtime + converter** — the Piper architecture, the espeak-ng
   phonemizer integration, and `convert-piper-to-gguf.py` are MIT
-  (rhasspy/piper is MIT-licensed; CrispASR's runtime is its own).
+  (rhasspy/piper is MIT-licensed; StelnetTTS's runtime is its own).
 - **Voice weights** — each GGUF is a derivative of an upstream Piper voice
   and carries **that voice's dataset license** (the table above). All
   voices here are redistributable and commercial-use-OK, but obligations
@@ -101,19 +101,19 @@ do not assume the repo-level tag applies.
 ## Usage
 
 ```bash
-crispasr --backend piper -m piper-de_DE-thorsten-medium-f16.gguf \
+stelnettts --backend piper -m piper-de_DE-thorsten-medium-f16.gguf \
   --tts "Guten Tag, dies ist ein Test." --tts-output out.wav
 ```
 
-In CrisperWeaver these appear in the Synthesize screen's model picker once
+In StelnetWeaver these appear in the Synthesize screen's model picker once
 downloaded; the backend resamples 22.05 kHz → 24 kHz transparently.
 
 ## Voice provenance (EU AI Act Art. 50(4))
 
 Every piper voice is a single-speaker VITS model trained on one **named donor's** recordings: the Lessac corpus, Thorsten Müller (who released his voice under CC0), Kerstin. Releasing a voice is consent to publish it — it is not a reason to stop telling listeners the audio is synthetic.
 
-CrispASR records this as `speaker_identity=real_person`. Output synthesized with it carries a **spoken AI disclosure**, because audio resembling an identifiable person is a deep fake under Art. 3(60) whether or not any cloning took place. It does **not** require `--i-have-rights`: the donor's agreement to the training is a licensing matter settled upstream, which a downstream operator cannot attest to.
+StelnetTTS records this as `speaker_identity=real_person`. Output synthesized with it carries a **spoken AI disclosure**, because audio resembling an identifiable person is a deep fake under Art. 3(60) whether or not any cloning took place. It does **not** require `--i-have-rights`: the donor's agreement to the training is a licensing matter settled upstream, which a downstream operator cannot attest to.
 
 Override per run with `--speaker-identity`, or stamp a file permanently with
 `models/stamp-speaker-identity.py`. See
-[`docs/eu-ai-act.md` §6.2a](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md).
+[`docs/eu-ai-act.md` §6.2a](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md).

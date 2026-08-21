@@ -1,7 +1,7 @@
 {
-  "id": "chr1str/crispasr-vibevoice-asr-f16-one-off",
-  "title": "CrispASR — vibevoice-asr-f16 one-off",
-  "code_file": "crispasr-vibevoice-asr-f16-one-off.ipynb",
+  "id": "chr1str/stelnettts-vibevoice-asr-f16-one-off",
+  "title": "StelnetTTS — vibevoice-asr-f16 one-off",
+  "code_file": "stelnettts-vibevoice-asr-f16-one-off.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": "true",

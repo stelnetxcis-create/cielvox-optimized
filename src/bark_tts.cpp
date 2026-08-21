@@ -36,8 +36,8 @@
 #include "bark_tts.h"
 #include "core/gguf_loader.h"
 #include "core/wordpiece.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -70,7 +70,7 @@ namespace {
 static bool bark_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_BARK_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_BARK_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -260,7 +260,7 @@ struct bark_context {
 namespace {
 
 static const char* bark_dump_dir() {
-    static const char* d = crispasr_env::get("CRISPASR_BARK_DUMP_DIR");
+    static const char* d = stelnettts_env::get("STELNETTTS_BARK_DUMP_DIR");
     return d;
 }
 
@@ -1903,7 +1903,7 @@ struct bark_context* bark_init_from_file(const char* path_model, struct bark_con
     // Backend setup
     ctx->backend_cpu = core_cpu_backend::init();
     core_cpu_backend::set_n_threads(ctx->backend_cpu, ctx->n_threads);
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
     if (core_cpu_backend::is_cpu(ctx->backend))
@@ -2293,7 +2293,7 @@ float* bark_synthesize(struct bark_context* ctx, const char* text, int* out_n_sa
     // Usage: BARK_DECODE_CODES=/path/to/fine_codes.bin:8:148
     //        (path:n_codebooks:n_timesteps)
     {
-        const char* dc = crispasr_env::get("CRISPASR_BARK_DECODE_CODES");
+        const char* dc = stelnettts_env::get("STELNETTTS_BARK_DECODE_CODES");
         if (dc) {
             std::string spec(dc);
             // Parse path:n_cb:n_t

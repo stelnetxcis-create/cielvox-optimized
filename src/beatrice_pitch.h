@@ -78,7 +78,7 @@ struct beatrice_pitch_result {
 
 // bin -> Hz. f = 55 * 2**(bin / 96). Accuracy is at that quantisation floor
 // (median 2.4 cents on off-grid tones) roughly between 62 Hz and 780 Hz; above
-// ~800 Hz the MODEL fails, not the mapping. Measure with crispasr-f0-eval.
+// ~800 Hz the MODEL fails, not the mapping. Measure with stelnettts-f0-eval.
 float beatrice_pitch_bin_to_hz(int bin);
 
 // Convert the quantised bins to Hz, writing 0.0 for frames judged unvoiced --

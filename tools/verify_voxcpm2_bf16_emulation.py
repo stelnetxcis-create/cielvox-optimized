@@ -1,6 +1,6 @@
 """Bit-exact verifier for the BF16 primitives in src/core/torch_rng.h.
 
-Re-implements crispasr::core's MT19937 + BF16 randn, BF16 sinusoidal time
+Re-implements stelnettts::core's MT19937 + BF16 randn, BF16 sinusoidal time
 embedding, and BF16 t_span (sway) in pure Python, and diffs them against
 PyTorch's native bf16 outputs. Used as a regression test for the BF16
 "verified bit-identical to torch" claims attached to VoxCPM2 bug fixes

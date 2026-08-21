@@ -1,7 +1,7 @@
 """mistralai/Voxtral-4B-TTS-2603 reference dump backend.
 
 Uses vllm-omni (or manual PyTorch) to run the full TTS pipeline and
-captures intermediate activations for crispasr-diff comparison.
+captures intermediate activations for stelnettts-diff comparison.
 
 Stages:
 
@@ -42,7 +42,7 @@ import numpy as np
 # consolidated.safetensors and run with a manual forward (this is what the mudler C
 # reference does). The FM + codec are TTS-custom; the codec is already validated
 # (cos 0.9999), so this dumper covers the per-layer LLM path where a structural bug
-# would live. Frame-0 stage names match the runtime's CRISPASR_VOXTRAL_TTS_DIFF_DUMP.
+# would live. Frame-0 stage names match the runtime's STELNETTTS_VOXTRAL_TTS_DIFF_DUMP.
 _D, _NL, _NH, _NKV, _HD = 3072, 26, 32, 8, 128
 _THETA, _EPS = 1_000_000.0, 1e-5
 

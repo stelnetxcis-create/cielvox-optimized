@@ -262,7 +262,7 @@ inline std::vector<int32_t> run(Ctx* ctx, int32_t first_token, int initial_n_pas
 
 // --- run_with_probs: same loop as run() but also records the softmax
 // probability of each emitted token so the caller can surface
-// per-token confidence to the crispasr_segment vector. The first_prob
+// per-token confidence to the stelnettts_segment vector. The first_prob
 // parameter is the pre-computed softmax probability of `first_token`
 // under the prefill logits — the caller already computed it when
 // picking first_token so we don't redo the softmax here.

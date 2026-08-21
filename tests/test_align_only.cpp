@@ -4,12 +4,12 @@
 // Live tests: actual CTC alignment with canary-ctc-aligner or wav2vec2.
 //
 // Env vars:
-//   CRISPASR_MODEL_ALIGNER       — CTC aligner GGUF (canary-ctc-aligner-q4_k, wav2vec2, etc.)
-//   CRISPASR_TEST_AUDIO_JFK      — path to jfk.wav (defaults to samples/jfk.wav)
+//   STELNETTTS_MODEL_ALIGNER       — CTC aligner GGUF (canary-ctc-aligner-q4_k, wav2vec2, etc.)
+//   STELNETTTS_TEST_AUDIO_JFK      — path to jfk.wav (defaults to samples/jfk.wav)
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_aligner.h"
+#include "stelnettts_aligner.h"
 
 #include <chrono>
 #include <cstdio>
@@ -22,31 +22,31 @@
 // Unit tests — no model needed
 // ---------------------------------------------------------------------------
 
-TEST_CASE("align-only: crispasr_align_words null/empty safety", "[unit][align]") {
+TEST_CASE("align-only: stelnettts_align_words null/empty safety", "[unit][align]") {
     // All null/empty inputs must return an empty vector, not crash.
-    auto r1 = crispasr_align_words("", "hello world", nullptr, 0, 0, 1);
+    auto r1 = stelnettts_align_words("", "hello world", nullptr, 0, 0, 1);
     CHECK(r1.empty());
 
-    auto r2 = crispasr_align_words("/nonexistent.gguf", "", nullptr, 0, 0, 1);
+    auto r2 = stelnettts_align_words("/nonexistent.gguf", "", nullptr, 0, 0, 1);
     CHECK(r2.empty());
 
-    auto r3 = crispasr_align_words("/nonexistent.gguf", "hello", nullptr, 0, 0, 1);
+    auto r3 = stelnettts_align_words("/nonexistent.gguf", "hello", nullptr, 0, 0, 1);
     CHECK(r3.empty());
 
     float dummy = 0.0f;
-    auto r4 = crispasr_align_words("/nonexistent.gguf", "hello", &dummy, 1, 0, 1);
+    auto r4 = stelnettts_align_words("/nonexistent.gguf", "hello", &dummy, 1, 0, 1);
     CHECK(r4.empty());
 }
 
-TEST_CASE("align-only: crispasr_aligner_free_cache does not crash when empty", "[unit][align]") {
-    crispasr_aligner_free_cache(); // must not crash
-    crispasr_aligner_free_cache(); // double-free safety
+TEST_CASE("align-only: stelnettts_aligner_free_cache does not crash when empty", "[unit][align]") {
+    stelnettts_aligner_free_cache(); // must not crash
+    stelnettts_aligner_free_cache(); // double-free safety
 }
 
 // Join cue texts back into the flat transcript --align-only feeds the aligner.
 static std::string extract_srt_text(const std::string& raw) {
     std::string text_only;
-    for (const auto& cue : crispasr_parse_srt_cues(raw)) {
+    for (const auto& cue : stelnettts_parse_srt_cues(raw)) {
         if (!text_only.empty())
             text_only += ' ';
         text_only += cue;
@@ -64,7 +64,7 @@ TEST_CASE("align-only: SRT cue parsing", "[unit][align]") {
                           "00:00:02,500 --> 00:00:05,000\r\n"
                           "This is a test\r\n"
                           "\r\n";
-        auto cues = crispasr_parse_srt_cues(srt);
+        auto cues = stelnettts_parse_srt_cues(srt);
         REQUIRE(cues.size() == 2);
         CHECK(cues[0] == "Hello world");
         CHECK(cues[1] == "This is a test");
@@ -81,7 +81,7 @@ TEST_CASE("align-only: SRT cue parsing", "[unit][align]") {
                           "00:00:03,000 --> 00:00:05,000\n"
                           "Single line\n"
                           "\n";
-        auto cues = crispasr_parse_srt_cues(srt);
+        auto cues = stelnettts_parse_srt_cues(srt);
         REQUIRE(cues.size() == 2);
         CHECK(cues[0] == "Line one Line two");
         CHECK(cues[1] == "Single line");
@@ -89,7 +89,7 @@ TEST_CASE("align-only: SRT cue parsing", "[unit][align]") {
     }
 
     SECTION("empty SRT") {
-        CHECK(crispasr_parse_srt_cues("").empty());
+        CHECK(stelnettts_parse_srt_cues("").empty());
         CHECK(extract_srt_text("").empty());
     }
 
@@ -97,7 +97,7 @@ TEST_CASE("align-only: SRT cue parsing", "[unit][align]") {
         const char* srt = "1\n"
                           "00:00:00,000 --> 00:00:01,000\n"
                           "No trailing blank";
-        auto cues = crispasr_parse_srt_cues(srt);
+        auto cues = stelnettts_parse_srt_cues(srt);
         REQUIRE(cues.size() == 1);
         CHECK(cues[0] == "No trailing blank");
     }
@@ -111,7 +111,7 @@ TEST_CASE("align-only: SRT cue parsing", "[unit][align]") {
                           "00:00:01,000 --> 00:00:02,000\n"
                           "Real text\n"
                           "\n";
-        auto cues = crispasr_parse_srt_cues(srt);
+        auto cues = stelnettts_parse_srt_cues(srt);
         REQUIRE(cues.size() == 1);
         CHECK(cues[0] == "Real text");
     }
@@ -119,21 +119,21 @@ TEST_CASE("align-only: SRT cue parsing", "[unit][align]") {
 
 TEST_CASE("align-only: tokenise_align_words", "[unit][align]") {
     SECTION("space-delimited") {
-        auto w = crispasr_tokenise_align_words("Hello  world\tfoo\nbar");
+        auto w = stelnettts_tokenise_align_words("Hello  world\tfoo\nbar");
         REQUIRE(w.size() == 4);
         CHECK(w[0] == "Hello");
         CHECK(w[3] == "bar");
     }
     SECTION("CJK splits per character") {
-        auto w = crispasr_tokenise_align_words("你好world");
+        auto w = stelnettts_tokenise_align_words("你好world");
         REQUIRE(w.size() == 3);
         CHECK(w[0] == "你");
         CHECK(w[1] == "好");
         CHECK(w[2] == "world");
     }
     SECTION("empty") {
-        CHECK(crispasr_tokenise_align_words("").empty());
-        CHECK(crispasr_tokenise_align_words("  \n\t").empty());
+        CHECK(stelnettts_tokenise_align_words("").empty());
+        CHECK(stelnettts_tokenise_align_words("  \n\t").empty());
     }
 }
 
@@ -149,7 +149,7 @@ TEST_CASE("align-only: group aligned words into segments", "[unit][align]") {
     SECTION("exact word counts") {
         std::vector<std::string> segs = {"Hello world", "This is a test"};
         auto words = make_words({"Hello", "world", "This", "is", "a", "test"});
-        auto grouped = crispasr_group_aligned_segments(segs, words);
+        auto grouped = stelnettts_group_aligned_segments(segs, words);
         REQUIRE(grouped.size() == 2);
         CHECK(grouped[0].text == "Hello world");
         CHECK(grouped[0].t0_cs == 0);
@@ -165,7 +165,7 @@ TEST_CASE("align-only: group aligned words into segments", "[unit][align]") {
     SECTION("leftover words extend the last segment") {
         std::vector<std::string> segs = {"one", "two three"};
         auto words = make_words({"one", "two", "three", "extra"});
-        auto grouped = crispasr_group_aligned_segments(segs, words);
+        auto grouped = stelnettts_group_aligned_segments(segs, words);
         REQUIRE(grouped.size() == 2);
         CHECK(grouped[1].word_end == 4);
         CHECK(grouped[1].t1_cs == 380);
@@ -174,7 +174,7 @@ TEST_CASE("align-only: group aligned words into segments", "[unit][align]") {
     SECTION("alignment shorter than transcript drops uncovered tail") {
         std::vector<std::string> segs = {"one two", "three four"};
         auto words = make_words({"one", "two"});
-        auto grouped = crispasr_group_aligned_segments(segs, words);
+        auto grouped = stelnettts_group_aligned_segments(segs, words);
         REQUIRE(grouped.size() == 1);
         CHECK(grouped[0].text == "one two");
     }
@@ -182,20 +182,20 @@ TEST_CASE("align-only: group aligned words into segments", "[unit][align]") {
     SECTION("CJK segment consumes per-character words") {
         std::vector<std::string> segs = {"你好", "world"};
         auto words = make_words({"你", "好", "world"});
-        auto grouped = crispasr_group_aligned_segments(segs, words);
+        auto grouped = stelnettts_group_aligned_segments(segs, words);
         REQUIRE(grouped.size() == 2);
         CHECK(grouped[0].word_end == 2);
         CHECK(grouped[1].word_begin == 2);
     }
 
     SECTION("empty inputs") {
-        CHECK(crispasr_group_aligned_segments({}, {}).empty());
-        CHECK(crispasr_group_aligned_segments({"text"}, {}).empty());
+        CHECK(stelnettts_group_aligned_segments({}, {}).empty());
+        CHECK(stelnettts_group_aligned_segments({"text"}, {}).empty());
     }
 }
 
 // ---------------------------------------------------------------------------
-// Live tests — need CRISPASR_MODEL_ALIGNER + audio
+// Live tests — need STELNETTTS_MODEL_ALIGNER + audio
 // ---------------------------------------------------------------------------
 
 static std::string get_env(const char* name, const char* fallback = "") {
@@ -268,10 +268,10 @@ static std::vector<float> load_wav_16k_mono(const std::string& path) {
 }
 
 TEST_CASE("align-only: live alignment with canary-ctc-aligner", "[live][align]") {
-    std::string model = get_env("CRISPASR_MODEL_ALIGNER");
+    std::string model = get_env("STELNETTTS_MODEL_ALIGNER");
     if (model.empty()) {
         // Fallback: try well-known paths.
-        const char* dir = std::getenv("CRISPASR_MODELS_DIR");
+        const char* dir = std::getenv("STELNETTTS_MODELS_DIR");
         if (dir) {
             model = std::string(dir) + "/canary-ctc-aligner-q4_k.gguf";
             FILE* f = fopen(model.c_str(), "rb");
@@ -282,9 +282,9 @@ TEST_CASE("align-only: live alignment with canary-ctc-aligner", "[live][align]")
         }
     }
     if (model.empty())
-        SKIP("CRISPASR_MODEL_ALIGNER not set and no fallback found");
+        SKIP("STELNETTTS_MODEL_ALIGNER not set and no fallback found");
 
-    std::string audio_path = get_env("CRISPASR_TEST_AUDIO_JFK", "samples/jfk.wav");
+    std::string audio_path = get_env("STELNETTTS_TEST_AUDIO_JFK", "samples/jfk.wav");
     auto pcm = load_wav_16k_mono(audio_path);
     if (pcm.empty())
         SKIP("Cannot load audio: " + audio_path);
@@ -294,7 +294,7 @@ TEST_CASE("align-only: live alignment with canary-ctc-aligner", "[live][align]")
     const std::string transcript = "And so my fellow Americans ask not what your country can do for you "
                                    "ask what you can do for your country";
 
-    auto aligned = crispasr_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
+    auto aligned = stelnettts_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
 
     REQUIRE(!aligned.empty());
 
@@ -328,19 +328,19 @@ TEST_CASE("align-only: live alignment with canary-ctc-aligner", "[live][align]")
         CHECK(!w.text.empty());
     }
 
-    crispasr_aligner_free_cache();
+    stelnettts_aligner_free_cache();
 }
 
 // §176e (wav2vec2): the aligner keeps one model resident across calls so a
-// 300 MB–1 GB GGUF is not reloaded on every crispasr_align_words. This test
+// 300 MB–1 GB GGUF is not reloaded on every stelnettts_align_words. This test
 // aligns twice with the SAME wav2vec2 model and checks (a) the two calls are
 // byte-identical (a stale/corrupted cache would drift) and (b) the second
 // call is faster (the first pays the one-time load + Metal pipeline compile;
 // the second reuses the resident model). Needs a wav2vec2 aligner GGUF.
 TEST_CASE("align-only: wav2vec2 aligner cache reuse", "[live][align]") {
-    std::string model = get_env("CRISPASR_MODEL_ALIGNER_W2V");
+    std::string model = get_env("STELNETTTS_MODEL_ALIGNER_W2V");
     if (model.empty()) {
-        const char* dir = std::getenv("CRISPASR_MODELS_DIR");
+        const char* dir = std::getenv("STELNETTTS_MODELS_DIR");
         if (dir) {
             model = std::string(dir) + "/wav2vec2-xlsr-en-q4_k.gguf";
             FILE* f = fopen(model.c_str(), "rb");
@@ -351,9 +351,9 @@ TEST_CASE("align-only: wav2vec2 aligner cache reuse", "[live][align]") {
         }
     }
     if (model.empty())
-        SKIP("CRISPASR_MODEL_ALIGNER_W2V not set and no wav2vec2 fallback found");
+        SKIP("STELNETTTS_MODEL_ALIGNER_W2V not set and no wav2vec2 fallback found");
 
-    std::string audio_path = get_env("CRISPASR_TEST_AUDIO_JFK", "samples/jfk.wav");
+    std::string audio_path = get_env("STELNETTTS_TEST_AUDIO_JFK", "samples/jfk.wav");
     auto pcm = load_wav_16k_mono(audio_path);
     if (pcm.empty())
         SKIP("Cannot load audio: " + audio_path);
@@ -363,13 +363,13 @@ TEST_CASE("align-only: wav2vec2 aligner cache reuse", "[live][align]") {
                                    "ask what you can do for your country";
 
     // Start from a clean cache so call 1 definitely pays the load.
-    crispasr_aligner_free_cache();
+    stelnettts_aligner_free_cache();
 
     using clock = std::chrono::steady_clock;
     auto t0 = clock::now();
-    auto first = crispasr_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
+    auto first = stelnettts_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
     auto t1 = clock::now();
-    auto second = crispasr_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
+    auto second = stelnettts_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
     auto t2 = clock::now();
 
     REQUIRE(!first.empty());
@@ -393,13 +393,13 @@ TEST_CASE("align-only: wav2vec2 aligner cache reuse", "[live][align]") {
     //     reloading a multi-hundred-MB model dwarfs one short-clip forward pass.
     CHECK(ms_cached < ms_load * 0.95);
 
-    crispasr_aligner_free_cache();
+    stelnettts_aligner_free_cache();
 }
 
 TEST_CASE("align-only: live alignment from SRT text input", "[live][align]") {
-    std::string model = get_env("CRISPASR_MODEL_ALIGNER");
+    std::string model = get_env("STELNETTTS_MODEL_ALIGNER");
     if (model.empty()) {
-        const char* dir = std::getenv("CRISPASR_MODELS_DIR");
+        const char* dir = std::getenv("STELNETTTS_MODELS_DIR");
         if (dir) {
             model = std::string(dir) + "/canary-ctc-aligner-q4_k.gguf";
             FILE* f = fopen(model.c_str(), "rb");
@@ -410,9 +410,9 @@ TEST_CASE("align-only: live alignment from SRT text input", "[live][align]") {
         }
     }
     if (model.empty())
-        SKIP("CRISPASR_MODEL_ALIGNER not set and no fallback found");
+        SKIP("STELNETTTS_MODEL_ALIGNER not set and no fallback found");
 
-    std::string audio_path = get_env("CRISPASR_TEST_AUDIO_JFK", "samples/jfk.wav");
+    std::string audio_path = get_env("STELNETTTS_TEST_AUDIO_JFK", "samples/jfk.wav");
     auto pcm = load_wav_16k_mono(audio_path);
     if (pcm.empty())
         SKIP("Cannot load audio: " + audio_path);
@@ -426,7 +426,7 @@ TEST_CASE("align-only: live alignment from SRT text input", "[live][align]") {
     std::string transcript = extract_srt_text(srt_content);
     REQUIRE(!transcript.empty());
 
-    auto aligned = crispasr_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
+    auto aligned = stelnettts_align_words(model, transcript, pcm.data(), (int)pcm.size(), 0, 4);
 
     REQUIRE(!aligned.empty());
     // The alignment from SRT text should produce the same result as from plain text.
@@ -438,5 +438,5 @@ TEST_CASE("align-only: live alignment from SRT text input", "[live][align]") {
     // Last word should end within the last 3 seconds of the audio.
     CHECK(last_t1 > audio_dur_cs - 300);
 
-    crispasr_aligner_free_cache();
+    stelnettts_aligner_free_cache();
 }

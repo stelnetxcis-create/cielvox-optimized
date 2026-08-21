@@ -17,7 +17,7 @@ base_model: UsefulSensors/moonshine-tiny-vi
 
 # Moonshine Tiny (Vietnamese) -- GGUF
 
-GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny-vi`](https://huggingface.co/UsefulSensors/moonshine-tiny-vi) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny-vi`](https://huggingface.co/UsefulSensors/moonshine-tiny-vi) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -34,14 +34,14 @@ GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny-vi`](https:
 - **License:** [Moonshine AI Community License](https://huggingface.co/UsefulSensors/moonshine-tiny-ja/blob/main/LICENSE.txt) (free for <$1M revenue, attribution required)
 - **Source:** [`UsefulSensors/moonshine-tiny-vi`](https://huggingface.co/UsefulSensors/moonshine-tiny-vi)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Auto-download (English tiny only)
-./build/bin/crispasr --backend moonshine -m auto -f audio.wav
+./build/bin/stelnettts --backend moonshine -m auto -f audio.wav
 
 # Explicit model path
-./build/bin/crispasr --backend moonshine -m moonshine-tiny-vi-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend moonshine -m moonshine-tiny-vi-q4_k.gguf -f audio.wav
 ```
 
 ## Notes

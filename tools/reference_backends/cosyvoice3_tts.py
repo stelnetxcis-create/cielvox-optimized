@@ -9,8 +9,8 @@ Two reference-dump entry points:
 
 2. `dump(model_dir, audio, stages, **kwargs)` — dump_reference.py
    contract. Returns a dict of {stage_name: ndarray} for any subset of
-   the registered stages. Wired into the unified `crispasr-diff` CLI
-   via the `cosyvoice3-tts` backend (see crispasr_diff_main.cpp).
+   the registered stages. Wired into the unified `stelnettts-diff` CLI
+   via the `cosyvoice3-tts` backend (see stelnettts_diff_main.cpp).
 
    Stages exposed for the Phase 3b DiT single-block diff (blocks 0 + 21):
 
@@ -411,7 +411,7 @@ def dump_flow_dit_block_bins(model_dir: Path, out_dir: Path,
                              seed: int = DIT_SEED) -> None:
     """Legacy CLI mode — write raw float32 binaries under <out_dir>.
     Kept for ad-hoc debugging during port work; the unified
-    crispasr-diff pipeline goes through dump() instead."""
+    stelnettts-diff pipeline goes through dump() instead."""
     arrays = _flow_dit_block_arrays(model_dir, block_idx)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name, arr in arrays.items():
@@ -1305,7 +1305,7 @@ def _capture_clone_frontend_stages(model_dir: Path, audio: np.ndarray,
                                    wanted: Set[str]) -> Dict[str, np.ndarray]:
     """The three products a `--voice ref.wav` clone is built from (#334).
 
-    `audio` is real 16 kHz mono, exactly what `crispasr-diff` passes as
+    `audio` is real 16 kHz mono, exactly what `stelnettts-diff` passes as
     --audio; the C++ side reads the same WAV. Each stage mirrors the driving
     code in CosyVoice's `frontend.py`:
 
@@ -1511,7 +1511,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
 
 # ---------------------------------------------------------------------------
 # CLI (manual debug runs only — production diff goes through
-# tools/dump_reference.py + crispasr-diff).
+# tools/dump_reference.py + stelnettts-diff).
 # ---------------------------------------------------------------------------
 
 def main() -> int:

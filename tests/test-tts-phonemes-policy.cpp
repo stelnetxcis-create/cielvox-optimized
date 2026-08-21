@@ -13,10 +13,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_phonemes_policy.h"
+#include "stelnettts_phonemes_policy.h"
 
-using crispasr_phonemes_policy::backend_supports;
-using crispasr_phonemes_policy::unsupported_message;
+using stelnettts_phonemes_policy::backend_supports;
+using stelnettts_phonemes_policy::unsupported_message;
 
 TEST_CASE("backends with a phonemes-in entry point are accepted", "[unit][tts]") {
     REQUIRE(backend_supports("kokoro")); // kokoro_synthesize_phonemes
@@ -26,7 +26,7 @@ TEST_CASE("backends with a phonemes-in entry point are accepted", "[unit][tts]")
 TEST_CASE("every other TTS backend is refused", "[unit][tts]") {
     // Refusing is the point — these would otherwise synthesize `--tts` text and
     // look like the phonemes had no effect.
-    for (const char* b : {"qwen3-tts", "chatterbox", "vibevoice-tts", "orpheus", "f5-tts", "dia", "bark",
+    for (const char* b : {"cielvox2-tts", "chatterbox", "vibevoice-tts", "orpheus", "f5-tts", "dia", "bark",
                           "cosyvoice3-tts", "tada-tts", "melotts", ""})
         REQUIRE_FALSE(backend_supports(b));
 }

@@ -42,7 +42,7 @@ All other ne00_t values verified bit-identical. The error scales
 roughly with how few lanes contributed to the last simdgroup —
 1-active-lane is the worst case.
 
-The downstream impact in CrispASR was kokoro / StyleTTS2 AdaIN1d
+The downstream impact in StelnetTTS was kokoro / StyleTTS2 AdaIN1d
 producing garbage audio for short utterances ("hello world": 39000
 samples, T_frames=65 in the F0Ntrain shared LSTM output) on Apple
 Silicon Metal. CPU and long-input GPU work correctly. Bisect
@@ -75,7 +75,7 @@ Applied at three sites:
 - `kernel_l2_norm_impl` squared-sum reduction
 
 Patch also adds two small per-T helpers
-(`crispasr_vec_sum`, `crispasr_vec_sqsum`) to replace the
+(`stelnettts_vec_sum`, `stelnettts_vec_sqsum`) to replace the
 `dot(scalar, scalar)` calls — `dot()` is only spec-defined for
 vector types and the scalar instantiation should not rely on it.
 This is independent of the reduction bug (didn't fix it on its own)

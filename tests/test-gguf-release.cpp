@@ -63,24 +63,24 @@ void test_unsetenv(const char* k) {
 #endif
 }
 
-// RAII for CRISPASR_GGUF_MMAP, which load_weights reads on every call. Set
-// rather than assumed: an inherited `CRISPASR_GGUF_MMAP=0` would otherwise
+// RAII for STELNETTTS_GGUF_MMAP, which load_weights reads on every call. Set
+// rather than assumed: an inherited `STELNETTTS_GGUF_MMAP=0` would otherwise
 // silently send both halves of the loop below down the same path.
 struct MmapEnv {
     std::string saved;
     bool had = false;
     explicit MmapEnv(const char* value) {
-        if (const char* v = std::getenv("CRISPASR_GGUF_MMAP")) {
+        if (const char* v = std::getenv("STELNETTTS_GGUF_MMAP")) {
             saved = v;
             had = true;
         }
-        test_setenv("CRISPASR_GGUF_MMAP", value);
+        test_setenv("STELNETTTS_GGUF_MMAP", value);
     }
     ~MmapEnv() {
         if (had)
-            test_setenv("CRISPASR_GGUF_MMAP", saved.c_str());
+            test_setenv("STELNETTTS_GGUF_MMAP", saved.c_str());
         else
-            test_unsetenv("CRISPASR_GGUF_MMAP");
+            test_unsetenv("STELNETTTS_GGUF_MMAP");
     }
     MmapEnv(const MmapEnv&) = delete;
     MmapEnv& operator=(const MmapEnv&) = delete;
@@ -92,7 +92,7 @@ TEST_CASE("release_weight_buffer releases a loaded weight buffer and nulls the h
     ggml_backend_t backend = ggml_backend_cpu_init();
     REQUIRE(backend != nullptr);
 
-    const std::string path = "crispasr_test_gguf_release.gguf";
+    const std::string path = "stelnettts_test_gguf_release.gguf";
     write_gguf(path, 4096);
 
     // Both loader paths reach the same release call, and they differ in
@@ -101,7 +101,7 @@ TEST_CASE("release_weight_buffer releases a loaded weight buffer and nulls the h
     // when an entry existed would pass one and fail the other.
     for (const char* mmap_mode : {"1", "0"}) {
         MmapEnv env(mmap_mode);
-        INFO("CRISPASR_GGUF_MMAP=" << mmap_mode);
+        INFO("STELNETTTS_GGUF_MMAP=" << mmap_mode);
 
         core_gguf::WeightLoad wl;
         REQUIRE(core_gguf::load_weights(path.c_str(), backend, "test-release", wl));
@@ -143,7 +143,7 @@ TEST_CASE("free_weights releases every buffer it owns", "[unit][gguf-release]") 
     ggml_backend_t backend = ggml_backend_cpu_init();
     REQUIRE(backend != nullptr);
 
-    const std::string path = "crispasr_test_gguf_release_free.gguf";
+    const std::string path = "stelnettts_test_gguf_release_free.gguf";
     write_gguf(path, 4096);
 
     MmapEnv env("1");

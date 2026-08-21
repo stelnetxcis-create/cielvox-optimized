@@ -16,7 +16,7 @@ pipeline_tag: automatic-speech-recognition
 
 # Distil Whisper Large v3 (ggml)
 
-ggml conversion of [distil-whisper/distil-large-v3](https://huggingface.co/distil-whisper/distil-large-v3) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR) and the upstream [whisper.cpp](https://github.com/ggml-org/whisper.cpp) lineage it builds on.
+ggml conversion of [distil-whisper/distil-large-v3](https://huggingface.co/distil-whisper/distil-large-v3) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS) and the upstream [whisper.cpp](https://github.com/ggml-org/whisper.cpp) lineage it builds on.
 
 ## Model Details
 
@@ -30,7 +30,7 @@ ggml conversion of [distil-whisper/distil-large-v3](https://huggingface.co/disti
 
 ```bash
 # Uses the standard whisper backend (auto-detected)
-crispasr -m distil-large-v3-q5_0.bin -f audio.wav
+stelnettts -m distil-large-v3-q5_0.bin -f audio.wav
 ```
 
 ## Files

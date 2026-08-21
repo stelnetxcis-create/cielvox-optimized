@@ -159,7 +159,7 @@ int parakeet_sample_rate(struct parakeet_context* ctx);
 int parakeet_n_heads(struct parakeet_context* ctx); // encoder attention heads (Phase 2 mem policy)
 int parakeet_est_enc_frames(struct parakeet_context* ctx, int n_samples); // approx T_enc for n_samples
 
-// ---- Stage-level entry points (for crispasr-diff testing) ----
+// ---- Stage-level entry points (for stelnettts-diff testing) ----
 // These let the diff harness compare intermediate activations against
 // a PyTorch reference. They are NOT needed by the normal transcribe
 // path — use parakeet_transcribe(_ex) for inference.
@@ -198,9 +198,9 @@ int parakeet_run_encoder_dump(struct parakeet_context* ctx, const float* mel, in
 // encoder-output statistics. Returns T_enc on success or -1.
 int parakeet_test_audio(struct parakeet_context* ctx, const float* samples, int n_samples);
 
-// ---- Transducer component entry points (for crispasr-diff testing) ----
+// ---- Transducer component entry points (for stelnettts-diff testing) ----
 // These expose the predictor (LSTM) and joint network intermediates so
-// crispasr-diff can validate each component against a PyTorch reference
+// stelnettts-diff can validate each component against a PyTorch reference
 // before testing the full decode loop.
 
 // Run the joint encoder projection on encoder output.

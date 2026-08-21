@@ -1,7 +1,7 @@
 // higgs-audio-v3-stt integration test — exercises the chunked Whisper encoder
 // + Qwen3-1.7B ChatML greedy decode end-to-end.
 //
-// Requires CRISPASR_MODEL_HIGGS_STT env var pointing to the GGUF (F16/Q8_0/Q4_K
+// Requires STELNETTTS_MODEL_HIGGS_STT env var pointing to the GGUF (F16/Q8_0/Q4_K
 // all transcribe verbatim). SKIPs cleanly when not set.
 
 #include <catch2/catch_test_macros.hpp>
@@ -32,9 +32,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("higgs-stt ASR", "[integration][higgs-stt]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_HIGGS_STT");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_HIGGS_STT");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_HIGGS_STT not set");
+        SKIP("STELNETTTS_MODEL_HIGGS_STT not set");
     }
 
     auto params = higgs_stt_context_default_params();

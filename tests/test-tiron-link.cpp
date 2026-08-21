@@ -7,7 +7,7 @@
 
 #include "tiron_link.h"
 
-#include "crispasr_speaker_embedder.h"
+#include "stelnettts_speaker_embedder.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -64,7 +64,7 @@ TEST_CASE("tiron link: voice, not local index, drives global ids", "[unit][tiron
     };
 
     FakeEmbedder emb;
-    TironLinkResult r = crispasr_tiron_link_speakers(turns, pcm.data(), (int)pcm.size(), &emb);
+    TironLinkResult r = stelnettts_tiron_link_speakers(turns, pcm.data(), (int)pcm.size(), &emb);
 
     REQUIRE(r.turn_speaker.size() == 4);
     REQUIRE(r.n_speakers == 2);
@@ -90,7 +90,7 @@ TEST_CASE("tiron link: within-window must-link rescues a too-short turn", "[unit
     };
 
     FakeEmbedder emb;
-    TironLinkResult r = crispasr_tiron_link_speakers(turns, pcm.data(), (int)pcm.size(), &emb);
+    TironLinkResult r = stelnettts_tiron_link_speakers(turns, pcm.data(), (int)pcm.size(), &emb);
 
     REQUIRE(r.turn_speaker.size() == 3);
     CHECK(r.turn_speaker[2] == r.turn_speaker[0]); // short A turn linked to long A turn
@@ -105,7 +105,7 @@ TEST_CASE("tiron link: no embedder degrades to per-group ids", "[unit][tiron]") 
         {0, 100, 0, 1}, {3000, 3100, 1, 1}, // same local index, but no acoustic info to link
     };
 
-    TironLinkResult r = crispasr_tiron_link_speakers(turns, pcm.data(), (int)pcm.size(), nullptr);
+    TironLinkResult r = stelnettts_tiron_link_speakers(turns, pcm.data(), (int)pcm.size(), nullptr);
 
     REQUIRE(r.turn_speaker.size() == 2);
     // Without embeddings the two windows can't be linked → distinct ids.
@@ -115,7 +115,7 @@ TEST_CASE("tiron link: no embedder degrades to per-group ids", "[unit][tiron]") 
 
 TEST_CASE("tiron link: empty input is safe", "[unit][tiron]") {
     FakeEmbedder emb;
-    TironLinkResult r = crispasr_tiron_link_speakers({}, nullptr, 0, &emb);
+    TironLinkResult r = stelnettts_tiron_link_speakers({}, nullptr, 0, &emb);
     CHECK(r.turn_speaker.empty());
     CHECK(r.n_speakers == 0);
 }

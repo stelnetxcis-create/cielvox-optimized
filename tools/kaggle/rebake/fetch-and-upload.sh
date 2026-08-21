@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Local-side companion to the Kaggle rebake kernel.
 #
-# The Kaggle kernel (chr1str/crispasr-auto-rebake-refs) generates
+# The Kaggle kernel (chr1str/stelnettts-auto-rebake-refs) generates
 # fresh reference dumps and writes them to
 # `/kaggle/working/rebake-stage/`. Because Kaggle Secrets has been
 # flaky (HTTPError 400 from GetUserSecretByLabel even after multiple
 # Attach toggles), we do the publish step from local where HF_TOKEN
 # from `.env` is already write-tested against
-# `cstr/crispasr-regression-fixtures`.
+# `Xenna/stelnettts-regression-fixtures`.
 #
 # Usage:
 #
@@ -16,18 +16,18 @@
 # Runs after the Kaggle kernel completes successfully. Steps:
 #
 #   1. `kaggle kernels output` → pull staged refs to
-#      /Volumes/backups/ai/crispasr-regression/rebake-out/.
+#      /Volumes/backups/ai/stelnettts-regression/rebake-out/.
 #   2. Stage `rebake-stage/` for upload.
-#   3. `hf upload` to cstr/crispasr-regression-fixtures using
+#   3. `hf upload` to Xenna/stelnettts-regression-fixtures using
 #      HF_TOKEN from .env.
 #   4. Print the new fixtures commit SHA to paste into
 #      `tests/regression/manifest.json`'s `fixtures.revision`.
 
 set -euo pipefail
 
-KAGGLE_KERNEL="chr1str/crispasr-auto-rebake-refs"
-LOCAL_OUT="/Volumes/backups/ai/crispasr-regression/rebake-out"
-FIXTURES_REPO="cstr/crispasr-regression-fixtures"
+KAGGLE_KERNEL="chr1str/stelnettts-auto-rebake-refs"
+LOCAL_OUT="/Volumes/backups/ai/stelnettts-regression/rebake-out"
+FIXTURES_REPO="Xenna/stelnettts-regression-fixtures"
 ENV_FILE="/Users/christianstrobele/code/.env"
 
 # ── Load HF_TOKEN from .env without printing it ───────────────────────
@@ -74,7 +74,7 @@ echo
 echo "uploading to $FIXTURES_REPO …"
 cd "$STAGE"
 hf upload "$FIXTURES_REPO" . . \
-    --commit-message "rebake from chr1str/crispasr-auto-rebake-refs $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --commit-message "rebake from chr1str/stelnettts-auto-rebake-refs $(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     2>&1 | tail -10
 
 # ── Report new fixtures commit SHA ────────────────────────────────────

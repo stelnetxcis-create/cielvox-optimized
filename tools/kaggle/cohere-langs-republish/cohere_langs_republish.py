@@ -9,7 +9,7 @@ model supports — so the runtime fix (0b858088) is INERT until the whitelist
 actually ships in the weights. That is what this kernel does.
 
 Phases, in this order on purpose:
-  1. Build crispasr.
+  1. Build stelnettts.
   2. Rewrite ONE GGUF, verify byte-identical tensors, and TRANSCRIBE with it
      before uploading anything. Never overwrite 23 GB of published artifacts
      on the strength of a checksum alone.
@@ -39,23 +39,23 @@ TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
 # page-capped at 500 files on retrieval (gotchas #18/#22). ~23 GB moves through
 # here, so the cache goes on the big ephemeral layer too.
 os.environ.setdefault("HF_HOME", str(TMP / "hf"))
-REPO = TMP / "CrispASR"                       # off /kaggle/working (gotcha #22)
+REPO = TMP / "StelnetTTS"                       # off /kaggle/working (gotcha #22)
 BUILD = TMP / "build"
 STAGE = TMP / "stage"; STAGE.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "results"; RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 
 # (gguf repo, source model repo whose config.json holds supported_languages, files)
 TARGETS = [
-    ("cstr/cohere-transcribe-arabic-07-2026-GGUF", "CohereLabs/cohere-transcribe-arabic-07-2026", [
+    ("Xenna/cohere-transcribe-arabic-07-2026-GGUF", "CohereLabs/cohere-transcribe-arabic-07-2026", [
         "cohere-transcribe-arabic-q4_k-imatrix.gguf",   # smoke-tested first
         "cohere-transcribe-arabic-q4_k.gguf",
         "cohere-transcribe-arabic-q8_0.gguf",
         "cohere-transcribe-arabic-f16.gguf",
     ]),
-    ("cstr/cohere-transcribe-03-2026-GGUF", "CohereLabs/cohere-transcribe-03-2026", [
+    ("Xenna/cohere-transcribe-03-2026-GGUF", "CohereLabs/cohere-transcribe-03-2026", [
         "cohere-transcribe-q4_k.gguf",
         "cohere-transcribe-q5_0.gguf",
         "cohere-transcribe-q5_1.gguf",
@@ -79,8 +79,8 @@ def save_report():
 # ───────────────────────── clone + harness + build ────────────────────────
 if REPO.exists():
     shutil.rmtree(REPO)
-subprocess.check_call(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-                       "--recursive", CRISPASR_REPO, str(REPO)])
+subprocess.check_call(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+                       "--recursive", STELNETTTS_REPO, str(REPO)])
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 kh.init_progress()
@@ -103,15 +103,15 @@ subprocess.check_call(["cmake", "-S", str(REPO), "-B", str(BUILD),
                        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON"])
 with kh.build_heartbeat("build"):
     kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} "
-                        f"--target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}")
-CLI = BUILD / "bin" / "crispasr"
-assert CLI.exists(), "crispasr binary missing"
+                        f"--target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}")
+CLI = BUILD / "bin" / "stelnettts"
+assert CLI.exists(), "stelnettts binary missing"
 REPORT["phases"]["build"] = "ok"
 jstep("built")
 save_report()
 
 ADD_LANGS = REPO / "tools" / "gguf-add-cohere-langs.py"
-assert ADD_LANGS.exists(), f"{ADD_LANGS} missing — is the tool on {CRISPASR_REF}?"
+assert ADD_LANGS.exists(), f"{ADD_LANGS} missing — is the tool on {STELNETTTS_REF}?"
 
 AR_WAV = REPO / "tools" / "kaggle" / "cohere-arabic-verify" / "ar_clean_8s.wav"
 JFK_WAV = REPO / "samples" / "jfk.wav"
@@ -326,7 +326,7 @@ try:
         conv["max_clip_s"] = None if mc is None else int(mc.parts[-1][0])
         conv["n_tensors"] = len(r.tensors)
         # does a fresh conversion match the published f16 we just republished?
-        pub = Path(hf_hub_download("cstr/cohere-transcribe-arabic-07-2026-GGUF",
+        pub = Path(hf_hub_download("Xenna/cohere-transcribe-arabic-07-2026-GGUF",
                                    "cohere-transcribe-arabic-f16.gguf",
                                    token=TOKEN, local_dir=str(STAGE)))
         rp = gguflib.GGUFReader(str(pub))

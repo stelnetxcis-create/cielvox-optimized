@@ -1,7 +1,7 @@
 """VoxCPM2 TTS reference dump backend.
 
 Captures stage-by-stage activations from the official `voxcpm` package
-(pip install voxcpm) so we can diff the CrispASR voxcpm2-tts C++ backend
+(pip install voxcpm) so we can diff the StelnetTTS voxcpm2-tts C++ backend
 against the bit-true PyTorch path.
 
 Stages dumped (subset selectable via tools/dump_reference.py --stages):

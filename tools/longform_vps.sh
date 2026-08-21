@@ -4,7 +4,7 @@
 # memory pressure. Sequential, with memory-free check between iterations.
 set -uo pipefail
 
-CRISPASR=/mnt/akademie_storage/whisper.cpp/build/bin/crispasr
+CRISPASR=/mnt/akademie_storage/whisper.cpp/build/bin/stelnettts
 GGUF_DIR=/mnt/akademie_storage
 OUT_DIR=/mnt/akademie_storage/longform_results
 CLIPS_DIR=/mnt/akademie_storage
@@ -55,7 +55,7 @@ run_one() {
 
   local env_prefix=""
   if [[ "$label" == *singlepass* ]]; then
-    env_prefix="CRISPASR_PARAKEET_STREAM_THRESHOLD=999"
+    env_prefix="STELNETTTS_PARAKEET_STREAM_THRESHOLD=999"
   fi
 
   wait_for_memory

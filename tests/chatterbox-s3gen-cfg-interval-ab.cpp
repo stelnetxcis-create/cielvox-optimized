@@ -4,7 +4,7 @@
 // FIXED synthetic speech-token sequence — skipping the slow T3 AR stage entirely — so
 // the 10-step CFM Euler solver is exercised in isolation. `chatterbox_set_seed` reseeds
 // the init-noise mt19937 before each run, so the output mel depends only on the tokens,
-// the weights, and CRISPASR_S3GEN_CFG_INTERVAL. This is the fast, deterministic
+// the weights, and STELNETTTS_S3GEN_CFG_INTERVAL. This is the fast, deterministic
 // verification the full CLI synth (6+ min, T3-AR-bound) can't give on M1.
 //
 //   K=1 twice → byte-identical mel (determinism + exact single-path at K=1).
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
         tokens[i] = (i * 37 + 11) % 500;
 
     auto run = [&](const char* k) -> std::vector<float> {
-        setenv("CRISPASR_S3GEN_CFG_INTERVAL", k, 1);
+        setenv("STELNETTTS_S3GEN_CFG_INTERVAL", k, 1);
         chatterbox_set_seed(ctx, 42); // reseed init-noise RNG → same noise each run
         int T_mel = 0;
         float* mel = chatterbox_synthesize_mel_from_tokens(ctx, tokens.data(), (int)tokens.size(), &T_mel);

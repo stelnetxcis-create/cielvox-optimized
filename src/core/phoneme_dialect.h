@@ -19,7 +19,7 @@
 //
 // This is deliberately Kokoro-scoped rather than a change to the shared G2P:
 // piper wants the espeak spelling and would regress. Gate:
-// CRISPASR_KOKORO_MISAKI_IPA=0 restores the raw G2P output for A/B.
+// STELNETTTS_KOKORO_MISAKI_IPA=0 restores the raw G2P output for A/B.
 //
 // Header-only and weight-free — tests/test-kokoro-misaki-ipa.cpp pins it, with
 // misaki's own output for the issue's sentence as the expectation.

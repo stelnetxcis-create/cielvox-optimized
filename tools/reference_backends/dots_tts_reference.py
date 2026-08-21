@@ -1,10 +1,10 @@
-"""dots.tts reference dump backend for the crispasr-diff harness.
+"""dots.tts reference dump backend for the stelnettts-diff harness.
 
 Driven by ``tools/dump_reference.py --backend dots-tts``; the harness
-serializes the returned dict to a GGUF the C++ ``crispasr-diff dots-tts``
+serializes the returned dict to a GGUF the C++ ``stelnettts-diff dots-tts``
 branch reads.
 
-MEMORY DISCIPLINE (see crispasr-crispembed-dev.md): never load the full
+MEMORY DISCIPLINE (see stelnettts-crispembed-dev.md): never load the full
 dots.tts model in PyTorch — that is ~11 GB in float32 and OOM-crashes a
 16 GB machine. Each stage instead loads ONLY the sub-model under test via
 ``safe_open`` (lazy, per-tensor bf16->f32) and runs it in isolation:
@@ -617,7 +617,7 @@ def dump(
         stages = set(DEFAULT_STAGES)
     if model_dir is None:
         model_dir = os.environ.get("DOTS_MODEL_DIR",
-                                   "/Volumes/backups/ai/crispasr-gguf/dots-tts-soar-src")
+                                   "/Volumes/backups/ai/stelnettts-gguf/dots-tts-soar-src")
     model_dir = Path(model_dir)
     seed = int(os.environ.get("DOTS_SEED", "0"))
 

@@ -21,7 +21,7 @@
 //   (b) a conservative function-word detector for Latin-script languages, which
 //       returns "" whenever the evidence is thin rather than guessing.
 //
-// Why not the real text-LID (`crispasr_text_detect_language`, CLD3/GlotLID)?
+// Why not the real text-LID (`stelnettts_text_detect_language`, CLD3/GlotLID)?
 // It needs its own GGUF. Making a voice clone depend on a second model download
 // to decide one boolean is the wrong trade; a caller that already has the LID
 // model can run it and pass the answer in as the explicit tag, which is exactly
@@ -352,7 +352,7 @@ inline std::string detect(const std::string& text) {
 // Resolve the language of a cloning reference, in descending order of
 // authority:
 //   1. `explicit_lang`  — the caller said so (CLI --source-lang, server
-//      "source_lang", crispasr_session_set_source_language). A human statement
+//      "source_lang", stelnettts_session_set_source_language). A human statement
 //      about their own recording outranks anything we can infer.
 //   2. `bank_lang`      — a baked voice whose bank entry names its language
 //      (CosyVoice3's "fleurs-de"). Ground truth for that voice.

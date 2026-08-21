@@ -109,7 +109,7 @@ int canary_frame_dur_cs(struct canary_context* ctx);
 int canary_n_mels(struct canary_context* ctx);
 int canary_sample_rate(struct canary_context* ctx);
 
-// ---- Stage-level entry points (for crispasr-diff testing) ----
+// ---- Stage-level entry points (for stelnettts-diff testing) ----
 // Returns malloc'd F32 buffers the caller must free(). nullptr on failure.
 
 // Log-mel spectrogram of raw 16 kHz mono PCM, row-major (n_mels, T_mel).
@@ -125,7 +125,7 @@ float* canary_run_encoder(struct canary_context* ctx, const float* mel, int n_me
 // Staged encoder: runs the encoder with dup snapshots at every layer boundary
 // and invokes `cb` once per named stage. Stage names: "pre_enc_out",
 // "enc_L00".."enc_L31", "enc_out". T_enc and d_model are the actual shapes.
-// Returns 0 on success, -1 on error. Used by crispasr-diff for per-layer
+// Returns 0 on success, -1 on error. Used by stelnettts-diff for per-layer
 // cosine comparison against the Python reference.
 typedef void (*canary_stage_cb)(const char* stage_name, const float* data, int T_enc, int d_model, void* userdata);
 int canary_run_encoder_staged(struct canary_context* ctx, const float* mel, int n_mels, int T_mel, canary_stage_cb cb,

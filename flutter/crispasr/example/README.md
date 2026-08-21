@@ -1,16 +1,16 @@
-# crispasr examples
+# stelnettts examples
 
-`crispasr` runs on-device speech recognition (Whisper-family and other ASR
-models) via ggml. It needs the native `libcrispasr` at runtime (see the package
+`stelnettts` runs on-device speech recognition (Whisper-family and other ASR
+models) via ggml. It needs the native `libstelnettts` at runtime (see the package
 README for how to supply it).
 
 ## Transcribe an audio file
 
 ```dart
-import 'package:crispasr/crispasr.dart';
+import 'package:stelnettts/stelnettts.dart';
 
 void main() {
-  final model = CrispASR.open('ggml-base.en.bin');
+  final model = StelnetTTS.open('ggml-base.en.bin');
   try {
     final segments = model.transcribe('audio.wav');
     for (final seg in segments) {
@@ -22,5 +22,5 @@ void main() {
 }
 ```
 
-The library also exposes a chat/LLM surface (`package:crispasr/crispasr.dart`
+The library also exposes a chat/LLM surface (`package:stelnettts/stelnettts.dart`
 re-exports `src/chat.dart`) for the bundled generation backends.

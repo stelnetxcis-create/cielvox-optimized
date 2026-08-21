@@ -3,7 +3,7 @@
 
 CPU-only (30 GB RAM is enough for the 18.7 GB model).
 Produces kugelaudio-0-open-f16.gguf and kugelaudio-0-open-q4_k.gguf,
-uploads both to cstr/kugelaudio-0-open-GGUF on HuggingFace.
+uploads both to Xenna/kugelaudio-0-open-GGUF on HuggingFace.
 
 Push: python -m kaggle kernels push -p tools/kaggle/kugelaudio-convert
 """
@@ -12,7 +12,7 @@ import os, sys, subprocess, shutil
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 # Use /kaggle/temp for large artifacts — /kaggle/working is capped at ~20 GB
 # and gets saved as kernel output. We upload to HF directly from temp.
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
@@ -23,7 +23,7 @@ print("=== Phase 0: clone repo ===", flush=True)
 if not REPO.exists():
     subprocess.check_call([
         "git", "clone", "--depth", "1", "-b", "feature/kugelaudio-tts",
-        "https://github.com/CrispStrobe/CrispASR", str(REPO),
+        "https://github.com/Cyna/StelnetTTS", str(REPO),
     ])
 
 # Import harness AFTER clone
@@ -80,7 +80,7 @@ print(f"  F16 GGUF: {f16_path} ({f16_path.stat().st_size / (1024**3):.1f} GiB)")
 
 # ── Phase 5: Upload F16 to HF (before quantize — free disk after) ──────────
 kh.step("upload F16 to HF")
-HF_REPO = "cstr/kugelaudio-0-open-GGUF"
+HF_REPO = "Xenna/kugelaudio-0-open-GGUF"
 
 if hf_token:
     os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
@@ -102,7 +102,7 @@ if hf_token:
 else:
     print("  no HF_TOKEN — skipping upload")
 
-# ── Phase 6: Build crispasr-quantize ────────────────────────────────────────
+# ── Phase 6: Build stelnettts-quantize ────────────────────────────────────────
 kh.step("build quantizer")
 BUILD.mkdir(parents=True, exist_ok=True)
 flags = kh.cache_and_link_flags()
@@ -112,9 +112,9 @@ kh.sh_with_progress(
     + " ".join(flags),
 )
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} --target crispasr-quantize")
+    kh.sh_with_progress(f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} --target stelnettts-quantize")
 
-quantize_bin = BUILD / "bin" / "crispasr-quantize"
+quantize_bin = BUILD / "bin" / "stelnettts-quantize"
 print(f"  quantizer: {quantize_bin}")
 
 # ── Phase 7: Quantize F16 → Q4_K ───────────────────────────────────────────

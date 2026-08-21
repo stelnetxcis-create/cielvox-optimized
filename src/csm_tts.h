@@ -60,7 +60,7 @@ float* csm_tts_synthesize_with_reference(struct csm_tts_context* ctx, const char
 void csm_tts_pcm_free(float* pcm);
 
 // ---------------------------------------------------------------------------
-// Diagnostic entry point for the diff harness (crispasr-diff csm).
+// Diagnostic entry point for the diff harness (stelnettts-diff csm).
 // ---------------------------------------------------------------------------
 // Runs the backbone PREFILL on `text` (text-only frames, audio masked out)
 // and dumps per-layer activations so they can be compared against the

@@ -12,13 +12,13 @@ tags:
 - kokoro
 - styletts2
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Kokoro-82M — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`hexgrad/Kokoro-82M`](https://huggingface.co/hexgrad/Kokoro-82M) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`hexgrad/Kokoro-82M`](https://huggingface.co/hexgrad/Kokoro-82M) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Kokoro-82M is an open-weight 82 M-parameter TTS model built on the StyleTTS2 architecture. It is multilingual at the model level (178-symbol IPA vocab covering en, es, fr, hi, it, ja, pt, zh) and ships per-language voice packs in [`hexgrad/Kokoro-82M/voices`](https://huggingface.co/hexgrad/Kokoro-82M/tree/main/voices). Apache-2.0 weights.
 
@@ -29,34 +29,34 @@ Kokoro-82M is an open-weight 82 M-parameter TTS model built on the StyleTTS2 arc
 | `kokoro-82m-f16.gguf`  | F16  | 156 MB | Reference quality — bit-true to the PyTorch model on the deterministic stages |
 | `kokoro-82m-q8_0.gguf` | Q8_0 | 135 MB | **Recommended** — ASR roundtrip identical to F16 |
 
-Q4_K is **not** published: per the `crispasr-diff kokoro` harness it falls below quality bar (cosine similarity collapses to ~0.1 on `audio_out` and the German backbone produces unintelligible output). Q8_0 saves ~13 % on disk over F16 with no observable quality loss.
+Q4_K is **not** published: per the `stelnettts-diff kokoro` harness it falls below quality bar (cosine similarity collapses to ~0.1 on `audio_out` and the German backbone produces unintelligible output). Q8_0 saves ~13 % on disk over F16 with no observable quality loss.
 
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-lib
+cmake --build build -j --target stelnettts-lib
 
 # 2. Pull the model + a voice pack
-huggingface-cli download cstr/kokoro-82m-GGUF kokoro-82m-q8_0.gguf --local-dir .
-huggingface-cli download cstr/kokoro-voices-GGUF kokoro-voice-af_heart.gguf --local-dir .
+huggingface-cli download Xenna/kokoro-82m-GGUF kokoro-82m-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/kokoro-voices-GGUF kokoro-voice-af_heart.gguf --local-dir .
 
 # 3. Synthesise
-./build/bin/crispasr --backend kokoro \
+./build/bin/stelnettts --backend kokoro \
     -m kokoro-82m-q8_0.gguf \
     --voice kokoro-voice-af_heart.gguf \
     --tts "Hello, this is a test of the English phonemizer." \
     --tts-output hello.wav
 ```
 
-24 kHz mono WAV. `--language <code>` switches the in-process libespeak-ng phonemizer (en, es, fr, it, pt, hi, ja, zh — and de/ru when paired with the [German backbone](https://huggingface.co/cstr/kokoro-de-hui-base-GGUF)).
+24 kHz mono WAV. `--language <code>` switches the in-process libespeak-ng phonemizer (en, es, fr, it, pt, hi, ja, zh — and de/ru when paired with the [German backbone](https://huggingface.co/Xenna/kokoro-de-hui-base-GGUF)).
 
 ## Voice packs
 
-Voices ship in the sister repo [`cstr/kokoro-voices-GGUF`](https://huggingface.co/cstr/kokoro-voices-GGUF) so the model and per-speaker style files can be versioned independently. CrispASR auto-routes by language when both files sit in the same directory.
+Voices ship in the sister repo [`Xenna/kokoro-voices-GGUF`](https://huggingface.co/Xenna/kokoro-voices-GGUF) so the model and per-speaker style files can be versioned independently. StelnetTTS auto-routes by language when both files sit in the same directory.
 
 ## Quality verification
 
@@ -69,7 +69,7 @@ ASR roundtrip via `parakeet-tdt-0.6b-v3 -l en`, voice `af_heart`:
 
 Both quants produce ASR-identical output. The trailing "Phone Miza" is parakeet mis-transcribing the rare word "phonemizer", not a TTS artefact.
 
-`crispasr-diff kokoro` against the PyTorch reference:
+`stelnettts-diff kokoro` against the PyTorch reference:
 
 | Stage (selection) | F16 cos_min | Q8_0 cos_min |
 |---|---:|---:|
@@ -99,7 +99,7 @@ python models/convert-kokoro-to-gguf.py \
     --output kokoro-82m-f16.gguf \
     --outtype f16
 
-build/bin/crispasr-quantize kokoro-82m-f16.gguf kokoro-82m-q8_0.gguf q8_0
+build/bin/stelnettts-quantize kokoro-82m-f16.gguf kokoro-82m-q8_0.gguf q8_0
 ```
 
 The converter handles both legacy `weight_g/weight_v` and the modern `parametrizations.weight.original{0,1}` WeightNorm forms, so it also runs on community re-trains like the dida-80b German backbone.
@@ -108,7 +108,7 @@ The converter handles both legacy `weight_g/weight_v` and the modern `parametriz
 
 - **Original model:** [`hexgrad/Kokoro-82M`](https://huggingface.co/hexgrad/Kokoro-82M) (Apache-2.0). hexgrad et al.
 - **Architecture:** [StyleTTS2-LJSpeech](https://github.com/yl4579/StyleTTS2) by Yinghao Aaron Li.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR) — see `src/kokoro.cpp` and `models/convert-kokoro-to-gguf.py`.
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS) — see `src/kokoro.cpp` and `models/convert-kokoro-to-gguf.py`.
 
 ## License
 

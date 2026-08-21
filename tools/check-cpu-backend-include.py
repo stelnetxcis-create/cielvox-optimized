@@ -20,7 +20,7 @@ Every use of the namespace, though, is at top level. So the code compiled on
 macOS — where `__APPLE__`, `HAVE_ACCELERATE` and `!_WIN32` all hold — and broke
 on Windows with "'core_cpu_backend': is not a class or namespace name". Two of
 the seven sat behind build options (`INDEXTTS_HAS_SUBPROCESS`,
-`CRISPASR_ESPEAK_DLOPEN`) and so were configuration-dependent even on Linux.
+`STELNETTTS_ESPEAK_DLOPEN`) and so were configuration-dependent even on Linux.
 
 A local build cannot catch this: the guards that hide it are exactly the ones
 satisfied on the machine doing the building. Hence a preprocessor-independent

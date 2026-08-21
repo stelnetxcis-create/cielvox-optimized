@@ -1,7 +1,7 @@
 # %% [markdown]
-# # CrispASR — madlad400-3b-mt: the missing F16/Q8_0 + a per-stage reference (#333)
+# # StelnetTTS — madlad400-3b-mt: the missing F16/Q8_0 + a per-stage reference (#333)
 #
-# `cstr/madlad400-3b-mt-GGUF` ships ONLY `madlad400-3b-mt-q4_k.gguf`, while its
+# `Xenna/madlad400-3b-mt-GGUF` ships ONLY `madlad400-3b-mt-q4_k.gguf`, while its
 # README lists F16 and Q8_0 and its own copy-paste quickstart tells you to
 # download `…-q8_0.gguf` — which 404s. That is what #333 reports.
 #
@@ -16,15 +16,15 @@
 #       → dump madlad-ref.gguf (needs the source, so BEFORE deleting it) → upload
 #       → rm source
 #       → quantize Q8_0 → validate → upload
-#       → crispasr-diff F16 / Q8_0 / Q4_K vs the reference → parity table
+#       → stelnettts-diff F16 / Q8_0 / Q4_K vs the reference → parity table
 #
 # Ordering is the port-pipeline rule "never crash before a produced artifact is
 # checkpointed to HF": each artifact is uploaded the moment it exists and is
 # validated, so a failure in a later step cannot lose an earlier one.
 #
 # It BUILDS FROM SOURCE rather than using a release tarball: the madlad arm in
-# `crispasr-diff` and `tools/reference_backends/madlad.py` are newer than
-# v0.8.25. That is what `chr1str/crispasr-ccache` is attached for — a warm
+# `stelnettts-diff` and `tools/reference_backends/madlad.py` are newer than
+# v0.8.25. That is what `chr1str/stelnettts-ccache` is attached for — a warm
 # ccache turns a ~20 min build into ~3 min.
 
 # %% [code]
@@ -43,12 +43,12 @@ TEMP.mkdir(parents=True, exist_ok=True)
 # ── Kaggle regime: clone + harness from the CLONE, not from bundled siblings ──
 # gotcha #26: a script kernel runs only its code_file. gotcha #22: keep
 # /kaggle/working tiny so `kernels output` isn't page-capped past our artifacts.
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-REPO = TEMP / "CrispASR"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+REPO = TEMP / "StelnetTTS"
 if not REPO.exists():
     try:
         subprocess.check_call(["git", "clone", "--depth", "1", "--recursive",
-                               CRISPASR_URL, str(REPO)])
+                               STELNETTTS_URL, str(REPO)])
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     except Exception:
         pass
@@ -56,7 +56,7 @@ if str(REPO / "tools" / "kaggle") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kaggle_harness as kh  # noqa: E402
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("script.start", issue=333)
 
@@ -95,14 +95,14 @@ BUILD = REPO / "build"
 step("build.begin")
 with kh.build_heartbeat("cmake-configure", 30):
     kh.sh(f"cmake -S {REPO} -B {BUILD} -DCMAKE_BUILD_TYPE=Release "
-          f"-DCRISPASR_BUILD_TESTS=OFF -DCRISPASR_BUILD_SERVER=OFF "
+          f"-DSTELNETTTS_BUILD_TESTS=OFF -DSTELNETTTS_BUILD_SERVER=OFF "
           f"-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
 with kh.build_heartbeat("cmake-build", 30):
     kh.sh(f"cmake --build {BUILD} -j {kh.safe_build_jobs(gpu=True)} "
-          f"--target crispasr-cli crispasr-quantize crispasr-diff")
-CRISPASR = BUILD / "bin" / "crispasr"
-QUANT = BUILD / "bin" / "crispasr-quantize"
-DIFF = BUILD / "bin" / "crispasr-diff"
+          f"--target stelnettts-cli stelnettts-quantize stelnettts-diff")
+CRISPASR = BUILD / "bin" / "stelnettts"
+QUANT = BUILD / "bin" / "stelnettts-quantize"
+DIFF = BUILD / "bin" / "stelnettts-diff"
 for b in (CRISPASR, QUANT, DIFF):
     if not b.is_file():
         step("fatal.binary-missing", which=b.name)
@@ -116,7 +116,7 @@ MODELS.mkdir(parents=True, exist_ok=True)
 SRC = Path("/tmp/madlad-src")
 
 SRC_REPO = "google/madlad400-3b-mt"
-DST_REPO = "cstr/madlad400-3b-mt-GGUF"
+DST_REPO = "Xenna/madlad400-3b-mt-GGUF"
 F16 = MODELS / "madlad400-3b-mt-f16.gguf"
 Q8 = MODELS / "madlad400-3b-mt-q8_0.gguf"
 Q4 = MODELS / "madlad400-3b-mt-q4_k.gguf"
@@ -250,7 +250,7 @@ step("refdump.done", exit=p.returncode, ok=ref_ok,
      ref_mb=round(REF.stat().st_size / 1e6, 1) if ref_ok else 0,
      tail=p.stdout[-800:], err=p.stderr[-800:] if p.returncode else "")
 if ref_ok:
-    upload(REF, "add per-stage reference archive for crispasr-diff (#333)")
+    upload(REF, "add per-stage reference archive for stelnettts-diff (#333)")
     summary["artifacts"]["ref"] = {"size_mb": round(REF.stat().st_size / 1e6, 1), "uploaded": True}
 else:
     # Not fatal: the quants are the issue, the reference is the bonus.
@@ -291,7 +291,7 @@ shutil.rmtree(SRC, ignore_errors=True)
 step("source.deleted", free_gb=free_gb())
 
 # ── 4. Q8_0 ───────────────────────────────────────────────────────────────────
-# No t5/madlad rule in examples/crispasr-quantize/main.cpp, so this takes the
+# No t5/madlad rule in examples/stelnettts-quantize/main.cpp, so this takes the
 # generic path — the same one that produced the published Q4_K. The validation
 # and the parity table below are what prove that was the right call.
 if Q8.name in HAVE:
@@ -367,7 +367,7 @@ else:
     step("diff.skipped", why="no reference archive")
 
 # ── 6. requant with the t5 rule, and measure whether it is worth the size ────
-# The published Q4_K/Q8_0 predate examples/crispasr-quantize/main.cpp's t5 rule
+# The published Q4_K/Q8_0 predate examples/stelnettts-quantize/main.cpp's t5 rule
 # (shared.embed.* and lm_head.* stay at source precision). Those two tensors
 # carry the 256K vocabulary and are exactly where the per-stage table says Q4_K
 # loses — enc_embed 0.9974, enc_out 0.9937 against 1.000000 at F16. Keeping them

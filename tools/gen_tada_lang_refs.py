@@ -8,7 +8,7 @@ Source audio: google/fleurs (CC-BY 4.0, attribution: Google).
 Output .gguf files should carry the same CC-BY 4.0 attribution.
 
 Usage:
-    python gen_lang_refs.py --output-dir /Volumes/backups/ai/crispasr-gguf/lang-refs/
+    python gen_lang_refs.py --output-dir /Volumes/backups/ai/stelnettts-gguf/lang-refs/
 """
 
 import argparse
@@ -193,11 +193,11 @@ def encode_and_save(audio: np.ndarray, transcript: str, lang: str,
     print(f"  → {n} acoustic tokens")
 
     from pathlib import Path
-    w = GGUFWriter(out_path, arch="crispasr.reference", use_temp_file=False)
+    w = GGUFWriter(out_path, arch="stelnettts.reference", use_temp_file=False)
     w.add_name(Path(out_path).stem)
-    w.add_string("crispasr.ref.tada_tts_prompt_text", transcript)
-    w.add_string("crispasr.ref.tada_tts_language", lang)
-    w.add_string("crispasr.ref.source",
+    w.add_string("stelnettts.ref.tada_tts_prompt_text", transcript)
+    w.add_string("stelnettts.ref.tada_tts_language", lang)
+    w.add_string("stelnettts.ref.source",
                  f"google/fleurs ({lang}), CC-BY 4.0, https://huggingface.co/datasets/google/fleurs")
     w.add_tensor("prompt_token_values",    np.ascontiguousarray(vals), raw_dtype=GGMLQuantizationType.F32)
     w.add_tensor("prompt_token_positions", np.ascontiguousarray(pos),  raw_dtype=GGMLQuantizationType.F32)

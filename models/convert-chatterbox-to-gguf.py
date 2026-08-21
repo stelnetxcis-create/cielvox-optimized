@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert ResembleAI/chatterbox safetensors → GGUF for the CrispASR
+Convert ResembleAI/chatterbox safetensors → GGUF for the StelnetTTS
 `chatterbox` backend.
 
 Chatterbox pipeline:

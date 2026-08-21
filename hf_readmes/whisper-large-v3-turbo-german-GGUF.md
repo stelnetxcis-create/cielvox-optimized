@@ -18,7 +18,7 @@ base_model: primeline/whisper-large-v3-turbo-german
 
 # whisper-large-v3-turbo-german — GGUF
 
-GGML conversions and quantisations of [`primeline/whisper-large-v3-turbo-german`](https://huggingface.co/primeline/whisper-large-v3-turbo-german) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)** or any crispasr-compatible tool.
+GGML conversions and quantisations of [`primeline/whisper-large-v3-turbo-german`](https://huggingface.co/primeline/whisper-large-v3-turbo-german) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)** or any stelnettts-compatible tool.
 
 ## Available variants
 
@@ -40,26 +40,26 @@ All variants produce correct German transcription on test audio. Q4_K is recomme
 
 The "turbo" variant uses only 4 decoder layers (vs 32 in large-v3), making it ~3x faster at inference with minimal quality loss for German.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-# Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR && cd CrispASR
+# Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS && cd StelnetTTS
 cmake -S . -B build && cmake --build build -j8
 
 # Transcribe German audio
-./build/bin/crispasr -m ggml-model-q4_k.bin -f german_audio.wav -l de
+./build/bin/stelnettts -m ggml-model-q4_k.bin -f german_audio.wav -l de
 
 # With subtitles
-./build/bin/crispasr -m ggml-model-q4_k.bin -f german_audio.wav -l de -osrt --split-on-punct
+./build/bin/stelnettts -m ggml-model-q4_k.bin -f german_audio.wav -l de -osrt --split-on-punct
 ```
 
 ## Conversion
 
-Converted from the original HuggingFace model using crispasr's `convert-h5-to-ggml.py`, then quantised with `crispasr-legacy-quantize`:
+Converted from the original HuggingFace model using stelnettts's `convert-h5-to-ggml.py`, then quantised with `stelnettts-legacy-quantize`:
 
 ```bash
 python models/convert-h5-to-ggml.py primeline/whisper-large-v3-turbo-german . models
-crispasr-legacy-quantize ggml-model.bin ggml-model-q5_0.bin q5_0
-crispasr-legacy-quantize ggml-model.bin ggml-model-q4_k.bin q4_k
+stelnettts-legacy-quantize ggml-model.bin ggml-model-q5_0.bin q5_0
+stelnettts-legacy-quantize ggml-model.bin ggml-model-q4_k.bin q4_k
 ```

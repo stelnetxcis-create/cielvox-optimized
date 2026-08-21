@@ -2,16 +2,16 @@
 """Kaggle kernel: re-quantize FastConformer-family GGUFs on HF (#81 conv-pw fix).
 
 Every quantized FastConformer GGUF shipped with F16 conv.pw1/pw2 (the 3D conv
-layout dodged crispasr-quantize's 2D-only rule) — ~6x slower than Q8_0 on the
+layout dodged stelnettts-quantize's 2D-only rule) — ~6x slower than Q8_0 on the
 CPU mul_mat path. The fixed quantizer (main, cdc6dbc4) converts them to 2D
 Q8_0; all other tensors are byte-copied (same-type requant is a copy), so the
 new file is the old file + native pw fix, and Xet dedup keeps uploads small.
 
 Per repo / per quantized file:
   1. download old.gguf → /tmp (kaggle_usage.md #18/#21)
-  2. crispasr-quantize old new <type-from-filename>  (0 conversions → skip)
+  2. stelnettts-quantize old new <type-from-filename>  (0 conversions → skip)
   3. STRICT check: transcribe(old, defaults) == transcribe(new, defaults)
-     exactly — the runtime repack (CRISPASR_FC_PW_Q8) makes old ≡ new
+     exactly — the runtime repack (STELNETTTS_FC_PW_Q8) makes old ≡ new
   4. SOFT check: transcribe(old, legacy gates) vs new — word overlap ≥ 0.8
      (guards against per-backend quality damage from pw F16→Q8_0); also
      logs legacy-vs-new wall times = per-backend speed evidence
@@ -31,15 +31,15 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
 
-# ── Phase 0: clone + build CrispASR (CUDA if available, warm ccache) ─────────
-print("=== Phase 0: clone + build CrispASR ===", flush=True)
+# ── Phase 0: clone + build StelnetTTS (CUDA if available, warm ccache) ─────────
+print("=== Phase 0: clone + build StelnetTTS ===", flush=True)
 if not REPO.exists():
     subprocess.check_call([
         "git", "clone", "--depth", "1", "-b", "main",
-        "https://github.com/CrispStrobe/CrispASR", str(REPO),
+        "https://github.com/Cyna/StelnetTTS", str(REPO),
     ])
 if (REPO / "ggml").is_dir() and not (REPO / "ggml" / "CMakeLists.txt").exists():
     subprocess.check_call(["git", "submodule", "update", "--init", "ggml"], cwd=str(REPO))
@@ -50,7 +50,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))  # bundled fallback
 import kaggle_harness as kh  # noqa: E402
 
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("script.start")
 
@@ -97,9 +97,9 @@ if ret != 0 and has_cuda:  # CUDA cmake broken → CPU fallback
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
         f"stdbuf -oL -eL cmake --build {BUILD} -j {kh.safe_build_jobs(has_cuda)} "
-        f"--target crispasr-lib crispasr-quantize")
-QUANT = BUILD / "bin" / "crispasr-quantize"
-LIB = BUILD / "src" / "libcrispasr.so"
+        f"--target stelnettts-lib stelnettts-quantize")
+QUANT = BUILD / "bin" / "stelnettts-quantize"
+LIB = BUILD / "src" / "libstelnettts.so"
 assert QUANT.is_file() and LIB.is_file(), "build products missing"
 step("build.done", cuda=has_cuda)
 
@@ -164,15 +164,15 @@ EXTRA_ARGS = {
     "parakeet-tdt-0.6b-v3-q4_k.gguf": _TDT_HEAD_PIN,
     "parakeet_de_med-q4_k.gguf": _TDT_HEAD_PIN,
 }
-LEGACY_ENV = {"CRISPASR_FC_PW_Q8": "0", "CRISPASR_FC_FUSED_QKV": "0",
-              "CRISPASR_FC_ATTN_CONT": "1"}
+LEGACY_ENV = {"STELNETTTS_FC_PW_Q8": "0", "STELNETTTS_FC_FUSED_QKV": "0",
+              "STELNETTTS_FC_ATTN_CONT": "1"}
 
 CHILD = r"""
 import os, sys, time
 sys.path.insert(0, os.path.join(sys.argv[4], "python"))
-os.environ["CRISPASR_LIB_PATH"] = sys.argv[5]
+os.environ["STELNETTTS_LIB_PATH"] = sys.argv[5]
 import soundfile as sf
-from crispasr import Session
+from stelnettts import Session
 pcm, sr = sf.read(sys.argv[3], dtype="float32")
 s = Session(sys.argv[1], n_threads=4, backend=sys.argv[2] or None)
 t0 = time.perf_counter()
@@ -261,7 +261,7 @@ def push_progress(results):
         blob = json.dumps(results, indent=1).encode()
         HfApi(token=TOKEN).upload_file(
             path_or_fileobj=blob, path_in_repo="fc-pw-requant/results.json",
-            repo_id="cstr/crispasr-kaggle-progress", repo_type="dataset",
+            repo_id="Xenna/stelnettts-kaggle-progress", repo_type="dataset",
             commit_message="fc-pw-requant progress")
 
     _run_daemon(_up, 120)
@@ -392,7 +392,7 @@ results = {}
 for short, backend, lang in FLEET:
     if ONLY and short not in ONLY:
         continue
-    repo = f"cstr/{short}"
+    repo = f"Xenna/{short}"
     step("repo.begin", repo=repo, free_gb=free_gb())
     try:
         files = [f.path for f in API.list_repo_tree(repo) if f.path.endswith(".gguf")]

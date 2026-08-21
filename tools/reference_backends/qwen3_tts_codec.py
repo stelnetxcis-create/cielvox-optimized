@@ -1,7 +1,7 @@
 """Qwen3-TTS-Tokenizer-12Hz codec decoder reference dump backend.
 
 Captures stage-by-stage activations from the official PyTorch
-Qwen3TTSTokenizerV2Decoder to diff against the CrispASR C++ codec decoder.
+Qwen3TTSTokenizerV2Decoder to diff against the StelnetTTS C++ codec decoder.
 
 Input: deterministic codes (T=10 frames × 16 codebooks, all zeros by default).
 This avoids the voice-pack + talker dependency — only the codec tokenizer model
@@ -19,8 +19,8 @@ Stages dumped:
   codec_pcm            — final clamp output: (T_pcm,) = (1920*T_codec,)
 
 The "audio" arg is unused (required by the dispatcher but ignored here).
-Set QWEN3_TTS_CODEC_T=N to use N codec frames (default 10).
-Set QWEN3_TTS_CODEC_CODE=K to use K as the constant code value (default 0).
+Set CIELVOX2_TTS_CODEC_T=N to use N codec frames (default 10).
+Set CIELVOX2_TTS_CODEC_CODE=K to use K as the constant code value (default 0).
 """
 
 from __future__ import annotations
@@ -57,12 +57,12 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     if ref_path.is_dir() and str(ref_path) not in sys.path:
         sys.path.insert(0, str(ref_path))
 
-    from qwen_tts.core.tokenizer_12hz.modeling_qwen3_tts_tokenizer_v2 import (
+    from qwen_tts.core.tokenizer_12hz.modeling_cielvox2_tts_tokenizer_v2 import (
         Qwen3TTSTokenizerV2Model,
     )
 
-    T = int(os.environ.get("QWEN3_TTS_CODEC_T", "10"))
-    code_val = int(os.environ.get("QWEN3_TTS_CODEC_CODE", "0"))
+    T = int(os.environ.get("CIELVOX2_TTS_CODEC_T", "10"))
+    code_val = int(os.environ.get("CIELVOX2_TTS_CODEC_CODE", "0"))
     n_q = 16
 
     print(f"  loading Qwen3-TTS-Tokenizer-12Hz from {model_dir} (CPU, fp32)")

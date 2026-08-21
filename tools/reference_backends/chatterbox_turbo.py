@@ -1,4 +1,4 @@
-"""Chatterbox Turbo TTS reference dump backend for crispasr-diff.
+"""Chatterbox Turbo TTS reference dump backend for stelnettts-diff.
 
 Captures per-stage activations from the Chatterbox Turbo (GPT-2 T3 +
 meanflow S3Gen) Python model for element-wise C++ validation.
@@ -39,7 +39,7 @@ DEFAULT_STAGES = [
     "s3gen_pos_emb_pre",
     "s3gen_init_noise",
     "s3gen_mel",
-    # HiFT per-stage capture so crispasr-diff can localise vocoder
+    # HiFT per-stage capture so stelnettts-diff can localise vocoder
     # divergence (issue #94 follow-up — hift_pcm(ref_mel) reported
     # cos=0.21 against Python's mel2wav output).
     "hift_f0",
@@ -183,7 +183,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
                                    5830, 4372, 3644, 1919, 1676, 1649, 596, 2816, 5088, 5067,
                                    1275, 5400, 732, 2031, 4218, 4218, 4218, 4218]])
 
-    # Issue #94 follow-up: save these tokens so crispasr-diff can chain the
+    # Issue #94 follow-up: save these tokens so stelnettts-diff can chain the
     # s3gen-only checks (it expects a t3_speech_tokens tensor in the archive).
     if "t3_speech_tokens" in stages:
         out["t3_speech_tokens"] = speech_tokens.squeeze(0).cpu().numpy().astype(np.float32)
@@ -238,7 +238,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     # ── HiFT per-stage capture (issue #94 follow-up) ──
     # Identical to chatterbox.py's HiFT capture; chatterbox-turbo shares the
     # same HiFTGenerator under model.s3gen.mel2wav. Feed the gen-only mel
-    # (matches what crispasr-diff supplies as ref_mel) and dump every
+    # (matches what stelnettts-diff supplies as ref_mel) and dump every
     # intermediate so the diff harness can pinpoint the diverging op.
     hift = model.s3gen.mel2wav
     any_hift_stage = any(s.startswith("hift_") or s.startswith("voc_") for s in stages)
@@ -249,7 +249,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
                 # f0 shape: (B, T_mel) — capture the per-frame F0 in Hz so the
                 # C++ side can do a direct cosine compare on the F0 predictor
                 # output (next divergence candidate after the source-STFT
-                # itself per crispasr-diff localisation).
+                # itself per stelnettts-diff localisation).
                 out["hift_f0"] = f0.detach().squeeze(0).cpu().float().numpy()
             s = hift.f0_upsamp(f0[:, None]).transpose(1, 2)
             s, _, _ = hift.m_source(s)

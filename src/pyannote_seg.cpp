@@ -6,7 +6,7 @@
 
 #include "pyannote_seg.h"
 #include "core/gguf_loader.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/powerset.h"
 
 #include "ggml.h"
@@ -39,7 +39,7 @@
 static bool pyannote_seg_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_PYANNOTE_SEG_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_PYANNOTE_SEG_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -173,13 +173,13 @@ static bool pyannote_load(pyannote_model& m, const char* path) {
 // (contiguous dot products, one thread per direction); the per-timestep
 // input projections W@x — 2/3 of the LSTM FLOPs — are batched into one
 // mul_mat over the whole sequence per layer/direction.
-// CRISPASR_PYANNOTE_LEGACY=1 selects the original scalar path (A/B ground
+// STELNETTTS_PYANNOTE_LEGACY=1 selects the original scalar path (A/B ground
 // truth; the ggml path is validated frame-for-frame against it).
 // ===========================================================================
 
 static bool pyannote_use_legacy() {
     static const bool v = [] {
-        const char* e = std::getenv("CRISPASR_PYANNOTE_LEGACY");
+        const char* e = std::getenv("STELNETTTS_PYANNOTE_LEGACY");
         return e && *e && *e != '0';
     }();
     return v;
@@ -188,7 +188,7 @@ static bool pyannote_use_legacy() {
 // PYANNOTE_SEG_DUMP=<path>: write the (T,7) log-prob output as raw F32 for
 // A/B comparison between the ggml and legacy paths.
 static void pyannote_seg_dump(const float* logp, int T) {
-    const char* p = crispasr_env::get("CRISPASR_PYANNOTE_SEG_DUMP");
+    const char* p = stelnettts_env::get("STELNETTTS_PYANNOTE_SEG_DUMP");
     if (!p || !logp)
         return;
     if (FILE* f = fopen(p, "wb")) {
@@ -477,7 +477,7 @@ struct pyannote_chunking {
 };
 
 static bool pyannote_chunking_for(const pyannote_seg_context* ctx, int total_frames, pyannote_chunking& out) {
-    // CRISPASR_PYANNOTE_CHUNK_S=0 restores the old single-scan behaviour.
+    // STELNETTTS_PYANNOTE_CHUNK_S=0 restores the old single-scan behaviour.
     //
     // 60 s / 5 s picked on the VoxConverse dev shard (8 files, DER vs human
     // labels, no embedder re-clustering so the absolute numbers are the weak
@@ -493,9 +493,9 @@ static bool pyannote_chunking_for(const pyannote_seg_context* ctx, int total_fra
     // where 120 s would yield two chunks and half the cores idle. Context
     // costs (60+2*5)/60 = 17% redundant compute either way.
     double chunk_s = 60.0, context_s = 5.0;
-    if (const char* e = crispasr_env::get("CRISPASR_PYANNOTE_CHUNK_S"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_PYANNOTE_CHUNK_S"))
         chunk_s = atof(e);
-    if (const char* e = crispasr_env::get("CRISPASR_PYANNOTE_CHUNK_CONTEXT_S"))
+    if (const char* e = stelnettts_env::get("STELNETTTS_PYANNOTE_CHUNK_CONTEXT_S"))
         context_s = atof(e);
     if (chunk_s <= 0.0)
         return false;

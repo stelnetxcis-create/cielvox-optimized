@@ -23,7 +23,7 @@ the 5/5 Python tests).
   38 speaker-db tests pass on windows-latest, incl. the `.spkr` v2
   CreateDirectoryA write path — after excluding catch_discover
   `NOT_BUILT` placeholders from the filter (first run failed only on the
-  unbuilt test-crispasr-speaker-resample placeholder matching 'speaker').
+  unbuilt test-stelnettts-speaker-resample placeholder matching 'speaker').
 - **F8**: release-notes draft ready below (Earlier section) — pick it up at
   the next `scripts/bump-version.sh` release.
 - **F9**: parked (library-level orchestration hoist; separate change).
@@ -37,13 +37,13 @@ Agent A summary (F1/F2/F3/F6/F7/F4-py):
   cached titanet-large): `cluster 0 -> 'SpeakerA' (cos 0.97)`, `cluster 1 ->
   unmatched (best cos 0.05)`; transcript mixes `(SpeakerA)` / `(speaker 1)`.
   Env-gated live Catch2 test added to `tests/test-diarize-pyannote-live.cpp`
-  (reuses `CRISPASR_TEST_DIARIZE_WAV` / `CRISPASR_TEST_DIARIZE_MODEL` +
-  `CRISPASR_TEST_TITANET_MODEL`, enrolls into a temp dir at test time).
+  (reuses `STELNETTTS_TEST_DIARIZE_WAV` / `STELNETTTS_TEST_DIARIZE_MODEL` +
+  `STELNETTTS_TEST_TITANET_MODEL`, enrolls into a temp dir at test time).
 - **F2**: parallel (`-p 2`) vs sequential output parity checked on the same
   fixture — both contain `(SpeakerA)` + an anonymous cluster. FINDING (not a
   #266 bug, no code changed): `-p N` with the whisper backend nests
   `whisper_full_parallel` inside each already-parallel slice
-  (`crispasr_backend_crispasr.cpp:159-167`), fragmenting segments near
+  (`stelnettts_backend_stelnettts.cpp:159-167`), fragmenting segments near
   internal split boundaries and occasionally over-splitting one speaker into
   an extra anonymous cluster. Reproduces identically with plain
   `--diarize-speakers` (no `--speaker-db` at all) — pre-existing, unrelated
@@ -54,13 +54,13 @@ Agent A summary (F1/F2/F3/F6/F7/F4-py):
   (over-split clusters both matching the same name; sub-0.25s segments
   keeping a local `(speaker N)` label).
 - **F4 (Python half)**: `tests/test_python_speaker_db.py` — runtime-tests
-  `crispasr.SpeakerDB` against a freshly built `build-shared` lib (consent
+  `stelnettts.SpeakerDB` against a freshly built `build-shared` lib (consent
   ValueError, enroll write-through, roster-narrowed reopen + match/no-match,
-  legacy `crispasr_speaker_db_load` refusal). Run with the miniconda
+  legacy `stelnettts_speaker_db_load` refusal). Run with the miniconda
   interpreter (`/Users/christianstrobele/miniconda3/bin/python`) — the
   default Homebrew python3 on this box lacks numpy. Two real bugs found +
   fixed while writing this (the wrapper had never been executed before):
-  `SpeakerDB` was never re-exported from `crispasr/__init__.py` (ImportError
+  `SpeakerDB` was never re-exported from `stelnettts/__init__.py` (ImportError
   on the documented usage), and `__init__` set `self._db = None` AFTER the
   no-consent `raise ValueError`, so every refused instance crashed `__del__`
   with a swallowed `AttributeError` at GC time.
@@ -79,13 +79,13 @@ gaps, delegated to agents with verification by the main session:
   manually only; no CI guard. Needs a CLI-invocation test following existing
   tests/ conventions (no models required — gates fire before model load).
 - [x] **F2** Parallel/output-redo path (`-p N` + file outputs) with
-  `--speaker-db`: shares `crispasr_apply_global_speaker_stages()` with the
+  `--speaker-db`: shares `stelnettts_apply_global_speaker_stages()` with the
   sequential path but never run live. Verify parity on the two-voice fixture.
 - [x] **F3** Real multi-speaker validation: run identification over
   `samples/multispeaker.wav` (in-repo fixture, used by the pyannote live
   test) through `--diarize-speakers`; add an env-gated live test
-  (tests/env-live-tests.sh vars: `CRISPASR_TEST_DIARIZE_WAV`,
-  `CRISPASR_TEST_DIARIZE_MODEL`) asserting named + anonymous clusters
+  (tests/env-live-tests.sh vars: `STELNETTTS_TEST_DIARIZE_WAV`,
+  `STELNETTTS_TEST_DIARIZE_MODEL`) asserting named + anonymous clusters
   coexist, so live runs guard the flow. Prior E2E used a pitch-shifted
   jfk proxy + vad-turns only.
 - [x] **F4** Binding wrappers never compiled/executed beyond Go + Ruby CI:
@@ -98,10 +98,10 @@ gaps, delegated to agents with verification by the main session:
     only;
   - JS emscripten decls — rode through the green WASM build; confirm.
 - [x] **F5** Windows: ci.yml windows job builds with
-  `-DCRISPASR_BUILD_TESTS=OFF` and only smokes `--list-backends` — the
+  `-DSTELNETTTS_BUILD_TESTS=OFF` and only smokes `--list-backends` — the
   `.spkr` v2 write path (CreateDirectoryA branch) and speaker-db unit tests
   never run on Windows (pre-existing matrix gap; v2 code is compile-covered
-  via crispasr-cli). Either enable unit tests on the windows job or record
+  via stelnettts-cli). Either enable unit tests on the windows job or record
   as accepted gap.
 
 **Known scope / deliberate**
@@ -117,8 +117,8 @@ gaps, delegated to agents with verification by the main session:
   > requires `--expect-speakers "NameA,NameB"` (closed claimed roster);
   > the open 1:N database scan was removed. Matching is applied per global
   > diarization cluster instead of per audio slice; unmatched clusters keep
-  > anonymous `(speaker N)` labels. C API: `crispasr_speaker_db_load`/
-  > `_enroll` were replaced by `crispasr_speaker_db_open(dir,
+  > anonymous `(speaker N)` labels. C API: `stelnettts_speaker_db_load`/
+  > `_enroll` were replaced by `stelnettts_speaker_db_open(dir,
   > expected_names_csv, consent_attested)` / `_enroll2(..., consent_attested)`
   > — the old symbols remain linkable but refuse at runtime. Binding
   > wrapper signatures changed accordingly (consent + roster parameters).
@@ -135,7 +135,7 @@ gaps, delegated to agents with verification by the main session:
   identification is closed-roster (`--expect-speakers`) only, at every surface.
 - **Done**: full implementation on `fix/266-speaker-db-cluster-id` —
   - shared pipeline: slice-level match deleted; identification runs post-merge
-    per global cluster via `crispasr_apply_global_speaker_stages()`
+    per global cluster via `stelnettts_apply_global_speaker_stages()`
     (sequential + parallel output paths); centroid matching reuses the
     clustering embeddings; unmatched clusters stay `(speaker N)`; matched
     names can no longer be overwritten (ordering fix — no structured-label
@@ -145,7 +145,7 @@ gaps, delegated to agents with verification by the main session:
     with `--diarize` implies `--diarize-embedder auto`;
   - `.spkr` v2 (consent attestation + timestamp; v1 loads with notice);
     `speaker_db_retain()` roster narrowing; enroll requires consent param;
-  - C-ABI: `crispasr_speaker_db_open(dir, roster_csv, consent)` +
+  - C-ABI: `stelnettts_speaker_db_open(dir, roster_csv, consent)` +
     `enroll2(..., consent)`; legacy `_load`/`_enroll` refuse at runtime;
     all 7 binding wrappers + parity list updated;
   - tests: 981/981 unit green (new: consent refusal, retain, v1 legacy,
@@ -166,26 +166,26 @@ gaps, delegated to agents with verification by the main session:
 ## Confirmed findings (trace, 2026-07-17)
 
 1. **Slice-level 1:N match, one name for the whole slice.**
-   `examples/cli/crispasr_run.cpp:1053` embeds the *entire* dispatcher slice
+   `examples/cli/stelnettts_run.cpp:1053` embeds the *entire* dispatcher slice
    (`titanet_embed` over `[sl.start, sl.end)`), `:1056` runs `speaker_db_match`
    (linear scan over all `*.spkr`), `:1059-1060` writes the matched name to
    **every** segment in the slice. A mixed-speaker slice gets one identity.
 2. **Global clustering overwrites DB names.** DB match runs per-slice *before*
-   `merge_segments` (`crispasr_run.cpp:1315`); global clustering runs after
+   `merge_segments` (`stelnettts_run.cpp:1315`); global clustering runs after
    (`:1322-1328`) and rewrites `seg.speaker = "(speaker N) "` unconditionally
-   (`crispasr_diarize_cli.cpp:842`). So `--speaker-db` + `--diarize-speakers`
+   (`stelnettts_diarize_cli.cpp:842`). So `--speaker-db` + `--diarize-speakers`
    destroys the names it just assigned. Same overwrite reachable from the
-   parallel redo path (`crispasr_run.cpp:1252`) and legacy path (`cli.cpp:2668`).
+   parallel redo path (`stelnettts_run.cpp:1252`) and legacy path (`cli.cpp:2668`).
 3. **Labels are formatted strings with no provenance.** Both writers target the
    same `seg.speaker` string; nothing records "named from DB" vs "anonymous
    cluster", so precedence can't be enforced today.
 4. **Consent gate is CLI-only.** `--speaker-db-consent` is enforced at
-   enrollment (`crispasr_run.cpp:472-485`, exit 25) and at match time
-   (`:1028-1064`), but the C-ABI primitives `crispasr_speaker_db_enroll/_match`
-   (`src/crispasr_c_api.cpp:9756-9788`) have **no gate**; Go bindings expose them.
+   enrollment (`stelnettts_run.cpp:472-485`, exit 25) and at match time
+   (`:1028-1064`), but the C-ABI primitives `stelnettts_speaker_db_enroll/_match`
+   (`src/stelnettts_c_api.cpp:9756-9788`) have **no gate**; Go bindings expose them.
    The server exposes no speaker-db at all (anonymous diarization only).
 5. **Identification is post-only.** The streaming/mic branch
-   (`crispasr_run.cpp:2618+`) contains no diarization, clustering, or speaker-db.
+   (`stelnettts_run.cpp:2618+`) contains no diarization, clustering, or speaker-db.
    Keep it that way (see compliance).
 6. `.spkr` format v1 stores only name (filename) + L2-normed embedding — no
    consent record, no enrollment metadata (`src/speaker_db.cpp:148-174`).
@@ -247,7 +247,7 @@ Concrete changes:
    overwrite named clusters" enforceable.
 2. **Move DB matching after global clustering**, one match per cluster
    (centroid of the embeddings clustering already computed — no new inference).
-   Delete the slice-level match block (`crispasr_run.cpp:1037-1064`).
+   Delete the slice-level match block (`stelnettts_run.cpp:1037-1064`).
 3. **`--expect-speakers "Alice,Bob"`** (name TBD): required allow-list; the
    matcher only compares against these enrolled profiles. `--speaker-db`
    without it = hard error explaining why (no open DB scan).
@@ -270,8 +270,8 @@ Concrete changes:
   escape hatch exists** (maintainer decision — none survives, at any surface).
 - `.spkr` v1 files load with a stderr notice; all new enrollment writes v2
   (consent attestation + timestamp).
-- C-ABI shape: gate at handle acquisition — `crispasr_speaker_db_open(dir,
-  expected_names_csv, consent_attested)` + `crispasr_speaker_db_enroll2(...,
+- C-ABI shape: gate at handle acquisition — `stelnettts_speaker_db_open(dir,
+  expected_names_csv, consent_attested)` + `stelnettts_speaker_db_enroll2(...,
   consent_attested)`; the pre-#266 ungated symbols remain linkable but refuse
   at runtime with a pointer to the new entry points.
 

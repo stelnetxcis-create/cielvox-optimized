@@ -2,7 +2,7 @@
 """
 Kaggle kernel: quantize dots-tts-soar GGUF files (Q8_0 + Q4_K).
 
-Downloads F16 GGUFs from cstr/dots-tts-soar-GGUF, builds crispasr-quantize
+Downloads F16 GGUFs from Xenna/dots-tts-soar-GGUF, builds stelnettts-quantize
 via kaggle_harness, runs quantization, and uploads results back to HF.
 """
 
@@ -26,25 +26,25 @@ def log(msg):
 log("Kernel started")
 
 try:
-    # ── Clone CrispASR ──
-    CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-    _CRISPASR_DIR = Path("/tmp/CrispASR")
-    if not _CRISPASR_DIR.exists():
-        log("Cloning CrispASR...")
+    # ── Clone StelnetTTS ──
+    STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+    _STELNETTTS_DIR = Path("/tmp/StelnetTTS")
+    if not _STELNETTTS_DIR.exists():
+        log("Cloning StelnetTTS...")
         subprocess.check_call(["git", "clone", "--depth", "1",
-            CRISPASR_URL, str(_CRISPASR_DIR)])
-    sys.path.insert(0, str(_CRISPASR_DIR / "tools" / "kaggle"))
+            STELNETTTS_URL, str(_STELNETTTS_DIR)])
+    sys.path.insert(0, str(_STELNETTTS_DIR / "tools" / "kaggle"))
 
     import kaggle_harness as kh
     kh.init_progress()
     log("kaggle_harness imported OK")
 
-    # ── Install build toolchain + build crispasr-quantize ──
+    # ── Install build toolchain + build stelnettts-quantize ──
     log("Installing build toolchain...")
     kh.install_build_toolchain()
 
-    log("Building crispasr-quantize...")
-    build_dir = _CRISPASR_DIR / "build"
+    log("Building stelnettts-quantize...")
+    build_dir = _STELNETTTS_DIR / "build"
 
     # Simple CPU-only cmake configure + build
     os.makedirs(str(build_dir), exist_ok=True)
@@ -52,11 +52,11 @@ try:
     cmake_env["CCACHE_DIR"] = "/kaggle/working/.ccache"
 
     r = subprocess.run([
-        "cmake", "-G", "Ninja", "-B", str(build_dir), "-S", str(_CRISPASR_DIR),
+        "cmake", "-G", "Ninja", "-B", str(build_dir), "-S", str(_STELNETTTS_DIR),
         "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_BUILD_TYPE=Release",
-    ], capture_output=True, text=True, env=cmake_env, cwd=str(_CRISPASR_DIR), timeout=120)
+    ], capture_output=True, text=True, env=cmake_env, cwd=str(_STELNETTTS_DIR), timeout=120)
     log(f"CMake configure: rc={r.returncode}")
     if r.returncode != 0:
         log(f"CMake stderr (last 500): {r.stderr[-500:]}")
@@ -64,21 +64,21 @@ try:
     n_jobs = kh.safe_build_jobs(gpu=True)
     r2 = subprocess.run([
         "cmake", "--build", str(build_dir),
-        "--target", "crispasr-quantize",
+        "--target", "stelnettts-quantize",
         f"-j{n_jobs}",
-    ], capture_output=True, text=True, env=cmake_env, cwd=str(_CRISPASR_DIR), timeout=600)
+    ], capture_output=True, text=True, env=cmake_env, cwd=str(_STELNETTTS_DIR), timeout=600)
     log(f"Build: rc={r2.returncode}")
     if r2.returncode != 0:
         log(f"Build stderr (last 500): {r2.stderr[-500:]}")
 
-    quantize_bin = build_dir / "bin" / "crispasr-quantize"
+    quantize_bin = build_dir / "bin" / "stelnettts-quantize"
     if not quantize_bin.exists():
-        log(f"ERROR: crispasr-quantize not found at {quantize_bin}")
+        log(f"ERROR: stelnettts-quantize not found at {quantize_bin}")
         log("Listing bin/:")
         for f in (build_dir / "bin").iterdir() if (build_dir / "bin").exists() else []:
             log(f"  {f.name}")
         sys.exit(1)
-    log(f"crispasr-quantize built OK")
+    log(f"stelnettts-quantize built OK")
 
     # ── Install HF deps ──
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
@@ -88,7 +88,7 @@ try:
     hf_token = kh.resolve_hf_token()
 
     # ── Download F16 GGUFs from HF ──
-    log("Downloading F16 GGUFs from cstr/dots-tts-soar-GGUF...")
+    log("Downloading F16 GGUFs from Xenna/dots-tts-soar-GGUF...")
     from huggingface_hub import hf_hub_download
 
     dl_dir = Path("/tmp/dots-tts-gguf")
@@ -102,7 +102,7 @@ try:
     for fname in files_to_quantize:
         log(f"Downloading {fname}...")
         hf_hub_download(
-            "cstr/dots-tts-soar-GGUF",
+            "Xenna/dots-tts-soar-GGUF",
             fname,
             local_dir=str(dl_dir),
             token=hf_token if hf_token else None,
@@ -147,7 +147,7 @@ try:
     log("\nUploading to HuggingFace...")
     from huggingface_hub import HfApi
     api = HfApi(token=hf_token if hf_token else None)
-    repo_id = "cstr/dots-tts-soar-GGUF"
+    repo_id = "Xenna/dots-tts-soar-GGUF"
 
     for f in sorted(out_dir.iterdir()):
         if f.suffix == ".gguf" and f.stat().st_size > 0:

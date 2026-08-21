@@ -17,13 +17,13 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build"
 MODELS = Path("/tmp/models"); MODELS.mkdir(parents=True, exist_ok=True)  # big model -> ephemeral layer (gotcha #21)
 RESULTS = WORK / "results"; RESULTS.mkdir(parents=True, exist_ok=True)
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-GGUF_REPO = "cstr/ark-asr-3b-GGUF"
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+GGUF_REPO = "Xenna/ark-asr-3b-GGUF"
 CLIP_URL = "https://github.com/user-attachments/files/29962358/t501-3.75m.wav.zip"
 
 def jstep(name, **kv):
@@ -31,8 +31,8 @@ def jstep(name, **kv):
 
 # ── clone + build ──────────────────────────────────────────────────────────
 if REPO.exists(): shutil.rmtree(REPO)
-subprocess.check_call(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-                       "--recursive", CRISPASR_REPO, str(REPO)])
+subprocess.check_call(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+                       "--recursive", STELNETTTS_REPO, str(REPO)])
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh
 kh.init_progress()
@@ -44,8 +44,8 @@ kh.install_build_toolchain()
 subprocess.check_call(["cmake", "-S", str(REPO), "-B", str(BUILD),
                        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON"])
 with kh.build_heartbeat("build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}")
-CLI = BUILD / "bin" / "crispasr"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}")
+CLI = BUILD / "bin" / "stelnettts"
 jstep("built", cli=CLI.exists())
 assert CLI.exists()
 
@@ -68,7 +68,7 @@ def run_ark(tag, extra_args):
     ofbase = RESULTS / f"out_{tag}"
     cmd = [str(CLI), "-m", GGUF, "--language", "en", "--no-punctuation",
            "-f", str(WAV), "-of", str(ofbase), "-ojf"] + extra_args
-    env = {**os.environ, "CRISPASR_ARKASR_DEBUG_GEN": "1"}
+    env = {**os.environ, "STELNETTTS_ARKASR_DEBUG_GEN": "1"}
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=5400, env=env)
     (RESULTS / f"{tag}.stdout.txt").write_text(r.stdout)
     (RESULTS / f"{tag}.stderr.txt").write_text(r.stderr)

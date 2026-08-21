@@ -1,10 +1,10 @@
 """
-CrispASR -- funasr CUDA debug: flash-attn ablation + per-stage tensor dump.
+StelnetTTS -- funasr CUDA debug: flash-attn ablation + per-stage tensor dump.
 
 Purpose: localize the funasr CUDA !-loop bug (issue #125/#126). On CUDA,
 funasr's greedy decode degenerates into token-0 repeats. This kernel:
 
-  1. Builds CrispASR with CUDA.
+  1. Builds StelnetTTS with CUDA.
   2. Downloads funasr-nano-2512-q8_0.gguf (the default auto-download quant).
   3. Run A: CUDA + FA on (default) + FUNASR_DUMP_STAGES=1.  Expect: !-loop.
   4. Run B: CUDA + FA off (FUNASR_NO_FA=1) + dump.         Expect: TBD.
@@ -35,15 +35,15 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 SAMPLE = REPO / "samples" / "jfk.wav"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 
 PROGRESS = RESULTS / "progress.jsonl"
@@ -86,14 +86,14 @@ def run(cmd, check=True, capture=False, env=None, cwd=None, timeout=None):
 # ──────────────────────────────────────────────────────────────────────────
 # Clone + build
 # ──────────────────────────────────────────────────────────────────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     import shutil
 
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh
@@ -130,19 +130,19 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}"
     )
 step("build_done")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    candidates = list(BUILD.rglob("crispasr"))
+    candidates = list(BUILD.rglob("stelnettts"))
     candidates = [c for c in candidates if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 step("cli_found", path=str(CLI))
 
 LIB_DIR = BUILD / "src"
@@ -159,7 +159,7 @@ def run_funasr(label: str, extra_env: dict, timeout: int = 300) -> dict:
     step(f"{label}_start")
     env = {
         "FUNASR_DUMP_STAGES": "1",
-        "CRISPASR_VERBOSE": "1",
+        "STELNETTTS_VERBOSE": "1",
         **extra_env,
     }
     cmd = [
@@ -336,7 +336,7 @@ for sname in ["prefill_logits"]:
 # ──────────────────────────────────────────────────────────────────────────
 summary = {
     "ts": datetime.now(timezone.utc).isoformat(),
-    "ref": CRISPASR_REF,
+    "ref": STELNETTTS_REF,
     "sha": sha,
     "gpu": gpu_name,
     "cuda_arch": arch,

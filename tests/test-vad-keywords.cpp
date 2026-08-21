@@ -2,12 +2,12 @@
 // be advertised in --help, and vice versa.
 //
 // These were two hand-maintained lists that had already drifted: the help line
-// named only 'firered' and 'silero' while crispasr_resolve_vad_model() also
+// named only 'firered' and 'silero' while stelnettts_resolve_vad_model() also
 // accepted 'whisper-vad', 'marblenet', 'webrtc' and 'auto'/'default'. Four
 // working options were undiscoverable for anyone who did not read the source.
 // Found while verifying a command before putting it in a public issue reply.
 //
-// The keyword string is now single-sourced in crispasr_vad_cli.h; this pins
+// The keyword string is now single-sourced in stelnettts_vad_cli.h; this pins
 // that the RESOLVER still agrees with it, which a shared constant alone cannot
 // guarantee (the resolver has its own literal comparisons).
 
@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
@@ -41,8 +41,8 @@ const char* kResolverKeywords[] = {"auto", "default", "silero", "firered", "whis
 } // namespace
 
 TEST_CASE("every --vad-model keyword the resolver accepts is advertised", "[vad-keywords]") {
-    const std::string hdr = slurp(std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/crispasr_vad_cli.h");
-    const size_t fn = hdr.find("crispasr_vad_model_keywords()");
+    const std::string hdr = slurp(std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/stelnettts_vad_cli.h");
+    const size_t fn = hdr.find("stelnettts_vad_model_keywords()");
     REQUIRE(fn != std::string::npos);
     const size_t q0 = hdr.find('"', hdr.find("return", fn));
     REQUIRE(q0 != std::string::npos);
@@ -64,7 +64,7 @@ TEST_CASE("the resolver still accepts every advertised keyword", "[vad-keywords]
     // The other direction: an entry could be advertised and then dropped from
     // the resolver, leaving --help promising an option that is treated as a
     // file path and fails with a confusing "cannot open" error.
-    const std::string src = slurp(std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/crispasr_vad_cli.cpp");
+    const std::string src = slurp(std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/stelnettts_vad_cli.cpp");
     for (const char* kw : kResolverKeywords) {
         INFO("keyword: " << kw);
         REQUIRE(src.find(std::string("\"") + kw + "\"") != std::string::npos);
@@ -74,8 +74,8 @@ TEST_CASE("the resolver still accepts every advertised keyword", "[vad-keywords]
 TEST_CASE("the help line consumes the shared keyword string", "[vad-keywords]") {
     // Guards the join, not the predicate: the constant could exist and be
     // correct while --help still printed its own stale literal.
-    const std::string cli = slurp(std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/cli.cpp");
-    REQUIRE(cli.find("crispasr_vad_model_keywords()") != std::string::npos);
+    const std::string cli = slurp(std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/cli.cpp");
+    REQUIRE(cli.find("stelnettts_vad_model_keywords()") != std::string::npos);
     // And the old hardcoded wording is gone.
     REQUIRE(cli.find("VAD model (path, 'firered', or 'silero')") == std::string::npos);
 }

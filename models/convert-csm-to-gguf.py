@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert sesame/csm-1b HuggingFace safetensors -> GGUF F16/F32 for the
-CrispASR `csm-tts` backend.
+StelnetTTS `csm-tts` backend.
 
 CSM (Conversational Speech Model) is a two-transformer TTS system:
   - Backbone: Llama-3.2 1B (16L, 32H, 8KVH, 2048d, 8192 ff)

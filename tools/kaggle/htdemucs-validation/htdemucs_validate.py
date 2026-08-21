@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Kaggle kernel: validate HTDemucs C++ against Python reference.
 
-Builds CrispASR (htdemucs target only), converts HTDemucs model,
+Builds StelnetTTS (htdemucs target only), converts HTDemucs model,
 runs the C++ smoke test, and compares spec_input / encoder outputs
 against the Python reference dumper's GGUF.
 """
@@ -19,16 +19,16 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = REPO / "build"
 os.chdir(str(WORK))
 
-# ── Clone CrispASR ──────────────────────────────────────────────────
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+# ── Clone StelnetTTS ──────────────────────────────────────────────────
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 if not REPO.exists():
     try:
         subprocess.check_call(["git", "clone", "--depth", "1",
-            CRISPASR_URL, str(REPO)])
+            STELNETTTS_URL, str(REPO)])
         subprocess.check_call(["git", "submodule", "update", "--init", "ggml"],
                               cwd=str(REPO))
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -56,9 +56,9 @@ if hf_token:
 kh.step("install_toolchain")
 toolchain = kh.install_build_toolchain()
 
-# ── Build CrispASR (htdemucs target only) ───────────────────────────
+# ── Build StelnetTTS (htdemucs target only) ───────────────────────────
 kh.step("cmake_configure")
-build_flags = kh.cache_and_link_flags()  # ccache + mold + CRISPASR_NO_C2PA_NATIVE
+build_flags = kh.cache_and_link_flags()  # ccache + mold + STELNETTTS_NO_C2PA_NATIVE
 
 with kh.build_heartbeat("cmake.configure"):
     kh.sh(
@@ -73,7 +73,7 @@ jobs = str(multiprocessing.cpu_count())
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
         f"stdbuf -oL -eL cmake --build {BUILD} "
-        f"--target htdemucs crispasr-core -j{jobs}"
+        f"--target htdemucs stelnettts-core -j{jobs}"
     )
 
 kh.step(f"build_complete (htdemucs, -j{jobs})")
@@ -125,7 +125,7 @@ kh.sh(
     f"g++ -std=c++17 -O2 "
     f"-I {REPO / 'src'} -I {REPO / 'ggml' / 'include'} "
     f"{smoke_src} "
-    f"-L {BUILD / 'src'} -lhtdemucs -lcrispasr-core "
+    f"-L {BUILD / 'src'} -lhtdemucs -lstelnettts-core "
     f"-L {ggml_lib} -lggml "
     f"-L {ggml_base} -lggml-base "
     f"-L {ggml_cpu} -lggml-cpu "
@@ -135,7 +135,7 @@ kh.sh(
 
 kh.step("run_smoke_test")
 env = os.environ.copy()
-env["CRISPASR_HTDEMUCS_DEBUG"] = "1"
+env["STELNETTTS_HTDEMUCS_DEBUG"] = "1"
 env["OMP_NUM_THREADS"] = jobs
 result = subprocess.run([str(smoke_bin), str(model_path)],
                        capture_output=True, text=True, env=env, timeout=600)

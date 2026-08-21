@@ -1,6 +1,6 @@
-"""benchmark_metrics.py — parse crispasr JSON output and compute coverage metrics.
+"""benchmark_metrics.py — parse stelnettts JSON output and compute coverage metrics.
 
-The crispasr CLI with ``-ojf`` writes a JSON file whose ``transcription``
+The stelnettts CLI with ``-ojf`` writes a JSON file whose ``transcription``
 array contains per-segment entries with millisecond offsets::
 
     {"transcription": [
@@ -54,7 +54,7 @@ class CoverageMetrics:
 # ---------------------------------------------------------------------------
 
 def parse_segments(json_path: str | Path) -> list[Segment]:
-    """Parse crispasr ``-ojf`` JSON into a list of Segments."""
+    """Parse stelnettts ``-ojf`` JSON into a list of Segments."""
     path = Path(json_path)
     if not path.exists():
         return []
@@ -169,6 +169,6 @@ def metrics_from_json(
     audio_duration_s: float,
     gap_threshold_ms: int = GAP_THRESHOLD_MS,
 ) -> CoverageMetrics:
-    """Parse a crispasr JSON output file and return coverage metrics."""
+    """Parse a stelnettts JSON output file and return coverage metrics."""
     segs = parse_segments(json_path)
     return compute_coverage(segs, audio_duration_s, gap_threshold_ms)

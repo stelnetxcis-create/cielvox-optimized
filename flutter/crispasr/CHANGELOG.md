@@ -31,14 +31,14 @@
 ## 0.8.28
 
 * **HIP/ROCm on Linux**: first release since 0.8.25 with a
-  `crispasr-linux-x86_64-hip` tarball. The packaging step rewrote `RUNPATH`
+  `stelnettts-linux-x86_64-hip` tarball. The packaging step rewrote `RUNPATH`
   before asking `ldd` what the binaries needed, so ROCm's OpenMP runtime
   (`libomp.so`, reachable only through that `RUNPATH`) was silently dropped and
   the archive never built (#339).
 * The same defect in two more artifact kinds, neither reported (#341):
-  `libcrispasr-linux-x86_64-hip` shipped needing an unbundled `libomp.so`, and
+  `libstelnettts-linux-x86_64-hip` shipped needing an unbundled `libomp.so`, and
   the Python binding tarballs needed `libgomp.so.1` and `libblas.so.3` — so
-  `import crispasr` failed in the loader on any host without OpenBLAS and gcc's
+  `import stelnettts` failed in the loader on any host without OpenBLAS and gcc's
   OpenMP. Both are now bundled and gated.
 * GPU archives no longer copy the build machine's CUDA/ROCm install into the
   tarball, and carry those toolkit directories in their own `RUNPATH` instead —
@@ -56,8 +56,8 @@
   Vorbis comment header declares its entry count before the array is
   allocated, so an attacker-sized count left a non-zero length with a null
   pointer that the teardown path then indexed. Reachable from
-  `crispasr_audio_load` on untrusted input.
-* qwen3-tts: `--temperature` now reaches the talker (it had only ever reached
+  `stelnettts_audio_load` on untrusted input.
+* cielvox2-tts: `--temperature` now reaches the talker (it had only ever reached
   the code predictor), plus greedy/replay/logit-dump levers for cross-backend
   diagnosis (#337).
 
@@ -74,7 +74,7 @@
 * Voxtral TTS could index its embedding table out of bounds on some inputs: a
   Tekken vocabulary blob may serialize more pieces than the checkpoint
   activates. Bounded, in both `voxtral-tts` and `voxtral4b` (#338).
-* qwen3-tts could emit 300 s of audio for one sentence — the frame budget was
+* cielvox2-tts could emit 300 s of audio for one sentence — the frame budget was
   the KV cache ceiling rather than anything derived from the input text (#337).
 * madlad400 F16 and Q8_0 artifacts published; F16 verified at cosine 1.000000
   on all 14 stages against the PyTorch reference (#333).
@@ -162,12 +162,12 @@
 
 ## 0.8.20
 
-- **iOS is now supported.** The release ships an Apple `crispasr.xcframework`
+- **iOS is now supported.** The release ships an Apple `stelnettts.xcframework`
   (device + simulator slices for iOS, plus macOS/tvOS/visionOS) for the first
   time, so a Flutter iOS app can link the native library. Earlier releases
   shipped no iOS artifact at all.
 - **Prebuilt native library bundles load as delivered.** The macOS and Linux
-  `libcrispasr` bundles had a broken embedded run-path and could not be
+  `libstelnettts` bundles had a broken embedded run-path and could not be
   `dlopen`ed after extraction; they now resolve their bundled `ggml` libraries
   relative to their own location. Android and the desktop bundles are laid out
   as a flat `lib/` directory.
@@ -237,9 +237,9 @@
 
 ## 0.8.10
 
-- Initial pub.dev release for the current CrispASR 0.8 line.
-- Exposes Dart FFI bindings for the unified CrispASR session API, Whisper-shaped legacy API, audio decode helpers, language detection, diarization, chat/text helpers, grammar support and alt-token capture.
-- Keeps the package pure Dart FFI: native `libcrispasr` must be installed or bundled separately.
+- Initial pub.dev release for the current StelnetTTS 0.8 line.
+- Exposes Dart FFI bindings for the unified StelnetTTS session API, Whisper-shaped legacy API, audio decode helpers, language detection, diarization, chat/text helpers, grammar support and alt-token capture.
+- Keeps the package pure Dart FFI: native `libstelnettts` must be installed or bundled separately.
 
 ## 0.5.13
 
@@ -273,10 +273,10 @@
   BPE means a multi-token word's alts cover the first content
   token only (e.g. "kubectl" surfaces alts for "kub"); full
   word-level enumeration is deferred.
-- C-ABI symbols: `crispasr_params_set_alt_n`,
-  `crispasr_session_set_alt_n`, `crispasr_token_n_alts` /
+- C-ABI symbols: `stelnettts_params_set_alt_n`,
+  `stelnettts_session_set_alt_n`, `stelnettts_token_n_alts` /
   `_alt_id` / `_alt_p` / `_alt_text`,
-  `crispasr_session_result_word_n_alts` / `_alt_text` /
+  `stelnettts_session_result_word_n_alts` / `_alt_text` /
   `_alt_p`. New whisper getters
   `whisper_full_get_token_n_alts` / `_alt_id` / `_alt_p`
   (plus `_from_state` variants). All nine symbols pinned in
@@ -287,7 +287,7 @@
   every alt's p ∈ [0, 1] and the list is descending,
   chosen token excluded from its own alts, and `setAltN(0)`
   on a re-decode actually clears them. Skips silently when
-  `CRISPASR_LIB` / `CRISPASR_MODEL` aren't set. Representative
+  `STELNETTTS_LIB` / `STELNETTTS_MODEL` aren't set. Representative
   dev-box result: 22/22 words on JFK get runner-ups (e.g.
   "Americans → America(4.85%), americ(3.84%), American(3.35%)").
 
@@ -298,7 +298,7 @@
   on a 16 kHz mono float32 buffer (upsample to 48 kHz →
   RNNoise frame loop → downsample back) and returns a fresh
   same-length `Float32List`. Backed by the new C-ABI
-  `crispasr_enhance_audio_rnnoise`; pre-0.5.12 dylibs raise
+  `stelnettts_enhance_audio_rnnoise`; pre-0.5.12 dylibs raise
   `UnsupportedError` so callers graceful-degrade. State is
   per-call so worker isolates can run enhancement concurrently
   without coordination.
@@ -315,7 +315,7 @@
   any prior pattern (passes `nullptr` to wparams =
   whisper's "no suppression" sentinel). Pre-0.5.11 dylibs
   raise `UnsupportedError` so callers can graceful-degrade.
-- Underlying C-ABI: `crispasr_session_set_whisper_decode_extras`;
+- Underlying C-ABI: `stelnettts_session_set_whisper_decode_extras`;
   three new sticky session fields default to whisper's
   upstream values so an unmodified session matches stock
   whisper.cpp.
@@ -335,7 +335,7 @@
   (= the CLI's `--no-fallback`). Defaults match
   `whisper_full_default_params` so an unmodified session
   behaves bit-identical to stock whisper.cpp.
-- Underlying C-ABI: `crispasr_session_set_fallback_thresholds`.
+- Underlying C-ABI: `stelnettts_session_set_fallback_thresholds`.
   Pre-0.5.10 dylibs raise `UnsupportedError`. Non-whisper
   backends silently ignore — none have an analog for these
   fields today.
@@ -343,8 +343,8 @@
 ## 0.4.9
 
 - Initial pub.dev release.
-- Dart FFI bindings for the CrispASR C ABI (`src/crispasr_c_api.cpp`).
+- Dart FFI bindings for the StelnetTTS C ABI (`src/stelnettts_c_api.cpp`).
 - Supports all 17 backends: Whisper, Qwen3-ASR, FastConformer, Canary, Parakeet, Cohere, Granite-Speech, Voxtral (Mistral 1.0/4B), wav2vec2, GLM-ASR, Kyutai-STT, Moonshine, FireRed, OmniASR, VibeVoice-ASR, plus FireRedPunc post-processor.
-- Unified `Session` API across all backends; legacy `CrispASR` Whisper-shaped API preserved.
+- Unified `Session` API across all backends; legacy `StelnetTTS` Whisper-shaped API preserved.
 - Word-level alignment, speaker diarization, and language ID helpers.
 - Auto-download of registered models via the model registry.

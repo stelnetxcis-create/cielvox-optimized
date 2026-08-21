@@ -1,7 +1,7 @@
 """TitaNet-Large speaker verification reference dump backend.
 
 Loads `nvidia/speakerverification_en_titanet_large` via NeMo and captures
-intermediate activations at every architectural boundary for crispasr-diff
+intermediate activations at every architectural boundary for stelnettts-diff
 comparison against the C++ titanet runtime.
 
 Stages:

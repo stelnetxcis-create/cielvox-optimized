@@ -21,7 +21,7 @@ Plus the Qwen2 BPE tokenizer (vocab=151936) lives in CosyVoice-BlankEN/.
 
 Output: one GGUF per sub-model so users can mix quantisations later
 (e.g. Q4_K LLM + F16 DiT/HiFT — flow/vocoder quality is more sensitive
-to quant noise than the AR LLM is, mirroring qwen3-tts deployment
+to quant noise than the AR LLM is, mirroring cielvox2-tts deployment
 recipe).
 
 Tensor naming:
@@ -58,7 +58,7 @@ form. Mirrors voxcpm2's `wn_reconstruct` cache pattern.
 Usage:
   python models/convert-cosyvoice3-to-gguf.py \\
       --input FunAudioLLM/Fun-CosyVoice3-0.5B-2512 \\
-      --output-dir /Volumes/backups/ai/crispasr-models/cosyvoice3-0.5b-2512/
+      --output-dir /Volumes/backups/ai/stelnettts-models/cosyvoice3-0.5b-2512/
 """
 
 import argparse

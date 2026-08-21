@@ -12,13 +12,13 @@ tags:
 - musicgen
 - dac
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Parler TTS Mini v1.1 — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`parler-tts/parler-tts-mini-v1.1`](https://huggingface.co/parler-tts/parler-tts-mini-v1.1) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`parler-tts/parler-tts-mini-v1.1`](https://huggingface.co/parler-tts/parler-tts-mini-v1.1) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 Parler TTS is a prompt-conditioned text-to-speech model: describe the desired voice in natural language and the model generates matching speech. Architecture: T5 encoder (flan-t5-large, 24 layers) encodes the voice description, a MusicGen-style causal decoder (24 layers, 9 codebooks) generates DAC audio tokens autoregressively, and a DAC 44 kHz codec decoder synthesises the final waveform. Distributed under **Apache 2.0 license**.
 
@@ -31,16 +31,16 @@ Single GGUF contains all three components (T5 encoder + decoder + DAC codec).
 | `parler-tts-mini-v1.1-f16.gguf`  | F16  | 1.8 GB | Reference quality |
 | `parler-tts-mini-v1.1-q8_0.gguf` | Q8_0 | 979 MB | Recommended |
 | `parler-tts-mini-v1.1-q4_k.gguf` | Q4_K | 569 MB | Smallest (DAC codec kept at F16) |
-| `parler-mini-v1.1-ref.gguf`      | —    | 286 KB | CrispASR `crispasr-diff` per-stage F32 PyTorch reference (not a model) |
+| `parler-mini-v1.1-ref.gguf`      | —    | 286 KB | StelnetTTS `stelnettts-diff` per-stage F32 PyTorch reference (not a model) |
 
 > **A duplicate, tokenizer-broken file set was removed (2026-08-03).** The repo
 > also carried `parler-mini-v1.1-{f16,q4_k,q8_0}.gguf`. Their tensors were
 > byte-identical to the files above (741/741 verified), but they were missing
-> the `parler.tokenizer.is_bpe` metadata key — and CrispASR defaults that to
+> the `parler.tokenizer.is_bpe` metadata key — and StelnetTTS defaults that to
 > `false`, which selects a Viterbi **unigram** tokenizer instead of **BPE**.
 > Prompts therefore tokenized differently, and the model spoke differently.
 >
-> CrispASR's model registry pointed at the broken `parler-mini-v1.1-q8_0.gguf`,
+> StelnetTTS's model registry pointed at the broken `parler-mini-v1.1-q8_0.gguf`,
 > so `-m auto` downloaded it. Both the registry and this repo now use the
 > `parler-tts-` names. `parler-mini-v1.1-ref.gguf` is unrelated — it is the
 > diff-harness reference, not a model, and is unaffected.
@@ -49,24 +49,24 @@ Single GGUF contains all three components (T5 encoder + decoder + DAC codec).
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Download
-huggingface-cli download cstr/parler-tts-mini-v1.1-GGUF parler-tts-mini-v1.1-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/parler-tts-mini-v1.1-GGUF parler-tts-mini-v1.1-q8_0.gguf --local-dir .
 
 # 3. Synthesise
-./build/bin/crispasr --backend parler-tts \
+./build/bin/stelnettts --backend parler-tts \
     -m parler-tts-mini-v1.1-q8_0.gguf \
     --instruct "A female speaker with a warm, natural voice delivers her words at a moderate pace in a quiet environment." \
     --tts "Hello, this is a test of Parler TTS." \
     --tts-output output.wav
 
 # 4. Auto-download shortcut
-./build/bin/crispasr -m parler-tts --auto-download \
+./build/bin/stelnettts -m parler-tts --auto-download \
     --instruct "A young man speaks clearly in a studio." \
     --tts "The quick brown fox jumps over the lazy dog." \
     --tts-output fox.wav
@@ -115,11 +115,11 @@ and MusicGen decoder weights are quantized. The BPE tokenizer is embedded in the
 
 Trained on LibriTTS-R and MLS, both derived from LibriVox recordings by real volunteer narrators, and the upstream card notes it was *"trained on 34 speakers, characterized by name (e.g. Jon, Lea, Gary, Jenna, Mike, Laura)"* for speaker consistency. Whether "Jon" is that reader's real name does not change the analysis: it reproduces one identifiable corpus speaker, pseudonymously, exactly like VCTK's `p225`.
 
-CrispASR records this as `speaker_identity=real_person`. Output synthesized with it carries a **spoken AI disclosure**, because audio resembling an identifiable person is a deep fake under Art. 3(60) whether or not any cloning took place. It does **not** require `--i-have-rights`: the donor's agreement to the training is a licensing matter settled upstream, which a downstream operator cannot attest to.
+StelnetTTS records this as `speaker_identity=real_person`. Output synthesized with it carries a **spoken AI disclosure**, because audio resembling an identifiable person is a deep fake under Art. 3(60) whether or not any cloning took place. It does **not** require `--i-have-rights`: the donor's agreement to the training is a licensing matter settled upstream, which a downstream operator cannot attest to.
 
 Override per run with `--speaker-identity`, or stamp a file permanently with
 `models/stamp-speaker-identity.py`. See
-[`docs/eu-ai-act.md` §6.2a](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md).
+[`docs/eu-ai-act.md` §6.2a](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md).
 
 ## License
 

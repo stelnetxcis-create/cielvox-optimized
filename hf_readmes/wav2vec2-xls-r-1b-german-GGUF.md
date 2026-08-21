@@ -16,7 +16,7 @@ base_model: jonatasgrosman/wav2vec2-xls-r-1b-german
 
 # Wav2Vec2 XLS-R 1B German -- GGUF
 
-GGUF conversions and quantisations of [`jonatasgrosman/wav2vec2-xls-r-1b-german`](https://huggingface.co/jonatasgrosman/wav2vec2-xls-r-1b-german) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`jonatasgrosman/wav2vec2-xls-r-1b-german`](https://huggingface.co/jonatasgrosman/wav2vec2-xls-r-1b-german) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -34,11 +34,11 @@ GGUF conversions and quantisations of [`jonatasgrosman/wav2vec2-xls-r-1b-german`
 - **Source:** [`jonatasgrosman/wav2vec2-xls-r-1b-german`](https://huggingface.co/jonatasgrosman/wav2vec2-xls-r-1b-german)
 - Largest German wav2vec2 model. Best quality, needs more compute.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-./build/bin/crispasr --backend wav2vec2 -m wav2vec2-xls-r-1b-german-q4_k.gguf -f german_audio.wav -l de
+./build/bin/stelnettts --backend wav2vec2 -m wav2vec2-xls-r-1b-german-q4_k.gguf -f german_audio.wav -l de
 
 # Auto-download (default German model):
-./build/bin/crispasr --backend wav2vec2 -m auto --auto-download -l de -f audio.wav
+./build/bin/stelnettts --backend wav2vec2 -m auto --auto-download -l de -f audio.wav
 ```

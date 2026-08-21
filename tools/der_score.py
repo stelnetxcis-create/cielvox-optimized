@@ -12,7 +12,7 @@ above that. Overlapping speech is not modelled: each instant has at most one
 reference and one hypothesis speaker.
 
 This is the Python twin of src/core/der.h, kept for benchmarking pipelines that
-are not CrispASR (e.g. comparing against an upstream reference implementation).
+are not StelnetTTS (e.g. comparing against an upstream reference implementation).
 See docs/foxnose-diarize/PLAN.md for the VoxConverse recipe that uses it.
 
     from der_score import score

@@ -319,7 +319,7 @@ TEST_CASE("beam_decode: multi-EOS stops on any", "[unit][decode]") {
 // (qwen3 backend) level.
 //
 // core_beam_decode::run_with_probs returns result.tokens as raw int32_t ids.
-// Backends MUST copy those ids into crispasr_token::id (default -1) when
+// Backends MUST copy those ids into stelnettts_token::id (default -1) when
 // assembling the output token list. The qwen3 beam-search path was missing
 // this assignment; leaving id=-1 broke downstream consumers (native JSON
 // "tokens" array, whisper-compat "id" field in -ojf output).
@@ -327,7 +327,7 @@ TEST_CASE("beam_decode: multi-EOS stops on any", "[unit][decode]") {
 // These tests verify:
 //   1. Beam result tokens are non-negative (they are valid vocab ids, not -1).
 //   2. The values match what the mock LLM emits (hot_tok=3 for first 3 calls,
-//      then EOS=5) — so a consumer that copies result.tokens[i] → crispasr_token.id
+//      then EOS=5) — so a consumer that copies result.tokens[i] → stelnettts_token.id
 //      gets a meaningful id, not the sentinel -1.
 // ---------------------------------------------------------------------------
 
@@ -355,7 +355,7 @@ TEST_CASE("beam_decode: returned token ids are non-negative", "[unit][decode]") 
 TEST_CASE("beam_decode: token ids match expected hot_tok sequence", "[unit][decode]") {
     // The mock emits hot_tok=3 for the first 3 steps, then EOS=5.
     // Verifying the exact ids guarantees that a backend copying
-    // result.tokens[i] → crispasr_token.id gets the correct vocabulary
+    // result.tokens[i] → stelnettts_token.id gets the correct vocabulary
     // index (not the -1 sentinel left when the assignment is absent).
     MockCtx ctx;
     float prefill[8];

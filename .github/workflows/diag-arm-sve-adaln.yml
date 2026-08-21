@@ -158,7 +158,7 @@ jobs:
             echo "=============================================================="
             cmake -S . -B "build-$name" -G Ninja -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-              -DCRISPASR_BUILD_TESTS=ON "$@" 2>&1 | grep -E "CPU backend variant|ARM|SVE" || true
+              -DSTELNETTTS_BUILD_TESTS=ON "$@" 2>&1 | grep -E "CPU backend variant|ARM|SVE" || true
             cmake --build "build-$name" -j "$(nproc)" --target test-core-adaln adaln-diag >/dev/null 2>&1
             if [ ! -x "build-$name/bin/test-core-adaln" ]; then echo "BUILD FAILED"; return; fi
             "./build-$name/bin/test-core-adaln"; echo "test rc=$?"

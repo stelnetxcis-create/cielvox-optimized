@@ -5,8 +5,8 @@
 
 #include "firered_vad.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 #include "ggml.h"
 #include "ggml-backend.h"
 #include "gguf.h"
@@ -28,7 +28,7 @@
 static bool firered_vad_use_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_FIRERED_VAD_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_FIRERED_VAD_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 #endif
@@ -44,7 +44,7 @@ static bool firered_vad_use_scalar() {
 static bool firered_vad_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_FIRERED_VAD_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_FIRERED_VAD_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -52,11 +52,11 @@ static bool firered_vad_bench_enabled() {
 
 // #305: the DFSMN convs and the fbank FFT were single-threaded (the matmuls
 // already use Accelerate BLAS). Parallelize them over their independent axis
-// (channel P / frame t). Opt out with CRISPASR_FIRERED_VAD_SERIAL=1.
+// (channel P / frame t). Opt out with STELNETTTS_FIRERED_VAD_SERIAL=1.
 static int firered_vad_nthreads() {
     static int v = -1;
     if (v < 0) {
-        if (crispasr_env::get("CRISPASR_FIRERED_VAD_SERIAL") != nullptr) {
+        if (stelnettts_env::get("STELNETTTS_FIRERED_VAD_SERIAL") != nullptr) {
             v = 1;
         } else {
             unsigned hw = std::thread::hardware_concurrency();
@@ -388,7 +388,7 @@ extern "C" struct firered_vad_context* firered_vad_init(const char* model_path) 
     gguf_free(gctx);
 
     // Load weights
-    ggml_backend_t backend = crispasr_init_gpu_backend();
+    ggml_backend_t backend = stelnettts_init_gpu_backend();
     if (!backend) {
         delete ctx;
         return nullptr;
@@ -534,10 +534,10 @@ extern "C" int firered_vad_detect(struct firered_vad_context* ctx, const float* 
         probs[t] = 1.0f / (1.0f + expf(-probs[t]));
 
     // Debug: show probability stats. Issue #84 — gated behind the
-    // CRISPASR_FIRERED_VAD_DEBUG env var (set by --firered-vad-debug
+    // STELNETTTS_FIRERED_VAD_DEBUG env var (set by --firered-vad-debug
     // on the CLI) so long-running live wrappers don't get spammed
     // with a per-step stderr dump on every chunk.
-    if (const char* dbg = std::getenv("CRISPASR_FIRERED_VAD_DEBUG"); dbg && dbg[0] && dbg[0] != '0') {
+    if (const char* dbg = std::getenv("STELNETTTS_FIRERED_VAD_DEBUG"); dbg && dbg[0] && dbg[0] != '0') {
         float max_p = 0, mean_p = 0;
         int speech_frames = 0;
         for (int t = 0; t < T; t++) {

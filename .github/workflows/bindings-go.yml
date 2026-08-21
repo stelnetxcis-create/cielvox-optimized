@@ -3,11 +3,11 @@ on:
   push:
     paths:
       - bindings/go/**
-      - crispasr.h
+      - stelnettts.h
       # The Go binding also binds the chat C ABI (bindings/go/chat.go), so a
       # change to that header or its implementation can break the cgo build
       # without touching anything else listed here.
-      - include/crispasr_chat.h
+      - include/stelnettts_chat.h
       - src/chat.cpp
       - src/CMakeLists.txt
       - tools/cmake_graphviz_targets.py
@@ -15,11 +15,11 @@ on:
   pull_request:
     paths:
       - bindings/go/**
-      - crispasr.h
+      - stelnettts.h
       # The Go binding also binds the chat C ABI (bindings/go/chat.go), so a
       # change to that header or its implementation can break the cgo build
       # without touching anything else listed here.
-      - include/crispasr_chat.h
+      - include/stelnettts_chat.h
       - src/chat.cpp
       - src/CMakeLists.txt
       - tools/cmake_graphviz_targets.py
@@ -38,14 +38,14 @@ jobs:
           submodules: recursive
       - run: |
           cmake -S . -B /tmp/go_drift_build \
-            --graphviz=/tmp/crispasr.dot \
+            --graphviz=/tmp/stelnettts.dot \
             -DBUILD_SHARED_LIBS=OFF \
-            -DCRISPASR_BUILD_TESTS=OFF \
-            -DCRISPASR_BUILD_EXAMPLES=OFF \
-            -DCRISPASR_BUILD_SERVER=OFF \
+            -DSTELNETTTS_BUILD_TESTS=OFF \
+            -DSTELNETTTS_BUILD_EXAMPLES=OFF \
+            -DSTELNETTTS_BUILD_SERVER=OFF \
             -DGGML_CUDA=OFF \
-            -DCRISPASR_OPUS_FETCH=ON
-          python tools/sync_go_cgo_ldflags.py --check --dot /tmp/crispasr.dot
+            -DSTELNETTTS_OPUS_FETCH=ON
+          python tools/sync_go_cgo_ldflags.py --check --dot /tmp/stelnettts.dot
 
   ubuntu-22:
     runs-on: ubuntu-22.04

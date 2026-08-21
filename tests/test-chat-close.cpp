@@ -1,11 +1,11 @@
-// test-chat-close.cpp — teardown of a crispasr_chat_* session under load.
+// test-chat-close.cpp — teardown of a stelnettts_chat_* session under load.
 //
-// Gated on CRISPASR_CHAT_TEST_MODEL — a path to a small GGUF chat model
+// Gated on STELNETTTS_CHAT_TEST_MODEL — a path to a small GGUF chat model
 // (e.g. gemma-3-1b-it-Q4_K_M.gguf, qwen2.5-0.5b-instruct, smollm2-360m).
 // When unset every model-backed case is reported as SKIPPED so unrelated
 // builds stay green without a model on disk.
 //
-// `crispasr_chat_close` frees the context, the model and the session itself,
+// `stelnettts_chat_close` frees the context, the model and the session itself,
 // and a generation holds the session for as long as it decodes. Covers what
 // the header promises about closing from another thread:
 //   • close waits for a generation already in flight rather than freeing
@@ -21,7 +21,7 @@
 // lifetime lock. Every rejected call below reaches that lock safely only
 // because a parked generation is holding the allocation alive for the whole
 // case. With no such call in flight, a close frees while that thread is
-// suspended and it wakes on a destroyed mutex. crispasr_chat.h states the
+// suspended and it wakes on a destroyed mutex. stelnettts_chat.h states the
 // ordering rule that makes this the caller's to prevent; nothing inside the
 // session can test for it, because the test would live in the freed memory.
 //
@@ -31,7 +31,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_chat.h"
+#include "stelnettts_chat.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -43,7 +43,7 @@
 namespace {
 
 const char* test_model_path() {
-    return std::getenv("CRISPASR_CHAT_TEST_MODEL");
+    return std::getenv("STELNETTTS_CHAT_TEST_MODEL");
 }
 
 // A generation parked inside its own token callback.
@@ -76,22 +76,22 @@ void on_token_park(const char* chunk, void* user) {
     p->cv.wait(lk, [p] { return p->release; });
 }
 
-crispasr_chat_session_t open_chat(const char* model) {
-    crispasr_chat_open_params op;
-    crispasr_chat_open_params_default(&op);
+stelnettts_chat_session_t open_chat(const char* model) {
+    stelnettts_chat_open_params op;
+    stelnettts_chat_open_params_default(&op);
     op.n_gpu_layers = -1;
     op.n_ctx = 1024;
 
-    crispasr_chat_error err{};
-    crispasr_chat_session_t s = crispasr_chat_open(model, &op, &err);
+    stelnettts_chat_error err{};
+    stelnettts_chat_session_t s = stelnettts_chat_open(model, &op, &err);
     REQUIRE(s != nullptr);
     REQUIRE(err.code == 0);
     return s;
 }
 
-crispasr_chat_generate_params greedy_params(int32_t max_tokens) {
-    crispasr_chat_generate_params gp;
-    crispasr_chat_generate_params_default(&gp);
+stelnettts_chat_generate_params greedy_params(int32_t max_tokens) {
+    stelnettts_chat_generate_params gp;
+    stelnettts_chat_generate_params_default(&gp);
     gp.max_tokens = max_tokens;
     gp.temperature = 0.0f;
     gp.seed = 1;
@@ -99,10 +99,10 @@ crispasr_chat_generate_params greedy_params(int32_t max_tokens) {
 }
 
 // Run one parked streaming generation on `s`, recording its outcome.
-void run_parked(crispasr_chat_session_t s, const crispasr_chat_message* msgs,
-                const crispasr_chat_generate_params* gp, parked_generation* p) {
-    crispasr_chat_error err{};
-    const int32_t rc = crispasr_chat_generate_stream(s, msgs, 1, gp, on_token_park, p, &err);
+void run_parked(stelnettts_chat_session_t s, const stelnettts_chat_message* msgs,
+                const stelnettts_chat_generate_params* gp, parked_generation* p) {
+    stelnettts_chat_error err{};
+    const int32_t rc = stelnettts_chat_generate_stream(s, msgs, 1, gp, on_token_park, p, &err);
     p->rc.store(rc, std::memory_order_relaxed);
     p->err_code.store(err.code, std::memory_order_relaxed);
     p->generate_returned.store(true, std::memory_order_release);
@@ -122,7 +122,7 @@ void release(parked_generation& p) {
 }
 
 // Spin until the session declines a hold, which is the observable edge of
-// `crispasr_chat_close` having retired the handle. `_n_ctx` is the cheapest
+// `stelnettts_chat_close` having retired the handle. `_n_ctx` is the cheapest
 // probe: it takes no session lock, so it cannot block behind the parked
 // generation, and it reports a session it may not enter as 0 — the same
 // answer it gives for NULL.
@@ -130,29 +130,29 @@ void release(parked_generation& p) {
 // Safe to spin on: the close doing the retiring is itself waiting for the
 // parked generation, which only this test releases, so the session is alive
 // for the whole loop.
-void await_retirement(crispasr_chat_session_t s) {
-    while (crispasr_chat_n_ctx(s) != 0) {
+void await_retirement(stelnettts_chat_session_t s) {
+    while (stelnettts_chat_n_ctx(s) != 0) {
         std::this_thread::yield();
     }
 }
 
 } // namespace
 
-TEST_CASE("crispasr_chat_close on a null session is a no-op", "[chat][unit]") {
-    crispasr_chat_close(nullptr);
+TEST_CASE("stelnettts_chat_close on a null session is a no-op", "[chat][unit]") {
+    stelnettts_chat_close(nullptr);
     SUCCEED("returned without dereferencing");
 }
 
-TEST_CASE("crispasr_chat_close waits for a generation in flight", "[chat][gguf]") {
+TEST_CASE("stelnettts_chat_close waits for a generation in flight", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping close-under-load");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping close-under-load");
     }
 
-    crispasr_chat_session_t s = open_chat(model);
-    REQUIRE(crispasr_chat_n_ctx(s) > 0);
-    const crispasr_chat_message msgs[] = {{"user", "Count from 1 to 12, one number per line."}};
-    const crispasr_chat_generate_params gp = greedy_params(48);
+    stelnettts_chat_session_t s = open_chat(model);
+    REQUIRE(stelnettts_chat_n_ctx(s) > 0);
+    const stelnettts_chat_message msgs[] = {{"user", "Count from 1 to 12, one number per line."}};
+    const stelnettts_chat_generate_params gp = greedy_params(48);
 
     parked_generation p;
     std::thread worker([&] { run_parked(s, msgs, &gp, &p); });
@@ -161,7 +161,7 @@ TEST_CASE("crispasr_chat_close waits for a generation in flight", "[chat][gguf]"
 
     std::atomic<bool> close_returned{false};
     std::thread closer([&] {
-        crispasr_chat_close(s);
+        stelnettts_chat_close(s);
         close_returned.store(true, std::memory_order_release);
     });
 
@@ -195,18 +195,18 @@ TEST_CASE("crispasr_chat_close waits for a generation in flight", "[chat][gguf]"
 TEST_CASE("a call arriving during a close is declined, not run", "[chat][gguf]") {
     const char* model = test_model_path();
     if (!model) {
-        SKIP("CRISPASR_CHAT_TEST_MODEL not set; skipping decline-during-close");
+        SKIP("STELNETTTS_CHAT_TEST_MODEL not set; skipping decline-during-close");
     }
 
-    crispasr_chat_session_t s = open_chat(model);
-    const crispasr_chat_message msgs[] = {{"user", "Count from 1 to 12, one number per line."}};
-    const crispasr_chat_generate_params gp = greedy_params(48);
+    stelnettts_chat_session_t s = open_chat(model);
+    const stelnettts_chat_message msgs[] = {{"user", "Count from 1 to 12, one number per line."}};
+    const stelnettts_chat_generate_params gp = greedy_params(48);
 
     parked_generation p;
     std::thread worker([&] { run_parked(s, msgs, &gp, &p); });
     await_inside(p);
 
-    std::thread closer([&] { crispasr_chat_close(s); });
+    std::thread closer([&] { stelnettts_chat_close(s); });
     await_retirement(s);
 
     // Every entry point that would touch the session now refuses. Without the
@@ -214,32 +214,32 @@ TEST_CASE("a call arriving during a close is declined, not run", "[chat][gguf]")
     // generation released it — and then run against a session the close is
     // about to free.
     {
-        crispasr_chat_error err{};
-        REQUIRE(crispasr_chat_count_tokens(s, msgs, 1, &err) < 0);
+        stelnettts_chat_error err{};
+        REQUIRE(stelnettts_chat_count_tokens(s, msgs, 1, &err) < 0);
         REQUIRE(err.code != 0);
     }
     {
-        crispasr_chat_error err{};
-        REQUIRE(crispasr_chat_reset(s, &err) != 0);
+        stelnettts_chat_error err{};
+        REQUIRE(stelnettts_chat_reset(s, &err) != 0);
         REQUIRE(err.code != 0);
     }
     {
-        crispasr_chat_error err{};
-        REQUIRE(crispasr_chat_generate(s, msgs, 1, &gp, &err) == nullptr);
+        stelnettts_chat_error err{};
+        REQUIRE(stelnettts_chat_generate(s, msgs, 1, &gp, &err) == nullptr);
         REQUIRE(err.code != 0);
         // Not a cancellation: nothing was generated and nothing was aborted.
-        REQUIRE(err.code != CRISPASR_CHAT_ERR_ABORTED);
+        REQUIRE(err.code != STELNETTTS_CHAT_ERR_ABORTED);
     }
     {
-        crispasr_chat_error err{};
-        REQUIRE(crispasr_chat_generate_stream(s, msgs, 1, &gp, nullptr, nullptr, &err) != 0);
+        stelnettts_chat_error err{};
+        REQUIRE(stelnettts_chat_generate_stream(s, msgs, 1, &gp, nullptr, nullptr, &err) != 0);
         REQUIRE(err.code != 0);
     }
 
     // The value-returning accessors answer a retiring session the way they
     // answer a NULL one.
-    REQUIRE(crispasr_chat_n_ctx(s) == 0);
-    REQUIRE(crispasr_chat_template_name(s) == nullptr);
+    REQUIRE(stelnettts_chat_n_ctx(s) == 0);
+    REQUIRE(stelnettts_chat_template_name(s) == nullptr);
 
     release(p);
     worker.join();

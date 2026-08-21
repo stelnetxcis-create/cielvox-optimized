@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-tiron-convert-f5-ab",
-  "title": "crispasr-tiron-convert-f5-ab",
+  "id": "chr1str/stelnettts-tiron-convert-f5-ab",
+  "title": "stelnettts-tiron-convert-f5-ab",
   "code_file": "tiron-convert-f5-ab.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

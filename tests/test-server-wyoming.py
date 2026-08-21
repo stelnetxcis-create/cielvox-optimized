@@ -2,7 +2,7 @@
 """test-server-wyoming.py — integration test for the --wyoming-port Wyoming
 protocol TCP server (issue #172).
 
-Boots `crispasr --server --wyoming-port N` with a small whisper model, then
+Boots `stelnettts --server --wyoming-port N` with a small whisper model, then
 exercises the Wyoming peer-to-peer JSONL protocol over raw TCP:
 
   1. describe → info: verifies asr array present and type="info"
@@ -14,7 +14,7 @@ SKIPs (exit 0) if no whisper GGUF or binary found. No third-party deps.
 
 Usage:
   python tests/test-server-wyoming.py [--cache-dir DIR]
-  CRISPASR_TEST_CACHE=/path/to/models python tests/test-server-wyoming.py
+  STELNETTTS_TEST_CACHE=/path/to/models python tests/test-server-wyoming.py
 """
 import json
 import os
@@ -31,8 +31,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ---------------------------------------------------------------------------
 
 def find_binary():
-    for rel in ["build/bin/crispasr", "build/bin/Release/crispasr.exe",
-                "build-ninja-compile/bin/crispasr", "bin/crispasr", "bin/crispasr.exe"]:
+    for rel in ["build/bin/stelnettts", "build/bin/Release/stelnettts.exe",
+                "build-ninja-compile/bin/stelnettts", "bin/stelnettts", "bin/stelnettts.exe"]:
         p = os.path.join(ROOT, rel)
         if os.path.isfile(p) and os.access(p, os.X_OK):
             return p
@@ -42,9 +42,9 @@ def find_binary():
 def find_whisper(cache_dir):
     cands = []
     for d in [cache_dir,
-              os.environ.get("CRISPASR_TEST_CACHE"),
-              os.environ.get("CRISPASR_MODELS_DIR"),
-              os.path.expanduser("~/.cache/crispasr")]:
+              os.environ.get("STELNETTTS_TEST_CACHE"),
+              os.environ.get("STELNETTTS_MODELS_DIR"),
+              os.path.expanduser("~/.cache/stelnettts")]:
         if d and os.path.isdir(d):
             for f in sorted(os.listdir(d)):
                 if f.startswith("ggml-") and f.endswith(".bin"):
@@ -120,7 +120,7 @@ def wait_tcp(host, port, seconds=120):
 def main():
     http_port    = 10396
     wyoming_port = 10397
-    cache_dir    = os.environ.get("CRISPASR_TEST_CACHE", "")
+    cache_dir    = os.environ.get("STELNETTTS_TEST_CACHE", "")
 
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg in ("--cache-dir",) and i < len(sys.argv):
@@ -130,12 +130,12 @@ def main():
 
     binary = find_binary()
     if not binary:
-        print("SKIP: crispasr binary not found")
+        print("SKIP: stelnettts binary not found")
         return 0
     model = find_whisper(cache_dir)
     if not model:
         print("SKIP: no whisper ggml-*.bin found "
-              "(set CRISPASR_TEST_CACHE or CRISPASR_MODELS_DIR)")
+              "(set STELNETTTS_TEST_CACHE or STELNETTTS_MODELS_DIR)")
         return 0
     sample = os.path.join(ROOT, "samples/jfk.wav")
     if not os.path.isfile(sample):

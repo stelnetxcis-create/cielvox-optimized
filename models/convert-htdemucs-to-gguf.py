@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert HTDemucs (Meta Demucs v4) weights to CrispASR GGUF format.
+"""Convert HTDemucs (Meta Demucs v4) weights to StelnetTTS GGUF format.
 
 Usage:
     python models/convert-htdemucs-to-gguf.py --model htdemucs --output htdemucs.gguf [--dtype f16]

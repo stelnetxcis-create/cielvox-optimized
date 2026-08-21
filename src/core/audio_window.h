@@ -1,7 +1,7 @@
 // audio_window.h — shared --offset-t / --duration time-window math (#91).
 //
-// Both dispatch surfaces (the CLI in examples/cli/crispasr_run.cpp and the
-// HTTP server in examples/cli/crispasr_server.cpp) restrict processing to a
+// Both dispatch surfaces (the CLI in examples/cli/stelnettts_run.cpp and the
+// HTTP server in examples/cli/stelnettts_server.cpp) restrict processing to a
 // [offset, offset+duration) window of the decoded PCM before slicing, then
 // shift reported timestamps back by the offset. The window arithmetic was
 // duplicated across both — factor it here so the two can't drift, and so the

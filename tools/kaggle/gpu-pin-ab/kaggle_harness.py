@@ -1,9 +1,9 @@
-"""CrispASR Kaggle kernel harness — the shared "gold standard" helpers.
+"""StelnetTTS Kaggle kernel harness — the shared "gold standard" helpers.
 
 No single kernel had all of these; this module is the union, distilled
-from the best parts of `crispasr-regression.py` (logging, heartbeat,
+from the best parts of `stelnettts-regression.py` (logging, heartbeat,
 ccache/mold, 3-tier auth) and `fusion-ab` / `kaggle-issue81-cuda-ab`
-(CUDA arch auto-detect). Every kernel clones the CrispASR repo early,
+(CUDA arch auto-detect). Every kernel clones the StelnetTTS repo early,
 so each can import this right after the clone:
 
     import sys
@@ -53,7 +53,7 @@ _PROGRESS_PATH = Path("/kaggle/working/progress.jsonl")
 # access until the run terminates, so a hung/OOM'd run is otherwise only
 # visible in the browser UI. Rolling progress.jsonl up to a public HF
 # dataset gives programmatic mid-run visibility (poll the dataset).
-_HF_PROGRESS_REPO = "cstr/crispasr-kaggle-progress"
+_HF_PROGRESS_REPO = "Xenna/stelnettts-kaggle-progress"
 _HF_PROGRESS_PATH = (
     f"runs/{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     f"-{os.environ.get('KAGGLE_KERNEL_RUN_TYPE', 'local').lower()}"
@@ -218,15 +218,15 @@ _HAS_NINJA = False
 
 def _warm_ccache_from_dataset(ccache_dir: Path) -> None:
     """Copy a ccache seed from an attached Kaggle dataset into the build
-    ccache directory. Looks for `crispasr-ccache/ccache.tar` (a tar of the
-    ccache dir) or a bare `crispasr-ccache/.ccache/` tree at the standard
+    ccache directory. Looks for `stelnettts-ccache/ccache.tar` (a tar of the
+    ccache dir) or a bare `stelnettts-ccache/.ccache/` tree at the standard
     Kaggle mount paths. Silently no-ops if no dataset is attached.
 
     To create/update the dataset, call export_ccache_tar() at the end of a
     kernel and upload the single /kaggle/working/ccache.tar it writes. Attach
     via kernel-metadata.json (SAME account as the kernel — cross-account
     attach is rejected):
-        "dataset_sources": ["chr1str/crispasr-ccache", ...]
+        "dataset_sources": ["chr1str/stelnettts-ccache", ...]
     Shaves ~15 min off incremental CUDA builds.
 
     Kaggle AUTO-EXTRACTS archives uploaded to a dataset, so the ccache.tar you
@@ -239,7 +239,7 @@ def _warm_ccache_from_dataset(ccache_dir: Path) -> None:
     # bug already fixed in kaggle_token_from_dataset(): it silently missed any
     # account not named in the list, and a missing ccache reads as a slow build
     # rather than an error. Probe for the artifact, don't guess the path.
-    search_paths = [Path("/kaggle/input/crispasr-ccache")]
+    search_paths = [Path("/kaggle/input/stelnettts-ccache")]
     inp = Path("/kaggle/input")
     if inp.exists():
         for sub in inp.iterdir():
@@ -301,7 +301,7 @@ def _warm_ccache_from_dataset(ccache_dir: Path) -> None:
                 # by downloading a kernel's loose /kaggle/working tree gets
                 # truncated at exactly that boundary. Both account copies were
                 # found stuck at ~500 objects on 2026-07-20, silently costing
-                # every CUDA build a near-cold start. A healthy CrispASR cache
+                # every CUDA build a near-cold start. A healthy StelnetTTS cache
                 # is a few thousand objects.
                 if n <= 501:
                     print(f"  ccache: ⚠ WARNING — only {n} files, at/below the "
@@ -318,7 +318,7 @@ def export_ccache_tar(dest: str | os.PathLike = "/kaggle/working/ccache.tar") ->
     """Tar CCACHE_DIR into a SINGLE file for refreshing the ccache dataset.
 
     Call at the end of a kernel that did a real build, then upload `dest` as
-    chr1str/crispasr-ccache (and the chr1s4 copy — cross-account attach is
+    chr1str/stelnettts-ccache (and the chr1s4 copy — cross-account attach is
     blocked, so each account needs its own).
 
     One file is the whole point: `kaggle kernels output` stops at 500 files
@@ -355,7 +355,7 @@ def install_build_toolchain() -> dict:
     was self-perpetuating breakage: the loose tree buried ccache.tar past the
     page cap, so refreshing the dataset downloaded a truncated tree, which was
     then uploaded as the seed, so the next build warmed from a truncated tree
-    and ran near-cold — and so on. Both account copies of crispasr-ccache were
+    and ran near-cold — and so on. Both account copies of stelnettts-ccache were
     found broken exactly this way (2026-07-20).
 
     Nothing is lost by moving it: a script kernel starts fresh every run, so
@@ -373,7 +373,7 @@ def install_build_toolchain() -> dict:
     _HAS_CCACHE = shutil.which("ccache") is not None
     _HAS_MOLD = shutil.which("mold") is not None
     _scratch = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-    ccache_dir = Path(os.environ.get("CRISPASR_CCACHE_DIR", str(_scratch / ".ccache")))
+    ccache_dir = Path(os.environ.get("STELNETTTS_CCACHE_DIR", str(_scratch / ".ccache")))
     try:
         ccache_dir.mkdir(parents=True, exist_ok=True)
         os.environ["CCACHE_DIR"] = str(ccache_dir)
@@ -388,8 +388,8 @@ def install_build_toolchain() -> dict:
         # the cache shared across local git worktrees.
         os.environ["CCACHE_NOHASHDIR"] = "1"
         os.environ["CCACHE_BASEDIR"] = str(_scratch)
-        # Warm ccache from attached dataset (chr1s4/crispasr-ccache or
-        # chr1str/crispasr-ccache). Shaves ~15 min off incremental builds.
+        # Warm ccache from attached dataset (chr1s4/stelnettts-ccache or
+        # chr1str/stelnettts-ccache). Shaves ~15 min off incremental builds.
         _warm_ccache_from_dataset(ccache_dir)
         if _HAS_CCACHE:
             subprocess.run("ccache -M 5G && ccache -z", shell=True,
@@ -401,23 +401,23 @@ def install_build_toolchain() -> dict:
     return {"ninja": _HAS_NINJA, "ccache": _HAS_CCACHE, "mold": _HAS_MOLD}
 
 
-def crispasr_cmake_flags() -> list[str]:
-    """CrispASR-specific cmake flags every Kaggle kernel wants.
+def stelnettts_cmake_flags() -> list[str]:
+    """StelnetTTS-specific cmake flags every Kaggle kernel wants.
 
-    `-DCRISPASR_NO_C2PA_NATIVE=ON`: src/CMakeLists.txt builds the native C2PA
+    `-DSTELNETTTS_NO_C2PA_NATIVE=ON`: src/CMakeLists.txt builds the native C2PA
     signer from the `third_party/c2pa-audio` **git submodule**. Most kernels
     clone with `--depth 1` and init only `ggml` (or no submodule at all), so
     cmake generate dies with:
 
         Cannot find source file: .../third_party/c2pa-audio/src/c2pa_native.cpp
-        No SOURCES given to target: crispasr_c2pa_native
+        No SOURCES given to target: stelnettts_c2pa_native
 
     C2PA provenance signing is irrelevant to a benchmark / conversion / A-B
     kernel, and disabling it skips the target entirely — cheaper than fetching
     another submodule. Kernels that DO want C2PA should clone `--recursive`
-    instead. (Confirmed fix on chr1str/crispasr-issue81-onnx-bench, 2026-07-18.)
+    instead. (Confirmed fix on chr1str/stelnettts-issue81-onnx-bench, 2026-07-18.)
     """
-    return ["-DCRISPASR_NO_C2PA_NATIVE=ON"]
+    return ["-DSTELNETTTS_NO_C2PA_NATIVE=ON"]
 
 
 def cache_and_link_flags() -> list[str]:
@@ -425,11 +425,11 @@ def cache_and_link_flags() -> list[str]:
     install_build_toolchain() detected. Safe to call even if it wasn't —
     returns [] for anything unavailable.
 
-    Also folds in crispasr_cmake_flags() so the ~20 existing kernels that
+    Also folds in stelnettts_cmake_flags() so the ~20 existing kernels that
     already call this get the c2pa-submodule fix without an edit each. New
-    kernels should call crispasr_cmake_flags() explicitly for clarity.
+    kernels should call stelnettts_cmake_flags() explicitly for clarity.
     """
-    flags: list[str] = list(crispasr_cmake_flags())
+    flags: list[str] = list(stelnettts_cmake_flags())
     if _HAS_CCACHE:
         flags += [
             "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
@@ -462,7 +462,7 @@ def detect_cuda_arch(default: str = "75") -> str:
 
 
 def cuda_build_flags(arch: str | None = None) -> list[str]:
-    """Standard CrispASR CUDA cmake flags: GGML_CUDA on, no-VMM fallback,
+    """Standard StelnetTTS CUDA cmake flags: GGML_CUDA on, no-VMM fallback,
     explicit nvcc, CUDA stubs on LIBRARY_PATH, and a pinned arch. Pass an
     arch or let it auto-detect."""
     if arch is None:
@@ -553,8 +553,8 @@ def _kaggle_input_root() -> Path:
 
 def kaggle_token_from_dataset(filename: str = "hf_token.txt") -> str | None:
     """Read an HF token from a private Kaggle Dataset mounted via
-    kernel-metadata.json `dataset_sources` (e.g. chr1str/crispasr-hf-token
-    → /kaggle/input/crispasr-hf-token/hf_token.txt). Bypasses the flaky
+    kernel-metadata.json `dataset_sources` (e.g. chr1str/stelnettts-hf-token
+    → /kaggle/input/stelnettts-hf-token/hf_token.txt). Bypasses the flaky
     Secrets API; datasets are filesystem-mounted before the script runs.
 
     Kaggle mounts datasets at several locations depending on the
@@ -562,7 +562,7 @@ def kaggle_token_from_dataset(filename: str = "hf_token.txt") -> str | None:
       /kaggle/input/<slug>/           — classic ("short") path
       /kaggle/input/datasets/<owner>/<slug>/  — newer ("long") environments
     We scan BOTH depths, short first, each sorted. Some workers mount
-    attached datasets ONLY under the long path: CrispEmbed's T19-E3 run 1
+    attached datasets ONLY under the long path: StelnetEmbed's T19-E3 run 1
     (2026-08) completed a full 21-minute pipeline on such a worker
     ("/kaggle/input contains 1 entries: ['datasets']") and then lost every
     artifact to upload 401s, because its (stale, vendored) copy of this
@@ -577,13 +577,13 @@ def kaggle_token_from_dataset(filename: str = "hf_token.txt") -> str | None:
     a bundled copy (bundled = local-dev fallback only)."""
     root = _kaggle_input_root()
     candidates: list[Path] = [
-        root / "crispasr-hf-token" / filename,
+        root / "stelnettts-hf-token" / filename,
     ]
     # Owner-agnostic scan: probe <filename> in EVERY mounted dataset dir, at
     # both the classic depth (<root>/<slug>/) and the newer nested depth
     # (<root>/datasets/<owner>/<slug>/). The old code only matched owner
     # names containing "hf-token" and hard-coded chr1str, so a chr1s4 kernel on
-    # the newer mount path (/kaggle/input/datasets/chr1s4/crispasr-hf-token/)
+    # the newer mount path (/kaggle/input/datasets/chr1s4/stelnettts-hf-token/)
     # never had its token file scanned → token silently unresolved (the
     # 2026-06-20 v2/v3 full-sweep runs). Don't filter by dir name — probe the file.
     # Deterministic precedence (matches the t19 driver's sorted short-then-long
@@ -607,8 +607,8 @@ def kaggle_token_from_dataset(filename: str = "hf_token.txt") -> str | None:
             if p not in candidates:
                 candidates.append(p)
     # Also try the flat file variants
-    candidates.append(root / "crispasr-hf-token" / "token")
-    candidates.append(root / "crispasr-hf-token" / "access_token")
+    candidates.append(root / "stelnettts-hf-token" / "token")
+    candidates.append(root / "stelnettts-hf-token" / "access_token")
 
     # Debug: list what we're scanning
     for p in candidates:
@@ -653,11 +653,11 @@ def resolve_hf_token(secret_name: str = "HF_TOKEN",
     Any kernel that UPLOADS must call this with require=True at the very
     top, BEFORE building or computing anything: with require=True a missing
     token raises SystemExit immediately, instead of the run completing and
-    then losing every artifact to 401s at upload time (CrispEmbed T19-E3
+    then losing every artifact to 401s at upload time (StelnetEmbed T19-E3
     run 1 burned a full 21-minute pipeline exactly this way — the token
     dataset was mounted only under the long path and the resolver missed
     it; `hf_token_ok: False` was in the log all along). Download-only
-    kernels can keep the default require=False: public cstr/* repos work
+    kernels can keep the default require=False: public Xenna/* repos work
     unauthenticated."""
     tok = (os.environ.get("HF_TOKEN")
            or kaggle_secret(secret_name)
@@ -674,5 +674,5 @@ def resolve_hf_token(secret_name: str = "HF_TOKEN",
             "HF_TOKEN secret.")
     else:
         print("HF auth: no token from env/secret/dataset — public-only "
-              "downloads (fine for cstr/* public repos).", flush=True)
+              "downloads (fine for Xenna/* public repos).", flush=True)
     return tok

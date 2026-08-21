@@ -37,7 +37,7 @@
 //   docs/music-transcription/GUITAR_TAB_SPEC.md
 // Executable spec for this graph (keep in lockstep):
 //   tools/tabcnn_torch_parity.py
-// Ground-truth dumper for crispasr-diff:
+// Ground-truth dumper for stelnettts-diff:
 //   tools/reference_backends/tabcnn.py
 
 #pragma once
@@ -101,7 +101,7 @@ int tabcnn_compute(struct tabcnn_context* ctx, const float* pcm, int n_samples, 
 int tabcnn_compute_argmax(struct tabcnn_context* ctx, const float* pcm, int n_samples, int sample_rate,
                           int8_t* out_frets, int max_frames);
 
-// Per-stage extraction for crispasr-diff. `stage` is one of the names emitted
+// Per-stage extraction for stelnettts-diff. `stage` is one of the names emitted
 // by tools/reference_backends/tabcnn.py ("cqt_db", "conv0", "pool", "logits",
 // ...). Writes at most `max_elems` floats and returns the count, or 0.
 // Wired so the reference dumper has a consumer — a dumper with no C++ reader is
@@ -109,7 +109,7 @@ int tabcnn_compute_argmax(struct tabcnn_context* ctx, const float* pcm, int n_sa
 int tabcnn_extract_stage(struct tabcnn_context* ctx, const float* pcm, int n_samples, int sample_rate,
                          const char* stage, float* out, int max_elems);
 
-// crispasr-diff entry point: score this runtime against a reference archive
+// stelnettts-diff entry point: score this runtime against a reference archive
 // from tools/reference_backends/tabcnn.py. Runs from the `audio` stage in the
 // archive, NOT from replayed features, so the CQT front end is covered too.
 // Returns 0 when every stage passes.

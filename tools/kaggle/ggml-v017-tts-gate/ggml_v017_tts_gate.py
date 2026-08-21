@@ -42,9 +42,9 @@ TMP = Path("/kaggle/temp")
 TMP.mkdir(parents=True, exist_ok=True)
 RESULTS = WORK / "tts_gate_results.json"
 
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-BRANCH = os.environ.get("CRISPASR_BRANCH", "main")
-REPO = TMP / "CrispASR"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+BRANCH = os.environ.get("STELNETTTS_BRANCH", "main")
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build-regression"
 
 # Order matters: cheapest / most load-bearing first, so a quota or timeout kill
@@ -55,7 +55,7 @@ _env = os.environ.get("TTS_GATE_BACKENDS", "").strip()
 if not REPO.exists():
     subprocess.run(
         ["git", "clone", "--depth", "1", "--branch", BRANCH,
-         "--recurse-submodules", "--shallow-submodules", CRISPASR_URL, str(REPO)],
+         "--recurse-submodules", "--shallow-submodules", STELNETTTS_URL, str(REPO)],
         check=True, timeout=2400)
 
 # Prefer the harness from the clone; fall back to the copy bundled beside this
@@ -95,9 +95,9 @@ else:
 print(f"sweeping {len(BACKENDS)} TTS backends: {', '.join(BACKENDS)}", flush=True)
 rc, sha = sh("git rev-parse HEAD", cwd=REPO)
 rc, gsha = sh("git -C ggml rev-parse HEAD", cwd=REPO)
-results["crispasr_sha"] = sha.strip()
+results["stelnettts_sha"] = sha.strip()
 results["ggml_sha"] = gsha.strip()
-print(f"CrispASR {results['crispasr_sha'][:8]}  ggml {results['ggml_sha'][:8]}", flush=True)
+print(f"StelnetTTS {results['stelnettts_sha'][:8]}  ggml {results['ggml_sha'][:8]}", flush=True)
 
 # Guard against the classic own-goal: a shallow clone whose submodule silently
 # stayed at the old pin would make this whole run meaningless.
@@ -124,9 +124,9 @@ if token:
 # arch fails at RUN time after the entire build).
 flags = [
     "-DCMAKE_BUILD_TYPE=Release",
-    "-DCRISPASR_BUILD_TESTS=OFF",
-    "-DCRISPASR_BUILD_EXAMPLES=ON",
-    "-DCRISPASR_BUILD_SERVER=OFF",
+    "-DSTELNETTTS_BUILD_TESTS=OFF",
+    "-DSTELNETTTS_BUILD_EXAMPLES=ON",
+    "-DSTELNETTTS_BUILD_SERVER=OFF",
 ] + kh.cache_and_link_flags()
 arch = ""
 if gpu_ok:
@@ -141,23 +141,23 @@ if rc != 0:
     print(out[-8000:], flush=True)
     raise SystemExit(f"configure failed rc={rc}")
 
-# Target is crispasr-cli, NOT crispasr: the latter builds only the library and
-# leaves bin/crispasr absent (examples/cli/CMakeLists.txt:12). That has burned
+# Target is stelnettts-cli, NOT stelnettts: the latter builds only the library and
+# leaves bin/stelnettts absent (examples/cli/CMakeLists.txt:12). That has burned
 # both the GH and Kaggle regression runners before.
 kh.step("cmake.build")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=gpu_ok)}")
 
-CRISPASR_BIN = BUILD / "bin" / "crispasr"
-if not CRISPASR_BIN.exists():
-    raise SystemExit(f"{CRISPASR_BIN} missing after build")
+STELNETTTS_BIN = BUILD / "bin" / "stelnettts"
+if not STELNETTTS_BIN.exists():
+    raise SystemExit(f"{STELNETTTS_BIN} missing after build")
 results["build_ok"] = True
 
 # Preflight every artifact in one shot before burning GPU hours on synthesis.
 kh.step("dry_run")
-env = dict(os.environ, CRISPASR_BIN=str(CRISPASR_BIN), BUILD_DIR=str(BUILD))
+env = dict(os.environ, STELNETTTS_BIN=str(STELNETTTS_BIN), BUILD_DIR=str(BUILD))
 rc, out = sh(f"{sys.executable} tests/regression/run_one.py --dry-run",
              cwd=REPO, timeout=1800, env=env)
 results["dry_run_rc"] = rc

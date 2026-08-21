@@ -9,7 +9,7 @@
 #      scheduler is still active after a long gap.
 #
 #   2. Manual dispatch with trigger=true — pushes the current
-#      kernel bootstrap (crispasr-regression.py) to Kaggle, which
+#      kernel bootstrap (stelnettts-regression.py) to Kaggle, which
 #      triggers an immediate run AND refreshes the code. Use this
 #      after changing the bootstrap script itself.
 #
@@ -64,20 +64,20 @@ jobs:
         id: validate_status
         run: |
           echo "=== validate kernel ==="
-          kaggle kernels status chr1str/crispasr-regression-suite || \
+          kaggle kernels status chr1str/stelnettts-regression-suite || \
             echo "WARNING: could not fetch validate kernel status (first push not done?)"
 
       - name: Check rebake kernel status
         id: rebake_status
         run: |
           echo "=== rebake kernel ==="
-          kaggle kernels status chr1str/crispasr-auto-rebake-refs || \
+          kaggle kernels status chr1str/stelnettts-auto-rebake-refs || \
             echo "WARNING: could not fetch rebake kernel status (first push not done?)"
 
       - name: Verify URLs (no auth needed)
         run: |
-          echo "Validate kernel: https://www.kaggle.com/code/chr1str/crispasr-regression-suite"
-          echo "Rebake kernel:   https://www.kaggle.com/code/chr1str/crispasr-auto-rebake-refs"
+          echo "Validate kernel: https://www.kaggle.com/code/chr1str/stelnettts-regression-suite"
+          echo "Rebake kernel:   https://www.kaggle.com/code/chr1str/stelnettts-auto-rebake-refs"
           echo
           echo "To verify the schedule is active, open each URL and check"
           echo "Settings → 'Schedule a notebook run'. Expected:"
@@ -85,15 +85,15 @@ jobs:
           echo "  rebake   — Monthly · 1st · 04:00 UTC"
           echo
           echo "Progress from running kernels (public HF dataset):"
-          echo "  https://huggingface.co/datasets/cstr/crispasr-kaggle-progress"
+          echo "  https://huggingface.co/datasets/Xenna/stelnettts-kaggle-progress"
 
       - name: Push bootstrap + trigger run (if requested)
         if: github.event.inputs.trigger_run == 'true'
         run: |
           echo "Pushing validate kernel bootstrap..."
           kaggle kernels push -p tools/kaggle
-          echo "Done. Watch at: https://www.kaggle.com/code/chr1str/crispasr-regression-suite"
+          echo "Done. Watch at: https://www.kaggle.com/code/chr1str/stelnettts-regression-suite"
           echo
-          echo "NOTE: re-push is only needed when crispasr-regression.py itself"
+          echo "NOTE: re-push is only needed when stelnettts-regression.py itself"
           echo "changes (new pip deps, new env knobs). Pure C++ / manifest changes"
           echo "are picked up automatically at runtime via git clone."

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Parse the longform_results/*.json outputs into a coverage table.
 
-Each crispasr -of with --output-json-full produces <stem>.json with a
+Each stelnettts -of with --output-json-full produces <stem>.json with a
 `transcription` array of segments. We compute:
   - n_segments
   - first_ts, last_ts (seconds)

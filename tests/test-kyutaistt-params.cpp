@@ -42,7 +42,7 @@ TEST_CASE("kyutai_stt_free: NULL context is a no-op", "[unit][kyutai_stt]") {
     SUCCEED("kyutai_stt_free tolerated a NULL ctx.");
 }
 
-// #366: CrispASR warned "English-only model; language='fr' ignored" for EVERY
+// #366: StelnetTTS warned "English-only model; language='fr' ignored" for EVERY
 // kyutai-stt GGUF — including stt-1b-en_fr, which is the model the registry
 // downloads by default and which does support French. The warning was
 // unconditional; nothing asked the model.

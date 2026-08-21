@@ -24,14 +24,14 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TMP = Path("/kaggle/temp")
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build-issue302"
 MODELS = TMP / "models-issue302"
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 REF = TMP / "issue302-ref-24k.wav"
 OUT = WORK / "issue302-omnivoice.wav"
 RESULT = WORK / "issue302-result.json"
-BRANCH = os.environ.get("CRISPASR_BRANCH", "main")
+BRANCH = os.environ.get("STELNETTTS_BRANCH", "main")
 TEXT = "The quick brown fox jumps over the lazy dog."
 
 
@@ -48,7 +48,7 @@ if not REPO.exists():
     run([
         "git", "clone", "--depth", "1", "--branch", BRANCH,
         "--recurse-submodules", "--shallow-submodules",
-        "https://github.com/CrispStrobe/CrispASR.git", REPO,
+        "https://github.com/Cyna/StelnetTTS.git", REPO,
     ], timeout=2400)
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -75,10 +75,10 @@ kh.install_build_toolchain()
 flags = [
     "-G", "Ninja",
     "-DCMAKE_BUILD_TYPE=Release",
-    "-DCRISPASR_BUILD_TESTS=OFF",
-    "-DCRISPASR_BUILD_EXAMPLES=ON",
-    "-DCRISPASR_BUILD_SERVER=ON",
-    "-DCRISPASR_PORTABLE_CPU=ON",
+    "-DSTELNETTTS_BUILD_TESTS=OFF",
+    "-DSTELNETTTS_BUILD_EXAMPLES=ON",
+    "-DSTELNETTTS_BUILD_SERVER=ON",
+    "-DSTELNETTTS_PORTABLE_CPU=ON",
 ] + kh.cuda_build_flags("60") + kh.cache_and_link_flags()
 
 kh.step("build.configure", gpu=gpu)
@@ -100,11 +100,11 @@ if bad_isa:
 kh.step("build.compile")
 with kh.build_heartbeat("issue302 CUDA build", 30):
     kh.sh_with_progress(
-        f"cmake --build {BUILD} --target crispasr-cli "
+        f"cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}"
     )
 if not CLI.is_file():
-    raise SystemExit("crispasr binary missing after build")
+    raise SystemExit("stelnettts binary missing after build")
 
 kh.step("models.download")
 run([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub", "openai-whisper"])
@@ -112,11 +112,11 @@ from huggingface_hub import hf_hub_download
 
 MODELS.mkdir(parents=True, exist_ok=True)
 model = Path(hf_hub_download(
-    repo_id="cstr/omnivoice-GGUF", filename="omnivoice-q8_0.gguf",
+    repo_id="Xenna/omnivoice-GGUF", filename="omnivoice-q8_0.gguf",
     local_dir=MODELS, token=token,
 ))
 codec = Path(hf_hub_download(
-    repo_id="cstr/omnivoice-GGUF", filename="omnivoice-tokenizer-f16.gguf",
+    repo_id="Xenna/omnivoice-GGUF", filename="omnivoice-tokenizer-f16.gguf",
     local_dir=MODELS, token=token,
 ))
 
@@ -135,8 +135,8 @@ common = [
 ]
 runtime_env = {
     **os.environ,
-    "CRISPASR_OMNIVOICE_CODEC_GPU": "1",
-    "CRISPASR_VERBOSE": "1",
+    "STELNETTTS_OMNIVOICE_CODEC_GPU": "1",
+    "STELNETTTS_VERBOSE": "1",
 }
 
 # Reproduce the reporter's failing phase first: persistent server startup with

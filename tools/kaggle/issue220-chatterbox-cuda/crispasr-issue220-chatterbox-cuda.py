@@ -1,7 +1,7 @@
 """
-CrispASR — issue #220: chatterbox T3 CUDA illegal-memory-access A/B.
+StelnetTTS — issue #220: chatterbox T3 CUDA illegal-memory-access A/B.
 
-Issue #220: on a non-Metal GPU build (ghcr .../crispasr:main-cuda) chatterbox
+Issue #220: on a non-Metal GPU build (ghcr .../stelnettts:main-cuda) chatterbox
 aborts out of the box with
 
     CUDA error: an illegal memory access was encountered
@@ -18,12 +18,12 @@ the uid constant and the 2nd step replays a STALE capture -> illegal access.
 Fix (branch fix/chatterbox-t3-cuda-illegal-access): on a non-Metal GPU backend,
 reset+alloc the bucket step sched EVERY step (granite/outetts CUDA-graph-bucket
 pattern, docs/contributing.md §210). Old path kept behind
-CRISPASR_CHATTERBOX_T3_BUCKET_REUSE=1 for A/B.
+STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE=1 for A/B.
 
   A/B here:
     * fix_default : T3 on GPU, reset-per-step (the fix; default on CUDA build)
-    * old_reuse   : T3 on GPU, CRISPASR_CHATTERBOX_T3_BUCKET_REUSE=1 (pre-fix path)
-    * cpu_ref     : CRISPASR_CHATTERBOX_FULL_CPU=1 (known-good reference audio)
+    * old_reuse   : T3 on GPU, STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE=1 (pre-fix path)
+    * cpu_ref     : STELNETTTS_CHATTERBOX_FULL_CPU=1 (known-good reference audio)
 
   Each is ASR-roundtripped through parakeet to prove intelligibility, not just
   "a WAV was written".
@@ -50,14 +50,14 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "fix/chatterbox-t3-cuda-illegal-access")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "fix/chatterbox-t3-cuda-illegal-access")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 TTS_TEXT = "Please call Stella. Ask her to bring these things with her from the store."
 
@@ -74,7 +74,7 @@ def run(cmd, check=True, env=None, timeout=None):
 
 
 # ── Clone + CUDA build ──────────────────────────────────────────────
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 print(f"  disk: {shutil.disk_usage('/kaggle/working')}", flush=True)
 Path("/kaggle/working/started.txt").write_text("started\n")
 
@@ -82,8 +82,8 @@ if REPO.exists():
     shutil.rmtree(REPO)
 run(
     [
-        "git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-        CRISPASR_REPO, str(REPO),
+        "git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+        STELNETTTS_REPO, str(REPO),
     ]
 )
 
@@ -100,7 +100,7 @@ kh.resolve_hf_token()
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
 ).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 gpu_name = subprocess.check_output(
@@ -127,7 +127,7 @@ cmake_args = (
     [
         "cmake", "-S", str(REPO), "-B", str(BUILD),
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-        "-DCRISPASR_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -136,16 +136,16 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
     cands = [
-        c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)
+        c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)
     ]
-    assert cands, "crispasr binary not found after build"
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
@@ -165,15 +165,15 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 t3_model = Path(hf_hub_download(
-    "cstr/chatterbox-GGUF", "chatterbox-t3-q8_0.gguf",
+    "Xenna/chatterbox-GGUF", "chatterbox-t3-q8_0.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 s3gen_model = Path(hf_hub_download(
-    "cstr/chatterbox-GGUF", "chatterbox-s3gen-q8_0.gguf",
+    "Xenna/chatterbox-GGUF", "chatterbox-s3gen-q8_0.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 asr_model = Path(hf_hub_download(
-    "cstr/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q4_k.gguf",
+    "Xenna/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 kh.step("models_downloaded")
@@ -247,9 +247,9 @@ def run_tts(label, extra_env=None, timeout=420):
     }
 
 
-old = run_tts("old_reuse", {"CRISPASR_CHATTERBOX_T3_BUCKET_REUSE": "1"})
+old = run_tts("old_reuse", {"STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE": "1"})
 fix = run_tts("fix_default", None)
-cpu = run_tts("cpu_ref", {"CRISPASR_CHATTERBOX_FULL_CPU": "1"})
+cpu = run_tts("cpu_ref", {"STELNETTTS_CHATTERBOX_FULL_CPU": "1"})
 
 
 # ── ASR roundtrip each WAV with parakeet ───────────────────────────

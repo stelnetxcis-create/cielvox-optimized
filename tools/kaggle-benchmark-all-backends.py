@@ -1,7 +1,7 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — Comprehensive Backend Benchmark on Kaggle
+# # StelnetTTS — Comprehensive Backend Benchmark on Kaggle
 #
-# Tests ALL CrispASR backends on Kaggle GPU/CPU, collecting:
+# Tests ALL StelnetTTS backends on Kaggle GPU/CPU, collecting:
 # - Transcription accuracy (WER against reference)
 # - Inference speed (realtime factor)
 # - Model sizes (F16, Q4_K, Q8_0)
@@ -30,9 +30,9 @@ WORK = "/kaggle/working"
 # kugelaudio's failure could not be read back after a 6-hour sweep. /kaggle/working
 # should hold only artifacts worth retrieving.
 SCRATCH = "/kaggle/temp" if os.path.isdir("/kaggle/temp") else "/tmp"
-BUILD_DIR = f"{SCRATCH}/CrispASR/build"
-CRISPASR = f"{BUILD_DIR}/bin/crispasr"
-QUANTIZE = f"{BUILD_DIR}/bin/crispasr-quantize"
+BUILD_DIR = f"{SCRATCH}/StelnetTTS/build"
+CRISPASR = f"{BUILD_DIR}/bin/stelnettts"
+QUANTIZE = f"{BUILD_DIR}/bin/stelnettts-quantize"
 RESULTS_DIR = f"{WORK}/results"
 SAMPLE_DIR = f"{WORK}/samples"
 
@@ -116,7 +116,7 @@ TTS_BACKENDS = [
     ("dia",               "Dia 1.6B",                240, "Q8_0, ~1.6GB, byte-level + DAC 44.1 kHz"),
     ("orpheus",           "Orpheus 3B-FT",           300, "Q8_0, ~3.5GB, Llama-3.2 + SNAC"),
     # ── previously-uncovered TTS backends (full-sweep coverage) ──
-    ("qwen3-tts-customvoice", "Qwen3-TTS CustomVoice", 300, "Q8_0, talker+12Hz codec, built-in speakers"),
+    ("cielvox2-tts-customvoice", "Qwen3-TTS CustomVoice", 300, "Q8_0, talker+12Hz codec, built-in speakers"),
     ("vibevoice-tts",     "VibeVoice TTS",           300, "Q4_K, diffusion TTS"),
     ("chatterbox",        "Chatterbox",              300, "Q4_K, T3 + S3Gen voice clone"),
     ("cosyvoice3",        "CosyVoice3",              300, "Q4_K, flow-matching + HiFT"),
@@ -142,7 +142,7 @@ MT_BACKENDS = [
     ("madlad",            "MADLAD-400 3B",           240, "Q4_K, 400-lang MT"),
 ]
 
-print(f"CrispASR Benchmark — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+print(f"StelnetTTS Benchmark — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 print(f"Backends: {len(BACKENDS)} fast + {len(SLOW_BACKENDS)} slow ASR, {len(TTS_BACKENDS)} TTS")
 
 # ─────────────────────────── cell 2 (code) ───────────────────────────
@@ -152,8 +152,8 @@ subprocess.run([sys.executable, "-m", "pip", "install", "-q",
 print("✓ Dependencies installed")
 
 # ─────────────────────────── cell 3 (code) ───────────────────────────
-# ── Clone and build CrispASR ───────────────────────────────────────────────
-CRISPASR_DIR = f"{SCRATCH}/CrispASR"
+# ── Clone and build StelnetTTS ───────────────────────────────────────────────
+STELNETTTS_DIR = f"{SCRATCH}/StelnetTTS"
 
 def run(cmd, timeout=600, stream_stderr=False):
     """Run shell command, return (success, stdout, stderr, elapsed).
@@ -197,25 +197,25 @@ def run(cmd, timeout=600, stream_stderr=False):
     except subprocess.TimeoutExpired:
         return False, "", "TIMEOUT", time.time() - t0
 
-if os.path.isdir(CRISPASR_DIR):
+if os.path.isdir(STELNETTTS_DIR):
     # Pull latest to pick up fixes pushed since initial clone
-    subprocess.run(f"cd {CRISPASR_DIR} && git fetch --depth 1 origin main "
+    subprocess.run(f"cd {STELNETTTS_DIR} && git fetch --depth 1 origin main "
                    f"&& git reset --hard origin/main "
                    f"&& git submodule update --init --recursive --depth 1",
                    shell=True, check=True, capture_output=True)
-    print("✓ CrispASR updated to latest (submodules synced)")
+    print("✓ StelnetTTS updated to latest (submodules synced)")
 else:
     # --recurse-submodules is not optional: ggml is a submodule, and without it
     # cmake stops at CMakeLists.txt:256 with "The bundled 'ggml' submodule is not
     # initialized" (#298) before a single backend runs.
     subprocess.run(f"git clone --depth 1 --recurse-submodules --shallow-submodules "
-                   f"https://github.com/CrispStrobe/CrispASR.git {CRISPASR_DIR}",
+                   f"https://github.com/Cyna/StelnetTTS.git {STELNETTTS_DIR}",
                    shell=True, check=True)
-    print("✓ CrispASR cloned (with submodules)")
+    print("✓ StelnetTTS cloned (with submodules)")
 
 # Shared Kaggle harness (lives in the cloned repo) — build streaming,
 # heartbeat+RSS, ccache/mold, CUDA arch auto-detect, 3-tier HF auth.
-sys.path.insert(0, os.path.join(CRISPASR_DIR, "tools", "kaggle"))
+sys.path.insert(0, os.path.join(STELNETTTS_DIR, "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 kh.init_progress(progress_path=f"{WORK}/progress.jsonl")
 kh.resolve_hf_token()  # env → Kaggle Secret(retry) → mounted dataset
@@ -226,23 +226,23 @@ kh.step("clone.done")
 # results survive a kernel crash/timeout, and on a fresh run of the SAME kernel
 # we SKIP backends that already have a result file (resume). The run tag is
 # stable across restarts by default ("latest"), so re-running the kernel
-# continues where it left off; bump CRISPASR_SWEEP_RUN for a clean run.
+# continues where it left off; bump STELNETTTS_SWEEP_RUN for a clean run.
 from huggingface_hub import HfApi as _HfApi
 import io as _io
 
 # Target the EXISTING progress dataset (same one kaggle_harness streams step
 # progress to), under a sweep-specific prefix so it doesn't collide with the
 # harness's runs/*.jsonl.
-SWEEP_REPO = os.environ.get("CRISPASR_SWEEP_REPO", "cstr/crispasr-kaggle-progress")
+SWEEP_REPO = os.environ.get("STELNETTTS_SWEEP_REPO", "Xenna/stelnettts-kaggle-progress")
 # Bump this per campaign — results are keyed by tag and a matching tag makes the
 # kernel SKIP backends that already have a result file. "latest" currently holds
 # 60 finished backends from an earlier pin, so reusing it would skip nearly the
 # whole sweep and say nothing about the tree under test.
-RUN_TAG = os.environ.get("CRISPASR_SWEEP_RUN", "ggml-v0.17b")
+RUN_TAG = os.environ.get("STELNETTTS_SWEEP_RUN", "ggml-v0.17b")
 SWEEP_PREFIX = f"full-backend-sweep/{RUN_TAG}"
-# Optional subset filter: CRISPASR_SWEEP_ONLY="f5-tts,chatterbox,..." runs ONLY
+# Optional subset filter: STELNETTTS_SWEEP_ONLY="f5-tts,chatterbox,..." runs ONLY
 # those backends (skips all others) — for targeted re-tests of a fixed subset.
-SWEEP_ONLY = {x.strip() for x in os.environ.get("CRISPASR_SWEEP_ONLY", "").split(",") if x.strip()}
+SWEEP_ONLY = {x.strip() for x in os.environ.get("STELNETTTS_SWEEP_ONLY", "").split(",") if x.strip()}
 
 
 def sweep_skip_only(backend):
@@ -324,7 +324,7 @@ generator = ["-G", "Ninja"] if has_ninja else []
 # Common cmake flags (match Docker/dev-build.sh patterns)
 common_flags = [
     "-DCMAKE_BUILD_TYPE=Release",
-    "-DCRISPASR_BUILD_TESTS=OFF",  # skip test binaries — saves ~30% build time
+    "-DSTELNETTTS_BUILD_TESTS=OFF",  # skip test binaries — saves ~30% build time
     "-DCMAKE_C_FLAGS=-fopenmp",
     "-DCMAKE_CXX_FLAGS=-fopenmp",
 ]
@@ -342,7 +342,7 @@ if has_gpu and need_reconfigure:
     cuda_flags = kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
     with kh.build_heartbeat("cmake.configure.cuda"):
         r = subprocess.run(
-            ["cmake", "-S", CRISPASR_DIR, "-B", BUILD_DIR] + generator + common_flags + cuda_flags,
+            ["cmake", "-S", STELNETTTS_DIR, "-B", BUILD_DIR] + generator + common_flags + cuda_flags,
             capture_output=True, text=True
         )
     if r.returncode == 0:
@@ -359,7 +359,7 @@ if not cmake_ok and need_reconfigure:
     print("GPU: CPU-only build")
     with kh.build_heartbeat("cmake.configure.cpu"):
         subprocess.run(
-            ["cmake", "-S", CRISPASR_DIR, "-B", BUILD_DIR] + generator + common_flags + [
+            ["cmake", "-S", STELNETTTS_DIR, "-B", BUILD_DIR] + generator + common_flags + [
                 "-DGGML_CUDA=OFF",
             ] + kh.cache_and_link_flags(),
             check=True
@@ -374,32 +374,32 @@ elif cmake_ok and not need_reconfigure:
 # so cap CUDA at -j2 (still parallel, fits memory); CPU keeps full -j.
 build_jobs = kh.safe_build_jobs(gpu=has_gpu)
 with kh.build_heartbeat("cmake.build"):
-    # Target is `crispasr-cli` — it has OUTPUT_NAME crispasr, so it produces
-    # bin/crispasr. Target `crispasr` builds ONLY the library (libcrispasr),
-    # leaving bin/crispasr absent — which failed the assert below on every
+    # Target is `stelnettts-cli` — it has OUTPUT_NAME stelnettts, so it produces
+    # bin/stelnettts. Target `stelnettts` builds ONLY the library (libstelnettts),
+    # leaving bin/stelnettts absent — which failed the assert below on every
     # prior run (examples/cli/CMakeLists.txt:12,232).
     kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD_DIR} "
-                        f"--target crispasr-cli -j{build_jobs}")
+                        f"--target stelnettts-cli -j{build_jobs}")
 
 assert os.path.isfile(CRISPASR), f"Build failed: {CRISPASR} not found"
 
 # Show version + git commit
-ok, out, _, _ = run(f"cd {CRISPASR_DIR} && git log --oneline -1")
+ok, out, _, _ = run(f"cd {STELNETTTS_DIR} && git log --oneline -1")
 git_hash = out.strip() if ok else "unknown"
-print(f"✓ CrispASR built ({'GPU' if has_gpu else 'CPU'}) — {git_hash}")
+print(f"✓ StelnetTTS built ({'GPU' if has_gpu else 'CPU'}) — {git_hash}")
 
 # ─────────────────────────── cell 4a (code) ───────────────────────────
 # ── Model download helper (handles HF xet storage) ────────────────────────
-# CrispASR's built-in curl downloader can't handle HF's xet storage layer.
+# StelnetTTS's built-in curl downloader can't handle HF's xet storage layer.
 # This helper downloads one model at a time via huggingface_hub before each test.
 from huggingface_hub import hf_hub_download
 
-CACHE_DIR = os.path.expanduser("~/.cache/crispasr")
+CACHE_DIR = os.path.expanduser("~/.cache/stelnettts")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Pre-download shared models (whisper-tiny for LID, silero for VAD) — kept across tests
 for local_name, repo, hf_name in [
-    ("ggml-tiny.bin", "ggerganov/crispasr", "ggml-tiny.bin"),
+    ("ggml-tiny.bin", "ggerganov/stelnettts", "ggml-tiny.bin"),
     ("ggml-silero-v6.2.0.bin", "ggml-org/whisper-vad", "ggml-silero-v6.2.0.bin"),
 ]:
     dst = os.path.join(CACHE_DIR, local_name)
@@ -412,33 +412,33 @@ for local_name, repo, hf_name in [
 
 # Per-backend model registry: backend_name → (local_filename, hf_repo, hf_filename)
 MODEL_REGISTRY = {
-    "whisper":           ("ggml-base.bin",               "ggerganov/crispasr",                    "ggml-base.bin"),
-    "parakeet":          ("parakeet-tdt-0.6b-v3-q4_k.gguf","cstr/parakeet-tdt-0.6b-v3-GGUF",       "parakeet-tdt-0.6b-v3-q4_k.gguf"),
-    "moonshine":         ("moonshine-tiny-q4_k.gguf",    "cstr/moonshine-tiny-GGUF",                "moonshine-tiny-q4_k.gguf"),
-    "moonshine-streaming":("moonshine-streaming-tiny-q4_k.gguf","cstr/moonshine-streaming-tiny-GGUF","moonshine-streaming-tiny-q4_k.gguf"),
-    "wav2vec2":          ("wav2vec2-xlsr-en-q4_k.gguf",  "cstr/wav2vec2-large-xlsr-53-english-GGUF","wav2vec2-xlsr-en-q4_k.gguf"),
-    "fastconformer-ctc": ("stt-en-fastconformer-ctc-large-q4_k.gguf","cstr/stt-en-fastconformer-ctc-large-GGUF","stt-en-fastconformer-ctc-large-q4_k.gguf"),
-    "data2vec":          ("data2vec-audio-base-960h-q4_k.gguf","cstr/data2vec-audio-960h-GGUF",     "data2vec-audio-base-960h-q4_k.gguf"),
-    "hubert":            ("hubert-large-ls960-ft-q4_k.gguf","cstr/hubert-large-ls960-ft-GGUF",      "hubert-large-ls960-ft-q4_k.gguf"),
-    "canary":            ("canary-1b-v2-q4_k.gguf",      "cstr/canary-1b-v2-GGUF",                 "canary-1b-v2-q4_k.gguf"),
-    "cohere":            ("cohere-transcribe-q4_k.gguf",  "cstr/cohere-transcribe-03-2026-GGUF",    "cohere-transcribe-q4_k.gguf"),
-    "qwen3":             ("qwen3-asr-0.6b-q4_k.gguf",    "cstr/qwen3-asr-0.6b-GGUF",              "qwen3-asr-0.6b-q4_k.gguf"),
-    "omniasr":           ("omniasr-ctc-1b-v2-q4_k.gguf",  "cstr/omniASR-CTC-1B-v2-GGUF",          "omniasr-ctc-1b-v2-q4_k.gguf"),
-    "omniasr-llm":       ("omniasr-llm-300m-v2-q4_k.gguf","cstr/omniasr-llm-300m-v2-GGUF",         "omniasr-llm-300m-v2-q4_k.gguf"),
-    "glm-asr":           ("glm-asr-nano-q4_k.gguf",      "cstr/glm-asr-nano-GGUF",                "glm-asr-nano-q4_k.gguf"),
-    "firered-asr":       ("firered-asr2-aed-q4_k.gguf",  "cstr/firered-asr2-aed-GGUF",            "firered-asr2-aed-q4_k.gguf"),
-    "kyutai-stt":        ("kyutai-stt-1b-q4_k.gguf",     "cstr/kyutai-stt-1b-GGUF",               "kyutai-stt-1b-q4_k.gguf"),
-    "vibevoice":         ("vibevoice-asr-q4_k.gguf",     "cstr/vibevoice-asr-GGUF",                "vibevoice-asr-q4_k.gguf"),
-    "voxtral":           ("voxtral-mini-3b-2507-q4_k.gguf","cstr/voxtral-mini-3b-2507-GGUF",       "voxtral-mini-3b-2507-q4_k.gguf"),
-    "voxtral4b":         ("voxtral-mini-4b-realtime-q4_k.gguf","cstr/voxtral-mini-4b-realtime-GGUF","voxtral-mini-4b-realtime-q4_k.gguf"),
-    "granite":           ("granite-speech-4.0-1b-q4_k.gguf","cstr/granite-speech-4.0-1b-GGUF",     "granite-speech-4.0-1b-q4_k.gguf"),
-    "gemma4-e2b":        ("gemma4-e2b-it-q4_k.gguf",      "cstr/gemma4-e2b-it-GGUF",              "gemma4-e2b-it-q4_k.gguf"),
-    "sensevoice":        ("sensevoice-small-q4_k.gguf",  "cstr/sensevoice-small-GGUF",            "sensevoice-small-q4_k.gguf"),
-    "paraformer":        ("paraformer-zh-q4_k.gguf",     "cstr/paraformer-zh-GGUF",               "paraformer-zh-q4_k.gguf"),
-    "granite-4.1":       ("granite-speech-4.1-2b-q4_k.gguf","cstr/granite-speech-4.1-2b-GGUF",     "granite-speech-4.1-2b-q4_k.gguf"),
-    "mega-asr":          ("mega-asr-1.7b-q4_k.gguf",     "cstr/mega-asr-GGUF",                    "mega-asr-1.7b-q4_k.gguf"),
-    "funasr":            ("funasr-nano-2512-q8_0.gguf",  "cstr/funasr-nano-GGUF",                 "funasr-nano-2512-q8_0.gguf"),
-    "mimo-asr":          ("mimo-asr-q4_k.gguf",          "cstr/mimo-asr-GGUF",                    "mimo-asr-q4_k.gguf"),
+    "whisper":           ("ggml-base.bin",               "ggerganov/stelnettts",                    "ggml-base.bin"),
+    "parakeet":          ("parakeet-tdt-0.6b-v3-q4_k.gguf","Xenna/parakeet-tdt-0.6b-v3-GGUF",       "parakeet-tdt-0.6b-v3-q4_k.gguf"),
+    "moonshine":         ("moonshine-tiny-q4_k.gguf",    "Xenna/moonshine-tiny-GGUF",                "moonshine-tiny-q4_k.gguf"),
+    "moonshine-streaming":("moonshine-streaming-tiny-q4_k.gguf","Xenna/moonshine-streaming-tiny-GGUF","moonshine-streaming-tiny-q4_k.gguf"),
+    "wav2vec2":          ("wav2vec2-xlsr-en-q4_k.gguf",  "Xenna/wav2vec2-large-xlsr-53-english-GGUF","wav2vec2-xlsr-en-q4_k.gguf"),
+    "fastconformer-ctc": ("stt-en-fastconformer-ctc-large-q4_k.gguf","Xenna/stt-en-fastconformer-ctc-large-GGUF","stt-en-fastconformer-ctc-large-q4_k.gguf"),
+    "data2vec":          ("data2vec-audio-base-960h-q4_k.gguf","Xenna/data2vec-audio-960h-GGUF",     "data2vec-audio-base-960h-q4_k.gguf"),
+    "hubert":            ("hubert-large-ls960-ft-q4_k.gguf","Xenna/hubert-large-ls960-ft-GGUF",      "hubert-large-ls960-ft-q4_k.gguf"),
+    "canary":            ("canary-1b-v2-q4_k.gguf",      "Xenna/canary-1b-v2-GGUF",                 "canary-1b-v2-q4_k.gguf"),
+    "cohere":            ("cohere-transcribe-q4_k.gguf",  "Xenna/cohere-transcribe-03-2026-GGUF",    "cohere-transcribe-q4_k.gguf"),
+    "qwen3":             ("cielvox2-asr-0.6b-q4_k.gguf",    "Xenna/cielvox2-asr-0.6b-GGUF",              "cielvox2-asr-0.6b-q4_k.gguf"),
+    "omniasr":           ("omniasr-ctc-1b-v2-q4_k.gguf",  "Xenna/omniASR-CTC-1B-v2-GGUF",          "omniasr-ctc-1b-v2-q4_k.gguf"),
+    "omniasr-llm":       ("omniasr-llm-300m-v2-q4_k.gguf","Xenna/omniasr-llm-300m-v2-GGUF",         "omniasr-llm-300m-v2-q4_k.gguf"),
+    "glm-asr":           ("glm-asr-nano-q4_k.gguf",      "Xenna/glm-asr-nano-GGUF",                "glm-asr-nano-q4_k.gguf"),
+    "firered-asr":       ("firered-asr2-aed-q4_k.gguf",  "Xenna/firered-asr2-aed-GGUF",            "firered-asr2-aed-q4_k.gguf"),
+    "kyutai-stt":        ("kyutai-stt-1b-q4_k.gguf",     "Xenna/kyutai-stt-1b-GGUF",               "kyutai-stt-1b-q4_k.gguf"),
+    "vibevoice":         ("vibevoice-asr-q4_k.gguf",     "Xenna/vibevoice-asr-GGUF",                "vibevoice-asr-q4_k.gguf"),
+    "voxtral":           ("voxtral-mini-3b-2507-q4_k.gguf","Xenna/voxtral-mini-3b-2507-GGUF",       "voxtral-mini-3b-2507-q4_k.gguf"),
+    "voxtral4b":         ("voxtral-mini-4b-realtime-q4_k.gguf","Xenna/voxtral-mini-4b-realtime-GGUF","voxtral-mini-4b-realtime-q4_k.gguf"),
+    "granite":           ("granite-speech-4.0-1b-q4_k.gguf","Xenna/granite-speech-4.0-1b-GGUF",     "granite-speech-4.0-1b-q4_k.gguf"),
+    "gemma4-e2b":        ("gemma4-e2b-it-q4_k.gguf",      "Xenna/gemma4-e2b-it-GGUF",              "gemma4-e2b-it-q4_k.gguf"),
+    "sensevoice":        ("sensevoice-small-q4_k.gguf",  "Xenna/sensevoice-small-GGUF",            "sensevoice-small-q4_k.gguf"),
+    "paraformer":        ("paraformer-zh-q4_k.gguf",     "Xenna/paraformer-zh-GGUF",               "paraformer-zh-q4_k.gguf"),
+    "granite-4.1":       ("granite-speech-4.1-2b-q4_k.gguf","Xenna/granite-speech-4.1-2b-GGUF",     "granite-speech-4.1-2b-q4_k.gguf"),
+    "mega-asr":          ("mega-asr-1.7b-q4_k.gguf",     "Xenna/mega-asr-GGUF",                    "mega-asr-1.7b-q4_k.gguf"),
+    "funasr":            ("funasr-nano-2512-q8_0.gguf",  "Xenna/funasr-nano-GGUF",                 "funasr-nano-2512-q8_0.gguf"),
+    "mimo-asr":          ("mimo-asr-q4_k.gguf",          "Xenna/mimo-asr-GGUF",                    "mimo-asr-q4_k.gguf"),
 }
 
 # mimo-asr needs a companion tokenizer GGUF alongside the main model; the
@@ -447,7 +447,7 @@ MODEL_REGISTRY = {
 _mimo_tok = os.path.join(CACHE_DIR, "mimo-tokenizer-q4_k.gguf")
 if not os.path.isfile(_mimo_tok):
     try:
-        hf_hub_download("cstr/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf", local_dir=CACHE_DIR)
+        hf_hub_download("Xenna/mimo-tokenizer-GGUF", "mimo-tokenizer-q4_k.gguf", local_dir=CACHE_DIR)
     except Exception:
         pass
 
@@ -455,7 +455,7 @@ if not os.path.isfile(_mimo_tok):
 _tok_dst = os.path.join(CACHE_DIR, "tokenizer.bin")
 if not os.path.isfile(_tok_dst):
     try:
-        hf_hub_download("cstr/moonshine-tiny-GGUF", "tokenizer.bin", local_dir=CACHE_DIR)
+        hf_hub_download("Xenna/moonshine-tiny-GGUF", "tokenizer.bin", local_dir=CACHE_DIR)
     except Exception:
         pass
 
@@ -482,7 +482,7 @@ def ensure_model_downloaded(backend_name):
 # ── Download test audio ────────────────────────────────────────────────────
 JFK_WAV = f"{SAMPLE_DIR}/jfk.wav"
 if not os.path.isfile(JFK_WAV):
-    shutil.copy(f"{CRISPASR_DIR}/samples/jfk.wav", JFK_WAV)
+    shutil.copy(f"{STELNETTTS_DIR}/samples/jfk.wav", JFK_WAV)
     print(f"✓ jfk.wav copied ({os.path.getsize(JFK_WAV)} bytes)")
 
 # Get audio duration
@@ -519,7 +519,7 @@ results = []
 
 def _cleanup_cache(backend_name):
     """Remove downloaded model files from cache, keeping whisper-tiny and silero VAD."""
-    cache_dir = os.path.expanduser("~/.cache/crispasr")
+    cache_dir = os.path.expanduser("~/.cache/stelnettts")
     if not os.path.isdir(cache_dir):
         return
     freed = 0
@@ -560,17 +560,17 @@ def benchmark_backend(backend, display_name, timeout, notes):
     dl_time = ensure_model_downloaded(backend)
     result["download_s"] = round(dl_time, 1)
 
-    # Run inference — model is now cached in ~/.cache/crispasr
+    # Run inference — model is now cached in ~/.cache/stelnettts
     # Stream stderr in real-time for all backends to diagnose hangs
     # Use greedy decoding (--beam 1) for benchmark: beam search is 5x slower
     # and doesn't meaningfully change WER on short test audio.
-    cmd = (f"CRISPASR_VERBOSE=1 FIRERED_BENCH=1 {CRISPASR} --backend {backend} -m auto --auto-download "
+    cmd = (f"STELNETTTS_VERBOSE=1 FIRERED_BENCH=1 {CRISPASR} --backend {backend} -m auto --auto-download "
            f"-f {JFK_WAV} --no-prints -v -bs 1")
     t0 = time.time()
     ok, stdout, stderr, elapsed = run(cmd, timeout=timeout, stream_stderr=True)
     result["wall_s"] = round(elapsed, 2)
 
-    # Parse crispasr's own timing from stderr (excludes download)
+    # Parse stelnettts's own timing from stderr (excludes download)
     inference_s = elapsed  # fallback: use wall time
     rt_factor = None
     if stderr:
@@ -592,7 +592,7 @@ def benchmark_backend(backend, display_name, timeout, notes):
             lines = stderr.strip().split("\n")
             useful = [l for l in lines if any(k in l.lower() for k in
                       ["assert", "error", "fail", "abort", "fatal", "ggml_",
-                       "crispasr", "backend", "loaded", "encoder", "decoder",
+                       "stelnettts", "backend", "loaded", "encoder", "decoder",
                        "model", "cache", "kv", "segfault", "signal"])]
             for line in (useful or lines[-5:])[:8]:
                 print(f"    stderr: {line[:150]}")
@@ -618,7 +618,7 @@ def benchmark_backend(backend, display_name, timeout, notes):
     result["status"] = "PASS" if w < 0.3 else "DEGRADED" if w < 0.5 else "FAIL"
 
     # Step 4: Find model size before cleanup
-    cache_dir = os.path.expanduser("~/.cache/crispasr")
+    cache_dir = os.path.expanduser("~/.cache/stelnettts")
     if os.path.isdir(cache_dir):
         for f in sorted(os.listdir(cache_dir)):
             fpath = os.path.join(cache_dir, f)
@@ -707,7 +707,7 @@ if BENCHMARK_TTS == "1":
         #     flag the CLI requires for .wav cloning; cosyvoice3 also needs --ref-text.
         #   - fastpitch: a speaker index (multi-speaker, 5 speakers) via --voice 0.
         #   - orpheus: a built-in voice name.
-        REF_WAV = f"{CRISPASR_DIR}/samples/jfk.wav"
+        REF_WAV = f"{STELNETTTS_DIR}/samples/jfk.wav"
         JFK_RT = ("And so my fellow Americans, ask not what your country can do for you, "
                   "ask what you can do for your country.")
         voice_args = {
@@ -832,7 +832,7 @@ sys_info = {
 
 # Build markdown table
 md_lines = []
-md_lines.append("# CrispASR Backend Benchmark Results\n")
+md_lines.append("# StelnetTTS Backend Benchmark Results\n")
 md_lines.append(f"**Date:** {sys_info['date']}  ")
 md_lines.append(f"**Platform:** {sys_info['platform']}  ")
 md_lines.append(f"**GPU:** {sys_info['gpu']}  ")
@@ -906,7 +906,7 @@ if GH_GIST_TOKEN:
     import urllib.request
 
     gist_data = {
-        "description": f"CrispASR Benchmark — {sys_info['date']} ({sys_info['gpu']})",
+        "description": f"StelnetTTS Benchmark — {sys_info['date']} ({sys_info['gpu']})",
         "public": True,
         "files": {
             "benchmark_results.md": {"content": report_md},
@@ -937,7 +937,7 @@ else:
 # ─────────────────────────── cell 10 (code) ───────────────────────────
 # ── Final summary ──────────────────────────────────────────────────────────
 print("\n" + "=" * 60)
-print("  CrispASR Benchmark Complete")
+print("  StelnetTTS Benchmark Complete")
 print("=" * 60)
 print(f"  Backends tested: {len(results)}")
 print(f"  Passed: {sum(1 for r in results if r['status'] == 'PASS')}")

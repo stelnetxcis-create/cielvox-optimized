@@ -10,7 +10,7 @@
 // Build:
 //   g++ -std=c++17 -O2 -o test_bark tests/test_bark_smoke.cpp \
 //     -Isrc -Iggml/include -Iinclude -Isrc/core \
-//     -Lbuild/src -lbark-tts -lcrispasr-core \
+//     -Lbuild/src -lbark-tts -lstelnettts-core \
 //     -Lbuild/ggml/src -lggml -lggml-base -lggml-cpu -lpthread -ldl
 //
 // Run:

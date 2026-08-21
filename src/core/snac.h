@@ -10,7 +10,7 @@
 //
 // The talker AR forward (orpheus_synthesize_codes) lands in slice (c) of
 // PLAN #57 Phase 2; this module is exercised independently via
-// `crispasr-diff orpheus`, which compares each named stage tensor
+// `stelnettts-diff orpheus`, which compares each named stage tensor
 // against tools/reference_backends/orpheus_snac.py.
 //
 // Stage names (must match the Python reference dump):

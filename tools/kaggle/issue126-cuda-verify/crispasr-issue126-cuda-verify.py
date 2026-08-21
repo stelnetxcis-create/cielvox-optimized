@@ -1,21 +1,21 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — issue #126 CUDA conv_transpose_1d F16 verify
+# # StelnetTTS — issue #126 CUDA conv_transpose_1d F16 verify
 #
 # Verifies the fix for GitHub issue #126: ggml-cuda conv_transpose_1d
 # previously asserted `src0->type == GGML_TYPE_F32`, segfaulting on F16
 # weights (SNAC decoder up_w, vibevoice generator) when running on CUDA.
 #
 # What it does:
-# 1. Clone CrispASR @ env CRISPASR_REF (default: fix branch).
+# 1. Clone StelnetTTS @ env STELNETTTS_REF (default: fix branch).
 # 2. Build with -DGGML_CUDA=ON.
-# 3. Run `crispasr --tts ... -m auto --backend kartoffel-orpheus-de-natural`
+# 3. Run `stelnettts --tts ... -m auto --backend kartoffel-orpheus-de-natural`
 #    on a short German phrase; check output WAV is produced and non-silent.
-# 4. Run `crispasr --tts ... -m auto --backend voxcpm2-tts` on a short
+# 4. Run `stelnettts --tts ... -m auto --backend voxcpm2-tts` on a short
 #    English phrase; same check.
 # 5. Report PASS/FAIL per backend.
 #
 # Requirements: Kaggle GPU notebook (T4, P100, L4 — anything CUDA-capable).
-# Disk: ~10 GB (CrispASR build ~1 GB + orpheus q8_0 ~3.5 GB + SNAC ~200 MB
+# Disk: ~10 GB (StelnetTTS build ~1 GB + orpheus q8_0 ~3.5 GB + SNAC ~200 MB
 # + voxcpm2 q4_k ~1.6 GB + deps).
 
 # ─────────────────────────── cell 1 (code) ───────────────────────────
@@ -38,13 +38,13 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = REPO / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "fix/issue126-cuda-conv-transpose-1d-f16")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "fix/issue126-cuda-conv-transpose-1d-f16")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 
 PROGRESS = RESULTS / "progress.jsonl"
 _T0 = time.time()
@@ -78,12 +78,12 @@ def run(cmd, check=True, capture=False, env=None, cwd=None, timeout=None):
 
 
 # ─────────────────────────── cell 2 (code) — clone + build ───────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 # Harness lives in the cloned repo — import it now that the clone succeeded.
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
@@ -115,26 +115,26 @@ cmake_args = [
 run(cmake_args)
 step("cmake_done")
 
-# Just need crispasr CLI + libs; skip examples we don't use. Stream the
+# Just need stelnettts CLI + libs; skip examples we don't use. Stream the
 # build line-by-line with a heartbeat so a hang/OOM is visible mid-run.
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
     # Older layouts:
-    candidates = list(BUILD.rglob("crispasr"))
+    candidates = list(BUILD.rglob("stelnettts"))
     candidates = [c for c in candidates if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 step("cli_found", path=str(CLI))
 
-# Ensure libcrispasr.so is loadable.
+# Ensure libstelnettts.so is loadable.
 LIB_DIR = BUILD / "src"
 os.environ["LD_LIBRARY_PATH"] = f"{LIB_DIR}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 
@@ -257,7 +257,7 @@ step("voxcpm2_done", verdict=r["verdict"], rc=r["rc"], wav=r["wav"])
 # ─────────────────────────── cell 5 (code) — summary ──────────────────────
 summary = {
     "ts": datetime.now(timezone.utc).isoformat(),
-    "ref": CRISPASR_REF,
+    "ref": STELNETTTS_REF,
     "gpu": gpu_name,
     "results": results,
     "verdicts": {r["name"]: r["verdict"] for r in results},

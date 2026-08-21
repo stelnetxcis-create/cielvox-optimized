@@ -24,8 +24,8 @@
 #include <vector>
 using namespace moss_tts_local_codec;
 
-extern "C" int crispasr_audio_load(const char*, float**, int*, int*);
-extern "C" void crispasr_audio_free(float*);
+extern "C" int stelnettts_audio_load(const char*, float**, int*, int*);
+extern "C" void stelnettts_audio_free(float*);
 
 static bool write_wav(const char* path, const std::vector<float>& mono, int sr) {
     FILE* f = std::fopen(path, "wb");
@@ -81,12 +81,12 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // Real speech round-trip. crispasr_audio_load yields 16 kHz mono; the codec
+    // Real speech round-trip. stelnettts_audio_load yields 16 kHz mono; the codec
     // wants 48 kHz channel-interleaved, so upsample 3x (linear) and duplicate to
     // stereo. Resampling quality is not the thing under test — intelligibility
     // after encode->decode is.
     float* pcm = nullptr; int n = 0, sr = 0;
-    if (crispasr_audio_load(argv[2], &pcm, &n, &sr) != 0 || n <= 0) {
+    if (stelnettts_audio_load(argv[2], &pcm, &n, &sr) != 0 || n <= 0) {
         std::fprintf(stderr, "failed to load %s\n", argv[2]); return 1;
     }
     std::printf("in: %d samples @ %d Hz\n", n, sr);
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
         inter[(size_t)i * 2 + 0] = v;
         inter[(size_t)i * 2 + 1] = v;
     }
-    crispasr_audio_free(pcm);
+    stelnettts_audio_free(pcm);
 
     int nvq_out = 0, t_out = 0;
     std::vector<int32_t> codes = encode(c, inter.data(), (int64_t)inter.size(), nvq_out, t_out);

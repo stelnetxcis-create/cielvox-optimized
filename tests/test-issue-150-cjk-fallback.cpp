@@ -1,6 +1,6 @@
 // test-issue-150-cjk-fallback.cpp — regression guard for issue #150.
 //
-// When the parakeet library returns n_words=0, crispasr_make_disp_segments
+// When the parakeet library returns n_words=0, stelnettts_make_disp_segments
 // falls back to split_text_at_punct.  Before the fix, that function had a
 // CJK subtitle fallback that re-split any single-sentence text longer than
 // 42 codepoints at raw character boundaries — regardless of whether the text
@@ -10,14 +10,14 @@
 // The fix: text_has_cjk() gates the 42-char fallback so it only fires for
 // text containing CJK/kana/Hangul characters.
 
-#include "crispasr_output.h"
+#include "stelnettts_output.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <string>
 
 // Helper: build a no-words segment spanning [t0, t1] with given text.
-static crispasr_segment make_wordless(int64_t t0, int64_t t1, const std::string& text) {
-    crispasr_segment s;
+static stelnettts_segment make_wordless(int64_t t0, int64_t t1, const std::string& text) {
+    stelnettts_segment s;
     s.t0   = t0;
     s.t1   = t1;
     s.text = text;
@@ -37,11 +37,11 @@ static const char* kIssue150Text =
 TEST_CASE("issue #150: long English sentence with trailing period → one display segment",
           "[unit][output][issue-150]") {
     // Simulate the parakeet backend: one segment, no words, full transcript.
-    crispasr_segment seg = make_wordless(16, 2240, kIssue150Text);
-    std::vector<crispasr_segment> segs{seg};
+    stelnettts_segment seg = make_wordless(16, 2240, kIssue150Text);
+    std::vector<stelnettts_segment> segs{seg};
 
     // The failing condition: split_on_punct=true, max_len=0, words empty.
-    auto disp = crispasr_make_disp_segments(segs, /*max_len=*/0, /*split_on_punct=*/true);
+    auto disp = stelnettts_make_disp_segments(segs, /*max_len=*/0, /*split_on_punct=*/true);
 
     // Before fix: 7 segments of ~42 chars each, splitting "about" → "abo"/"ut".
     // After fix: exactly 1 segment (the whole sentence).
@@ -54,8 +54,8 @@ TEST_CASE("issue #150: long English sentence with trailing period → one displa
 TEST_CASE("issue #150: English text longer than 42 chars, no words, no split_on_punct → one segment",
           "[unit][output][issue-150]") {
     // Without split_on_punct the easy-exit path fires; still must be 1 segment.
-    crispasr_segment seg = make_wordless(0, 2000, kIssue150Text);
-    auto disp = crispasr_make_disp_segments({seg}, 0, false);
+    stelnettts_segment seg = make_wordless(0, 2000, kIssue150Text);
+    auto disp = stelnettts_make_disp_segments({seg}, 0, false);
     REQUIRE(disp.size() == 1);
 }
 
@@ -65,8 +65,8 @@ TEST_CASE("issue #150: English text with multiple sentence ends is split at sent
     // boundaries (not raw character positions).
     const char* two_sentences =
         "She said hello. He replied goodbye and walked away from the building.";
-    crispasr_segment seg = make_wordless(0, 700, two_sentences);
-    auto disp = crispasr_make_disp_segments({seg}, 0, true);
+    stelnettts_segment seg = make_wordless(0, 700, two_sentences);
+    auto disp = stelnettts_make_disp_segments({seg}, 0, true);
 
     REQUIRE(disp.size() == 2);
     // First segment must end with the period after "hello"
@@ -78,8 +78,8 @@ TEST_CASE("issue #150: English text with multiple sentence ends is split at sent
 TEST_CASE("issue #150: very short English text (≤42 chars) → one segment",
           "[unit][output][issue-150]") {
     const char* short_text = "Hello world.";
-    crispasr_segment seg = make_wordless(0, 100, short_text);
-    auto disp = crispasr_make_disp_segments({seg}, 0, true);
+    stelnettts_segment seg = make_wordless(0, 100, short_text);
+    auto disp = stelnettts_make_disp_segments({seg}, 0, true);
     REQUIRE(disp.size() == 1);
     REQUIRE(disp[0].text == short_text);
 }
@@ -93,8 +93,8 @@ TEST_CASE("issue #150: long Japanese text without sentence-end → CJK fallback 
     const char* ja_text =
         "会話スレッドで見たように代理スレッドがその情報を追跡し続けシリアライズしてデシリアライズ"
         "することができますそしてさまざまな会話を保存することもできます";
-    crispasr_segment seg = make_wordless(0, 2000, ja_text);
-    auto disp = crispasr_make_disp_segments({seg}, 0, true);
+    stelnettts_segment seg = make_wordless(0, 2000, ja_text);
+    auto disp = stelnettts_make_disp_segments({seg}, 0, true);
 
     // Should be split into multiple segments (CJK fallback active).
     REQUIRE(disp.size() > 1);
@@ -103,8 +103,8 @@ TEST_CASE("issue #150: long Japanese text without sentence-end → CJK fallback 
 TEST_CASE("issue #150: short Japanese text (≤42 codepoints) → no CJK split",
           "[unit][output][issue-150][cjk]") {
     const char* ja_short = "こんにちは世界"; // 7 codepoints
-    crispasr_segment seg = make_wordless(0, 100, ja_short);
-    auto disp = crispasr_make_disp_segments({seg}, 0, true);
+    stelnettts_segment seg = make_wordless(0, 100, ja_short);
+    auto disp = stelnettts_make_disp_segments({seg}, 0, true);
     REQUIRE(disp.size() == 1);
 }
 
@@ -112,7 +112,7 @@ TEST_CASE("issue #150: Japanese text WITH sentence-end marker → sentence split
           "[unit][output][issue-150][cjk]") {
     // Two Japanese sentences separated by 。 — should split at the boundary.
     const char* ja_two = "会話スレッドで見たように代理スレッドが追跡します。シリアライズすることができます。";
-    crispasr_segment seg = make_wordless(0, 2000, ja_two);
-    auto disp = crispasr_make_disp_segments({seg}, 0, true);
+    stelnettts_segment seg = make_wordless(0, 2000, ja_two);
+    auto disp = stelnettts_make_disp_segments({seg}, 0, true);
     REQUIRE(disp.size() == 2);
 }

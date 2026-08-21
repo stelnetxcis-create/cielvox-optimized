@@ -85,10 +85,10 @@ jobs:
           cp -r ${build_dir}/wchess.wasm/{index.html,css,img,js} ${target_dir}
           cp ${build_dir}/wchess.wasm.js ${target_dir}
 
-          # crispasr.wasm (this will be the main example page)
+          # stelnettts.wasm (this will be the main example page)
           target_dir=staging
           mkdir -p ${target_dir}
-          cp ${build_dir}/crispasr.wasm/{index.html,main.js,helpers.js} ${target_dir}
+          cp ${build_dir}/stelnettts.wasm/{index.html,main.js,helpers.js} ${target_dir}
           cp ${build_dir}/libmain.js ${target_dir}
 
           # Copy Cross-Origin Isolation service worker

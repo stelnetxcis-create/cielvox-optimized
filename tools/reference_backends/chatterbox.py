@@ -1,4 +1,4 @@
-"""Chatterbox TTS reference dump backend for crispasr-diff.
+"""Chatterbox TTS reference dump backend for stelnettts-diff.
 
 Captures per-stage activations from the ResembleAI/chatterbox Python
 model so the C++ implementation can be validated tensor-by-tensor.
@@ -148,7 +148,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     torch.manual_seed(seed)
 
     # The diff fixture is a voice-cloning fixture: derive every downstream
-    # conditional from the same audio that native CrispASR receives.  The old
+    # conditional from the same audio that native StelnetTTS receives.  The old
     # dumper captured the audio front ends but then drove T3/S3Gen with the
     # unrelated built-in conds.pt voice, leaving a major parity blind spot.
     import tempfile

@@ -143,7 +143,7 @@ TEST_CASE("contract: process_slice feeds each slice its own audio verbatim", "[u
 TEST_CASE("contract: slice t0_cs derives from sl.start without context shift", "[unit][chunk-context]") {
     // process_slice passes sl.t0_cs as t_offset_cs to the backend (no
     // effective_t0_cs subtraction the way 617cd02 did). Verify the
-    // crispasr_audio_slice layout used in the CLI computes t0_cs from
+    // stelnettts_audio_slice layout used in the CLI computes t0_cs from
     // sl.start at the sample rate exactly — i.e. the cs offset matches
     // the slice's first sample.
     const int SR = 16000;
@@ -153,7 +153,7 @@ TEST_CASE("contract: slice t0_cs derives from sl.start without context shift", "
         int64_t t0_cs;
         int64_t t1_cs;
     };
-    // Mirror what crispasr_energy_chunk_slices builds.
+    // Mirror what stelnettts_energy_chunk_slices builds.
     const std::vector<std::pair<size_t, size_t>> ranges = {
         {0, 10 * SR},       // 0–10 s
         {10 * SR, 20 * SR}, // 10–20 s

@@ -7,8 +7,8 @@
 // which on a device advertising `buffer_from_host_ptr` releases the device-side
 // view and leaves the host mmap in place — the loader's side-map entry is never
 // taken and the pages are never unmapped. Two shipped consumers reach this
-// path: src/qwen3_asr.cpp and src/higgs_stt.cpp both link crisp_audio, and
-// CrispEmbed's BidirLM-Omni audio path links the same library.
+// path: src/cielvox2_asr.cpp and src/higgs_stt.cpp both link crisp_audio, and
+// StelnetEmbed's BidirLM-Omni audio path links the same library.
 //
 // test-gguf-mapping-released.cpp pins the loader's own release. This file pins
 // the consumer: that crisp_audio's handle actually reaches
@@ -206,9 +206,9 @@ TEST_CASE("crisp_audio_free unmaps the zero-copy GPU path's weight region", "[un
         SUCCEED("no GPU device advertising buffer_from_host_ptr — the leaking path does not exist here");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
-    Fixture fx("crispasr_test_crisp_audio_gpu.gguf", /*loadable=*/true);
+    Fixture fx("stelnettts_test_crisp_audio_gpu.gguf", /*loadable=*/true);
     REQUIRE(count_regions_backed_by(fx.abs) == 0);
 
     crisp_audio_params p = quiet_params(/*use_gpu=*/true);
@@ -234,12 +234,12 @@ TEST_CASE("repeated crisp_audio init/free cycles leave no mapping behind", "[uni
         SUCCEED("no GPU device advertising buffer_from_host_ptr — the leaking path does not exist here");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     // Each init maps the file again and records a separate region, so a
     // release that handled only one of them accumulates the rest. Five cycles
     // make that a count of five rather than an ambiguous one.
-    Fixture fx("crispasr_test_crisp_audio_loop.gguf", /*loadable=*/true);
+    Fixture fx("stelnettts_test_crisp_audio_loop.gguf", /*loadable=*/true);
     crisp_audio_params p = quiet_params(/*use_gpu=*/true);
 
     for (int i = 0; i < 5; i++) {
@@ -259,12 +259,12 @@ TEST_CASE("a crisp_audio load rejected after mapping leaves no region", "[unit][
         SUCCEED("no GPU device advertising buffer_from_host_ptr — the leaking path does not exist here");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     // load_weights succeeds and maps the file; the missing tower tensors are
     // what fail, one step later. crisp_audio_init_from_file's own cleanup call
     // is the release path here, and it is the same one the success case uses.
-    Fixture fx("crispasr_test_crisp_audio_reject.gguf", /*loadable=*/false);
+    Fixture fx("stelnettts_test_crisp_audio_reject.gguf", /*loadable=*/false);
     REQUIRE(count_regions_backed_by(fx.abs) == 0);
 
     crisp_audio_params p = quiet_params(/*use_gpu=*/true);
@@ -291,13 +291,13 @@ TEST_CASE("crisp_audio_free unmaps the CPU mmap path's weight region", "[unit][c
         SUCCEED("region enumeration unavailable on this platform");
         return;
     }
-    test_setenv("CRISPASR_GGUF_MMAP", "1");
+    test_setenv("STELNETTTS_GGUF_MMAP", "1");
 
     // This leg passed before the fix too — the CPU mmap path unmaps through
     // the buffer's own free callback whichever entry point releases it. It
     // runs everywhere, and it is what keeps this file from being a pure skip
     // on hosts without a host-pointer GPU.
-    Fixture fx("crispasr_test_crisp_audio_cpu.gguf", /*loadable=*/true);
+    Fixture fx("stelnettts_test_crisp_audio_cpu.gguf", /*loadable=*/true);
     REQUIRE(count_regions_backed_by(fx.abs) == 0);
 
     crisp_audio_params p = quiet_params(/*use_gpu=*/false);

@@ -1,5 +1,5 @@
 """
-CrispASR — Parakeet encoder memory policy: CUDA proof (improvements Phase 2).
+StelnetTTS — Parakeet encoder memory policy: CUDA proof (improvements Phase 2).
 
 Question this kernel answers (needs a real NVIDIA card — cannot be done on M1):
 does the proactive VRAM-budget policy actually avoid the O(T^2) single-pass
@@ -8,10 +8,10 @@ clip tried to alloc ~1.9 GiB and hit `cudaMalloc … out of memory` on a 3.7 GiB
 card), and does the estimate `parakeet_est_singlepass_peak_mb` match the real
 CUDA allocation?
 
-Three checks (parakeet-tdt-1.1b, CUDA build from CRISPASR_REF):
+Three checks (parakeet-tdt-1.1b, CUDA build from STELNETTTS_REF):
   1. ESTIMATE vs REALITY — force single-pass at several clip lengths, poll peak
      GPU VRAM (nvidia-smi), compare to the code's estimate (coeff·T²·H·4 B).
-  2. POLICY BOUNDS VRAM — with CRISPASR_PARAKEET_VRAM_BUDGET_MB set, the policy
+  2. POLICY BOUNDS VRAM — with STELNETTTS_PARAKEET_VRAM_BUDGET_MB set, the policy
      must switch to streamed → peak VRAM << single-pass, transcript still full.
   3. OOM AVOIDANCE — pin a torch CUDA buffer to leave only ~`FREE_MB` free
      (simulating the reporter's small card); single-pass must OOM (cudaMalloc
@@ -33,17 +33,17 @@ import wave
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 # Clip durations (s) for the estimate-vs-reality sweep.
 DURATIONS = [int(x) for x in os.environ.get("DURATIONS", "60,120,225").split(",")]
 # Simulated small-card free VRAM for the OOM test.
 FREE_MB = int(os.environ.get("FREE_MB", "2600"))
-MODEL_REPO = os.environ.get("MODEL_REPO", "cstr/parakeet-tdt-1.1b-GGUF")
+MODEL_REPO = os.environ.get("MODEL_REPO", "Xenna/parakeet-tdt-1.1b-GGUF")
 MODEL_FILE = os.environ.get("MODEL_FILE", "parakeet-tdt-1.1b-q4_k.gguf")
 # The code default coefficient / heads for the python-side estimate (mirror
 # parakeet_orchestrate.h + hparams: hop 160, subsample 8, 8 heads, coeff 8.0).
@@ -56,9 +56,9 @@ def _sh(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF}", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF}", flush=True)
 if not REPO.exists():
-    _sh(f"git clone --depth 1 --branch {CRISPASR_REF} --recursive https://github.com/CrispStrobe/CrispASR {REPO}")
+    _sh(f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive https://github.com/Cyna/StelnetTTS {REPO}")
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
@@ -67,7 +67,7 @@ kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("script.start", ref=CRISPASR_REF, sha=sha)
+kh.step("script.start", ref=STELNETTTS_REF, sha=sha)
 
 
 # ── nvidia-smi peak-VRAM poller ────────────────────────────────────────────
@@ -115,8 +115,8 @@ cmake_cmd = (f"cmake {REPO} -B{BUILD} -GNinja -DCMAKE_BUILD_TYPE=Release "
 with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{kh.safe_build_jobs(gpu=True)}")
-assert CRISPASR.is_file(), "crispasr binary missing"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{kh.safe_build_jobs(gpu=True)}")
+assert CRISPASR.is_file(), "stelnettts binary missing"
 kh.step("build.done")
 
 # ── Model + clips ──────────────────────────────────────────────────────────
@@ -178,9 +178,9 @@ check1 = []
 for d in DURATIONS:
     clip = tile_clip(d)
     # Force single-pass, disable the policy, keep full attention.
-    r = run(clip, {"CRISPASR_PARAKEET_STREAM_THRESHOLD": "99999",
-                   "CRISPASR_PARAKEET_LONGFORM": "0",
-                   "CRISPASR_PARAKEET_MEM_POLICY": "off"}, f"single-{d}s")
+    r = run(clip, {"STELNETTTS_PARAKEET_STREAM_THRESHOLD": "99999",
+                   "STELNETTTS_PARAKEET_LONGFORM": "0",
+                   "STELNETTTS_PARAKEET_MEM_POLICY": "off"}, f"single-{d}s")
     est = est_singlepass_mb(d)
     ratio = round(r["peak_delta_mib"] / est, 2) if est else None
     row = dict(dur_s=d, est_mib=round(est), measured_peak_mib=r["peak_delta_mib"],
@@ -195,9 +195,9 @@ kh.step("check2.begin")
 print("\n=== CHECK 2: VRAM budget policy bounds peak VRAM ===", flush=True)
 long_clip = tile_clip(max(DURATIONS))
 budget = max(256, int(est_singlepass_mb(max(DURATIONS)) * 0.5))  # half the single-pass need
-sp = run(long_clip, {"CRISPASR_PARAKEET_STREAM_THRESHOLD": "99999", "CRISPASR_PARAKEET_MEM_POLICY": "off"},
+sp = run(long_clip, {"STELNETTTS_PARAKEET_STREAM_THRESHOLD": "99999", "STELNETTTS_PARAKEET_MEM_POLICY": "off"},
          "policy-single")
-pol = run(long_clip, {"CRISPASR_PARAKEET_VRAM_BUDGET_MB": str(budget)}, "policy-streamed")
+pol = run(long_clip, {"STELNETTTS_PARAKEET_VRAM_BUDGET_MB": str(budget)}, "policy-streamed")
 kh.step("check2.result", budget_mib=budget, single_peak_mib=sp["peak_delta_mib"],
         policy_peak_mib=pol["peak_delta_mib"], single_words=sp["words"], policy_words=pol["words"])
 print(f"  budget={budget} MiB | single-pass peak_Δ={sp['peak_delta_mib']} MiB ({sp['words']} w) | "
@@ -220,9 +220,9 @@ try:
     print(f"  total={total} MiB, hogged {hog_mib} MiB, free now ≈ {free_after} MiB", flush=True)
     hog_ok = True
     oom_clip = tile_clip(max(DURATIONS))
-    single = run(oom_clip, {"CRISPASR_PARAKEET_STREAM_THRESHOLD": "99999", "CRISPASR_PARAKEET_MEM_POLICY": "off"},
+    single = run(oom_clip, {"STELNETTTS_PARAKEET_STREAM_THRESHOLD": "99999", "STELNETTTS_PARAKEET_MEM_POLICY": "off"},
                  "oom-single")
-    policy = run(oom_clip, {"CRISPASR_PARAKEET_VRAM_BUDGET_MB": str(FREE_MB)}, "oom-policy")
+    policy = run(oom_clip, {"STELNETTTS_PARAKEET_VRAM_BUDGET_MB": str(FREE_MB)}, "oom-policy")
     kh.step("check3.result", free_mib=free_after, single_oom=single["oom"], single_words=single["words"],
             policy_oom=policy["oom"], policy_words=policy["words"])
     print(f"  single-pass: oom={single['oom']} words={single['words']} rc={single['rc']}", flush=True)

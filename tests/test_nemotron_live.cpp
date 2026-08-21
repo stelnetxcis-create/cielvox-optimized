@@ -4,8 +4,8 @@
 // Run: ctest -R test-nemotron --output-on-failure
 //
 // Env vars:
-//   CRISPASR_MODEL_NEMOTRON    — Q4_K GGUF path
-//   CRISPASR_MODEL_NEMOTRON_F16 — F16 GGUF path (optional)
+//   STELNETTTS_MODEL_NEMOTRON    — Q4_K GGUF path
+//   STELNETTTS_MODEL_NEMOTRON_F16 — F16 GGUF path (optional)
 
 #include <catch2/catch_test_macros.hpp>
 #include "nemotron.h"
@@ -84,9 +84,9 @@ static std::vector<float> load_wav_16k_mono(const std::string& path) {
 }
 
 TEST_CASE("nemotron: init and free", "[nemotron][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_NEMOTRON");
+    std::string model = get_env("STELNETTTS_MODEL_NEMOTRON");
     if (model.empty()) {
-        SKIP("CRISPASR_MODEL_NEMOTRON not set");
+        SKIP("STELNETTTS_MODEL_NEMOTRON not set");
     }
 
     nemotron_context_params cp = nemotron_context_default_params();
@@ -98,9 +98,9 @@ TEST_CASE("nemotron: init and free", "[nemotron][.live]") {
 }
 
 TEST_CASE("nemotron: JFK English transcription", "[nemotron][.live]") {
-    std::string model = get_env("CRISPASR_MODEL_NEMOTRON");
+    std::string model = get_env("STELNETTTS_MODEL_NEMOTRON");
     if (model.empty()) {
-        SKIP("CRISPASR_MODEL_NEMOTRON not set");
+        SKIP("STELNETTTS_MODEL_NEMOTRON not set");
     }
 
     auto pcm = load_wav_16k_mono("samples/jfk.wav");
@@ -137,10 +137,10 @@ TEST_CASE("nemotron: JFK English transcription", "[nemotron][.live]") {
 }
 
 TEST_CASE("nemotron: F16 produces same text as Q4_K", "[nemotron][.live]") {
-    std::string model_q4k = get_env("CRISPASR_MODEL_NEMOTRON");
-    std::string model_f16 = get_env("CRISPASR_MODEL_NEMOTRON_F16");
+    std::string model_q4k = get_env("STELNETTTS_MODEL_NEMOTRON");
+    std::string model_f16 = get_env("STELNETTTS_MODEL_NEMOTRON_F16");
     if (model_q4k.empty() || model_f16.empty()) {
-        SKIP("CRISPASR_MODEL_NEMOTRON or CRISPASR_MODEL_NEMOTRON_F16 not set");
+        SKIP("STELNETTTS_MODEL_NEMOTRON or STELNETTTS_MODEL_NEMOTRON_F16 not set");
     }
 
     auto pcm = load_wav_16k_mono("samples/jfk.wav");

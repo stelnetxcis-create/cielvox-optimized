@@ -1,4 +1,4 @@
-set(TARGET crispasr-bench)
+set(TARGET stelnettts-bench)
 add_executable(${TARGET} bench.cpp)
 
 include(DefaultTargetOptions)

@@ -24,8 +24,8 @@
 #include "core/cpu_attention.h" // cpu_dot + cpu_online_softmax_accumulate (shared, #229)
 #include "core/ctc.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include <unordered_map>
 
@@ -51,7 +51,7 @@
 static bool wav2vec2_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_WAV2VEC2_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_WAV2VEC2_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -149,7 +149,7 @@ bool wav2vec2_load(const char* fname, wav2vec2_model& model) {
     // Phase 2: load tensors via core_gguf (backend-buffer-backed)
     // GPU (CUDA/Metal/Vulkan) for scheduler-based ggml graphs; CPU fallback
     // for ops that need direct weight pointer access (via read_f32_vec).
-    model.backend = crispasr_init_gpu_backend();
+    model.backend = stelnettts_init_gpu_backend();
     if (!model.backend)
         model.backend = core_cpu_backend::init();
     if (!model.backend) {
@@ -1121,9 +1121,9 @@ static std::vector<float> wav2vec2_compute_logits_graph(const wav2vec2_model& m,
     const auto& hp = m.hparams;
     const int H = (int)hp.hidden_size;
     const bool bench =
-        (crispasr_env::get("CRISPASR_WAV2VEC2_BENCH") && crispasr_env::get("CRISPASR_WAV2VEC2_BENCH")[0]);
+        (stelnettts_env::get("STELNETTTS_WAV2VEC2_BENCH") && stelnettts_env::get("STELNETTTS_WAV2VEC2_BENCH")[0]);
     const bool verbose =
-        (crispasr_env::get("CRISPASR_WAV2VEC2_VERBOSE") && crispasr_env::get("CRISPASR_WAV2VEC2_VERBOSE")[0]);
+        (stelnettts_env::get("STELNETTTS_WAV2VEC2_VERBOSE") && stelnettts_env::get("STELNETTTS_WAV2VEC2_VERBOSE")[0]);
     int64_t t_cnn = 0, t_proj = 0, t_pos = 0, t_enc = 0, t_lm = 0, t0;
 
     if (verbose) {
@@ -1327,7 +1327,7 @@ static std::vector<float> wav2vec2_compute_logits_graph(const wav2vec2_model& m,
 
     // Dump CNN output for reference comparison
     {
-        const char* dump = crispasr_env::get("CRISPASR_WAV2VEC2_DUMP_DIR");
+        const char* dump = stelnettts_env::get("STELNETTTS_WAV2VEC2_DUMP_DIR");
         if (dump && dump[0]) {
             char path[512];
             snprintf(path, sizeof(path), "%s/cnn_out.bin", dump);
@@ -1357,7 +1357,7 @@ static std::vector<float> wav2vec2_compute_logits_graph(const wav2vec2_model& m,
 
     // Dump feature projection output
     {
-        const char* dump = crispasr_env::get("CRISPASR_WAV2VEC2_DUMP_DIR");
+        const char* dump = stelnettts_env::get("STELNETTTS_WAV2VEC2_DUMP_DIR");
         if (dump && dump[0]) {
             char path[512];
             snprintf(path, sizeof(path), "%s/feat_proj.bin", dump);
@@ -1545,7 +1545,7 @@ static std::vector<float> wav2vec2_compute_logits_graph(const wav2vec2_model& m,
                     if (ggml_backend_sched_graph_compute(sched, gf) == GGML_STATUS_SUCCESS) {
                         // Dump after_global_ln if available
                         {
-                            const char* dump = crispasr_env::get("CRISPASR_WAV2VEC2_DUMP_DIR");
+                            const char* dump = stelnettts_env::get("STELNETTTS_WAV2VEC2_DUMP_DIR");
                             ggml_tensor* gln = ggml_graph_get_tensor(gf, "after_global_ln");
                             if (dump && dump[0] && gln) {
                                 int ne = (int)ggml_nelements(gln);
@@ -1570,7 +1570,7 @@ static std::vector<float> wav2vec2_compute_logits_graph(const wav2vec2_model& m,
                             ggml_backend_tensor_get(out, logits_tv.data(), 0, logits_tv.size() * sizeof(float));
                             // Dump logits
                             {
-                                const char* dump = crispasr_env::get("CRISPASR_WAV2VEC2_DUMP_DIR");
+                                const char* dump = stelnettts_env::get("STELNETTTS_WAV2VEC2_DUMP_DIR");
                                 if (dump && dump[0]) {
                                     char path[512];
                                     snprintf(path, sizeof(path), "%s/logits.bin", dump);
@@ -1914,9 +1914,9 @@ std::vector<float> wav2vec2_compute_logits(const wav2vec2_model& m, const float*
             for (int tq = 0; tq < T; tq++) {
                 const int off = h * head_dim;
                 const float* q = Q_buf.data() + tq * H + off;
-                crispasr::cpu_attn::cpu_online_softmax_accumulate(
+                stelnettts::cpu_attn::cpu_online_softmax_accumulate(
                     T, head_dim, V_buf.data() + off, H, attn_out.data() + tq * H + off, [&](int tk) {
-                        return crispasr::cpu_attn::cpu_dot(q, K_buf.data() + tk * H + off, head_dim) * scale;
+                        return stelnettts::cpu_attn::cpu_dot(q, K_buf.data() + tk * H + off, head_dim) * scale;
                     });
             }
         }

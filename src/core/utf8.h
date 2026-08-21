@@ -2,7 +2,7 @@
 //
 // The same four-line loop had been written out four separate times before this
 // header existed: `core_lid_probe::utf8_length` (core/lid_probe.h),
-// a file-static `utf8_len` in crispasr.cpp, a lambda in kokoro.cpp, and — as of
+// a file-static `utf8_len` in stelnettts.cpp, a lambda in kokoro.cpp, and — as of
 // the f5-tts duration fix — a fourth in f5_tts.cpp. They agree, which is luck
 // rather than design: each is a hand-rolled continuation-byte test.
 //

@@ -22,15 +22,15 @@
 # where a model happened to be findable. Green where it tests nothing, red
 # where it tests everything, which is exactly backwards.
 #
-# Requires: crispasr binary (built), test audio. The live tier additionally
-# needs a whisper model via $CRISPASR_MODEL_WHISPER or a known local path.
+# Requires: stelnettts binary (built), test audio. The live tier additionally
+# needs a whisper model via $STELNETTTS_MODEL_WHISPER or a known local path.
 #
 # Usage:
-#   bash tests/test_vad_export_live.sh [crispasr] [src_dir] [unit|live|all]
+#   bash tests/test_vad_export_live.sh [stelnettts] [src_dir] [unit|live|all]
 
 set -e
 
-CRISPASR="${1:-${CRISPASR_BIN:-build/bin/crispasr}}"
+CRISPASR="${1:-${STELNETTTS_BIN:-build/bin/stelnettts}}"
 SRC_DIR="${2:-.}"
 TIER="${3:-all}"
 case "$TIER" in
@@ -66,7 +66,7 @@ skip() {
 
 # Prerequisite checks
 if [ ! -f "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found at $CRISPASR"
+    echo "SKIP: stelnettts binary not found at $CRISPASR"
     exit 0
 fi
 if [ ! -f "$JFK_WAV" ]; then
@@ -89,7 +89,7 @@ $CRISPASR --backend paraformer -m /nonexistent/model.gguf \
 
 if [ -f "$EXPORT_FILE" ]; then
     check "export file created" test -s "$EXPORT_FILE"
-    check "export contains crispasr_vad header" grep -q "crispasr_vad" "$EXPORT_FILE"
+    check "export contains stelnettts_vad header" grep -q "stelnettts_vad" "$EXPORT_FILE"
     check "export contains slices array" grep -q '"slices"' "$EXPORT_FILE"
     check "export contains sample_rate" grep -q '"sample_rate"' "$EXPORT_FILE"
 else
@@ -197,14 +197,14 @@ fi
 # test can see it -- it only shows at the CLI surface.
 echo ""
 echo "--- Test 6: --vad-import not silently ignored ---"
-MODEL="${CRISPASR_MODEL_WHISPER:-}"
+MODEL="${STELNETTTS_MODEL_WHISPER:-}"
 if [ -z "$MODEL" ]; then
-    for m in ggml-base.bin models/ggml-base.en.bin /Volumes/backups/ai/CrispASR/ggml-base.bin; do
+    for m in ggml-base.bin models/ggml-base.en.bin /Volumes/backups/ai/StelnetTTS/ggml-base.bin; do
         [ -f "$m" ] && MODEL="$m" && break
     done
 fi
 if [ -z "$MODEL" ]; then
-    skip "--vad-import dispatch" "no whisper model (set CRISPASR_MODEL_WHISPER)"
+    skip "--vad-import dispatch" "no whisper model (set STELNETTTS_MODEL_WHISPER)"
 else
     # A nonexistent import file MUST make the run fail. If it exits 0 and
     # transcribes, --vad-import was ignored -- the original bug.
@@ -231,7 +231,7 @@ else
     WARN="$($CRISPASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 5 -m "$MODEL" 2>&1)"; RC_WARN=$?
     $CRISPASR --vad --vad-import "$RT" -f "$JFK_WAV" --chunk-seconds 5 --vad-import-strict -m "$MODEL" >/dev/null 2>&1; RC_STRICT=$?
     LEGACY="$TMPDIR/legacy.json"
-    printf '{"crispasr_vad":{"version":1,"sample_rate":16000,"slices":[{"start":5120,"end":169920,"t0_cs":32,"t1_cs":1062}]}}' > "$LEGACY"
+    printf '{"stelnettts_vad":{"version":1,"sample_rate":16000,"slices":[{"start":5120,"end":169920,"t0_cs":32,"t1_cs":1062}]}}' > "$LEGACY"
     $CRISPASR --vad --vad-import "$LEGACY" -f "$JFK_WAV" --chunk-seconds 5 --vad-import-strict -m "$MODEL" >/dev/null 2>&1; RC_LEGACY=$?
     set -e
 

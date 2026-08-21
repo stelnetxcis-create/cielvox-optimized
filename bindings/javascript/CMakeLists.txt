@@ -10,15 +10,15 @@ target_link_libraries(${TARGET} PRIVATE
 
 unset(EXTRA_FLAGS)
 
-if (CRISPASR_WASM_SINGLE_FILE)
+if (STELNETTTS_WASM_SINGLE_FILE)
     set(EXTRA_FLAGS "-s SINGLE_FILE=1")
-    message(STATUS "Embedding WASM inside crispasr.js")
+    message(STATUS "Embedding WASM inside stelnettts.js")
 
     add_custom_command(
         TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/bin/libwhisper.js
-        ${CMAKE_CURRENT_SOURCE_DIR}/crispasr.js
+        ${CMAKE_CURRENT_SOURCE_DIR}/stelnettts.js
         )
 
     add_custom_command(
@@ -35,7 +35,7 @@ if (CRISPASR_WASM_SINGLE_FILE)
         TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND}
             -Dsrc=${CMAKE_BINARY_DIR}/bin/libwhisper.worker.js
-            -Ddst=${CMAKE_CURRENT_SOURCE_DIR}/crispasr.worker.js
+            -Ddst=${CMAKE_CURRENT_SOURCE_DIR}/stelnettts.worker.js
             -P ${CMAKE_CURRENT_SOURCE_DIR}/copy_if_exists.cmake
         )
 
@@ -50,9 +50,9 @@ endif()
 
 # Multithreaded needs a big pre-reserved shared memory (growing shared memory mid-compute stalls in
 # a browser worker). Single-threaded uses a normal (growable) memory, so a small initial is fine.
-if (CRISPASR_WASM_SINGLE_THREAD)
+if (STELNETTTS_WASM_SINGLE_THREAD)
     set(WASM_THREAD_FLAGS "-s INITIAL_MEMORY=512MB")
-elseif (CRISPASR_WASM_PROXY_TO_PTHREAD)
+elseif (STELNETTTS_WASM_PROXY_TO_PTHREAD)
     # Experiment: run the runtime on a proxied pthread so the servicer thread stays free.
     set(WASM_THREAD_FLAGS "-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=8 -s PROXY_TO_PTHREAD=1 -s INITIAL_MEMORY=2GB")
 else()
@@ -63,7 +63,7 @@ endif()
 # enabled, since the module is compiled with -fwasm-exceptions only then (a
 # mismatch between compile and link EH modes would break the default build).
 set(WASM_C2PA_LINK_FLAGS "")
-if (CRISPASR_C2PA_ENABLED)
+if (STELNETTTS_C2PA_ENABLED)
     set(WASM_C2PA_LINK_FLAGS "-fwasm-exceptions -s SUPPORT_LONGJMP=wasm")
 endif()
 

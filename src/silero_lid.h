@@ -1,6 +1,6 @@
 // silero_lid.h — native ggml runtime for Silero Language Classifier 95.
 //
-// Replaces the sherpa-onnx subprocess wrapper in crispasr_lid.cpp with a
+// Replaces the sherpa-onnx subprocess wrapper in stelnettts_lid.cpp with a
 // fully native inference path. The model takes raw 16 kHz mono audio and
 // outputs log-probabilities over 95 languages.
 

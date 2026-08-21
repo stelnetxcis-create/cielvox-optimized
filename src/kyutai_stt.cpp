@@ -18,9 +18,9 @@
 #include "core/attention.h"
 #include "core/beam_decode.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/rvq.h"              // §176l: shared Euclidean RVQ encode
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -45,7 +45,7 @@
 static bool kyutai_stt_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_KYUTAI_STT_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_KYUTAI_STT_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -346,7 +346,7 @@ extern "C" struct kyutai_stt_context* kyutai_stt_init_from_file(const char* path
     sctx->params = params;
     sctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
-    sctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    sctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!sctx->backend)
         sctx->backend = core_cpu_backend::init();
     sctx->backend_cpu = core_cpu_backend::init();
@@ -689,10 +689,10 @@ static ggml_tensor* build_mimi_transformer(ggml_context* ctx, const std::vector<
     // ~412 frames > 250): the old full non-causal attention TRUNCATED the tail
     // (~25% of content dropped once the sequence exceeds the window), while
     // causal transcribed all of it; on short audio (<250 frames) the two tie.
-    // CRISPASR_MIMI_NONCAUSAL=1 restores the old full-attention path (bisection).
+    // STELNETTTS_MIMI_NONCAUSAL=1 restores the old full-attention path (bisection).
     // Filled by the caller after alloc.
     ggml_tensor* attn_mask = nullptr;
-    if (!std::getenv("CRISPASR_MIMI_NONCAUSAL")) {
+    if (!std::getenv("STELNETTTS_MIMI_NONCAUSAL")) {
         attn_mask = ggml_new_tensor_2d(ctx, GGML_TYPE_F16, T, T); // [Lk, Lq]
         ggml_set_name(attn_mask, "mimi_causal_mask");
         ggml_set_input(attn_mask);
@@ -741,7 +741,7 @@ static ggml_tensor* build_mimi_transformer(ggml_context* ctx, const std::vector<
         V = ggml_cont(ctx, ggml_permute(ctx, V, 0, 2, 1, 3));
 
         // Flash attention — non-causal by default; causal+windowed if the mask
-        // was built (CRISPASR_MIMI_CAUSAL).
+        // was built (STELNETTTS_MIMI_CAUSAL).
         ggml_tensor* attn = ggml_flash_attn_ext(ctx, Q, K, V, attn_mask, 1.0f / sqrtf((float)head_dim), 0.0f, 0.0f);
         // attn is [head_dim, T, n_heads] → reshape to [dim, T]
         attn = ggml_reshape_2d(ctx, attn, dim, T);
@@ -815,11 +815,11 @@ static void rvq_encode_group(kyutai_stt_context* sctx, ggml_tensor* x_projected,
 
     // §176l: route the RVQ argmin through the shared core_rvq helper (the
     // 2·x·E−‖E‖² shootout, proven code-identical to the scalar loop below in
-    // test-core-rvq). Gated CRISPASR_KYUTAI_RVQ_FAST (default OFF until the
+    // test-core-rvq). Gated STELNETTTS_KYUTAI_RVQ_FAST (default OFF until the
     // emitted codes are confirmed byte-identical on a real Kyutai model). Needs
     // all codebooks to share cdim; any mismatch falls through to the scalar path.
     static const bool kyutai_rvq_fast = [] {
-        const char* e = std::getenv("CRISPASR_KYUTAI_RVQ_FAST");
+        const char* e = std::getenv("STELNETTTS_KYUTAI_RVQ_FAST");
         return e && e[0] == '1';
     }();
     if (kyutai_rvq_fast) {
@@ -950,7 +950,7 @@ static bool mimi_encode(kyutai_stt_context* sctx, const float* pcm_24k, int n_sa
     ggml_tensor* pcm_t = ggml_graph_get_tensor(gf, "pcm_input");
     ggml_backend_tensor_set(pcm_t, pcm_24k, 0, n_samples * sizeof(float));
 
-    // Fill the optional Mimi causal+sliding-window mask (CRISPASR_MIMI_CAUSAL).
+    // Fill the optional Mimi causal+sliding-window mask (STELNETTTS_MIMI_CAUSAL).
     // attend iff key k <= query q AND (q - k) < mimi_context. F16, [Lk, Lq].
     if (ggml_tensor* mimi_mask = ggml_graph_get_tensor(gf, "mimi_causal_mask")) {
         const int Tm = (int)mimi_mask->ne[1];
@@ -1213,7 +1213,7 @@ static char* kyutai_stt_transcribe_impl(struct kyutai_stt_context* ctx, const fl
     auto& m = ctx->model;
 
     // Step 1: Resample to 24 kHz if the input is not already at that rate.
-    // When the caller loads audio via crispasr_audio_load_at_rate(path, 24000, …)
+    // When the caller loads audio via stelnettts_audio_load_at_rate(path, 24000, …)
     // the PCM is already at 24 kHz and the resample is a no-op, avoiding the
     // quality-degrading 16k→24k round-trip (issue #263).
     const int input_rate = ctx->params.input_sample_rate > 0 ? ctx->params.input_sample_rate : 16000;

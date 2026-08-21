@@ -7,7 +7,7 @@ Writes: int32 I,H,T; float32 x(T,I); then weight_ih_l0, weight_hh_l0,
 bias_ih_l0, bias_hh_l0 and their *_reverse counterparts (all row-major, as
 torch stores them); then the expected output (T, 2H).
 
-Run the test with CRISPASR_GRU_REF pointing at the result. Without it the
+Run the test with STELNETTTS_GRU_REF pointing at the result. Without it the
 parity case skips, so CI needs neither torch nor network.
 """
 import sys, struct

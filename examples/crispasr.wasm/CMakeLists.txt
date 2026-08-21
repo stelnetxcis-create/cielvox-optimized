@@ -16,7 +16,7 @@ target_link_libraries(${TARGET} PRIVATE
 
 unset(EXTRA_FLAGS)
 
-if (CRISPASR_WASM_SINGLE_FILE)
+if (STELNETTTS_WASM_SINGLE_FILE)
     set(EXTRA_FLAGS "-s SINGLE_FILE=1")
     message(STATUS "Embedding WASM inside main.js")
 
@@ -24,7 +24,7 @@ if (CRISPASR_WASM_SINGLE_FILE)
         TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/bin/libmain.js
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/crispasr.wasm/main.js
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/stelnettts.wasm/main.js
         )
 endif()
 
@@ -41,10 +41,10 @@ set_target_properties(${TARGET} PROPERTIES LINK_FLAGS " \
     ")
 
 #
-# crispasr.wasm
+# stelnettts.wasm
 #
 
-set(TARGET crispasr.wasm)
+set(TARGET stelnettts.wasm)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/index-tmpl.html  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET}/index.html @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../helpers.js    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET}/helpers.js @ONLY)

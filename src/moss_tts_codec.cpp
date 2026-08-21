@@ -1,6 +1,6 @@
 // moss_tts_codec.cpp — MOSS-Audio-Tokenizer transformer RVQ codec (decode).
 //
-// Faithful port of pwilkin/openmoss src/codec.cpp (decoder path) onto CrispASR's
+// Faithful port of pwilkin/openmoss src/codec.cpp (decoder path) onto StelnetTTS's
 // ggml conventions. See moss_tts_codec.h for the pipeline overview and
 // docs/moss-tts/STUDY.md §6 for the full spec + gotchas.
 //

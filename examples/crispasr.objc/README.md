@@ -1,4 +1,4 @@
-# crispasr.objc
+# stelnettts.objc
 
 Minimal Obj-C application for automatic offline speech recognition.
 The inference runs locally, on-device.
@@ -11,7 +11,7 @@ https://user-images.githubusercontent.com/1991296/204126266-ce4177c6-6eca-4bd9-b
 
 ## Usage
 
-This example uses the crispasr.xcframework which needs to be built first using the following command:
+This example uses the stelnettts.xcframework which needs to be built first using the following command:
 ```bash
 ./build-xcframework.sh
 ```
@@ -32,11 +32,11 @@ The ggml model file is required as the Core ML model is only used for the encode
 decoder which is in the ggml model is still required.
 2. Follow the [`Core ML support` section of readme](../../README.md#core-ml-support) to convert the
 model.
-3. Add the Core ML model (`models/ggml-base.en-encoder.mlmodelc/`) to `crispasr.objc` **via Xcode**.
+3. Add the Core ML model (`models/ggml-base.en-encoder.mlmodelc/`) to `stelnettts.objc` **via Xcode**.
 
 When the example starts running you should now see that it is using the Core ML model:
 ```console
-whisper_init_state: loading Core ML model from '/Library/Developer/CoreSimulator/Devices/25E8C27D-0253-4281-AF17-C3F2A4D1D8F4/data/Containers/Bundle/Application/3ADA7D59-7B9C-43B4-A7E1-A87183FC546A/crispasr.objc.app/models/ggml-base.en-encoder.mlmodelc'
+whisper_init_state: loading Core ML model from '/Library/Developer/CoreSimulator/Devices/25E8C27D-0253-4281-AF17-C3F2A4D1D8F4/data/Containers/Bundle/Application/3ADA7D59-7B9C-43B4-A7E1-A87183FC546A/stelnettts.objc.app/models/ggml-base.en-encoder.mlmodelc'
 whisper_init_state: first run on a device may take a while ...
 whisper_init_state: Core ML model loaded
 ```

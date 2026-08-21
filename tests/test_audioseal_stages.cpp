@@ -7,7 +7,7 @@
 // extract and compare them.
 
 #include "audioseal.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/gguf_loader.h"
 #include "ggml.h"
 #include "ggml-backend.h"
@@ -52,7 +52,7 @@ static double cosine(const float* a, const float* b, int n) {
 }
 
 int main() {
-    const char* gguf = crispasr_env::get("CRISPASR_AUDIOSEAL_GGUF");
+    const char* gguf = stelnettts_env::get("STELNETTTS_AUDIOSEAL_GGUF");
     if (!gguf) {
         fprintf(stderr, "Set AUDIOSEAL_GGUF\n");
         return 1;

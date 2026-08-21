@@ -25,7 +25,7 @@
 #include "core/fft.h"     // core_fft::fft_radix2_wrapper (STFT: FFT instead of O(N^2) DFT)
 #include "core/gguf_loader.h"
 #include "core/tts_ref_cache.h" // content-addressed reference-embedding cache
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 
 #if defined(HAVE_ACCELERATE)
 #include <Accelerate/Accelerate.h>
@@ -51,7 +51,7 @@
 static bool openvoice2_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_OPENVOICE2_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_OPENVOICE2_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -284,7 +284,7 @@ extern "C" struct openvoice2_context* openvoice2_init_from_file(const char* path
     ctx->verbosity = params.verbosity;
     ctx->tau = params.tau;
     {
-        const char* e = crispasr_env::get("CRISPASR_OV2_TAU");
+        const char* e = stelnettts_env::get("STELNETTTS_OV2_TAU");
         if (e)
             ctx->tau = (float)std::atof(e);
     }
@@ -549,7 +549,7 @@ static void stft_magnitude(const float* pcm, int n_samples, int fft_size, int ho
 // OV2_FORCE_SCALAR=1 to validate scalar == GEMM or run on non-Apple.
 static bool ov2_use_scalar() {
 #if defined(HAVE_ACCELERATE)
-    static const bool fs = crispasr_env::get("CRISPASR_OV2_FORCE_SCALAR") != nullptr;
+    static const bool fs = stelnettts_env::get("STELNETTTS_OV2_FORCE_SCALAR") != nullptr;
     return fs;
 #else
     return true;
@@ -1195,16 +1195,16 @@ static bool hifigan_decode_cpu(openvoice2_context* ctx, const std::vector<float>
 // ref_enc) is deterministic given the reference audio, so cache the embedding
 // and skip the whole pipeline on repeat runs — every caller (CLI, C ABI) that
 // re-uses the same reference benefits across process invocations. Key = hash of
-// (ref_pcm bytes, ref_sr). Disable with CRISPASR_TTS_REF_CACHE=0. Mirrors the
+// (ref_pcm bytes, ref_sr). Disable with STELNETTTS_TTS_REF_CACHE=0. Mirrors the
 // irodori-latent / indextts-cond content cache.
 static bool openvoice2_target_se(openvoice2_context* ctx, const float* ref_pcm, int n_ref, int ref_sr,
                                  std::vector<float>& out_se) {
-    const uint64_t key = crispasr_ref_cache::fnv1a(ref_pcm, (size_t)n_ref * sizeof(float)) ^
-                         crispasr_ref_cache::fnv1a(&ref_sr, sizeof(ref_sr));
+    const uint64_t key = stelnettts_ref_cache::fnv1a(ref_pcm, (size_t)n_ref * sizeof(float)) ^
+                         stelnettts_ref_cache::fnv1a(&ref_sr, sizeof(ref_sr));
     {
         std::vector<uint32_t> shape;
         std::vector<float> se;
-        if (crispasr_ref_cache::get_floats("openvoice2-se", &key, sizeof(key), shape, se) && shape.size() == 1 &&
+        if (stelnettts_ref_cache::get_floats("openvoice2-se", &key, sizeof(key), shape, se) && shape.size() == 1 &&
             shape[0] == 256 && se.size() == 256) {
             out_se = std::move(se);
             if (ctx->verbosity >= 1)
@@ -1222,7 +1222,7 @@ static bool openvoice2_target_se(openvoice2_context* ctx, const float* ref_pcm, 
     if (!ref_enc_forward(ctx, ref_spec, T_ref, out_se))
         return false;
     if (out_se.size() == 256)
-        crispasr_ref_cache::put_floats("openvoice2-se", &key, sizeof(key), {256u}, out_se.data(), out_se.size());
+        stelnettts_ref_cache::put_floats("openvoice2-se", &key, sizeof(key), {256u}, out_se.data(), out_se.size());
     return true;
 }
 
@@ -1368,7 +1368,7 @@ extern "C" bool openvoice2_convert(struct openvoice2_context* ctx, const float* 
     // The voice converter produces weak output (±0.3) on synthetic MeloTTS input;
     // normalization makes it audible without amplifying noise beyond tanh clipping.
     {
-        const char* no_norm = crispasr_env::get("CRISPASR_OV2_NO_NORMALIZE");
+        const char* no_norm = stelnettts_env::get("STELNETTTS_OV2_NO_NORMALIZE");
         if (!no_norm || std::strcmp(no_norm, "1") != 0) {
             float peak = 0.0f;
             for (auto v : pcm) {

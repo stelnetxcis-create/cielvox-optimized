@@ -1,23 +1,23 @@
 """
-CrispASR — qwen3-family GGUF rebake (Q8_0 audio-tower floor) + CUDA validation
+StelnetTTS — qwen3-family GGUF rebake (Q8_0 audio-tower floor) + CUDA validation
 
 Two jobs in one CUDA build (#218 follow-ups):
 
 A. CUDA validation of this week's changes (everything so far was verified on
    Metal/CPU only):
-     - qwen3-asr 0.6b (fixed GGUF): un-chunked 145 s single pass, full
+     - cielvox2-asr 0.6b (fixed GGUF): un-chunked 145 s single pass, full
        attention AND the new CRISP_AUDIO_WINDOWED_ATTN=1 path.
      - glm-asr (merges-baked GGUF): jfk + un-chunked 145 s multi-window
        single pass.
    Pass criteria: transcript reaches the clip's final sentence, no
-   degenerate loops (raw decode via CRISPASR_NGRAM_LOOPFIX_OFF=1).
+   degenerate loops (raw decode via STELNETTTS_NGRAM_LOOPFIX_OFF=1).
 
 B. Rebake the SIBLING qwen3-family repos whose q4_k files were quantized
-   before the Q8_0 audio-tower floor (crispasr-quantize on this HEAD):
-     - cstr/qwen3-asr-1.7b-GGUF        (source: f16)
-     - cstr/qwen3-asr-1.7b-ja-anime-GGUF (source: q8_0 — no f16 published;
+   before the Q8_0 audio-tower floor (stelnettts-quantize on this HEAD):
+     - Xenna/cielvox2-asr-1.7b-GGUF        (source: f16)
+     - Xenna/cielvox2-asr-1.7b-ja-anime-GGUF (source: q8_0 — no f16 published;
        q8_0 is ~lossless so q8->f32->q4 ≈ f16->q4)
-     - cstr/mega-asr-GGUF              (source: f16; also rebake the
+     - Xenna/mega-asr-GGUF              (source: f16; also rebake the
        -imatrix variants with the repo's published imatrix)
    Each rebake is validated (jfk transcript + 145 s single-pass completion)
    before upload. Models processed sequentially with deletes in between —
@@ -33,7 +33,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path("/kaggle/working")
-REPO = Path("/tmp/CrispASR")
+REPO = Path("/tmp/StelnetTTS")
 BUILD = Path("/tmp/build")
 MODELS = Path("/tmp/models")
 AUDIO_DIR = ROOT / "audio"
@@ -44,11 +44,11 @@ for d in (MODELS, AUDIO_DIR, OUT_DIR):
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 if not REPO.exists():
     subprocess.run(
-        f"git clone --depth 1 --branch {CRISPASR_REF} "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO}",
+        f"git clone --depth 1 --branch {STELNETTTS_REF} "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO}",
         shell=True, check=True,
     )
 if not (REPO / "ggml" / "CMakeLists.txt").exists():
@@ -70,18 +70,18 @@ kh.install_build_toolchain()
 arch = kh.detect_cuda_arch()
 cmake_cmd = " ".join(
     [f"cmake {REPO} -B{BUILD} -GNinja", "-DCMAKE_BUILD_TYPE=Release",
-     "-DCRISPASR_BUILD_TESTS=OFF"]
+     "-DSTELNETTTS_BUILD_TESTS=OFF"]
     + kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
 )
 with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 with kh.build_heartbeat("cmake-build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli crispasr-quantize -- "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli stelnettts-quantize -- "
         f"-j{kh.safe_build_jobs(gpu=True)}"
     )
-CRISPASR = BUILD / "bin" / "crispasr"
-QUANTIZE = BUILD / "bin" / "crispasr-quantize"
+CRISPASR = BUILD / "bin" / "stelnettts"
+QUANTIZE = BUILD / "bin" / "stelnettts-quantize"
 assert CRISPASR.is_file() and QUANTIZE.is_file()
 kh.step("build.done", cuda_arch=arch)
 
@@ -126,7 +126,7 @@ def run_cli(model: Path, backend: str, wav: Path, tag: str, extra=None, env_extr
     cmd = [str(CRISPASR), "-m", str(model), "--backend", backend, "-f", str(wav),
            "--no-timestamps", "-np", "-otxt", "-of", str(out_stem)] + (extra or [])
     env = dict(os.environ)
-    env["CRISPASR_NGRAM_LOOPFIX_OFF"] = "1"
+    env["STELNETTTS_NGRAM_LOOPFIX_OFF"] = "1"
     env.update(env_extra or {})
     t0 = time.time()
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=3600, env=env)
@@ -141,8 +141,8 @@ def run_cli(model: Path, backend: str, wav: Path, tag: str, extra=None, env_extr
 
 # ── Phase A: CUDA validation ─────────────────────────────────────────────
 kh.step("phaseA.begin")
-q06 = Path(hf_hub_download("cstr/qwen3-asr-0.6b-GGUF", "qwen3-asr-0.6b-q4_k.gguf", local_dir=str(MODELS)))
-glm = Path(hf_hub_download("cstr/glm-asr-nano-GGUF", "glm-asr-nano-q4_k.gguf", local_dir=str(MODELS)))
+q06 = Path(hf_hub_download("Xenna/cielvox2-asr-0.6b-GGUF", "cielvox2-asr-0.6b-q4_k.gguf", local_dir=str(MODELS)))
+glm = Path(hf_hub_download("Xenna/glm-asr-nano-GGUF", "glm-asr-nano-q4_k.gguf", local_dir=str(MODELS)))
 
 val = {}
 val["qwen3_full"] = run_cli(q06, "qwen3", WAV, "qwen3-t32-full",
@@ -158,14 +158,14 @@ q06.unlink()
 glm.unlink()
 
 # ── Phase B: family rebake ───────────────────────────────────────────────
-# Header-scouted 2026-07-10: cstr/qwen3-asr-1.7b-GGUF q4_k already has a
+# Header-scouted 2026-07-10: Xenna/cielvox2-asr-1.7b-GGUF q4_k already has a
 # Q8_0 audio tower (147 tensors) — NO rebake needed. ja-anime and mega-asr
 # q4_k towers are Q4_K (147 tensors each) — rebake below.
 FAMILY = [
     # (repo, source file, english_audio, [(target file, qtype, imatrix or None)])
-    ("cstr/qwen3-asr-1.7b-ja-anime-GGUF", "qwen3-asr-1.7b-ja-anime-q8_0.gguf", False,
-     [("qwen3-asr-1.7b-ja-anime-q4_k.gguf", "q4_k", None)]),
-    ("cstr/mega-asr-GGUF", "mega-asr-1.7b-f16.gguf", True,
+    ("Xenna/cielvox2-asr-1.7b-ja-anime-GGUF", "cielvox2-asr-1.7b-ja-anime-q8_0.gguf", False,
+     [("cielvox2-asr-1.7b-ja-anime-q4_k.gguf", "q4_k", None)]),
+    ("Xenna/mega-asr-GGUF", "mega-asr-1.7b-f16.gguf", True,
      [("mega-asr-1.7b-q4_k.gguf", "q4_k", None),
       ("mega-asr-1.7b-q4_k-imatrix.gguf", "q4_k", "mega-asr-1.7b-en-de.imatrix.gguf"),
       ("mega-asr-1.7b-q3_k-imatrix.gguf", "q3_k", "mega-asr-1.7b-en-de.imatrix.gguf")]),
@@ -210,7 +210,7 @@ for repo, src_name, english_audio, targets in FAMILY:
             kh.step(f"upload.{tgt_name}.begin")
             api.upload_file(path_or_fileobj=str(tgt), path_in_repo=tgt_name,
                             repo_id=repo, repo_type="model",
-                            commit_message=f"rebake {tgt_name}: Q8_0 audio-tower floor (CrispASR #218, {sha[:8]})")
+                            commit_message=f"rebake {tgt_name}: Q8_0 audio-tower floor (StelnetTTS #218, {sha[:8]})")
             kh.step(f"upload.{tgt_name}.done")
         else:
             kh.step(f"upload.{tgt_name}.SKIPPED_validation_failed")

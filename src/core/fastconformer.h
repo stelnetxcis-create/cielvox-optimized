@@ -38,26 +38,26 @@
 
 namespace core_conformer {
 
-// Env-var gate: CRISPASR_FC_NO_FLASH=1 disables flash_attn_ext in the
+// Env-var gate: STELNETTTS_FC_NO_FLASH=1 disables flash_attn_ext in the
 // FastConformer encoder and uses manual QK^T + softmax + V instead.
 // Useful for A/B-ing the flash path on CPU for short sequences.
 static inline bool fc_no_flash() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_NO_FLASH");
+        const char* e = std::getenv("STELNETTTS_FC_NO_FLASH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
 }
 
-// Env-var gate: CRISPASR_FC_ATTN_CONT=1 restores the legacy ggml_cont copies
+// Env-var gate: STELNETTTS_FC_ATTN_CONT=1 restores the legacy ggml_cont copies
 // of Q/K/V before flash_attn_ext. The kernel reads strided views directly
 // (same as llama.cpp's permuted Q), so the copies are pure overhead — this
 // gate exists only for regression bisection (issue #81).
 static inline bool fc_attn_cont() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_ATTN_CONT");
+        const char* e = std::getenv("STELNETTTS_FC_ATTN_CONT");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -71,12 +71,12 @@ static inline bool fc_attn_cont() {
 // FASTER with flash (PERFORMANCE.md 2026-05-09), so auto never fires there.
 // Kaggle P100 A/B (2026-07-12, parakeet-ctc q8_0, transcripts identical):
 // jfk 11 s 0.180→0.095 s, jfk 55 s 1.140→0.360 s (3.2x) → default ON for
-// CUDA. CRISPASR_FC_GPU_MANUAL_ATTN: "0" never, "1" any non-CPU backend,
+// CUDA. STELNETTTS_FC_GPU_MANUAL_ATTN: "0" never, "1" any non-CPU backend,
 // unset = auto (CUDA only).
 static inline bool fc_gpu_manual_attn(ggml_backend_t backend) {
     static int v = -2;
     if (v == -2) {
-        const char* e = std::getenv("CRISPASR_FC_GPU_MANUAL_ATTN");
+        const char* e = std::getenv("STELNETTTS_FC_GPU_MANUAL_ATTN");
         v = (!e || !*e) ? -1 : (*e != '0' ? 1 : 0);
     }
     if (v == 0 || !backend || core_cpu_backend::is_cpu(backend))
@@ -303,7 +303,7 @@ struct BlockWeights {
     ggml_tensor *attn_q_w = nullptr, *attn_q_b = nullptr;
     ggml_tensor *attn_k_w = nullptr, *attn_k_b = nullptr;
     ggml_tensor *attn_v_w = nullptr, *attn_v_b = nullptr;
-    // Fused [Wq;Wk;Wv] concat (set by fuse_qkv at load, CRISPASR_FC_FUSED_QKV).
+    // Fused [Wq;Wk;Wv] concat (set by fuse_qkv at load, STELNETTTS_FC_FUSED_QKV).
     // When attn_qkv_w is non-null, build_block does one matmul + view-split.
     ggml_tensor *attn_qkv_w = nullptr, *attn_qkv_b = nullptr;
     ggml_tensor *attn_out_w = nullptr, *attn_out_b = nullptr;
@@ -335,20 +335,20 @@ struct BlockWeights {
 // Load-time Q8_0 repack of the conv pointwise weights (issue #81).
 //
 // The GGUF stores conv.pw1/pw2 as 3D conv tensors (1, d, 2d)/(1, d, d), so
-// crispasr-quantize's 2D-only rule skips them and they ship as F16 even in
+// stelnettts-quantize's 2D-only rule skips them and they ship as F16 even in
 // Q8_0/Q4_K models. The ggml CPU F16 mul_mat has no repack fast path and
 // measures ~6x slower per FLOP than Q8_0 (M1 per-node profile: the two pw
 // matmuls were 35% of encoder time in a q8_0 parakeet-ctc). Repacking them
 // to 2D Q8_0 at load moves them onto the optimized int8 kernels.
 //
-// Gate: CRISPASR_FC_PW_Q8 — "0" forces off, "1" forces on. Unset: enabled
+// Gate: STELNETTTS_FC_PW_Q8 — "0" forces off, "1" forces on. Unset: enabled
 // only when the model is already quantized (pw quantization noise is then
 // in-family); pure F16/F32 models keep their exact weights.
 // ---------------------------------------------------------------------------
 static inline int fc_pw_q8_mode() { // -1 = auto, 0 = off, 1 = on
     static int v = -2;
     if (v == -2) {
-        const char* e = std::getenv("CRISPASR_FC_PW_Q8");
+        const char* e = std::getenv("STELNETTTS_FC_PW_Q8");
         v = (!e || !*e) ? -1 : (*e != '0' ? 1 : 0);
     }
     return v;
@@ -434,7 +434,7 @@ static inline int repack_conv_pw_q8(std::vector<BlockWeights*>& layers, ggml_bac
         *j.first = j.second;
     }
 
-    fprintf(stderr, "%s: repacked %zu F16 conv pw tensors to Q8_0 (CRISPASR_FC_PW_Q8)\n", tag, jobs.size());
+    fprintf(stderr, "%s: repacked %zu F16 conv pw tensors to Q8_0 (STELNETTTS_FC_PW_Q8)\n", tag, jobs.size());
     return (int)jobs.size();
 }
 
@@ -445,12 +445,12 @@ static inline int repack_conv_pw_q8(std::vector<BlockWeights*>& layers, ggml_bac
 // instead of three matmuls over the same input. Output rows are the same
 // independent dot products, so the result is bit-identical to the split path.
 //
-// Gate: CRISPASR_FC_FUSED_QKV — "0" off, unset/other = on.
+// Gate: STELNETTTS_FC_FUSED_QKV — "0" off, unset/other = on.
 // ---------------------------------------------------------------------------
 static inline bool fc_fused_qkv_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_FUSED_QKV");
+        const char* e = std::getenv("STELNETTTS_FC_FUSED_QKV");
         v = (e && *e == '0') ? 0 : 1;
     }
     return v != 0;
@@ -543,7 +543,7 @@ static inline int fuse_qkv(std::vector<BlockWeights*>& layers, ggml_backend_t ba
         n_fused++;
     }
 
-    fprintf(stderr, "%s: fused Q/K/V projections for %d layers (CRISPASR_FC_FUSED_QKV)\n", tag, n_fused);
+    fprintf(stderr, "%s: fused Q/K/V projections for %d layers (STELNETTTS_FC_FUSED_QKV)\n", tag, n_fused);
     return n_fused;
 }
 
@@ -570,12 +570,12 @@ struct BlockParams {
 // O(T·window) memory instead of the O(T²) masked-full attention. Bit-exact vs
 // masked-full (tools/dev/winattn_parity.cpp) and ~3× faster on Metal.
 // DEFAULT ON when --att-context is set (only engages via build_block when a band
-// mask is supplied and T >= 2*BS). Set CRISPASR_FC_WINDOWED_ATTN=0 to force the
+// mask is supplied and T >= 2*BS). Set STELNETTTS_FC_WINDOWED_ATTN=0 to force the
 // legacy masked-full local path (T×T mask over full attention) for A/B.
 static inline bool fc_windowed_attn() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_WINDOWED_ATTN");
+        const char* e = std::getenv("STELNETTTS_FC_WINDOWED_ATTN");
         v = (e && *e == '0') ? 0 : 1; // default ON; only an explicit "0" disables
     }
     return v != 0;
@@ -584,12 +584,12 @@ static inline bool fc_windowed_attn() {
 // Block size for windowed attention. Must be >= max(att_left, att_right) so the
 // 3-block band [b-1, b, b+1] covers every query's window. Shared between the
 // encoder (mask builder) and build_block so the band mask dims agree. An env
-// override (CRISPASR_FC_WINDOW_BLOCK) can trade graph size vs. band width.
+// override (STELNETTTS_FC_WINDOW_BLOCK) can trade graph size vs. band width.
 static inline int fc_window_block_size(int att_left, int att_right) {
     int bs = att_left > att_right ? att_left : att_right;
     if (bs < 1)
         bs = 1;
-    const char* e = std::getenv("CRISPASR_FC_WINDOW_BLOCK");
+    const char* e = std::getenv("STELNETTTS_FC_WINDOW_BLOCK");
     if (e && *e) {
         int ov = std::atoi(e);
         if (ov >= bs)
@@ -691,7 +691,7 @@ static inline ggml_tensor* build_windowed_attn(ggml_context* ctx0, ggml_tensor* 
     return ggml_reshape_2d(ctx0, ggml_cont(ctx0, ggml_permute(ctx0, a_full, 0, 2, 1, 3)), d, T);
 }
 
-// Env gate: CRISPASR_FC_TILED_ATTN=1 enables query-TILED full attention for
+// Env gate: STELNETTTS_FC_TILED_ATTN=1 enables query-TILED full attention for
 // rel_pos (full-attention) models — EXACT (bit-identical) output, but the rel-pos
 // bias BD (and, on the manual path, the QK^T scores) is computed one query-block
 // at a time so peak memory is O(T·block) instead of O(T²). Default OFF; only for
@@ -707,7 +707,7 @@ static inline ggml_tensor* build_windowed_attn(ggml_context* ctx0, ggml_tensor* 
 static inline bool fc_tiled_attn() {
     static int v = -1;
     if (v < 0) {
-        const char* e = std::getenv("CRISPASR_FC_TILED_ATTN");
+        const char* e = std::getenv("STELNETTTS_FC_TILED_ATTN");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -715,10 +715,10 @@ static inline bool fc_tiled_attn() {
 
 // Query-block size for tiled attention. Bigger = fewer blocks / graph nodes but
 // larger O(T·block) slab; smaller = less memory but more launches. Env override
-// CRISPASR_FC_TILED_BLOCK.
+// STELNETTTS_FC_TILED_BLOCK.
 static inline int fc_tiled_block_size() {
     int bs = 512;
-    if (const char* e = std::getenv("CRISPASR_FC_TILED_BLOCK")) {
+    if (const char* e = std::getenv("STELNETTTS_FC_TILED_BLOCK")) {
         int o = std::atoi(e);
         if (o >= 1)
             bs = o;
@@ -788,7 +788,7 @@ static inline ggml_tensor* build_tiled_attn(ggml_context* ctx0, ggml_tensor* Q_u
 // with pad keys masked in attention (-inf; a finite constant gets overrun
 // once pad garbage grows), these cover every inter-column path, so valid
 // columns match an unpadded graph exactly up to GEMM micro-kernel ULP
-// reassociation (see the CRISPASR_FC_BUCKET note in canary_ctc.cpp).
+// reassociation (see the STELNETTTS_FC_BUCKET note in canary_ctc.cpp).
 // Returns the post-block (d, T) output.
 static inline ggml_tensor* build_block(ggml_context* ctx0, ggml_tensor* cur, ggml_tensor* pos_enc, int T,
                                        const BlockWeights& e, const BlockParams& p,
@@ -857,7 +857,7 @@ static inline ggml_tensor* build_block(ggml_context* ctx0, ggml_tensor* cur, ggm
     if (fc_windowed_attn() && window_band_mask &&
         fc_window_attn_applicable(T, p.att_context_left, p.att_context_right)) {
         static bool logged = false;
-        if (!logged && std::getenv("CRISPASR_FC_MEM_DEBUG")) {
+        if (!logged && std::getenv("STELNETTTS_FC_MEM_DEBUG")) {
             logged = true;
             fprintf(stderr, "[fc] windowed attn ENGAGED: T=%d BS=%d left=%d right=%d\n", T,
                     fc_window_block_size(p.att_context_left, p.att_context_right), p.att_context_left,
@@ -867,7 +867,7 @@ static inline ggml_tensor* build_block(ggml_context* ctx0, ggml_tensor* cur, ggm
     } else if (fc_tiled_attn() && !local_attn_mask && fc_tiled_attn_applicable(T)) {
         // ---- Query-TILED full attention (exact, O(T·block) peak memory) ----
         static bool logged = false;
-        if (!logged && std::getenv("CRISPASR_FC_MEM_DEBUG")) {
+        if (!logged && std::getenv("STELNETTTS_FC_MEM_DEBUG")) {
             logged = true;
             fprintf(stderr, "[fc] tiled attn ENGAGED: T=%d BS=%d\n", T, fc_tiled_block_size());
         }
@@ -920,7 +920,7 @@ static inline ggml_tensor* build_block(ggml_context* ctx0, ggml_tensor* cur, ggm
             // V needs [head_dim, T, n_heads] layout for flash_attn_ext (same as K).
             // The kernel reads strided views (nb0 == type size) directly — the
             // legacy ggml_cont copies of Q/K/V are restorable via
-            // CRISPASR_FC_ATTN_CONT=1 for regression bisection.
+            // STELNETTTS_FC_ATTN_CONT=1 for regression bisection.
             ggml_tensor* Q_f = Q_u;
             ggml_tensor* K_f = K_;
             ggml_tensor* V_f = ggml_permute(ctx0, V3, 0, 2, 1, 3);

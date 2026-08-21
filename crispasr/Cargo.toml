@@ -1,35 +1,35 @@
 [package]
-name = "crispasr"
+name = "stelnettts"
 version = "0.8.29"
 edition = "2021"
-description = "Safe Rust wrapper for CrispASR — lightweight on-device speech recognition (Whisper, Qwen3-ASR, FastConformer, and more)."
+description = "Safe Rust wrapper for StelnetTTS — lightweight on-device speech recognition (Whisper, Qwen3-ASR, FastConformer, and more)."
 license = "MIT"
-repository = "https://github.com/CrispStrobe/CrispASR"
-homepage = "https://github.com/CrispStrobe/CrispASR"
-documentation = "https://docs.rs/crispasr"
+repository = "https://github.com/Cyna/StelnetTTS"
+homepage = "https://github.com/Cyna/StelnetTTS"
+documentation = "https://docs.rs/stelnettts"
 readme = "README.md"
 keywords = ["asr", "speech-recognition", "whisper", "ggml", "speech-to-text"]
 categories = ["multimedia::audio", "api-bindings"]
 
 # path + version dep on the sibling -sys crate. The path resolves for local
-# development AND for git/path downstream consumers (cargo finds crispasr-sys
+# development AND for git/path downstream consumers (cargo finds stelnettts-sys
 # inside the checkout); on `cargo publish` the path is stripped and the version
 # pin resolves the crates.io release (both crates are published there). See
 # README.md for the two consumption modes (git build-from-source vs crates.io
-# release + a pre-built lib via CRISPASR_LIB_DIR).
+# release + a pre-built lib via STELNETTTS_LIB_DIR).
 [dependencies]
-crispasr-sys = { path = "../crispasr-sys", version = "0.8.29" }
+stelnettts-sys = { path = "../stelnettts-sys", version = "0.8.29" }
 
 [features]
 default = []
-cuda = ["crispasr-sys/cuda"]
-metal = ["crispasr-sys/metal"]
-vulkan = ["crispasr-sys/vulkan"]
+cuda = ["stelnettts-sys/cuda"]
+metal = ["stelnettts-sys/metal"]
+vulkan = ["stelnettts-sys/vulkan"]
 
 [dev-dependencies]
 hound = "3.5"
 
 [package.metadata.docs.rs]
-# docs.rs has no native libcrispasr installed — disable build.rs link
+# docs.rs has no native libstelnettts installed — disable build.rs link
 # probing by exposing a stub, or document that docs builds need the lib.
 all-features = true

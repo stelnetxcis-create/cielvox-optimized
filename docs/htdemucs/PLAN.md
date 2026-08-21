@@ -14,7 +14,7 @@ could not run it (8 GB, OOM). This branch does that validation on the M1.
 - [x] Reference dumped: 22 stages, F32 GGUF converted (533 tensors, 160 MB)
 - [x] Per-stage capture + `htdemucs_diff()` in `src/htdemucs.cpp`
       (self-contained runner, dots-tts/mel-band-roformer pattern)
-- [x] `htdemucs` wired into `examples/cli/crispasr_diff_main.cpp` (checklist #9)
+- [x] `htdemucs` wired into `examples/cli/stelnettts_diff_main.cpp` (checklist #9)
 - [x] **BUG 1 FIXED** — `read_tensor_f32` infinite recursion (see below)
 - [x] First full per-stage run (was: 6/21 stages)
 - [x] **BUG 2 FIXED** — DConv GroupNorms
@@ -289,7 +289,7 @@ rules) vs 168 MB F32.
 
 ## Performance
 
-### Baseline profile (CRISPASR_HTDEMUCS_PROFILE=1, one 343980-sample segment)
+### Baseline profile (STELNETTTS_HTDEMUCS_PROFILE=1, one 343980-sample segment)
 
 The runtime was correctness-first: ggml was used mostly for weight loading and
 7 small graphs, while every expensive op was a hand-written scalar loop. The
@@ -309,15 +309,15 @@ Profiling said the bottleneck was NOT the convolutions:
 
 ### What was done (all gated, all output-equivalent)
 
-1. `CRISPASR_HTDEMUCS_BLAS` — the CrossTransformer's matmuls (QKV, QK^T,
+1. `STELNETTTS_HTDEMUCS_BLAS` — the CrossTransformer's matmuls (QKV, QK^T,
    attn·V, out-proj, both FFN linears, self- and cross-attention) through
    `cblas_sgemm`. The scalar versions strode `seq_len` floats (~10 KB) in their
    innermost loop — roughly a cache miss per multiply-add.
    **ct.self_attn 322.3 s -> 8.5 s, ct.cross_attn 205.7 s -> 3.5 s.**
-2. `CRISPASR_HTDEMUCS_FASTCONV` — batched im2col + one GEMM instead of
+2. `STELNETTTS_HTDEMUCS_FASTCONV` — batched im2col + one GEMM instead of
    per-time-frame im2col + dot-product loops; 1x1 convs emitted as channel
    matmuls. **enc.conv2d 10.0 s -> 0.17 s, enc.rewrite 12.2 s -> 0.30 s.**
-3. `CRISPASR_HTDEMUCS_WCACHE` — cache F32 weight copies by tensor pointer.
+3. `STELNETTTS_HTDEMUCS_WCACHE` — cache F32 weight copies by tensor pointer.
    The DConv stacks called `read_tensor_f32` from inside their per-band loop:
    9 reads x 680 bands ~ 6k redundant dequant+copy passes per encoder layer.
 
@@ -415,7 +415,7 @@ small. The two big structural levers left are both untouched:
   graph port is far more tractable than it was against the scalar loops.
 
 
-## ggml graph port (CRISPASR_HTDEMUCS_GGML)
+## ggml graph port (STELNETTTS_HTDEMUCS_GGML)
 
 The CrossTransformer now has a real ggml graph implementation, and the backend
 is finally selectable — `ggml_backend_cpu_init()` was hardcoded, so `use_gpu`
@@ -485,7 +485,7 @@ This is precisely the dev-guide failure mode ("a quiet-CPU-vs-loaded-GPU
 comparison invented a false 2x win"). A verdict needs a quiet box or a Kaggle
 CUDA run.
 
-Per the inverse-default rule, **`CRISPASR_HTDEMUCS_GGML` stays default OFF**:
+Per the inverse-default rule, **`STELNETTTS_HTDEMUCS_GGML` stays default OFF**:
 verified correct, not yet proven faster overall. The CPU/BLAS path is untouched
 and remains the default.
 
@@ -499,8 +499,8 @@ the follow-up.
 
 ## Unified ggml graph — frequency path complete
 
-With `CRISPASR_HTDEMUCS_GGML=1` the **encoder, CrossTransformer and decoder**
-all run as ggml graphs on the selected backend (`CRISPASR_HTDEMUCS_GPU=1` for
+With `STELNETTTS_HTDEMUCS_GGML=1` the **encoder, CrossTransformer and decoder**
+all run as ggml graphs on the selected backend (`STELNETTTS_HTDEMUCS_GPU=1` for
 Metal/CUDA/Vulkan).
 
 ### How each op maps
@@ -632,7 +632,7 @@ reflect real separation, not a short-circuit.
 ### Verdict
 
 - **CPU+Accelerate is the fastest path on Apple Silicon**, by ~36% over the
-  best GPU path. `CRISPASR_HTDEMUCS_GGML` correctly stays default OFF.
+  best GPU path. `STELNETTTS_HTDEMUCS_GGML` correctly stays default OFF.
 - **Fusion bought ~2%** (5.71 -> 5.62 s median), i.e. nothing. The reason is
   M1's unified memory: the host<->device "roundtrips" fusion removes are not
   real transfers there, so the overhead I predicted was largely absent. What

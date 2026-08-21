@@ -3,8 +3,8 @@
 //
 // The path-selection + long-audio + segmentation logic that decides HOW to run
 // parakeet on a buffer used to be written twice — once in the CLI backend
-// adapter (examples/cli/crispasr_backend_parakeet.cpp) and once inline in the
-// session C-ABI (src/crispasr_c_api.cpp). That divergence is why issue #257 (and
+// adapter (examples/cli/stelnettts_backend_parakeet.cpp) and once inline in the
+// session C-ABI (src/stelnettts_c_api.cpp). That divergence is why issue #257 (and
 // the JA-detection fix before it) had to be applied in multiple places.
 //
 // This header hoists that orchestration into the library so BOTH surfaces call
@@ -23,8 +23,8 @@
 #include <utility>
 #include <vector>
 
-// Neutral, surface-agnostic segment (subset both crispasr_segment and
-// crispasr_session_seg can be built from).
+// Neutral, surface-agnostic segment (subset both stelnettts_segment and
+// stelnettts_session_seg can be built from).
 struct parakeet_seg {
     struct word {
         std::string text;
@@ -52,7 +52,7 @@ struct parakeet_orchestrate_opts {
     float chunk_overlap_seconds = 2.0f;
     bool no_prints = false;
     // Issue #350: the caller came through a chunked long-form entry point
-    // (crispasr_session_transcribe_chunked[_lang]) but left the length to the
+    // (stelnettts_session_transcribe_chunked[_lang]) but left the length to the
     // per-model default (`chunk_seconds == 0`, documented as "use per-model
     // defaults"). That is an explicit request for BOUNDED long-form, so it must
     // never collapse to one unbounded full-length pass — see
@@ -101,7 +101,7 @@ struct parakeet_strategy_in {
 // with the 300 s default cap means a 30-300 s file takes ONE full-length pass —
 // too long for the decoder to hold (spans vanish), too short to reach LONGFORM.
 // Such calls are capped at the reliable window instead, so anything longer is
-// sliced. An explicit CRISPASR_PARAKEET_STREAM_THRESHOLD still wins (it is
+// sliced. An explicit STELNETTTS_PARAKEET_STREAM_THRESHOLD still wins (it is
 // passed in as `stream_threshold_s` with `threshold_from_env` set), as does an
 // explicit chunk length (that routes to CHUNK_SEGMENTED before the cap is read).
 inline int parakeet_effective_single_pass_cap_s(const parakeet_strategy_in& in, bool threshold_from_env) {
@@ -115,7 +115,7 @@ inline int parakeet_effective_single_pass_cap_s(const parakeet_strategy_in& in, 
 // exceeds the effective single-pass cap. DISTINCT from that cap: it only affects
 // audio that was going to be split anyway, so lowering it costs no seamless
 // single-pass coverage. Effective window is min(this, cap), which keeps
-// CRISPASR_PARAKEET_STREAM_THRESHOLD=N behaving as before for N <= 90.
+// STELNETTTS_PARAKEET_STREAM_THRESHOLD=N behaving as before for N <= 90.
 //
 // The two used to be one number and could not be tuned independently: lowering
 // it to get cheaper LONGFORM windows also pushed mid-length audio off the
@@ -141,7 +141,7 @@ inline int parakeet_effective_single_pass_cap_s(const parakeet_strategy_in& in, 
 //   B      1.24 %   1.56 %   1.38 %   1.24 %
 // Non-monotonic and inside run-to-run noise. So tune this for speed and memory;
 // coverage is gap_fill_segments' job.
-// Override with CRISPASR_PARAKEET_LONGFORM_WINDOW.
+// Override with STELNETTTS_PARAKEET_LONGFORM_WINDOW.
 constexpr int kParakeetLongformWindowS = 90;
 
 // Pure routing decision — no model, no side effects. Mirrors the adapter:
@@ -229,7 +229,7 @@ inline std::vector<std::pair<int64_t, int64_t>> parakeet_find_gaps(std::vector<s
 // (8.0) is calibrated so a ~4 min clip (T≈2800, 8 heads) estimates ~2 GiB,
 // matching the reporter's 1911 MiB, and is deliberately a slight OVER-estimate
 // so the gate errs toward the safe streamed path. Env-tunable via
-// CRISPASR_PARAKEET_MEM_COEFF. This is a heuristic gate, NOT an exact allocator
+// STELNETTTS_PARAKEET_MEM_COEFF. This is a heuristic gate, NOT an exact allocator
 // model — the reactive OOM fallback still backstops a wrong estimate.
 inline double parakeet_est_singlepass_peak_mb(int T_enc, int n_heads, double coeff) {
     if (T_enc <= 0 || n_heads <= 0)
@@ -249,7 +249,7 @@ inline bool parakeet_singlepass_fits_budget(int T_enc, int n_heads, double budge
 
 // Full orchestration: mel → path selection → decode → segmentation, returning
 // the neutral segment list. `is_ja` is passed in (callers already detect it, or
-// pass parakeet_vocab_is_japanese(ctx)). Reads the same CRISPASR_PARAKEET_*
+// pass parakeet_vocab_is_japanese(ctx)). Reads the same STELNETTTS_PARAKEET_*
 // env knobs the adapter did, so behaviour is byte-identical to the pre-hoist
 // adapter path.
 // True when parakeet_transcribe_segments() would take the plain SINGLE_PASS

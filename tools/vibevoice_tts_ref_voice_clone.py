@@ -3,7 +3,7 @@
 
 Runs the official VibeVoice pipeline on a reference WAV and dumps the
 intermediate encoder/connector outputs so they can be compared with the
-C++ implementation via crispasr-diff or manual cosine comparison.
+C++ implementation via stelnettts-diff or manual cosine comparison.
 
 Dumped stages (all little-endian float32):
 

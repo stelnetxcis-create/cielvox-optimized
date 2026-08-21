@@ -19,7 +19,7 @@ base_model: nvidia/parakeet-tdt-1.1b
 
 # Parakeet TDT 1.1B — GGUF (ggml-quantised)
 
-GGUF / ggml conversions of [`nvidia/parakeet-tdt-1.1b`](https://huggingface.co/nvidia/parakeet-tdt-1.1b) for use with the `crispasr` CLI from **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversions of [`nvidia/parakeet-tdt-1.1b`](https://huggingface.co/nvidia/parakeet-tdt-1.1b) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 The **larger** Parakeet TDT — 1.1 B parameters, 42-layer FastConformer encoder. The biggest pure-English TDT variant in the family. Pick this when you want maximum WER quality on long-tail English vocabulary and don't mind paying 2× the compute relative to 0.6 B.
 
@@ -27,7 +27,7 @@ The **larger** Parakeet TDT — 1.1 B parameters, 42-layer FastConformer encoder
 - **Built-in word-level timestamps** from the TDT decoder
 - **CC-BY-4.0** licence
 
-This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `crispasr-quantize`.
+This repo provides three quantisations, all converted from the same `.nemo` checkpoint via the `convert-parakeet-to-gguf.py` script and quantised with `stelnettts-quantize`.
 
 ## Files
 
@@ -51,21 +51,21 @@ Output is **lowercase, no punctuation** by design — the upstream vocab is lowe
 
 ```bash
 # 1. Build the runtime
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target crispasr-lib
+cmake --build build -j$(nproc) --target stelnettts-lib
 
 # 2a. Auto-download via the registry key
-./build/bin/crispasr -m parakeet-tdt-1.1b --auto-download -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt-1.1b --auto-download -f your-audio.wav
 
 # 2b. Or explicit download + load
-hf download cstr/parakeet-tdt-1.1b-GGUF \
+hf download Xenna/parakeet-tdt-1.1b-GGUF \
     parakeet-tdt-1.1b-q4_k.gguf --local-dir .
-./build/bin/crispasr -m parakeet-tdt-1.1b-q4_k.gguf -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt-1.1b-q4_k.gguf -f your-audio.wav
 
 # 2c. Lowercase output → add punctuation
-./build/bin/crispasr -m parakeet-tdt-1.1b --punc-model fullstop-punc -f your-audio.wav
+./build/bin/stelnettts -m parakeet-tdt-1.1b --punc-model fullstop-punc -f your-audio.wav
 ```
 
 ## When to pick this over the other Parakeet variants
@@ -73,10 +73,10 @@ hf download cstr/parakeet-tdt-1.1b-GGUF \
 | Scenario | Pick |
 | --- | --- |
 | English, long-tail vocab, fine with 2× compute | **tdt-1.1b** (this repo) |
-| English, best WER per FLOP, mixed-case output | [`cstr/parakeet-tdt-0.6b-v2-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v2-GGUF) |
-| Multilingual (25 EU languages) | [`cstr/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) |
-| Tight RAM, English | [`cstr/parakeet-tdt_ctc-110m-GGUF`](https://huggingface.co/cstr/parakeet-tdt_ctc-110m-GGUF) |
-| English 1.1B with proper casing/punct in output | [`cstr/parakeet-tdt_ctc-1.1b-GGUF`](https://huggingface.co/cstr/parakeet-tdt_ctc-1.1b-GGUF) |
+| English, best WER per FLOP, mixed-case output | [`Xenna/parakeet-tdt-0.6b-v2-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v2-GGUF) |
+| Multilingual (25 EU languages) | [`Xenna/parakeet-tdt-0.6b-v3-GGUF`](https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF) |
+| Tight RAM, English | [`Xenna/parakeet-tdt_ctc-110m-GGUF`](https://huggingface.co/Xenna/parakeet-tdt_ctc-110m-GGUF) |
+| English 1.1B with proper casing/punct in output | [`Xenna/parakeet-tdt_ctc-1.1b-GGUF`](https://huggingface.co/Xenna/parakeet-tdt_ctc-1.1b-GGUF) |
 
 ## Model architecture
 
@@ -95,7 +95,7 @@ hf download cstr/parakeet-tdt-1.1b-GGUF \
 ## Attribution
 
 - **Original model:** [`nvidia/parakeet-tdt-1.1b`](https://huggingface.co/nvidia/parakeet-tdt-1.1b) (CC-BY-4.0). NVIDIA NeMo team.
-- **GGUF conversion + ggml runtime:** [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- **GGUF conversion + ggml runtime:** [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).
 
 ## License
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Generate a crispasr-diff reference archive for the deterministic chatterbox
+"""Generate a stelnettts-diff reference archive for the deterministic chatterbox
 `t3_text_tokens` stage (issue #170 NFKD validation).
 
 Reproduces the upstream ChatterboxMultilingualTTS text path exactly —
 `punc_norm` then `MTLTokenizer.encode` (lowercase + NFKD + language-tag prepend
 + SPACE substitution) — and writes the resulting token ids to a GGUF the
-crispasr-diff `chatterbox` backend compares its own tokenization against.
+stelnettts-diff `chatterbox` backend compares its own tokenization against.
 
 Tokenizer-only: needs just grapheme_mtl_merged_expanded_v1.json, not the full
 model, so it runs anywhere.

@@ -2,7 +2,7 @@
 """Kaggle kernel: download orpheus-3b-0.1-ft F16 GGUF, quantize to Q4_K, upload to HF.
 
 CPU-only (30 GB RAM is enough for the 6.2 GB F16 model).
-Downloads orpheus-3b-0.1-ft-f16.gguf from cstr/orpheus-3b-0.1-ft-GGUF,
+Downloads orpheus-3b-0.1-ft-f16.gguf from Xenna/orpheus-3b-0.1-ft-GGUF,
 quantizes to Q4_K, uploads back to the same HF repo.
 
 Push: python -m kaggle kernels push -p tools/kaggle/orpheus-quantize
@@ -12,11 +12,11 @@ import os, sys, subprocess
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else WORK
 BUILD = TEMP / "build"
 
-HF_REPO = "cstr/orpheus-3b-0.1-ft-GGUF"
+HF_REPO = "Xenna/orpheus-3b-0.1-ft-GGUF"
 F16_FILE = "orpheus-3b-0.1-ft-f16.gguf"
 Q4K_FILE = "orpheus-3b-0.1-ft-q4_k.gguf"
 
@@ -25,7 +25,7 @@ print("=== Phase 0: clone repo ===", flush=True)
 if not REPO.exists():
     subprocess.check_call([
         "git", "clone", "--depth", "1", "-b", "main",
-        "https://github.com/CrispStrobe/CrispASR", str(REPO),
+        "https://github.com/Cyna/StelnetTTS", str(REPO),
     ])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
@@ -62,7 +62,7 @@ if not f16_path.exists():
     )
 print(f"  F16 GGUF: {f16_path} ({f16_path.stat().st_size / (1024**3):.2f} GiB)", flush=True)
 
-# -- Phase 4: Build crispasr-quantize --
+# -- Phase 4: Build stelnettts-quantize --
 kh.step("build quantizer")
 BUILD.mkdir(parents=True, exist_ok=True)
 flags = kh.cache_and_link_flags()
@@ -74,10 +74,10 @@ kh.sh_with_progress(
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
         f"cmake --build {BUILD} -j{kh.safe_build_jobs(gpu=False)} "
-        f"--target crispasr-quantize"
+        f"--target stelnettts-quantize"
     )
 
-quantize_bin = BUILD / "bin" / "crispasr-quantize"
+quantize_bin = BUILD / "bin" / "stelnettts-quantize"
 print(f"  quantizer: {quantize_bin}", flush=True)
 
 # -- Phase 5: Quantize F16 -> Q4_K --
@@ -99,7 +99,7 @@ if hf_token:
         path_or_fileobj=str(q4k_path),
         path_in_repo=Q4K_FILE,
         repo_id=HF_REPO, repo_type="model",
-        commit_message="Add Q4_K GGUF (orpheus-3b-0.1-ft, crispasr-quantize)",
+        commit_message="Add Q4_K GGUF (orpheus-3b-0.1-ft, stelnettts-quantize)",
     )
     print(f"  uploaded to https://huggingface.co/{HF_REPO}", flush=True)
 else:

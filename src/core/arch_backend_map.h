@@ -1,21 +1,21 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// `general.architecture` → CrispASR backend name: the SINGLE source of truth.
+// `general.architecture` → StelnetTTS backend name: the SINGLE source of truth.
 //
 // Issue #335: `Session::open()` (Rust/Python/Go/Dart, i.e. anything on the C
 // ABI) could not open granite-speech-4.1-2b-plus while the CLI opened it fine.
 // The reason was pure table drift: two independent copies of this mapping had
 // grown side by side —
 //
-//   * `examples/cli/crispasr_backend.cpp` (CLI pass 2, after its filename pass)
-//   * `src/crispasr_c_api.cpp::crispasr_detect_backend_from_gguf` (every binding)
+//   * `examples/cli/stelnettts_backend.cpp` (CLI pass 2, after its filename pass)
+//   * `src/stelnettts_c_api.cpp::stelnettts_detect_backend_from_gguf` (every binding)
 //
 // — and the C-ABI copy only knew `"granite-speech"` while every converter has
 // always written `"granite_speech"` (models/convert-granite-speech-to-gguf.py).
 // The CLI never noticed because its *filename* pass matches "granite"+"speech"
 // first and short-circuits pass 2; the bindings have no filename pass, so the
-// detect returned "" and `crispasr_session_open` returned NULL.
+// detect returned "" and `stelnettts_session_open` returned NULL.
 //
 // granite was not alone — an audit of the two tables found 113 architecture
 // strings the CLI knew and the C ABI did not, including whole backends
@@ -34,11 +34,11 @@
 //     `GGUFWriter(..., arch=...)` / `add_string("general.architecture", ...)`),
 //     not the one you would have chosen. Underscore/hyphen/squashed spellings
 //     all exist in the wild, so list every spelling that ships.
-//   * The value is a backend name accepted by BOTH `crispasr_create_backend()`
-//     (CLI) and the `s->backend ==` dispatch in `crispasr_session_open_explicit`
+//   * The value is a backend name accepted by BOTH `stelnettts_create_backend()`
+//     (CLI) and the `s->backend ==` dispatch in `stelnettts_session_open_explicit`
 //     — tests/test-arch-backend-map.cpp pins that they stay in sync.
 //   * Component/auxiliary GGUFs (voice packs, tokenizers, codecs, VAD/LID
-//     helpers, `crispasr.reference` diff archives) are deliberately ABSENT:
+//     helpers, `stelnettts.reference` diff archives) are deliberately ABSENT:
 //     they are not standalone sessions, and an unknown architecture correctly
 //     yields "" rather than a backend that would fail on load.
 // ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ namespace core_arch {
 
 struct entry {
     const char* arch;    // exact `general.architecture` value in the GGUF
-    const char* backend; // CrispASR backend name
+    const char* backend; // StelnetTTS backend name
 };
 
 // clang-format off
@@ -85,9 +85,9 @@ inline const entry* table(size_t* n_out) {
         // runtime and its GGUF architecture is plain "cohere"/"cohere-transcribe".
         {"cohere",                    "cohere"},
         {"cohere-transcribe",         "cohere"},
-        {"qwen3-asr",                 "qwen3"},
-        {"qwen3_asr",                 "qwen3"},
-        {"qwen3asr",                  "qwen3"},
+        {"cielvox2-asr",                 "qwen3"},
+        {"cielvox2_asr",                 "qwen3"},
+        {"cielvox2asr",                  "qwen3"},
         {"voxtral",                   "voxtral"},
         {"voxtral4b",                 "voxtral4b"},
         {"voxtral-4b",                "voxtral4b"},
@@ -172,9 +172,9 @@ inline const entry* table(size_t* n_out) {
         {"vibevoice-tts",             "vibevoice-tts"},
 
         // ── TTS ────────────────────────────────────────────────────────────
-        {"qwen3-tts",                 "qwen3-tts"},
-        {"qwen3_tts",                 "qwen3-tts"},
-        {"qwen3tts",                  "qwen3-tts"},
+        {"cielvox2-tts",                 "cielvox2-tts"},
+        {"cielvox2_tts",                 "cielvox2-tts"},
+        {"cielvox2tts",                  "cielvox2-tts"},
         {"miotts",                    "miotts"},
         {"mio-tts",                   "miotts"},
         {"moss-tts",                  "moss-tts"},

@@ -13,7 +13,7 @@
 // n_mels, n_fft, hop_length, audio_max_pos) all come from the GGUF metadata
 // under <meta_prefix>. Tensor names live under <tensor_prefix>.
 //
-// Lifted and parameterized from CrispASR's src/qwen3_asr.cpp audio tower
+// Lifted and parameterized from StelnetTTS's src/cielvox2_asr.cpp audio tower
 // (Stage 1 + Stage 2). Numerical equivalence is locked in by
 // tests/test_qwen3_audio_tower.cpp.
 
@@ -28,8 +28,8 @@
 #include "ggml-cpu.h"
 #include "gguf.h"
 
-// audio_tower.cpp is shared: CrispASR builds it standalone (no imatrix), and
-// CrispEmbed builds it with its src/ on the include path (imatrix.h present) so
+// audio_tower.cpp is shared: StelnetTTS builds it standalone (no imatrix), and
+// StelnetEmbed builds it with its src/ on the include path (imatrix.h present) so
 // a multimodal calibration run exercises the audio-tower tensors. Feature-detect
 // so the SAME source compiles in both; keep the __has_include guard intact.
 #if __has_include("imatrix.h")
@@ -82,7 +82,7 @@ struct hparams {
     uint32_t n_window_infer = 800; // not used by Stage-2 encoder graph
 
     // Attention-mask shape:
-    //   0 = full (all post-cnn frames attend to each other) — qwen3-asr's
+    //   0 = full (all post-cnn frames attend to each other) — cielvox2-asr's
     //       eager_attention_forward ignores cu_seqlens, so this matches HF.
     //   1 = windowed — encoder attention is block-diagonal across windows of
     //       (T_chunk_out * (n_window_infer / (n_window*2))) frames AND
@@ -153,7 +153,7 @@ struct crisp_audio_context {
 };
 
 // ---------------------------------------------------------------------------
-// FFT — same Cooley-Tukey routine qwen3_asr.cpp uses, lifted unchanged.
+// FFT — same Cooley-Tukey routine cielvox2_asr.cpp uses, lifted unchanged.
 // Handles n_fft=400 (= 2^4 * 25) by recursing down to a 25-point DFT.
 // ---------------------------------------------------------------------------
 
@@ -240,16 +240,16 @@ bool load_model(crisp_audio_context& ctx, const char* path, const crisp_audio_pa
         auto& hp = ctx.hp;
         // Pick the key prefix the file actually uses. We try the caller's
         // requested prefix first; if its canonical "d_model" key isn't
-        // present we fall back to the qwen3-asr key layout so existing
-        // qwen3-asr GGUFs work without re-conversion.
+        // present we fall back to the cielvox2-asr key layout so existing
+        // cielvox2-asr GGUFs work without re-conversion.
         std::string ap = mprefix; // audio-fields prefix
         std::string tp;           // top-level (sr/n_fft/etc.) prefix
         const std::string canonical_probe = mprefix + "d_model";
         if (gguf_find_key(gctx, canonical_probe.c_str()) < 0) {
-            const std::string qwen_probe = "qwen3asr.audio.d_model";
+            const std::string qwen_probe = "cielvox2asr.audio.d_model";
             if (gguf_find_key(gctx, qwen_probe.c_str()) >= 0) {
-                ap = "qwen3asr.audio.";
-                tp = "qwen3asr.";
+                ap = "cielvox2asr.audio.";
+                tp = "cielvox2asr.";
             } else {
                 tp = mprefix; // both stay at requested prefix; defaults will apply
             }
@@ -275,7 +275,7 @@ bool load_model(crisp_audio_context& ctx, const char* path, const crisp_audio_pa
         hp.ff_dim = ua("ff_dim", hp.ff_dim);
         hp.conv_ch = ua("conv_channels", hp.conv_ch);
         hp.max_source_pos = ua("max_source_pos", hp.max_source_pos);
-        // qwen3-asr converter wrote `proj_dim`; BidirLM/crisp_audio writes
+        // cielvox2-asr converter wrote `proj_dim`; BidirLM/crisp_audio writes
         // `output_dim`. Try both so the same loader works on both GGUF
         // dialects without forcing the user to re-run the converter.
         hp.output_dim = ua("output_dim", ua("proj_dim", hp.output_dim));
@@ -463,7 +463,7 @@ ggml_cgraph* build_graph_qwen_omni(crisp_audio_context& ctx, int T_chunk, int nu
     ggml_set_input(pe_in);
 
     const int N_padded = T_chunk_out_expected * num_chunks;
-    // Reference contract (modeling_qwen3_asr.py: `padded_embed[padded_mask_after_cnn]`):
+    // Reference contract (modeling_cielvox2_asr.py: `padded_embed[padded_mask_after_cnn]`):
     // frames produced by the zero-padded tail of a partial trailing chunk are
     // REMOVED before the transformer blocks — the encoder attends over the
     // N_keep valid frames only. valid_idx selects them post-conv/PE.
@@ -648,7 +648,7 @@ struct crisp_audio_context* crisp_audio_init_from_file(const char* gguf_path, co
         return nullptr;
     }
 
-    // Sized to match qwen3_asr's pattern (ggml metadata, not actual data —
+    // Sized to match cielvox2_asr's pattern (ggml metadata, not actual data —
     // graph holds ~290 ops for an 18-layer encoder, ~390 for 24 layers, so
     // 16384 is comfortable headroom).
     constexpr int kGraphCapacity = 16384;
@@ -659,7 +659,7 @@ struct crisp_audio_context* crisp_audio_init_from_file(const char* gguf_path, co
     backends.push_back(ctx->backend);
     if (ctx->backend_cpu)
         backends.push_back(ctx->backend_cpu);
-    // op_offload=false to match qwen3_asr's behavior — keeps each tensor
+    // op_offload=false to match cielvox2_asr's behavior — keeps each tensor
     // on its assigned backend rather than letting the scheduler migrate.
     ctx->sched = ggml_backend_sched_new(backends.data(), nullptr, (int)backends.size(), kGraphCapacity, false, false);
 
@@ -802,7 +802,7 @@ float* crisp_audio_encode(struct crisp_audio_context* ctx, const float* mel_feat
 
     // Valid (non-padding) post-cnn frames per chunk. Only the trailing
     // partial chunk (T_mel % chunk_T != 0) produces fewer than T_chunk_out.
-    // Reference contract (modeling_qwen3_asr.py `padded_embed[padded_mask_after_cnn]`
+    // Reference contract (modeling_cielvox2_asr.py `padded_embed[padded_mask_after_cnn]`
     // + processor `_get_feat_extract_output_lengths`): padding frames are
     // REMOVED before the transformer blocks, so N returned to the caller is
     // sum(valid_per_chunk) — the same count the prompt's <|audio_pad|>

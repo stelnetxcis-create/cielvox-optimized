@@ -21,8 +21,8 @@
 #include "core/bpe.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -55,7 +55,7 @@ namespace {
 static bool chatterbox_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CHATTERBOX_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CHATTERBOX_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -824,7 +824,7 @@ struct chatterbox_context {
     // unconditioned pass otherwise skips the bucket fast path (use_kv_k set) and
     // rebuilds + re-allocates its graph each step. Same graph topology as the
     // cond bucket — only the KV-cache binding differs — so it is bit-identical
-    // (token-parity verified). Opt IN with CRISPASR_CHATTERBOX_T3_CFG_BUCKET=1;
+    // (token-parity verified). Opt IN with STELNETTTS_CHATTERBOX_T3_CFG_BUCKET=1;
     // default OFF because graph-rebuild is negligible on this compute-bound
     // decode (cf. §208) and the dual-scheduler path showed no win on contended
     // M1. Kept gated for quiet-machine evaluation + regression bisection.
@@ -833,7 +833,7 @@ struct chatterbox_context {
     int t3_active_bucket_cfg = -1;
 
     // §214: dedicated scheduler for the batched classifier-free-guidance (B=2)
-    // T3 decode step (CRISPASR_CHATTERBOX_T3_CFG_B2). Kept separate from c->sched
+    // T3 decode step (STELNETTTS_CHATTERBOX_T3_CFG_B2). Kept separate from c->sched
     // and the bucket schedulers so the B=2 graph can rebuild + re-alloc per step
     // without disturbing the cond/uncond bucket allocations.
     ggml_backend_sched_t t3_sched_b2 = nullptr;
@@ -1303,8 +1303,8 @@ static bool kv_alloc(chatterbox_context* c, int max_ctx) {
     if (!c->kv_ctx)
         return false;
 
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half. Default f16/f16.
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half. Default f16/f16.
     // Chatterbox uses core_attn::kv_self_attn for the cache write/read,
     // so quant types are safe (the helper switches to ggml_set_rows for
     // quant writes and ggml_cast(F32) for quant reads).
@@ -1429,8 +1429,8 @@ static ggml_cgraph* build_graph_t3_kv(chatterbox_context* c, int n_past, int n_t
 
         // PLAN #83 diag: name layer-N intermediates so the per-op CPU/GPU bisect
         // dump in run_t3_kv can fetch and compare them. Layer index is
-        // controllable via CRISPASR_CHATTERBOX_DUMP_LAYER (default 0).
-        const char* dbg_layer_env = std::getenv("CRISPASR_CHATTERBOX_DUMP_LAYER");
+        // controllable via STELNETTTS_CHATTERBOX_DUMP_LAYER (default 0).
+        const char* dbg_layer_env = std::getenv("STELNETTTS_CHATTERBOX_DUMP_LAYER");
         const int dbg_layer = dbg_layer_env ? (int)std::strtol(dbg_layer_env, nullptr, 10) : 0;
         if ((int)il == dbg_layer) {
             ggml_set_name(x, "L0_norm_out");
@@ -1440,8 +1440,8 @@ static ggml_cgraph* build_graph_t3_kv(chatterbox_context* c, int n_past, int n_t
             // Independent diagnostic K projection, rope, and pre-cpy view —
             // computed only when one of the dump knobs is set.  Avoids an
             // unconditional extra matmul in the production graph.
-            if (std::getenv("CRISPASR_CHATTERBOX_DUMP_NORM_AT") || std::getenv("CRISPASR_CHATTERBOX_DUMP_KPROJ_AT") ||
-                std::getenv("CRISPASR_CHATTERBOX_DUMP_KROPE_AT") || std::getenv("CRISPASR_CHATTERBOX_DUMP_WK")) {
+            if (std::getenv("STELNETTTS_CHATTERBOX_DUMP_NORM_AT") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_KPROJ_AT") ||
+                std::getenv("STELNETTTS_CHATTERBOX_DUMP_KROPE_AT") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_WK")) {
                 // Dequantize the layer-0 K weight to F32 so the dump can
                 // compare CPU vs GPU dequant directly (without going through
                 // a matmul). Helps separate dequant precision from matmul
@@ -1488,8 +1488,8 @@ static ggml_cgraph* build_graph_t3_kv(chatterbox_context* c, int n_past, int n_t
                                                     use_kv_k, use_kv_v, (int)il, n_past, kvp,
                                                     /*qkv_w=*/nullptr, /*fixed_kv_len=*/fixed_kv_len,
                                                     /*kv_indices=*/eff_kv_indices);
-        if (std::getenv("CRISPASR_CHATTERBOX_DUMP_ATTN_AT")) {
-            const char* lyr_env = std::getenv("CRISPASR_CHATTERBOX_DUMP_LAYER");
+        if (std::getenv("STELNETTTS_CHATTERBOX_DUMP_ATTN_AT")) {
+            const char* lyr_env = std::getenv("STELNETTTS_CHATTERBOX_DUMP_LAYER");
             const int dbg_layer = lyr_env ? (int)std::strtol(lyr_env, nullptr, 10) : 0;
             if ((int)il == dbg_layer) {
                 ggml_set_name(attn, "DBG_attn_out");
@@ -1503,8 +1503,8 @@ static ggml_cgraph* build_graph_t3_kv(chatterbox_context* c, int n_past, int n_t
         x = ggml_rms_norm(ctx0, cur, eps);
         x = ggml_mul(ctx0, x, b.ffn_norm_w);
         ggml_tensor* mlp = core_ffn::swiglu(ctx0, x, b.ffn_gate_w, b.ffn_up_w, b.ffn_down_w);
-        if (std::getenv("CRISPASR_CHATTERBOX_DUMP_FFN_AT")) {
-            const char* lyr_env = std::getenv("CRISPASR_CHATTERBOX_DUMP_LAYER");
+        if (std::getenv("STELNETTTS_CHATTERBOX_DUMP_FFN_AT")) {
+            const char* lyr_env = std::getenv("STELNETTTS_CHATTERBOX_DUMP_LAYER");
             const int dbg_layer = lyr_env ? (int)std::strtol(lyr_env, nullptr, 10) : 0;
             if ((int)il == dbg_layer) {
                 ggml_set_name(mlp, "DBG_ffn_out");
@@ -1717,7 +1717,7 @@ static ggml_cgraph* build_graph_t3_kv_b2(chatterbox_context* c, int n_past) {
     ggml_tensor* kv_vs[2] = {c->kv_v, c->kv_v_cfg};
     const bool quant_kv = ggml_is_quantized(c->kv_k->type);
     static const bool s_kv_read_f32 = []() {
-        const char* s = std::getenv("CRISPASR_KV_READ_F32");
+        const char* s = std::getenv("STELNETTTS_KV_READ_F32");
         return s && *s && std::strcmp(s, "0") != 0;
     }();
     const bool need_dequant = quant_kv || (s_kv_read_f32 && c->kv_k->type != GGML_TYPE_F32);
@@ -1867,7 +1867,7 @@ static bool run_t3_kv_b2(chatterbox_context* c, const float* embeds, int n_past,
     // re-alloc is unmeasured. Accumulates into static counters, printed by the
     // caller via chatterbox_b2_alloc_report().
     static const bool s_bench_b2 = []() {
-        const char* s = crispasr_env::get("CRISPASR_CHATTERBOX_BENCH_B2");
+        const char* s = stelnettts_env::get("STELNETTTS_CHATTERBOX_BENCH_B2");
         return s && *s && std::strcmp(s, "0") != 0;
     }();
     int64_t t_ba0 = s_bench_b2 ? ggml_time_us() : 0;
@@ -1912,12 +1912,12 @@ static bool run_t3_kv_b2(chatterbox_context* c, const float* embeds, int n_past,
 
 // §186: returns true if any debug-dump env vars are set (those change graph topology).
 static bool t3_debug_active() {
-    return std::getenv("CRISPASR_CHATTERBOX_DUMP_LOGITS_AT") || std::getenv("CRISPASR_CHATTERBOX_DUMP_NORM_AT") ||
-           std::getenv("CRISPASR_CHATTERBOX_DUMP_KPROJ_AT") || std::getenv("CRISPASR_CHATTERBOX_DUMP_KROPE_AT") ||
-           std::getenv("CRISPASR_CHATTERBOX_DUMP_QPROJ_AT") || std::getenv("CRISPASR_CHATTERBOX_DUMP_VPROJ_AT") ||
-           std::getenv("CRISPASR_CHATTERBOX_DUMP_ATTN_AT") || std::getenv("CRISPASR_CHATTERBOX_DUMP_FFN_AT") ||
-           std::getenv("CRISPASR_CHATTERBOX_DUMP_WK") || std::getenv("CRISPASR_CHATTERBOX_DUMP_KV_AT") ||
-           std::getenv("CRISPASR_CHATTERBOX_NAIVE_ATTN");
+    return std::getenv("STELNETTTS_CHATTERBOX_DUMP_LOGITS_AT") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_NORM_AT") ||
+           std::getenv("STELNETTTS_CHATTERBOX_DUMP_KPROJ_AT") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_KROPE_AT") ||
+           std::getenv("STELNETTTS_CHATTERBOX_DUMP_QPROJ_AT") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_VPROJ_AT") ||
+           std::getenv("STELNETTTS_CHATTERBOX_DUMP_ATTN_AT") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_FFN_AT") ||
+           std::getenv("STELNETTTS_CHATTERBOX_DUMP_WK") || std::getenv("STELNETTTS_CHATTERBOX_DUMP_KV_AT") ||
+           std::getenv("STELNETTTS_CHATTERBOX_NAIVE_ATTN");
 }
 
 // §186: pick smallest bucket whose Lk >= needed_lk and fits in the KV cache.
@@ -2006,12 +2006,12 @@ static float* run_t3_kv_bucket(chatterbox_context* c, const float* embeds, int n
         // CUDA-graph-bucket pattern documented in §210. Metal has no graph capture, so
         // keep the cheaper alloc-once reuse there (the validated §186 M1 path).
         // Opt back into the old reuse path for A/B or bisection with
-        // CRISPASR_CHATTERBOX_T3_BUCKET_REUSE=1.
+        // STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE=1.
 #if defined(GGML_USE_METAL)
     const bool realloc_each_step = false;
 #else
     static const bool s_force_reuse = []() {
-        const char* s = std::getenv("CRISPASR_CHATTERBOX_T3_BUCKET_REUSE");
+        const char* s = std::getenv("STELNETTTS_CHATTERBOX_T3_BUCKET_REUSE");
         return s && (s[0] == '1' || s[0] == 'y' || s[0] == 'Y');
     }();
     const bool realloc_each_step = !s_force_reuse && c->backend && c->backend != c->backend_cpu;
@@ -2067,11 +2067,11 @@ static float* run_t3_kv(chatterbox_context* c, const float* embeds, int n_tokens
     // §212: optional Lk-bucketed fast path for the T=1 CFG *unconditioned* pass
     // (use_kv_k == kv_k_cfg), so it is graph-cached instead of rebuilt every
     // token. Bit-identical graph (token-parity verified), just bound to the cfg
-    // KV cache. Opt IN with CRISPASR_CHATTERBOX_T3_CFG_BUCKET=1 (default OFF —
+    // KV cache. Opt IN with STELNETTTS_CHATTERBOX_T3_CFG_BUCKET=1 (default OFF —
     // no proven win on contended M1; kept for quiet-machine evaluation).
     if (n_tokens == 1 && use_kv_k == c->kv_k_cfg && c->kv_k_cfg && !t3_debug_active()) {
         static const bool s_cfg_bucket = []() {
-            const char* s = std::getenv("CRISPASR_CHATTERBOX_T3_CFG_BUCKET");
+            const char* s = std::getenv("STELNETTTS_CHATTERBOX_T3_CFG_BUCKET");
             return s && (s[0] == '1' || s[0] == 'y' || s[0] == 'Y');
         }();
         if (s_cfg_bucket) {
@@ -2131,9 +2131,9 @@ static float* run_t3_kv(chatterbox_context* c, const float* embeds, int n_tokens
 
     // Optional logit dump: print first 8 logit values for the cond pass
     // at the requested n_past. Comparing CPU vs GPU under
-    // CRISPASR_CHATTERBOX_DUMP_LOGITS_AT=<n_past> localises drift in
+    // STELNETTTS_CHATTERBOX_DUMP_LOGITS_AT=<n_past> localises drift in
     // the prefill (n_past after prefill) vs accumulating over decode.
-    if (const char* e = std::getenv("CRISPASR_CHATTERBOX_DUMP_LOGITS_AT"); e && *e) {
+    if (const char* e = std::getenv("STELNETTTS_CHATTERBOX_DUMP_LOGITS_AT"); e && *e) {
         const int dump_n_past = (int)std::strtol(e, nullptr, 10);
         if (n_past + n_tokens > dump_n_past && n_past <= dump_n_past && (use_kv_k == nullptr || use_kv_k == c->kv_k)) {
             fprintf(stderr, "[LGT] n_past=%d:", dump_n_past);
@@ -2173,17 +2173,17 @@ static float* run_t3_kv(chatterbox_context* c, const float* embeds, int n_tokens
             fprintf(stderr, " %.4f", buf[i]);
         fprintf(stderr, "\n");
     };
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_NORM_AT", "L0_norm_out", (int)c->hp.hidden_size);
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_KPROJ_AT", "L0_K_proj", (int)c->hp.hidden_size);
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_QPROJ_AT", "L0_Q_proj", (int)c->hp.hidden_size);
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_VPROJ_AT", "L0_V_proj", (int)c->hp.hidden_size);
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_KROPE_AT", "L0_K_rope", (int)c->hp.head_dim);
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_ATTN_AT", "DBG_attn_out", (int)c->hp.hidden_size);
-    dump_intermediate("CRISPASR_CHATTERBOX_DUMP_FFN_AT", "DBG_ffn_out", (int)c->hp.hidden_size);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_NORM_AT", "L0_norm_out", (int)c->hp.hidden_size);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_KPROJ_AT", "L0_K_proj", (int)c->hp.hidden_size);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_QPROJ_AT", "L0_Q_proj", (int)c->hp.hidden_size);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_VPROJ_AT", "L0_V_proj", (int)c->hp.hidden_size);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_KROPE_AT", "L0_K_rope", (int)c->hp.head_dim);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_ATTN_AT", "DBG_attn_out", (int)c->hp.hidden_size);
+    dump_intermediate("STELNETTTS_CHATTERBOX_DUMP_FFN_AT", "DBG_ffn_out", (int)c->hp.hidden_size);
 
     // Special: dump the dequantised K weight tensor (row 0).  Stride through
     // the row in chunks to expose any per-block drift.
-    if (const char* e = std::getenv("CRISPASR_CHATTERBOX_DUMP_WK"); e && *e) {
+    if (const char* e = std::getenv("STELNETTTS_CHATTERBOX_DUMP_WK"); e && *e) {
         if (use_kv_k == nullptr || use_kv_k == c->kv_k) {
             ggml_tensor* w = ggml_graph_get_tensor(gf, "L0_W_K_f32");
             if (w) {
@@ -2201,13 +2201,13 @@ static float* run_t3_kv(chatterbox_context* c, const float* embeds, int n_tokens
     }
 
     // Optional KV cache snapshot for Metal-vs-CPU divergence debugging.
-    // CRISPASR_CHATTERBOX_DUMP_KV_AT=<n_past> dumps the layer-0 K cache
+    // STELNETTTS_CHATTERBOX_DUMP_KV_AT=<n_past> dumps the layer-0 K cache
     // contents for the row at the specified n_past offset to stderr,
     // ONLY for the cond pass (use_kv_k == c->kv_k or null). Allows
     // comparing on/off-GPU writes byte-by-byte at a single step.
-    if (const char* e = std::getenv("CRISPASR_CHATTERBOX_DUMP_KV_AT"); e && *e) {
+    if (const char* e = std::getenv("STELNETTTS_CHATTERBOX_DUMP_KV_AT"); e && *e) {
         const int dump_n_past = (int)std::strtol(e, nullptr, 10);
-        const char* lyr_env = std::getenv("CRISPASR_CHATTERBOX_DUMP_KV_LAYER");
+        const char* lyr_env = std::getenv("STELNETTTS_CHATTERBOX_DUMP_KV_LAYER");
         const int dump_layer = lyr_env ? (int)std::strtol(lyr_env, nullptr, 10) : 0;
         if (n_past + n_tokens > dump_n_past && n_past <= dump_n_past && (use_kv_k == nullptr || use_kv_k == c->kv_k)) {
             const int hd_l = (int)c->hp.head_dim;
@@ -2570,7 +2570,7 @@ static ggml_cgraph* build_graph_t3_gpt2_kv(chatterbox_context* c, int n_past, in
     ggml_tensor* cur = embeds;
 
     // Issue #94 follow-up: per-layer hidden-state dump for the GPT-2 graph.
-    // Set CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS=1 to mark each
+    // Set STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS=1 to mark each
     // post-attn-residual and post-FFN-residual as graph outputs. The runner
     // side reads them by name and writes raw float32 to
     // /tmp/cb_gpt2_step_<n_past>_LNN_post_{attn,ffn}.bin. Lets us bisect
@@ -2582,7 +2582,7 @@ static ggml_cgraph* build_graph_t3_gpt2_kv(chatterbox_context* c, int n_past, in
     // memory gets repurposed after layer 0 reads it. Verify the input via a
     // stderr print of `tok_embed.data()` first10 in the AR-loop call site if
     // you need to compare it against speech_emb(tok) + wpe(pos).
-    const bool dump_layers = (std::getenv("CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS") != nullptr);
+    const bool dump_layers = (std::getenv("STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS") != nullptr);
 
     for (uint32_t il = 0; il < hp.n_layers; il++) {
         const auto& b = c->t3.gpt2_blocks[il];
@@ -2641,10 +2641,10 @@ static ggml_cgraph* build_graph_t3_gpt2_kv(chatterbox_context* c, int n_past, in
         // Permute Q to (hd, T, n_h)
         Q = ggml_cont(ctx0, ggml_permute(ctx0, Q, 0, 2, 1, 3));
 
-        // Attention. CRISPASR_CHATTERBOX_NAIVE_ATTN=1 swaps ggml_flash_attn_ext
+        // Attention. STELNETTTS_CHATTERBOX_NAIVE_ATTN=1 swaps ggml_flash_attn_ext
         // for an explicit softmax(QK^T)V path. Useful for isolating flash_attn
         // accumulator-order differences from other bugs. Layout follows
-        // src/qwen3_asr.cpp:895-924: scores = mul_mat(K, Q); soft_max_ext
+        // src/cielvox2_asr.cpp:895-924: scores = mul_mat(K, Q); soft_max_ext
         // (fused scale + mask + softmax); V is permuted (Lk, hd, n_h) for the
         // attn = mul_mat(V', scores) step that contracts over Lk. The result
         // is (hd, T, n_h) which must be permuted (0, 2, 1, 3) to (hd, n_h, T)
@@ -2653,7 +2653,7 @@ static ggml_cgraph* build_graph_t3_gpt2_kv(chatterbox_context* c, int n_past, in
         // ggml.h docs, so skipping the permute here gave wrong outputs in an
         // earlier attempt.
         ggml_tensor* attn;
-        if (std::getenv("CRISPASR_CHATTERBOX_NAIVE_ATTN")) {
+        if (std::getenv("STELNETTTS_CHATTERBOX_NAIVE_ATTN")) {
             ggml_tensor* scores = ggml_mul_mat(ctx0, Kfull, Q);
             scores = ggml_soft_max_ext(ctx0, scores, (T > 1) ? causal_mask : nullptr, attn_scale, 0.0f);
             ggml_tensor* Vp = ggml_cont(ctx0, ggml_permute(ctx0, Vfull, 1, 0, 2, 3));
@@ -2779,7 +2779,7 @@ static float* run_t3_gpt2_kv(chatterbox_context* c, const float* embeds, int n_t
     // size D*T (T is usually 1 on the AR-step call). The runner doesn't know
     // whether the graph builder added these names (env-gated), so we tolerate
     // misses.
-    if (std::getenv("CRISPASR_CHATTERBOX_DUMP_GPT2_LAYERS")) {
+    if (std::getenv("STELNETTTS_CHATTERBOX_DUMP_GPT2_LAYERS")) {
         auto dump = [&](const char* nm) {
             ggml_tensor* t = ggml_graph_get_tensor(gf, nm);
             if (!t) {
@@ -2958,7 +2958,7 @@ extern "C" struct chatterbox_context_params chatterbox_context_default_params(vo
     // 0.981 vs 10, identical ASR roundtrip — at ~46% less CFM time. Meanflow:
     // the distilled 2-step schedule; §207's 10→6 standard change previously
     // broke the meanflow auto-downgrade, leaving turbo at 6 steps.) Override
-    // with --tts-steps N; the crispasr-diff harness pins 10 to match the
+    // with --tts-steps N; the stelnettts-diff harness pins 10 to match the
     // reference dump, the "reference-exact" setting.
     p.cfm_steps = 0;
     // PLAN #89: flash_attn defaults to true (lost in commit ff5536ae;
@@ -2975,7 +2975,7 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
     c->params = params;
     c->n_threads = params.n_threads > 0 ? params.n_threads : 4;
     {
-        const char* env = std::getenv("CRISPASR_CHATTERBOX_T3_SEED");
+        const char* env = std::getenv("STELNETTTS_CHATTERBOX_T3_SEED");
         if (env && env[0]) {
             c->rng_seed = (uint32_t)strtoul(env, nullptr, 10);
         } else {
@@ -3082,10 +3082,10 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
     // cores by default (output is bit-identical — ggml matmul splits output
     // rows per-thread, no cross-thread reduction, so the result is
     // thread-count-independent). Never drop below the caller's -t. Override
-    // with CRISPASR_CHATTERBOX_THREADS=<n>.
+    // with STELNETTTS_CHATTERBOX_THREADS=<n>.
     {
         int cb_threads;
-        if (const char* e = std::getenv("CRISPASR_CHATTERBOX_THREADS")) {
+        if (const char* e = std::getenv("STELNETTTS_CHATTERBOX_THREADS")) {
             cb_threads = std::max(1, atoi(e));
         } else {
             const int hw = (int)std::thread::hardware_concurrency();
@@ -3097,14 +3097,14 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
             fprintf(stderr, "chatterbox: CPU backend threads=%d\n", cb_threads);
     }
     // Env knobs (all override the default):
-    //   CRISPASR_CHATTERBOX_FORCE_GPU=1       — both T3 and S3Gen on GPU
+    //   STELNETTTS_CHATTERBOX_FORCE_GPU=1       — both T3 and S3Gen on GPU
     //                                           (legacy; S3Gen output is
     //                                           garbled, kept for diag).
-    //   CRISPASR_CHATTERBOX_T3_CPU_S3GEN_GPU=1 — flip the split (S3Gen on
+    //   STELNETTTS_CHATTERBOX_T3_CPU_S3GEN_GPU=1 — flip the split (S3Gen on
     //                                           GPU only, T3 on CPU).
-    //   CRISPASR_CHATTERBOX_S3GEN_CPU=1       — force S3Gen to CPU even
+    //   STELNETTTS_CHATTERBOX_S3GEN_CPU=1       — force S3Gen to CPU even
     //                                           under FORCE_GPU=1.
-    //   CRISPASR_CHATTERBOX_FULL_CPU=1        — old default; both halves
+    //   STELNETTTS_CHATTERBOX_FULL_CPU=1        — old default; both halves
     //                                           on CPU.
     // cppcheck-suppress duplicateAssignExpression
     bool t3_use_gpu = params.use_gpu;
@@ -3114,14 +3114,14 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
             const char* v = std::getenv(name);
             return v && *v && std::strcmp(v, "0") != 0;
         };
-        const bool force_gpu = env_set("CRISPASR_CHATTERBOX_FORCE_GPU");
-        const bool split_t3_cpu = env_set("CRISPASR_CHATTERBOX_T3_CPU_S3GEN_GPU");
-        const bool s3gen_cpu_override = env_set("CRISPASR_CHATTERBOX_S3GEN_CPU");
-        const bool full_cpu = env_set("CRISPASR_CHATTERBOX_FULL_CPU");
-        const bool t3_gpu_override = env_set("CRISPASR_CHATTERBOX_T3_GPU");
+        const bool force_gpu = env_set("STELNETTTS_CHATTERBOX_FORCE_GPU");
+        const bool split_t3_cpu = env_set("STELNETTTS_CHATTERBOX_T3_CPU_S3GEN_GPU");
+        const bool s3gen_cpu_override = env_set("STELNETTTS_CHATTERBOX_S3GEN_CPU");
+        const bool full_cpu = env_set("STELNETTTS_CHATTERBOX_FULL_CPU");
+        const bool t3_gpu_override = env_set("STELNETTTS_CHATTERBOX_T3_GPU");
 
         if (full_cpu) {
-            fprintf(stderr, "chatterbox: full CPU (CRISPASR_CHATTERBOX_FULL_CPU=1).\n");
+            fprintf(stderr, "chatterbox: full CPU (STELNETTTS_CHATTERBOX_FULL_CPU=1).\n");
             t3_use_gpu = false;
             s3gen_use_gpu = false;
         } else if (force_gpu) {
@@ -3132,15 +3132,15 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
             // (matches the prior workaround baseline). Production CPU
             // residency is the default; this branch is for users who
             // explicitly opt into GPU.
-            fprintf(stderr, "chatterbox: T3+s3gen forced to GPU (CRISPASR_CHATTERBOX_FORCE_GPU=1).\n");
+            fprintf(stderr, "chatterbox: T3+s3gen forced to GPU (STELNETTTS_CHATTERBOX_FORCE_GPU=1).\n");
             // Note: T3 GPU on Metal is slower than CPU (kernel-launch overhead).
             if (s3gen_cpu_override) {
                 fprintf(stderr,
-                        "chatterbox: s3gen forced to CPU (CRISPASR_CHATTERBOX_S3GEN_CPU=1) — T3 stays on GPU.\n");
+                        "chatterbox: s3gen forced to CPU (STELNETTTS_CHATTERBOX_S3GEN_CPU=1) — T3 stays on GPU.\n");
                 s3gen_use_gpu = false;
             }
         } else if (split_t3_cpu) {
-            fprintf(stderr, "chatterbox: T3 → CPU, s3gen → GPU (CRISPASR_CHATTERBOX_T3_CPU_S3GEN_GPU=1).\n");
+            fprintf(stderr, "chatterbox: T3 → CPU, s3gen → GPU (STELNETTTS_CHATTERBOX_T3_CPU_S3GEN_GPU=1).\n");
             t3_use_gpu = false;
         } else {
             // Default split: T3 stays on CPU on Metal (kernel-launch overhead
@@ -3148,22 +3148,22 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
             // Apple Silicon). S3Gen GPU is now the default: the compound
             // Metal-precision drift in UNet1D CFM (PLAN #83) is fixed by
             // GGML_PREC_F32 mul_mat hints (mul_mat_hp()) + parallel=true sched.
-            // Opt back into T3-GPU on Metal with CRISPASR_CHATTERBOX_T3_GPU=1.
-            // S3Gen CPU opt-out: CRISPASR_CHATTERBOX_S3GEN_CPU=1.
+            // Opt back into T3-GPU on Metal with STELNETTTS_CHATTERBOX_T3_GPU=1.
+            // S3Gen CPU opt-out: STELNETTTS_CHATTERBOX_S3GEN_CPU=1.
 #if defined(GGML_USE_METAL)
             const bool t3_gpu_default = false;
             const char* t3_default_reason =
-                "Metal kernel-launch overhead × AR steps (override: CRISPASR_CHATTERBOX_T3_GPU=1)";
+                "Metal kernel-launch overhead × AR steps (override: STELNETTTS_CHATTERBOX_T3_GPU=1)";
 #elif defined(GGML_USE_VULKAN) && !defined(GGML_USE_CUDA)
             // Vulkan-only build: the §186 Lk-bucketed T3 step graph is allocated
             // once and reused across AR steps; on Vulkan that reuse segfaults in
             // ggml_vk_tensor_subbuffer (null buffer) at the rms_norm of step ~2
             // (issue #170). S3Gen GPU on Vulkan is fine, so keep T3 on CPU and
             // s3gen on GPU. Opt into the (crashing) T3-GPU path with
-            // CRISPASR_CHATTERBOX_T3_GPU=1.
+            // STELNETTTS_CHATTERBOX_T3_GPU=1.
             const bool t3_gpu_default = false;
             const char* t3_default_reason =
-                "Vulkan T3 step-graph segfault (issue #170; override: CRISPASR_CHATTERBOX_T3_GPU=1)";
+                "Vulkan T3 step-graph segfault (issue #170; override: STELNETTTS_CHATTERBOX_T3_GPU=1)";
 #else
             const bool t3_gpu_default = true;
             const char* t3_default_reason = "non-Metal GPU";
@@ -3172,8 +3172,8 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
             s3gen_use_gpu = !s3gen_cpu_override;
             fprintf(stderr,
                     "chatterbox: T3 → %s, s3gen → %s (%s). "
-                    "Overrides: CRISPASR_CHATTERBOX_FORCE_GPU=1, CRISPASR_CHATTERBOX_FULL_CPU=1, "
-                    "CRISPASR_CHATTERBOX_T3_GPU=1, CRISPASR_CHATTERBOX_S3GEN_CPU=1.\n",
+                    "Overrides: STELNETTTS_CHATTERBOX_FORCE_GPU=1, STELNETTTS_CHATTERBOX_FULL_CPU=1, "
+                    "STELNETTTS_CHATTERBOX_T3_GPU=1, STELNETTTS_CHATTERBOX_S3GEN_CPU=1.\n",
                     t3_use_gpu ? "GPU" : "CPU", s3gen_use_gpu ? "GPU" : "CPU",
                     s3gen_use_gpu ? "UNet GGML_PREC_F32" : t3_default_reason);
         }
@@ -3187,7 +3187,7 @@ extern "C" struct chatterbox_context* chatterbox_init_from_file(const char* path
     // via chatterbox_set_s3gen_path). c->backend is the T3 backend.
     c->params.use_gpu = s3gen_use_gpu;
     bool effective_use_gpu = t3_use_gpu;
-    c->backend = effective_use_gpu ? crispasr_init_gpu_backend() : c->backend_cpu;
+    c->backend = effective_use_gpu ? stelnettts_init_gpu_backend() : c->backend_cpu;
     if (!c->backend) {
         if (params.verbosity >= 1 && effective_use_gpu) {
             fprintf(stderr, "chatterbox: GPU backend unavailable, falling back to CPU\n");
@@ -3369,7 +3369,7 @@ extern "C" int32_t* chatterbox_synthesize_tokens(struct chatterbox_context* ctx,
     }
     cap_text_tokens(ctx, text_tokens, is_gpt2); // #182: bound to positional table
 
-    if (ctx->params.verbosity >= 2 || crispasr_env::get("CRISPASR_CHATTERBOX_DEBUG")) {
+    if (ctx->params.verbosity >= 2 || stelnettts_env::get("STELNETTTS_CHATTERBOX_DEBUG")) {
         fprintf(stderr, "chatterbox: text_tokens(%zu) %s = [", text_tokens.size(),
                 is_gpt2 ? "(no SOT/EOT for turbo)" : "[SOT,...,EOT]");
         for (size_t i = 0; i < text_tokens.size(); ++i) {
@@ -3417,7 +3417,7 @@ extern "C" int32_t* chatterbox_synthesize_tokens(struct chatterbox_context* ctx,
     // Default OFF (legacy sequential cond+uncond) until token-parity + a real
     // quiet-machine speedup are demonstrated. Requires the CFG uncond cache.
     bool use_b2 = use_cfg && []() {
-        const char* s = std::getenv("CRISPASR_CHATTERBOX_T3_CFG_B2");
+        const char* s = std::getenv("STELNETTTS_CHATTERBOX_T3_CFG_B2");
         return s && (s[0] == '1' || s[0] == 'y' || s[0] == 'Y');
     }();
     // B2 is bit-identical to the legacy sequential cond+uncond path on CPU (all
@@ -3509,13 +3509,13 @@ extern "C" int32_t* chatterbox_synthesize_tokens(struct chatterbox_context* ctx,
             token_hist.reserve(speech_tokens.size());
             token_hist.insert(token_hist.end(), speech_tokens.begin(), speech_tokens.end());
         }
-        // Sample next token. CRISPASR_CHATTERBOX_TEMP overrides the
+        // Sample next token. STELNETTTS_CHATTERBOX_TEMP overrides the
         // configured temperature for divergence-debugging experiments
         // (temperature=0 forces greedy argmax — eliminates multinomial
         // sensitivity to small logit drifts so we can isolate kernel
         // numerical issues from sampler boundary flips).
         float temp_eff = ctx->params.temperature;
-        if (const char* e = std::getenv("CRISPASR_CHATTERBOX_TEMP"); e && *e) {
+        if (const char* e = std::getenv("STELNETTTS_CHATTERBOX_TEMP"); e && *e) {
             temp_eff = std::strtof(e, nullptr);
         }
         int32_t tok = sample_token(blended.data(), V, temp_eff, ctx->params.top_k, ctx->params.min_p, ctx->params.top_p,
@@ -3635,7 +3635,7 @@ extern "C" int32_t* chatterbox_synthesize_tokens(struct chatterbox_context* ctx,
         valid.push_back(S3GEN_SIL);
     }
 
-    if (ctx->params.verbosity >= 2 || crispasr_env::get("CRISPASR_CHATTERBOX_DEBUG")) {
+    if (ctx->params.verbosity >= 2 || stelnettts_env::get("STELNETTTS_CHATTERBOX_DEBUG")) {
         fprintf(stderr, "chatterbox: speech_tokens(%zu) first=[", valid.size());
         for (size_t i = 0; i < valid.size() && i < 12; ++i)
             fprintf(stderr, "%d%s", (int)valid[i], i + 1 == valid.size() || i == 11 ? "" : ",");
@@ -3802,7 +3802,7 @@ extern "C" float* chatterbox_synthesize(struct chatterbox_context* ctx, const ch
     chatterbox_tokens_free(speech_tokens);
 
     if (pcm && *out_n_samples > 0) {
-        const char* bench = crispasr_env::get("CRISPASR_CHATTERBOX_BENCH");
+        const char* bench = stelnettts_env::get("STELNETTTS_CHATTERBOX_BENCH");
         if (bench && bench[0]) {
             const auto& tp = ctx->last_perf;
             chatterbox_s3gen_perf sp{};
@@ -4505,7 +4505,7 @@ extern "C" void chatterbox_set_cfm_steps(struct chatterbox_context* ctx, int ste
 //
 // Restored 2026-05-11 — the original bodies (commit 95e2fdf7) were
 // accidentally dropped by the unrelated indextts ECAPA fix in
-// commit ff7bcc50 while the header / crispasr_c_api.cpp still
+// commit ff7bcc50 while the header / stelnettts_c_api.cpp still
 // referenced them. Same content; lint sweep re-runs cleanly.
 extern "C" void chatterbox_set_temperature(struct chatterbox_context* ctx, float temperature) {
     if (!ctx) {
@@ -4642,7 +4642,7 @@ extern "C" void chatterbox_set_n_threads(struct chatterbox_context* ctx, int n_t
 
 // Diff/debug: VE pipeline stages — see chatterbox_ve.h for the spec.
 //
-// These are deliberately public C-ABI: `examples/cli/crispasr_diff_main.cpp`
+// These are deliberately public C-ABI: `examples/cli/stelnettts_diff_main.cpp`
 // calls them on the same 16 kHz mono float32 buffer the reference dumper
 // fed to `model.ve.embeds_from_wavs`. Each returns a malloc'd buffer the
 // caller frees with plain `free()` (mirrors `chatterbox_dump_t3_prefill_emb`).

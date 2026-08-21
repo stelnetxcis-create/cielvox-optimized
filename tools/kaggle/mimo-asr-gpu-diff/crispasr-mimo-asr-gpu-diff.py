@@ -1,18 +1,18 @@
 """
-CrispASR — mimo-asr GPU prefill diagnostic (PLAN #115 option C)
+StelnetTTS — mimo-asr GPU prefill diagnostic (PLAN #115 option C)
 
-The CPU path works (sibling kernel crispasr-mimo-asr-cpu-validate, JFK PASS).
+The CPU path works (sibling kernel stelnettts-mimo-asr-cpu-validate, JFK PASS).
 The GPU path is broken: with weights GPU-resident + GPU compute (commit
 89111260) mimo-asr emits no tokens (exit 0, empty). Option A force-pins to
 CPU (correct, slow). Option C is the proper GPU prefill fix, but it can't be
 debugged on the local M1 (4.2 GB model, box memory-saturated) — so we run it
 on a Kaggle GPU box, mirroring the funasr-cuda-debug kernel.
 
-Plan (same shape as crispasr-funasr-cuda-debug):
-  1. CUDA build of crispasr-cli.
+Plan (same shape as stelnettts-funasr-cuda-debug):
+  1. CUDA build of stelnettts-cli.
   2. mimo-asr on jfk.wav, two runs, MIMO_ASR_DUMP_STAGES=1 on both:
        cpu  — default (force-CPU, option A). Ground truth.
-       gpu  — CRISPASR_MIMO_FORCE_GPU=1 (weights+compute on GPU). The bug.
+       gpu  — STELNETTTS_MIMO_FORCE_GPU=1 (weights+compute on GPU). The bug.
   3. Parse the `mimo_dump: <stage> ... nan= inf=` lines and compare the two
      runs stage-by-stage. The first stage where GPU NaNs / diverges from CPU
      localises the broken op in mimo_asr_build_prefill_graph.
@@ -32,14 +32,14 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 SAMPLE = REPO / "samples" / "jfk.wav"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 EXPECTED_JFK = "ask not what your country can do for you"
 
 
@@ -55,11 +55,11 @@ def run(cmd, check=True, env=None, timeout=None):
 
 
 # ── Clone + CUDA build (mirrors funasr-cuda-debug) ───────────────────────
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive", CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive", STELNETTTS_REPO, str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh
@@ -67,7 +67,7 @@ kh.init_progress()
 kh.resolve_hf_token()
 
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 gpu_name = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True).strip()
@@ -80,19 +80,19 @@ kh.step("cuda_arch", arch=arch)
 BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = (
     ["cmake", "-S", str(REPO), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-     "-DCRISPASR_BUILD_TESTS=OFF"]
+     "-DSTELNETTTS_BUILD_TESTS=OFF"]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
 )
 run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -j{kh.safe_build_jobs(gpu=True)}")
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -j{kh.safe_build_jobs(gpu=True)}")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found after build"
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("build_done", cli=str(CLI))
@@ -162,7 +162,7 @@ cpu = run_mimo("cpu", {})
 # Validation: the fix keeps the Q4_K embed/audio.emb tables on CPU (CUDA
 # get_rows can't gather Q4_K) while the matmul weights stay GPU-resident.
 # Expect GPU == PASS now. gdb stays on to catch any residual crash.
-gpu = run_mimo("gpu", {"CRISPASR_MIMO_FORCE_GPU": "1"}, gdb=True)
+gpu = run_mimo("gpu", {"STELNETTTS_MIMO_FORCE_GPU": "1"}, gdb=True)
 
 # ── Compare CPU vs GPU per stage — find the first divergence ──────────────
 print("\n" + "=" * 64, flush=True)

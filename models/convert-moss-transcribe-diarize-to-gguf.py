@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert OpenMOSS-Team/MOSS-Transcribe-Diarize-0.9B to GGUF format for CrispASR.
+"""Convert OpenMOSS-Team/MOSS-Transcribe-Diarize-0.9B to GGUF format for StelnetTTS.
 
 Architecture:
   Whisper encoder: 80-mel → Conv1d stem (conv1+conv2, stride 1/2) →
@@ -18,7 +18,7 @@ Usage:
         --output moss-transcribe-diarize-0.9b-f16.gguf
 
     # Then quantize:
-    crispasr-quantize moss-transcribe-diarize-0.9b-f16.gguf \\
+    stelnettts-quantize moss-transcribe-diarize-0.9b-f16.gguf \\
                       moss-transcribe-diarize-0.9b-q4_k.gguf q4_k
 """
 

@@ -8,14 +8,14 @@
 // clustering voice embeddings — the same job the upstream Trelis/tiron harness
 // does with ECAPA + agglomerative clustering.
 //
-// It REUSES the existing CrispASR speaker stack rather than reinventing it:
-//   * CrispasrSpeakerEmbedder  (src/crispasr_speaker_embedder.h) — TitaNet /
+// It REUSES the existing StelnetTTS speaker stack rather than reinventing it:
+//   * CrispasrSpeakerEmbedder  (src/stelnettts_speaker_embedder.h) — TitaNet /
 //     ECAPA embedding of a PCM range, L2-normalized.
-//   * crispasr_agglomerative_cluster / _cluster_centroids
-//     (src/crispasr_speaker_cluster.h) — single-linkage cosine clustering.
+//   * stelnettts_agglomerative_cluster / _cluster_centroids
+//     (src/stelnettts_speaker_cluster.h) — single-linkage cosine clustering.
 //
 // The one thing it adds over the generic per-segment remap
-// (crispasr_remap_speakers_via_embeddings) is the WITHIN-WINDOW MUST-LINK: all
+// (stelnettts_remap_speakers_via_embeddings) is the WITHIN-WINDOW MUST-LINK: all
 // turns sharing a (window_id, local_speaker) key are the same physical speaker
 // by construction, so their audio is aggregated into ONE embedding. That both
 // (a) yields a longer, cleaner voiceprint than a single short turn and (b) makes
@@ -35,7 +35,7 @@ class CrispasrSpeakerEmbedder;
 struct TironTurn {
     int64_t t0_cs = 0;     // absolute start, centiseconds
     int64_t t1_cs = 0;     // absolute end, centiseconds
-    int window_id = 0;     // decode window this turn came from (crispasr_segment.chunk_id,
+    int window_id = 0;     // decode window this turn came from (stelnettts_segment.chunk_id,
                            // or t0_cs / 3000 for an unchunked run). Local indices reset per window.
     int local_speaker = 0; // 1..8 from <|speakerN|>; <=0 means "no local hint" (each such
                            // turn is then treated as its own group / per-segment fallback).
@@ -81,9 +81,9 @@ struct TironTranscriptSeg {
 //       local <|speakerN|> markers are LEFT in place for the caller to render.
 //   >0  number of meeting-level speakers; markers stripped, labels applied.
 //
-// `embedder_spec` accepts crispasr_make_speaker_embedder's specs ("auto",
+// `embedder_spec` accepts stelnettts_make_speaker_embedder's specs ("auto",
 // "titanet", "ecapa", a .gguf path); empty/"" skips linking.
-int crispasr_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const float* pcm_16k, int n_samples,
+int stelnettts_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const float* pcm_16k, int n_samples,
                                    const char* embedder_spec, int n_threads, const char* cache_dir);
 
 // Link Tiron's window-local speaker indices into meeting-level ids.
@@ -96,5 +96,5 @@ int crispasr_tiron_link_transcript(std::vector<TironTranscriptSeg>& segs, const 
 //
 // Deterministic: global ids are assigned in first-appearance order of the
 // grouping keys, so the output is stable across runs on the same input.
-TironLinkResult crispasr_tiron_link_speakers(const std::vector<TironTurn>& turns, const float* pcm_16k, int n_samples,
+TironLinkResult stelnettts_tiron_link_speakers(const std::vector<TironTurn>& turns, const float* pcm_16k, int n_samples,
                                              CrispasrSpeakerEmbedder* embedder, const TironLinkOptions& opts = {});

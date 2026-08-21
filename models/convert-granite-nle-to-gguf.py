@@ -62,7 +62,7 @@ GGUF arch: `granite_nle`. Tensor name conventions:
   (no lm_head — tied to token_embd)
 
 Shaped weights are kept in F32 by default; pass --quant {q4_k,q5_k,q8_0}
-to delegate to crispasr-quantize on the produced F16 GGUF.
+to delegate to stelnettts-quantize on the produced F16 GGUF.
 """
 
 from __future__ import annotations

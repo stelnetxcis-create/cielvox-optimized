@@ -121,7 +121,7 @@ TEST_CASE("btc vocab: minor-third qualities collapse to :min, the rest to major"
 }
 
 TEST_CASE("btc vocab: every 25-class label is reachable from the 170-class set", "[unit][btc][vocab]") {
-    // If a 25-class label were unreachable, CRISPASR_BTC_MAJ_MIN=1 could never
+    // If a 25-class label were unreachable, STELNETTTS_BTC_MAJ_MIN=1 could never
     // emit it -- a whole chord would silently disappear from the output.
     std::set<int> reachable;
     for (int i = 0; i < 170; i++)

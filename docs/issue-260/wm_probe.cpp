@@ -1,7 +1,7 @@
-// wm_probe.cpp — isolate the CrispASR spread-spectrum watermark (#260).
+// wm_probe.cpp — isolate the StelnetTTS spread-spectrum watermark (#260).
 // Feeds a clean synthetic-speech signal through the exact watermark header
 // and writes clean / alpha=0.005 / alpha=0.08 WAVs plus the injected delta.
-#include "core/crispasr_watermark.h"
+#include "core/stelnettts_watermark.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -25,7 +25,7 @@ static void write_wav(const char* path, const std::vector<float>& x, int sr) {
 }
 
 int main() {
-    const int sr = 24000;      // qwen3-tts output rate
+    const int sr = 24000;      // cielvox2-tts output rate
     const int N = sr * 3;      // 3 seconds
     std::vector<float> clean(N);
     // Synthetic voiced speech: 130 Hz fundamental + harmonics rolling off,
@@ -45,8 +45,8 @@ int main() {
 
     auto wm005 = clean;
     auto wm08 = clean;
-    crispasr_watermark_embed_impl(wm005.data(), N, 0.005f);  // legacy
-    crispasr_watermark_embed_impl(wm08.data(), N, 0.08f);    // shipped default
+    stelnettts_watermark_embed_impl(wm005.data(), N, 0.005f);  // legacy
+    stelnettts_watermark_embed_impl(wm08.data(), N, 0.08f);    // shipped default
 
     write_wav("clean.wav", clean, sr);
     write_wav("wm005.wav", wm005, sr);
@@ -57,7 +57,7 @@ int main() {
     write_wav("delta08_x8.wav", delta, sr);
 
     // Report: which frequencies are being nudged (the "comb"), and SNR.
-    auto bins = crispasr_wm::generate_bin_pattern(CRISPASR_WATERMARK_KEY, 1024, CRISPASR_WATERMARK_NBINS);
+    auto bins = stelnettts_wm::generate_bin_pattern(STELNETTTS_WATERMARK_KEY, 1024, STELNETTTS_WATERMARK_NBINS);
     printf("Watermark modulates %d FIXED bins (n_fft=1024, sr=%d):\n", (int)bins.size(), sr);
     printf("  bin  freq_Hz  sign\n");
     for (auto& b : bins) printf("  %4d  %7.0f   %+d\n", b.index, (double)b.index * sr / 1024.0, b.sign);

@@ -24,7 +24,7 @@ base_model: nvidia/Frame_VAD_Multilingual_MarbleNet_v2.0
 
 # MarbleNet VAD -- GGUF
 
-GGUF conversion of [`nvidia/Frame_VAD_Multilingual_MarbleNet_v2.0`](https://huggingface.co/nvidia/Frame_VAD_Multilingual_MarbleNet_v2.0) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversion of [`nvidia/Frame_VAD_Multilingual_MarbleNet_v2.0`](https://huggingface.co/nvidia/Frame_VAD_Multilingual_MarbleNet_v2.0) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -37,7 +37,7 @@ No quantization needed — model is already 91.5K params (439 KB).
 ## Model details
 
 - **Architecture:** MarbleNet — 1D time-channel separable CNN (6 Jasper blocks: depthwise conv + pointwise conv + BN + ReLU)
-- **Parameters:** 91.5K (smallest VAD model in CrispASR)
+- **Parameters:** 91.5K (smallest VAD model in StelnetTTS)
 - **Languages:** Chinese, English, French, German, Russian, Spanish
 - **Input:** 80-bin mel spectrogram (16kHz, 512 FFT, 25ms window, 10ms stride)
 - **Output:** per-frame speech probability (20ms per frame)
@@ -53,17 +53,17 @@ No quantization needed — model is already 91.5K params (439 KB).
 | AMI-test | 96.25 |
 | Earnings21 | 97.11 |
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Auto-download (439 KB)
-crispasr --backend whisper -m auto --auto-download --vad -vm marblenet -f audio.wav
+stelnettts --backend whisper -m auto --auto-download --vad -vm marblenet -f audio.wav
 
 # Or with explicit path
-crispasr --backend parakeet -m auto --auto-download --vad -vm marblenet-vad.gguf -f audio.wav
+stelnettts --backend parakeet -m auto --auto-download --vad -vm marblenet-vad.gguf -f audio.wav
 ```
 
-## CrispASR VAD comparison
+## StelnetTTS VAD comparison
 
 | VAD Model | Size | Latency | Languages |
 |---|---:|---:|---|

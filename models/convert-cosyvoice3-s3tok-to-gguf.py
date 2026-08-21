@@ -16,7 +16,7 @@ runtime needs:
   - 6561 speech-codebook size
 
 The output is a float GGUF intended as the F16 reference model. Use
-`crispasr-quantize` after this step if you want a Q4_K variant later.
+`stelnettts-quantize` after this step if you want a Q4_K variant later.
 
 Usage:
   python models/convert-cosyvoice3-s3tok-to-gguf.py \

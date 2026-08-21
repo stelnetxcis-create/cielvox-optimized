@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated completeness test for CrispASR test/benchmark scripts.
+Automated completeness test for StelnetTTS test/benchmark scripts.
 
 Checks that every backend declared in the CLI's list_backends() is covered
 by the major test and benchmark scripts. Run with:
@@ -61,10 +61,10 @@ def read_file(relpath):
 
 
 def get_cli_backends():
-    """Extract canonical backend list from crispasr_list_backends()."""
-    src = read_file("examples/cli/crispasr_backend.cpp")
+    """Extract canonical backend list from stelnettts_list_backends()."""
+    src = read_file("examples/cli/stelnettts_backend.cpp")
     m = re.search(
-        r"crispasr_list_backends\(\)\s*\{[^}]*return\s*\{([^}]+)\}", src, re.DOTALL
+        r"stelnettts_list_backends\(\)\s*\{[^}]*return\s*\{([^}]+)\}", src, re.DOTALL
     )
     if not m:
         return []
@@ -109,18 +109,18 @@ def get_manifest():
 
 def get_model_registry():
     """Extract names from model registry."""
-    src = read_file("src/crispasr_model_registry.cpp")
+    src = read_file("src/stelnettts_model_registry.cpp")
     return set(re.findall(r'\{"(\w[\w-]*)"', src))
 
 
 def check_hf_repo_refs(script_name, script_src):
-    """Check that all cstr/ HF repo references look valid (basic format check)."""
+    """Check that all Xenna/ HF repo references look valid (basic format check)."""
     errors = []
-    repos = re.findall(r'"(cstr/[^"]+)"', script_src)
+    repos = re.findall(r'"(Xenna/[^"]+)"', script_src)
     for repo in repos:
-        # Must match pattern: cstr/<name>-GGUF or cstr/<name>-<variant>-GGUF
-        if not re.match(r"cstr/[\w.-]+-GGUF$", repo) and not re.match(
-            r"cstr/[\w.-]+$", repo
+        # Must match pattern: Xenna/<name>-GGUF or Xenna/<name>-<variant>-GGUF
+        if not re.match(r"Xenna/[\w.-]+-GGUF$", repo) and not re.match(
+            r"Xenna/[\w.-]+$", repo
         ):
             errors.append(f"{script_name}: suspicious HF repo format: {repo}")
     return errors

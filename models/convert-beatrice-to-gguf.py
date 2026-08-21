@@ -11,7 +11,7 @@ Blueprint: docs/music-transcription/BEATRICE_BLUEPRINT.md.
 
 LICENCE. Beatrice's trainer repo is MIT and its README states the source AND the
 trained models are MIT, so unlike RVC no acceptance gate is needed. --license
-still defaults to `mit` explicitly rather than being silent, because CrispASR's
+still defaults to `mit` explicitly rather than being silent, because StelnetTTS's
 registry gate matches on the tag and a checkpoint from some other training run
 may not share the base's terms.
 

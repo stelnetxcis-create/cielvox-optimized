@@ -1,11 +1,11 @@
 // tools/mbr_diff_probe.cpp — standalone §248 Mel-Band RoFormer dev probe.
 //
-// Two modes (no dep on the full crispasr-lib, so it builds in isolation):
+// Two modes (no dep on the full stelnettts-lib, so it builds in isolation):
 //   diff:      mbr-diff-probe diff <model.gguf> <ref.gguf> [verbosity]
 //   separate:  mbr-diff-probe sep  <model.gguf> <in.wav> <out_prefix>
 // (legacy: `mbr-diff-probe <model> <ref> [v]` still runs diff.)
 
-#include "core/crispasr_wav_writer.h"
+#include "core/stelnettts_wav_writer.h"
 #include "core/wav_reader.h"
 #include "mel_band_roformer.h"
 
@@ -18,7 +18,7 @@
 static int run_sep(const char* model, const char* wav, const char* prefix) {
     std::vector<float> mono;
     int sr = 0;
-    if (!crispasr::core::read_wav_mono_pcm16(wav, mono, sr)) {
+    if (!stelnettts::core::read_wav_mono_pcm16(wav, mono, sr)) {
         fprintf(stderr, "sep: cannot read %s\n", wav);
         return 2;
     }
@@ -37,7 +37,7 @@ static int run_sep(const char* model, const char* wav, const char* prefix) {
     for (int s = 0; s < r->n_sources; s++) {
         const std::string path = std::string(prefix) + "_" + r->source_names[s] + ".wav";
         const std::string blob =
-            crispasr_make_wav_int16_interleaved(r->sources[s], r->n_samples, r->n_channels, r->sample_rate);
+            stelnettts_make_wav_int16_interleaved(r->sources[s], r->n_samples, r->n_channels, r->sample_rate);
         std::ofstream(path, std::ios::binary).write(blob.data(), (std::streamsize)blob.size());
         // quick non-silence check
         double e = 0;

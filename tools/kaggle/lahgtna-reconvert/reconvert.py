@@ -12,13 +12,13 @@ from pathlib import Path
 os.environ["PYTHONUNBUFFERED"] = "1"
 WORK = Path("/kaggle/working")
 
-# 1. Clone CrispASR for the converter
-print("=== Cloning CrispASR ===", flush=True)
-CRISPASR_DIR = WORK / "CrispASR"
-if not CRISPASR_DIR.exists():
+# 1. Clone StelnetTTS for the converter
+print("=== Cloning StelnetTTS ===", flush=True)
+STELNETTTS_DIR = WORK / "StelnetTTS"
+if not STELNETTTS_DIR.exists():
     subprocess.check_call(["git", "clone", "--depth", "1",
-                           "https://github.com/CrispStrobe/CrispASR.git",
-                           str(CRISPASR_DIR)])
+                           "https://github.com/Cyna/StelnetTTS.git",
+                           str(STELNETTTS_DIR)])
 
 # 2. Install deps
 print("=== Installing deps ===", flush=True)
@@ -50,7 +50,7 @@ print("=== Converting to GGUF ===", flush=True)
 out_dir = WORK / "gguf-out"
 out_dir.mkdir(exist_ok=True)
 subprocess.check_call([
-    sys.executable, str(CRISPASR_DIR / "models" / "convert-chatterbox-to-gguf.py"),
+    sys.executable, str(STELNETTTS_DIR / "models" / "convert-chatterbox-to-gguf.py"),
     "--input", str(model_dir),
     "--output-dir", str(out_dir),
     "--t3-only",  # S3Gen is shared with base chatterbox, no need to re-convert
@@ -90,8 +90,8 @@ else:
 print("=== Uploading to HF ===", flush=True)
 # Get HF token from dataset
 hf_token = None
-for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-          "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+          "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
     if os.path.exists(p):
         with open(p) as f:
             hf_token = f.read().strip()
@@ -103,11 +103,11 @@ if hf_token:
     api.upload_file(
         path_or_fileobj=str(t3_gguf),
         path_in_repo="chatterbox-t3-f16.gguf",
-        repo_id="cstr/lahgtna-chatterbox-v1-GGUF",
+        repo_id="Xenna/lahgtna-chatterbox-v1-GGUF",
     )
-    print("Uploaded to cstr/lahgtna-chatterbox-v1-GGUF")
+    print("Uploaded to Xenna/lahgtna-chatterbox-v1-GGUF")
 else:
     print("WARNING: No HF token found — GGUF saved locally but not uploaded")
-    print(f"Manual upload: huggingface-cli upload cstr/lahgtna-chatterbox-v1-GGUF {t3_gguf}")
+    print(f"Manual upload: huggingface-cli upload Xenna/lahgtna-chatterbox-v1-GGUF {t3_gguf}")
 
 print("\n=== Done ===")

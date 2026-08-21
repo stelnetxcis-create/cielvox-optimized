@@ -72,7 +72,7 @@
 #endif
 #include "gguf.h"
 
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/fastconformer.h" // BlockWeights / BlockParams containers
 #include "core/fft.h"
 #include "core/gguf_loader.h"
@@ -101,7 +101,7 @@
 static bool gigaam_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_GIGAAM_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_GIGAAM_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -110,7 +110,7 @@ static bool gigaam_bench_enabled() {
 static bool gigaam_debug_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_GIGAAM_DEBUG");
+        const char* e = stelnettts_env::get("STELNETTTS_GIGAAM_DEBUG");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -124,7 +124,7 @@ static bool gigaam_debug_enabled() {
 static bool gigaam_flash_gate() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_GIGAAM_FLASH");
+        const char* e = stelnettts_env::get("STELNETTTS_GIGAAM_FLASH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -134,7 +134,7 @@ static bool gigaam_flash_gate() {
 static bool gigaam_force_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_GIGAAM_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_GIGAAM_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 
@@ -1078,7 +1078,7 @@ extern "C" struct gigaam_context* gigaam_init_from_file(const char* path_model, 
     ctx->n_threads = params.n_threads > 0 ? params.n_threads : 4;
 
     ctx->backend_cpu = core_cpu_backend::init();
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : nullptr;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : nullptr;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
     if (params.verbosity > 0)
@@ -1093,7 +1093,7 @@ extern "C" struct gigaam_context* gigaam_init_from_file(const char* path_model, 
     }
 
     // The conv pointwise weights ship as 3D (1, d, 2d) tensors, which
-    // crispasr-quantize's 2D-only rule skips — repack them to Q8_0 when the
+    // stelnettts-quantize's 2D-only rule skips — repack them to Q8_0 when the
     // rest of the model is quantized (issue #81).
     {
         std::vector<core_conformer::BlockWeights*> layers;

@@ -1,8 +1,8 @@
 """
-CrispASR — beam_size default fix verification (issue #161).
+StelnetTTS — beam_size default fix verification (issue #161).
 
 Verifies that the greedy-by-default change works correctly on CUDA:
-  1. Build CrispASR from the fix branch with CUDA.
+  1. Build StelnetTTS from the fix branch with CUDA.
   2. Download parakeet-tdt-0.6b-v3-q4_k.gguf (~250 MB).
   3. Run three configurations on jfk.wav:
      a) default (should now be greedy)
@@ -32,11 +32,11 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
-CRISPASR_REPO = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "worktree-fix-beam-size-defaults")
-MODEL_REPO = "cstr/parakeet-tdt-0.6b-v3-GGUF"
+STELNETTTS_REPO = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "worktree-fix-beam-size-defaults")
+MODEL_REPO = "Xenna/parakeet-tdt-0.6b-v3-GGUF"
 MODEL_FILE = "parakeet-tdt-0.6b-v3-q4_k.gguf"
 
 _T0 = time.time()
@@ -68,13 +68,13 @@ def run(cmd, capture=False, check=True, timeout=600, cwd=None, env=None):
 
 
 # ── Clone + build ──────────────────────────────────────────────────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     import shutil
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
@@ -108,19 +108,19 @@ step("cmake_done")
 
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}"
     )
 step("build_done")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    candidates = list(BUILD.rglob("crispasr"))
+    candidates = list(BUILD.rglob("stelnettts"))
     candidates = [c for c in candidates if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 step("cli_found", path=str(CLI))
 
 LIB_DIR = BUILD / "src"
@@ -150,7 +150,7 @@ if not AUDIO.exists():
 
 # ── Run helper ────────────────────────────────────────────────────────────
 def run_transcribe(label: str, extra_args: list, n_runs: int = 3) -> dict:
-    """Run crispasr n_runs times, return {label, transcript, timings}."""
+    """Run stelnettts n_runs times, return {label, transcript, timings}."""
     step(f"{label}_start")
     timings = []
     transcript = None

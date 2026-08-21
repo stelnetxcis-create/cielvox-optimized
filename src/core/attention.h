@@ -48,7 +48,7 @@ extern "C" bool ggml_backend_buffer_copy_tensor(const struct ggml_tensor* src, s
 
 namespace core_attn {
 
-// PLAN #60e: KV cache dtype selection from `CRISPASR_KV_QUANT`.
+// PLAN #60e: KV cache dtype selection from `STELNETTTS_KV_QUANT`.
 //
 // Default returns `GGML_TYPE_F16` so any backend that calls this in
 // its `*_kv_init` is bit-identical to legacy behaviour until the user
@@ -105,7 +105,7 @@ inline ggml_type kv_dtype_parse(const char* s, const char* backend_tag, const ch
 }
 
 inline ggml_type kv_dtype_from_env(const char* backend_tag) {
-    return kv_dtype_parse(std::getenv("CRISPASR_KV_QUANT"), backend_tag, "CRISPASR_KV_QUANT", GGML_TYPE_F16);
+    return kv_dtype_parse(std::getenv("STELNETTTS_KV_QUANT"), backend_tag, "STELNETTTS_KV_QUANT", GGML_TYPE_F16);
 }
 
 // Asymmetric K/V cache types. PLAN #69e — llama.cpp-style independent
@@ -122,7 +122,7 @@ inline ggml_type kv_dtype_from_env(const char* backend_tag) {
 //
 // Common llama.cpp recipe is `-ctk q8_0 -ctv q4_0`, ~40 % KV memory
 // savings vs symmetric Q8_0 with PPL barely moved on Llama-class
-// models. The legacy CRISPASR_KV_QUANT remains the default for both
+// models. The legacy STELNETTTS_KV_QUANT remains the default for both
 // halves; the per-half overrides take precedence.
 struct kv_dtype_pair {
     ggml_type k;
@@ -131,28 +131,28 @@ struct kv_dtype_pair {
 
 inline kv_dtype_pair kv_dtype_pair_from_env(const char* backend_tag) {
     const ggml_type both = kv_dtype_from_env(backend_tag);
-    const ggml_type k = kv_dtype_parse(std::getenv("CRISPASR_KV_QUANT_K"), backend_tag, "CRISPASR_KV_QUANT_K", both);
-    const ggml_type v = kv_dtype_parse(std::getenv("CRISPASR_KV_QUANT_V"), backend_tag, "CRISPASR_KV_QUANT_V", both);
+    const ggml_type k = kv_dtype_parse(std::getenv("STELNETTTS_KV_QUANT_K"), backend_tag, "STELNETTTS_KV_QUANT_K", both);
+    const ggml_type v = kv_dtype_parse(std::getenv("STELNETTTS_KV_QUANT_V"), backend_tag, "STELNETTTS_KV_QUANT_V", both);
     return {k, v};
 }
 
 // PLAN #69b — pick the backend on which to allocate the KV cache.
 // Default: same backend as the model weights (`gpu_backend`). When
-// `CRISPASR_KV_ON_CPU=1` is set, allocate on `cpu_backend` instead so
+// `STELNETTTS_KV_ON_CPU=1` is set, allocate on `cpu_backend` instead so
 // users with very long context + tight VRAM can spill the cache to
 // system RAM. The cost is per-step GPU↔CPU copy of the KV slice, which
-// is typically slower than just running with `CRISPASR_KV_QUANT=q4_0`
+// is typically slower than just running with `STELNETTTS_KV_QUANT=q4_0`
 // to fit KV in VRAM — try KV_QUANT first.
 //
 // `backend_tag` is the prefix on the warning line. Returns gpu_backend
 // when neither offload is requested, cpu_backend when it is.
 inline ggml_backend_t kv_backend_from_env(ggml_backend_t gpu_backend, ggml_backend_t cpu_backend,
                                           const char* backend_tag) {
-    const char* s = std::getenv("CRISPASR_KV_ON_CPU");
+    const char* s = std::getenv("STELNETTTS_KV_ON_CPU");
     if (!s || !*s || std::strcmp(s, "0") == 0)
         return gpu_backend;
     if (!cpu_backend) {
-        std::fprintf(stderr, "%s: CRISPASR_KV_ON_CPU=%s requested but no CPU backend available, falling back to GPU\n",
+        std::fprintf(stderr, "%s: STELNETTTS_KV_ON_CPU=%s requested but no CPU backend available, falling back to GPU\n",
                      backend_tag, s);
         return gpu_backend;
     }
@@ -580,7 +580,7 @@ static inline ggml_tensor* encoder_self_attn(ggml_context* ctx, ggml_tensor* x, 
 }
 
 // ---------------------------------------------------------------------------
-// KV-cached self-attention for the LLM decoders (qwen3-asr, voxtral,
+// KV-cached self-attention for the LLM decoders (cielvox2-asr, voxtral,
 // voxtral4b, granite-speech).
 //
 // Replaces the Q/K/V-proj + [optional Q/K norm] + RoPE + persistent-KV-cache
@@ -640,7 +640,7 @@ struct KvSelfAttnParams {
     // Optional per-dimension RoPE frequency factors (e.g. Llama 3 scaling).
     ggml_tensor* rope_freq_factors = nullptr;
     // Force the cached K/V to be cast to F32 before the GQA repeat/expansion,
-    // exactly like the global CRISPASR_KV_READ_F32 knob but per-call. Needed on
+    // exactly like the global STELNETTTS_KV_READ_F32 knob but per-call. Needed on
     // Vulkan, where REPEAT has no f16→f16 pipeline (the GQA head-expansion
     // `ggml_repeat_4d` on an F16 cache aborts with "Missing op: REPEAT for f16
     // to f16"; #192). Casting to F32 first lowers it to a supported F32 REPEAT.
@@ -654,7 +654,7 @@ struct KvSelfAttnParams {
     // is sensitive to a sub-ε score error at layer ~10 (#249). This is the same
     // eager+F32 attention llama.cpp uses for LM decode. Default false →
     // flash_attn_ext perf path for every other (non-sensitive) backend. Env
-    // CRISPASR_CORE_ATTN_EAGER_F32 overrides per-run for A/B testing.
+    // STELNETTTS_CORE_ATTN_EAGER_F32 overrides per-run for A/B testing.
     bool eager_f32_attn = false;
 };
 
@@ -783,12 +783,12 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
         V = ggml_rms_norm(ctx0, V, p.qk_norm_eps);
     }
 
-    // CrispASR debug hook (#249): tap the post-QK-norm, PRE-RoPE Q/K/V so the
+    // StelnetTTS debug hook (#249): tap the post-QK-norm, PRE-RoPE Q/K/V so the
     // moss-tts-local attention diff can split projection+qk-norm from RoPE against
     // the HF reference (q_norm / k_norm / v_proj module outputs). Same env knob as
     // the FA dump below; read-only set_output, bit-identical when the knob is unset.
     {
-        const char* pre_env = std::getenv("CRISPASR_CORE_ATTN_DUMP_FA_LAYER");
+        const char* pre_env = std::getenv("STELNETTTS_CORE_ATTN_DUMP_FA_LAYER");
         if (pre_env && (int)il == (int)std::strtol(pre_env, nullptr, 10)) {
             ggml_tensor* Qn = ggml_cont(ctx0, Q);
             ggml_set_name(Qn, "DBG_Q_prerope");
@@ -830,7 +830,7 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
     // destination to be contiguous when the source/dst types differ
     // (CPU backend's `dup_to_q` aborts otherwise, and Metal's CPY also
     // skips non-contiguous quantised dst). For a quantised cache —
-    // PLAN #60e CRISPASR_KV_QUANT={q8_0,q4_0} — we instead always use
+    // PLAN #60e STELNETTTS_KV_QUANT={q8_0,q4_0} — we instead always use
     // `ggml_set_rows` with a per-token row-index tensor, which both
     // backends accept for F32→Q* directly. When the caller already
     // supplies `kv_indices` (cached-graph reuse path) we honour that;
@@ -868,7 +868,7 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
 
     // ---- Read full K/V history from cache ----
     // Cache may be allocated as F16 (default) or as a quantized type
-    // (Q8_0 / Q4_0 / etc., per CRISPASR_KV_QUANT — PLAN #60e). For the
+    // (Q8_0 / Q4_0 / etc., per STELNETTTS_KV_QUANT — PLAN #60e). For the
     // default F16 path the strided per-layer view becomes a contiguous
     // F16 tensor via ggml_cont (a CPY F16→F16 op). For a quantized
     // cache the equivalent CPY (Q8_0→Q8_0 etc.) isn't supported by
@@ -890,13 +890,13 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
     const size_t v_read_off = sr_v ? 0 : (size_t)il * kv_v->nb[3];
     ggml_tensor* k_layer_view = ggml_view_3d(ctx0, k_read_src, hd, Lk, n_kv, kv_k->nb[1], kv_k->nb[2], k_read_off);
     ggml_tensor* v_layer_view = ggml_view_3d(ctx0, v_read_src, hd, Lk, n_kv, kv_v->nb[1], kv_v->nb[2], v_read_off);
-    // CRISPASR_KV_READ_F32=1 forces the cache read to dequantise (or
+    // STELNETTTS_KV_READ_F32=1 forces the cache read to dequantise (or
     // upcast F16) to F32 before flash_attn. Useful when F16 attention
     // accumulator drift on Metal sends the sampler off the rails for
     // sensitive models (chatterbox T3 — see LEARNINGS §82). Default
     // off to preserve legacy bit-exactness with the F16 fast path.
     static const bool s_kv_read_f32 = []() {
-        const char* s = std::getenv("CRISPASR_KV_READ_F32");
+        const char* s = std::getenv("STELNETTTS_KV_READ_F32");
         return s && *s && std::strcmp(s, "0") != 0;
     }();
     // Vulkan has no f16→f16 REPEAT pipeline, so the GQA head-expansion
@@ -934,11 +934,11 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
         }
     }
 
-    // CrispASR debug hook (#83 bisect): when CRISPASR_CORE_ATTN_DUMP_FA_LAYER
+    // StelnetTTS debug hook (#83 bisect): when STELNETTTS_CORE_ATTN_DUMP_FA_LAYER
     // matches the current layer index, name + add the FA inputs and output as
     // graph outputs so chatterbox.cpp's run_t3_kv post-compute dumper can
     // fetch them. Negligible perf cost when the env knob is unset.
-    auto dbg_dump_il_env = std::getenv("CRISPASR_CORE_ATTN_DUMP_FA_LAYER");
+    auto dbg_dump_il_env = std::getenv("STELNETTTS_CORE_ATTN_DUMP_FA_LAYER");
     const int dbg_dump_il = dbg_dump_il_env ? (int)std::strtol(dbg_dump_il_env, nullptr, 10) : -1;
     const bool dbg_dump = ((int)il == dbg_dump_il);
     if (dbg_dump) {
@@ -961,7 +961,7 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
     // ---- Permute Q to (hd, T, n_q) for flash-attn ----
     Q = ggml_cont(ctx0, ggml_permute(ctx0, Q, 0, 2, 1, 3));
 
-    // ---- Attention: flash by default, or explicit eager (CRISPASR_CORE_ATTN_EAGER_F32
+    // ---- Attention: flash by default, or explicit eager (STELNETTTS_CORE_ATTN_EAGER_F32
     // =1). The eager path is the full-scores softmax llama.cpp uses for LM decode:
     // mul_mat QK^T -> soft_max_ext -> mul_mat V. Unlike flash_attn_ext's streaming
     // (online) softmax, it computes the whole score row before normalizing, so at a
@@ -971,7 +971,7 @@ static inline ggml_tensor* kv_self_attn(ggml_context* ctx0, ggml_cgraph* gf, ggm
     // accumulation on CUDA/Metal (a no-op on CPU, which is already F32). ----
     // env overrides the per-call param: unset -> use p.eager_f32_attn; 0/1 forces.
     static const int s_eager_env = []() {
-        const char* s = std::getenv("CRISPASR_CORE_ATTN_EAGER_F32");
+        const char* s = std::getenv("STELNETTTS_CORE_ATTN_EAGER_F32");
         if (!s || !*s)
             return -1;
         return std::strcmp(s, "0") != 0 ? 1 : 0;

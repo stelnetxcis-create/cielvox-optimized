@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Per-step benchmark: CrispASR chatterbox vs Python reference.
+"""Per-step benchmark: StelnetTTS chatterbox vs Python reference.
 
 Measures wall time at each pipeline stage:
   T3:    tokenize | prefill-build | prefill-compute | AR-decode
@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-BUILD_BIN = REPO_ROOT / "build" / "bin" / "crispasr"
+BUILD_BIN = REPO_ROOT / "build" / "bin" / "stelnettts"
 
 DEFAULT_TEXT = "The quick brown fox jumps over the lazy dog."
 DEFAULT_T3_CANDIDATES = [
@@ -270,7 +270,7 @@ def print_report(cpp: Optional[dict], python: Optional[dict], args: argparse.Nam
         wall_ms   = cpp.get("wall time",   0)
 
         print()
-        print("  CrispASR C++ (CHATTERBOX_BENCH=1)")
+        print("  StelnetTTS C++ (CHATTERBOX_BENCH=1)")
         print(f"  {'audio generated':<22}  {audio_s_real:>8.2f} s")
         if wall_ms:
             rtf = wall_ms / 1000.0 / audio_s_real if audio_s_real > 0 else 0
@@ -318,7 +318,7 @@ def print_report(cpp: Optional[dict], python: Optional[dict], args: argparse.Nam
 
         if cpp and wall_ms and best:
             speedup = best / wall_ms
-            print(f"\n  CrispASR speedup vs Python: {speedup:.1f}x (best/best)")
+            print(f"\n  StelnetTTS speedup vs Python: {speedup:.1f}x (best/best)")
 
     print()
     print("  Notes:")

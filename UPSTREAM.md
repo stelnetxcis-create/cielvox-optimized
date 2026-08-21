@@ -1,14 +1,14 @@
 # Upstream issues / patches we depend on
 
 This file tracks fixes and features that this fork would benefit from
-upstream (crispasr / ggml / NeMo / etc.). Each entry has the issue,
+upstream (stelnettts / ggml / NeMo / etc.). Each entry has the issue,
 the impact on this fork, and the workaround we currently apply.
 
-## crispasr — `examples/ffmpeg-transcode.cpp` mp4-container handling
+## stelnettts — `examples/ffmpeg-transcode.cpp` mp4-container handling
 
 **Status:** ⏳ pending upstream
 
-**Issue.** When this fork is built with `-DCRISPASR_FFMPEG=ON`, all five CLIs
+**Issue.** When this fork is built with `-DSTELNETTTS_FFMPEG=ON`, all five CLIs
 (`cohere-main`, `parakeet-main`, `canary-main`, `cohere-align`, `nfa-align`)
 inherit `read_audio_data()`'s ffmpeg fallback path. That path correctly
 decodes bare-codec files like `.opus` (verified, perfect transcript on
@@ -30,12 +30,12 @@ opus / mp3 / flac).
 **Impact on this fork.** The audio-formats section of the main README has
 to recommend pre-conversion via `ffmpeg -i in.X -ar 16000 -ac 1 -c:a
 pcm_s16le out.wav` for `.m4a` / `.mp4` / `.webm` / `.mov` even when the
-`CRISPASR_FFMPEG=ON` build is used. The in-process path is only safe for
+`STELNETTTS_FFMPEG=ON` build is used. The in-process path is only safe for
 bare codecs.
 
 **Workaround we apply.** Document the limitation in the README's
 "Measured results" table and tell users to pre-convert. The
-`CRISPASR_FFMPEG=ON` build is positioned as "in-process Opus support",
+`STELNETTTS_FFMPEG=ON` build is positioned as "in-process Opus support",
 not as a complete substitute for pre-conversion.
 
 **What an upstream fix would look like.** A patch to
@@ -49,13 +49,13 @@ not as a complete substitute for pre-conversion.
 3. Handles the EOF / drain frames cleanly to avoid the `munmap_chunk`
    double-free signature
 
-This needs an MR to ggml-org/crispasr. Once merged, this fork will
+This needs an MR to ggml-org/stelnettts. Once merged, this fork will
 pick it up automatically on the next ggml subtree update.
 
 **Reproduction:**
 
 ```bash
-cmake -B build-ffmpeg -DCMAKE_BUILD_TYPE=Release -DCRISPASR_FFMPEG=ON
+cmake -B build-ffmpeg -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_FFMPEG=ON
 cmake --build build-ffmpeg -j --target parakeet-main
 
 ffmpeg -y -i samples/jfk.wav -c:a aac -b:a 64k /tmp/jfk.m4a
@@ -129,9 +129,9 @@ came from.
 
 ## ggml — fork-local patches we already carry
 
-These are not wishlist items — they are real CrispASR-local
-modifications carried in the `ggml` submodule (the `CrispStrobe/ggml`
-fork), marked with `// CrispASR patch` so an upstream merge into the
+These are not wishlist items — they are real StelnetTTS-local
+modifications carried in the `ggml` submodule (the `Cyna/ggml`
+fork), marked with `// StelnetTTS patch` so an upstream merge into the
 fork won't lose them silently.
 Full root-cause / fix-shape per patch is in LEARNINGS.md
 "ggml fork patches we carry". Reproducing the four-patch inventory
@@ -141,8 +141,8 @@ here so the upstream-PR question stays visible.
 | - | --- | --- | --- |
 | 1 | `ggml-cpu/{vec.cpp, vec.h, ggml-cpu.c, simd-mappings.h}` | `MUL_MAT(F16, F32)` quantises F32→F16 first; activations >65504 saturate to ±Inf and propagate NaN. Issue #38. | Carrying |
 | 2 | `ggml-cuda/im2col.cu` | `OW > 65535` aborts CUDA dispatch (e.g. SEANet at 11s × 16kHz → OW=176000); applies to both 2D and 3D im2col kernels. | Carrying, filed upstream as [ggml-org/llama.cpp#22944](https://github.com/ggml-org/llama.cpp/pull/22944) (2026-05-11; ggml#1485 redirected per @CISC) |
-| 3 | `ggml-cuda/cpy.cu` | `cpy_scalar_transpose` asserts `grid_y < USHRT_MAX`; qwen3-tts codec hits T_pcm=2.88M on CUDA. GH issue #65. | Carrying |
-| 4 | `ggml-metal/ggml-metal.metal` | `kernel_conv_transpose_1d` iterates full IL per output, ~64× wasted work; trips macOS GPU watchdog on long qwen3-tts graphs. | ✅ merged upstream as [PR #1477](https://github.com/ggml-org/ggml/pull/1477) (2026-05-10); drop from local fork on next ggml bump |
+| 3 | `ggml-cuda/cpy.cu` | `cpy_scalar_transpose` asserts `grid_y < USHRT_MAX`; cielvox2-tts codec hits T_pcm=2.88M on CUDA. GH issue #65. | Carrying |
+| 4 | `ggml-metal/ggml-metal.metal` | `kernel_conv_transpose_1d` iterates full IL per output, ~64× wasted work; trips macOS GPU watchdog on long cielvox2-tts graphs. | ✅ merged upstream as [PR #1477](https://github.com/ggml-org/ggml/pull/1477) (2026-05-10); drop from local fork on next ggml bump |
 | 5 | `ggml.c` (`ggml_conv_1d`, `ggml_conv_1d_dw`, `ggml_conv_2d`, `ggml_conv_2d_dw`) | After (1) sets `vec_dot_type=F32` for F16, conv graph builders that hardcode F16 im2col + F16 weight produce `MUL_MAT(F16, F16)` which the CPU backend rejects. Cast kernel to F32 when im2col is F32. | Carrying |
 | 6 | `ggml-cuda/ggml-cuda.cu` (`ggml_cuda_op_mul_mat_cublas`, `use_fp16`) | CUDA counterpart of (1): `MUL_MAT(F16 weight, F32 act)` takes the fp16 cuBLAS path, quantising the F32 activation to F16 → ±65504 saturation → NaN → degenerate `!-loop` on GPU only (funasr SANM 70-layer encoder; CPU has (1), Metal has a native F16×F32 kernel). Exclude F16×F32 from `use_fp16` so it falls to the F32 `cublasSgemm` path. Quantized weights unaffected (MMQ/MMVQ). Found via the all-backends Kaggle P100 run 2026-05-31. | Carrying |
 
@@ -150,14 +150,14 @@ here so the upstream-PR question stays visible.
 | 15 | `ggml-backend.cpp` (sched backend routing) | Dual-backend `[CUDA,CPU]` sched produces Inf at LLM layer 2 → all-NaN by layer 3 in funasr Qwen2-0.6B. Same bug class as #11 (Metal NaN at large T). Workaround: `load_weights_split` to force LLM to CPU. Issue #125. | Carrying; `tools/upstream-prs/15-cuda-sched-nan-llm-decode.md` |
 
 **Why these aren't upstream yet.** All were found while shipping a
-specific CrispASR backend and were applied as the smallest local change
-that unblocked us. None of them are CrispASR-specific in nature — any
+specific StelnetTTS backend and were applied as the smallest local change
+that unblocked us. None of them are StelnetTTS-specific in nature — any
 project using ggml with similar workloads will hit them. Sending each
 upstream is straightforward when we have time; until then they re-apply
 on every ggml bump (we've already lost #2 once during the 0.9.8 → 0.10.0
 subtree pull, and #5 surfaced as missed inventory during the master bump
 test on 2026-05-05 because the original audit grep only matched
-`CrispASR patch` and not `CrispASR fork`).
+`StelnetTTS patch` and not `StelnetTTS fork`).
 
 **(1) and (5) are coupled.** (1) sets `vec_dot_type=F32` for F16 weights
 and (5) makes the conv graph builders cast their F16 weights to F32 to
@@ -165,7 +165,7 @@ match. Without (5), (1) crashes `kokoro --gpu-backend cpu` at
 `ggml_backend_sched_split_graph`. Either send them as a single PR
 upstream or design a single replacement that doesn't require splitting.
 
-**Bump hygiene.** Before bumping ggml, snapshot `grep -rnE "CrispASR
+**Bump hygiene.** Before bumping ggml, snapshot `grep -rnE "StelnetTTS
 (patch|fork)" ggml/`; after the bump, diff against the snapshot.
 Anything missing is a patch upstream's master silently overwrote — find
 the original commit, cherry-pick the hunk.
@@ -180,7 +180,7 @@ needed.
 
 - **2026-05-10** — Patch #4 (Metal conv_transpose_1d) merged upstream as
   [ggml-org/ggml#1477](https://github.com/ggml-org/ggml/pull/1477). Drop
-  the `// CrispASR patch` hunk in `ggml-metal.metal` on the next ggml
+  the `// StelnetTTS patch` hunk in `ggml-metal.metal` on the next ggml
   subtree bump.
 - **2026-05-10** — Patch #2 (CUDA im2col OW > 65535) filed at
   ggml-org/ggml#1485; covers both `im2col_kernel` (2D) and

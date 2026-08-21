@@ -1,13 +1,13 @@
 {
-  "id": "chr1str/crispasr-static-link-316",
-  "title": "crispasr static link 316",
-  "code_file": "crispasr-static-link-316.py",
+  "id": "chr1str/stelnettts-static-link-316",
+  "title": "stelnettts static link 316",
+  "code_file": "stelnettts-static-link-316.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []

@@ -2,8 +2,8 @@
 //
 // Replaces the 9 copy-pasted mel spectrogram implementations across the
 // src/ model files (parakeet.cpp, canary.cpp, canary_ctc.cpp, cohere.cpp,
-// qwen3_asr.cpp, voxtral.cpp, voxtral4b.cpp, granite_speech.cpp,
-// crispasr). Two algorithm clusters are supported via enums:
+// cielvox2_asr.cpp, voxtral.cpp, voxtral4b.cpp, granite_speech.cpp,
+// stelnettts). Two algorithm clusters are supported via enums:
 //
 //   NeMo / Conformer style  — ln + per-mel z-score, (T, n_mels) output
 //       used by parakeet, canary, canary_ctc, cohere
@@ -186,12 +186,12 @@ struct Params {
     int stacked_frames = 1;
 
     // Per-backend opt-in for the OpenMP-parallel STFT frame loop (§176f). The
-    // global env var CRISPASR_MEL_PARALLEL=1 enables it for everything; this
+    // global env var STELNETTTS_MEL_PARALLEL=1 enables it for everything; this
     // flag lets a single backend turn it on by default once (a) its `fft`
     // callable is confirmed re-entrant and (b) it has been benched faster on the
     // target arch. AUDIT (2026-06-20): every in-tree fft callable is re-entrant
     // — pure stack-only Cooley-Tukey (cohere/nemotron/parakeet/canary/canary_ctc),
-    // a captureless lambda (glm_asr), recursive-on-caller-buffer (qwen3_asr), or
+    // a captureless lambda (glm_asr), recursive-on-caller-buffer (cielvox2_asr), or
     // thread_local scratch (voxtral) — none use shared mutable state, so the
     // parallel path is correctness-safe; the remaining gate is per-arch perf.
     bool allow_parallel_stft = false;

@@ -12,7 +12,7 @@
 //
 // The C API deliberately mirrors src/htdemucs.h so the shared separation
 // surface (src/core/separation_io.h, --separate) drives both backends through
-// the same crispasr_separation_view shape.
+// the same stelnettts_separation_view shape.
 
 #pragma once
 

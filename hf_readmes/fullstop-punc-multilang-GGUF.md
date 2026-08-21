@@ -19,7 +19,7 @@ pipeline_tag: token-classification
 
 # Fullstop Punctuation Multilingual (GGUF)
 
-GGUF conversion of [oliverguhr/fullstop-punctuation-multilang-large](https://huggingface.co/oliverguhr/fullstop-punctuation-multilang-large) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of [oliverguhr/fullstop-punctuation-multilang-large](https://huggingface.co/oliverguhr/fullstop-punctuation-multilang-large) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 Adds punctuation to unpunctuated ASR output. **Multilingual** (English, German, French, Italian) with **ASCII punctuation** output.
 
@@ -34,10 +34,10 @@ Adds punctuation to unpunctuated ASR output. **Multilingual** (English, German, 
 - **Languages**: English, German, French, Italian
 - **License**: MIT
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-crispasr --backend wav2vec2 -m wav2vec2.gguf --punc-model fullstop-punc-q4_k.gguf -f audio.wav
+stelnettts --backend wav2vec2 -m wav2vec2.gguf --punc-model fullstop-punc-q4_k.gguf -f audio.wav
 ```
 
 ## Available Files

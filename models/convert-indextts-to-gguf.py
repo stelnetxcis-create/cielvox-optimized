@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert IndexTTS-1.5 checkpoints to GGUF for the CrispASR ``indextts`` TTS backend.
+Convert IndexTTS-1.5 checkpoints to GGUF for the StelnetTTS ``indextts`` TTS backend.
 
 Produces two GGUF files from three source checkpoints in the IndexTTS-1.5 model dir:
 
@@ -33,7 +33,7 @@ Usage:
 
     python models/convert-indextts-to-gguf.py \\
         --model-dir /path/to/IndexTTS-1.5 \\
-        --output-dir /Volumes/backups/ai/crispasr-models/indextts \\
+        --output-dir /Volumes/backups/ai/stelnettts-models/indextts \\
         [--outtype f16|f32]
 """
 

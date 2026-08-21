@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""benchmark_asr.py — multi-backend ASR benchmark driver for CrispASR.
+"""benchmark_asr.py — multi-backend ASR benchmark driver for StelnetTTS.
 
-Runs the crispasr CLI across backends, audio files, and settings
+Runs the stelnettts CLI across backends, audio files, and settings
 combinations, collecting structured metrics that expose regressions
 like issue #89 (parakeet silently losing content on long audio).
 
@@ -113,12 +113,12 @@ MODELS_DIR = Path(os.environ.get("BENCHMARK_MODELS_DIR", "/mnt/storage"))
 # ---------------------------------------------------------------------------
 
 def find_binary() -> str | None:
-    """Find the crispasr binary."""
+    """Find the stelnettts binary."""
     candidates = [
-        os.environ.get("CRISPASR_BIN", ""),
-        "./build/bin/crispasr",
-        "/tmp/build-issue89/bin/crispasr",
-        "./build-ninja-compile/bin/crispasr",
+        os.environ.get("STELNETTTS_BIN", ""),
+        "./build/bin/stelnettts",
+        "/tmp/build-issue89/bin/stelnettts",
+        "./build-ninja-compile/bin/stelnettts",
     ]
     for c in candidates:
         if c and Path(c).is_file() and os.access(c, os.X_OK):
@@ -177,11 +177,11 @@ def run_one(
     settings: dict,
     language: str | None = None,
 ) -> dict:
-    """Run crispasr on one (model, audio, settings) combo. Returns result dict."""
+    """Run stelnettts on one (model, audio, settings) combo. Returns result dict."""
     audio_dur = get_audio_duration(audio)
     audio_name = Path(audio).name
 
-    # -of sets the output path *prefix*; crispasr appends ".json" for -ojf.
+    # -of sets the output path *prefix*; stelnettts appends ".json" for -ojf.
     with tempfile.NamedTemporaryFile(suffix=".bench", delete=False) as tf:
         out_prefix = tf.name
     json_out = out_prefix + ".json"
@@ -318,7 +318,7 @@ def format_table(results: list[dict]) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="CrispASR multi-backend benchmark driver",
+        description="StelnetTTS multi-backend benchmark driver",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -338,7 +338,7 @@ def main():
     # Find binary
     binary = find_binary()
     if not binary:
-        print("ERROR: crispasr binary not found. Set CRISPASR_BIN or build first.", file=sys.stderr)
+        print("ERROR: stelnettts binary not found. Set STELNETTTS_BIN or build first.", file=sys.stderr)
         sys.exit(1)
     print(f"Binary: {binary}", file=sys.stderr)
 

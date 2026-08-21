@@ -1,4 +1,4 @@
-// test-no-emotion-recognition.cpp — CrispASR must not ship voice-based emotion
+// test-no-emotion-recognition.cpp — StelnetTTS must not ship voice-based emotion
 // inference on any surface.
 //
 // Inferring a natural person's emotions from their voice makes the thing doing
@@ -29,14 +29,14 @@
 #include <string>
 #include <vector>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
 
 std::string read_file(const std::string& rel) {
-    const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/" + rel;
+    const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/" + rel;
     std::ifstream f(path);
     REQUIRE(f.good());
     std::ostringstream ss;
@@ -73,15 +73,15 @@ TEST_CASE("no emotion field on the SenseVoice C result struct", "[unit][complian
 }
 
 TEST_CASE("no emotion field on the CLI segment struct", "[unit][compliance]") {
-    // crispasr_segment is what every ASR backend fills and every writer reads;
+    // stelnettts_segment is what every ASR backend fills and every writer reads;
     // a field here would reach -oj/-ojf, SRT/VTT and the structured writers at
     // once.
-    const std::string code = strip_line_comments(read_file("examples/cli/crispasr_backend.h"));
+    const std::string code = strip_line_comments(read_file("examples/cli/stelnettts_backend.h"));
     REQUIRE_FALSE(contains(code, "emotion"));
 }
 
 TEST_CASE("no emotion key in any JSON writer", "[unit][compliance]") {
-    for (const char* rel : {"examples/cli/cli.cpp", "examples/cli/crispasr_output.cpp"}) {
+    for (const char* rel : {"examples/cli/cli.cpp", "examples/cli/stelnettts_output.cpp"}) {
         const std::string code = strip_line_comments(read_file(rel));
         INFO("file: " << rel);
         REQUIRE_FALSE(contains(code, "\"emotion\""));

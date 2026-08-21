@@ -12,7 +12,7 @@ t501-20s.wav):**
 
 1. **Build fix.** `#include <climits>` added to `whisper_params.h` (the reported
    TU; also covers cli.cpp/server.cpp/backend_parakeet.cpp which include it) and to
-   `crispasr_c_api.cpp` (separate src TU with its own INT_MIN use). `sentencepiece.h`
+   `stelnettts_c_api.cpp` (separate src TU with its own INT_MIN use). `sentencepiece.h`
    mentions INT_MIN only in comments — no fix needed. Full build green.
 
 2. **Segmentation + truncation fix (the real bug).** Reproduced that
@@ -21,9 +21,9 @@ t501-20s.wav):**
    `--chunk-seconds` path drove `parakeet_transcribe_streamed` with a 7 s ENCODER
    window, and small windows shift this full-attention FastConformer's per-feature
    stats → sparse/truncated TDT decode (already documented at parakeet.cpp:3818).
-   Fix (crispasr_backend_parakeet.cpp): **decouple the encoder window from output
+   Fix (stelnettts_backend_parakeet.cpp): **decouple the encoder window from output
    segmentation.** Keep the encoder at the model's quality default (30 s, bounded
-   VRAM, `CRISPASR_PARAKEET_STREAM_CHUNK`-overridable), decode once coherently, then
+   VRAM, `STELNETTTS_PARAKEET_STREAM_CHUNK`-overridable), decode once coherently, then
    split the words/tokens into ~N-second OUTPUT segments via new pure helper
    `core_segment::group_by_window` (`src/core/asr_segment_group.h`, snapped to word
    boundaries, contiguous, every seg ≥1 word). New unit test `test-segment-group`
@@ -51,21 +51,21 @@ don't call the adapter), and the server had its own slicing that ignored
 CAP_INTERNAL_CHUNKING. Audited + wired every consumer:
 
 - **CLI** — adapter fix (already on main). ✓
-- **Server** (`crispasr_server.cpp`) — added the CLI's CAP_INTERNAL_CHUNKING
+- **Server** (`stelnettts_server.cpp`) — added the CLI's CAP_INTERNAL_CHUNKING
   gate: a self-chunking backend (parakeet/canary) with no VAD now gets the WHOLE
   clip (`effective_chunk_seconds = 0`) → its coherent decode + adapter
   segmentation runs, instead of per-slice transcribe that corrupts the
   full-attention encoder. ✓
-- **C-ABI session** (`crispasr_c_api.cpp`, used by python/go/java/dart/ruby/rust/
+- **C-ABI session** (`stelnettts_c_api.cpp`, used by python/go/java/dart/ruby/rust/
   wasm/node wrappers) — mirrored the adapter: explicit `chunk_seconds>0` (non-JA)
   → `parakeet_transcribe_streamed` at the quality window + new
   `parakeet_result_to_session_segs` (reuses `core_segment::group_by_window`) →
   ~N-second segments. `chunk_seconds<=0` keeps the one-merged-segment #208
   contract. ✓
-- **Wrappers** — no code change needed: they marshal `crispasr_session_seg[]`
+- **Wrappers** — no code change needed: they marshal `stelnettts_session_seg[]`
   generically, so they get the segments once the C-ABI emits them.
 
-Verified on the reporter's ACTUAL model (`cstr/parakeet-tdt-1.1b-GGUF` q4_k) +
+Verified on the reporter's ACTUAL model (`Xenna/parakeet-tdt-1.1b-GGUF` q4_k) +
 `t501-20s.wav`, `--chunk-seconds 7 --chunk-overlap 2`:
 - CLI: 2 segments, 21 words, text == single-pass (== maintainer's #257 baseline).
 - Server (`/v1/audio/transcriptions`, `chunk_seconds=7`): 2 segments, complete.
@@ -109,7 +109,7 @@ mid-sentence split segments. Not seen with cohere/granite.
 - **(B)** `--chunk-seconds` forces the DISPATCHER chunk+merge (bypasses parakeet's
   internal long-audio handling). The per-chunk parakeet decode is fine; the
   MERGE/LCS-dedup drops boundary content for parakeet (works for cohere/granite).
-  → INVESTIGATING the dispatcher chunk+merge + LCS dedup (crispasr_c_api
+  → INVESTIGATING the dispatcher chunk+merge + LCS dedup (stelnettts_c_api
   session_transcribe_chunked path).
 
 ### Progress
@@ -132,7 +132,7 @@ mid-sentence split segments. Not seen with cohere/granite.
 ### DONE
 - (A) parakeet_group_words() shared helper → words on streamed/chunked paths.
 - (B) backend_self_chunks_on_explicit() gate: CAP_INTERNAL_CHUNKING + explicit
-  --chunk-seconds bypasses dispatcher slicing (crispasr_run.cpp); parakeet adapter
+  --chunk-seconds bypasses dispatcher slicing (stelnettts_run.cpp); parakeet adapter
   routes to parakeet_transcribe_streamed(chunk,overlap). jfk --chunk-seconds 7
   --chunk-overlap 2 now == baseline ("...ask not what your country can do for you.
   Ask what you can do for your country.", 22 words). 4 new unit tests in
@@ -159,12 +159,12 @@ the lib's `vocab_size < 4000` heuristics (parakeet.cpp:3654,3774).
 
 FIX: detect JA by scanning the vocab for Japanese script (kana/kanji fraction),
 not vocab size. Verify: 0.6b-ja stays JA, 0.6b-v3 non-JA, 1.1b-EN non-JA. Download
-cstr/parakeet-tdt-1.1b-GGUF to reproduce the reporter's exact case.
+Xenna/parakeet-tdt-1.1b-GGUF to reproduce the reporter's exact case.
 
 
 ## FIXED v2 (2026-07-14) — JA misdetection resolved, verified on real 1.1b
 - parakeet_vocab_is_japanese() (vocab content scan) replaces vocab<=4096. Downloaded
-  cstr/parakeet-tdt-1.1b-GGUF (vocab_size=1024, confirms misdetection).
+  Xenna/parakeet-tdt-1.1b-GGUF (vocab_size=1024, confirms misdetection).
 - 1.1b DEFAULT: 1 clean complete segment, 21 words (was split-outs + truncation).
 - 1.1b --chunk-seconds 7 --chunk-overlap 2: full correct transcript (was corrupted).
 - 0.6b-ja still JA (97% CJK vocab); 0.6b-v3 still non-JA. No regressions.
@@ -181,11 +181,11 @@ wrappers, MATCHING the Python reference.
 
 REFERENCE (NeMo): long-audio memory is bounded via `change_attention_model(
 "rel_pos_local_attn", [L,R])` (local/windowed attention → O(T·window)); default is
-full attention. CrispASR already implements this (att_context_left/right) but only
-via env CRISPASR_PARAKEET_ATT_CONTEXT.
+full attention. StelnetTTS already implements this (att_context_left/right) but only
+via env STELNETTTS_PARAKEET_ATT_CONTEXT.
 
 PLAN:
-1. BUG (critical): C-ABI inline parakeet dispatch (crispasr_c_api.cpp:4525) still
+1. BUG (critical): C-ABI inline parakeet dispatch (stelnettts_c_api.cpp:4525) still
    uses the OLD `parakeet_n_vocab<=4096` JA heuristic → bindings/server STILL
    misdetect 1.1b. Mirror parakeet_vocab_is_japanese() there (contributing pt6).
 2. FEATURE: expose local-attention window as CLI `--att-context L,R` (matches NeMo
@@ -196,12 +196,12 @@ PLAN:
 
 
 ## ROUND 3 DONE (2026-07-15)
-1. C-ABI JA fix (crispasr_c_api.cpp:4525) — bindings/server now match CLI. ✓
+1. C-ABI JA fix (stelnettts_c_api.cpp:4525) — bindings/server now match CLI. ✓
 2. --att-context "L,R" wired: lib parakeet_set_att_context → whisper_params → CLI
    (+help) → parakeet adapter → C-ABI (session field + inline dispatch +
-   crispasr_session_set_parakeet_att_context + header) → server (att_context form,
+   stelnettts_session_set_parakeet_att_context + header) → server (att_context form,
    both handlers) → python Session.set_parakeet_att_context(). Go binding has no
-   session-API surface (0 crispasr_session refs), nothing to wire there.
+   session-API surface (0 stelnettts_session refs), nothing to wire there.
    Verified: --att-context 64,64 on 88s clip == full-attention output, local attn
    active; symbol exported; python syntax OK.
 Matches NeMo: full attention default; opt-in local attention (rel_pos_local_attn)
@@ -209,7 +209,7 @@ for long-audio VRAM. --chunk-seconds remains the other reference control.
 
 ## ROUND 4 (2026-07-15) — true windowed attention (maintainer-directed)
 
-FINDING: --att-context (as shipped R3) does NOT reduce memory — CrispASR builds a
+FINDING: --att-context (as shipped R3) does NOT reduce memory — StelnetTTS builds a
 T×T mask over FULL attention (fastconformer build_block: scores are (T,T,n_heads)),
 matching NeMo's OUTPUT but not its O(T·window) memory. Measured peak RSS: full ==
 att-context (1.41GB); --chunk-seconds ~same/slightly higher. The real single-alloc
@@ -248,14 +248,14 @@ Key algorithm (O(T·BS·H) scores/BD instead of O(T²·H)):
   offset (BS-1)*nb0 — natural key order, all strides>=0.
 - Host band mask (3BS,BS,NB): -inf where k out of [0,T) or out of [q-WL,q+WR].
 
-NEXT (M2): wire as core_conformer::build_windowed_attn, gated CRISPASR_FC_WINDOWED_ATTN
+NEXT (M2): wire as core_conformer::build_windowed_attn, gated STELNETTTS_FC_WINDOWED_ATTN
 (default keeps masked-full path intact for A/B), validate via real parakeet
 transcript parity + memory measurement.
 
 ### R4 M2 DONE + M3 in progress (2026-07-15) — wired + validated
 
 M2: build_windowed_attn wired into core_conformer::build_block, gated
-CRISPASR_FC_WINDOWED_ATTN=1 (default OFF keeps masked-full intact). Caller
+STELNETTTS_FC_WINDOWED_ATTN=1 (default OFF keeps masked-full intact). Caller
 parakeet.cpp builds O(T·window) band mask (make_window_band_mask) instead of the
 T×T local mask when gated+applicable. Builds clean.
 
@@ -263,7 +263,7 @@ M3 findings (parakeet-tdt-0.6b-v3 q4_k, Metal M1):
 - PARITY: windowed-local == masked-full-local transcripts IDENTICAL on 20s
   (T=250) and 209s (T=2613) clips. Windowed path confirmed engaging (stderr trace).
 - MEMORY: KEY metric is phys_footprint (macOS caps RSS via compression). At forced
-  single-pass T=7838 (627s clip, CRISPASR_PARAKEET_STREAM_THRESHOLD=9999):
+  single-pass T=7838 (627s clip, STELNETTTS_PARAKEET_STREAM_THRESHOLD=9999):
     masked-full local: peak footprint = 2402 MB  (the O(T²) BD_raw ~ user's "2GiB")
     windowed local:    <measuring — slow, backgrounded>
   So the O(T²) memory hog is REAL at large single-pass T, and it IS the rel-pos BD.
@@ -294,12 +294,12 @@ Parity: windowed == masked-full transcripts IDENTICAL on t501-20s/long90/long3m
 
 VERDICT: windowed local attention is strictly better than the shipped masked-full
 local path — same output, ~3x faster, less memory (growing with length). Still
-gated CRISPASR_FC_WINDOWED_ATTN=1 for A/B per maintainer. Candidate to become the
+gated STELNETTTS_FC_WINDOWED_ATTN=1 for A/B per maintainer. Candidate to become the
 DEFAULT when --att-context is set, pending CUDA cross-check.
 
 ### R4 DONE (2026-07-15) — windowed attn is now DEFAULT for --att-context
 
-fc_windowed_attn() flipped to default-ON (CRISPASR_FC_WINDOWED_ATTN=0 forces legacy
+fc_windowed_attn() flipped to default-ON (STELNETTTS_FC_WINDOWED_ATTN=0 forces legacy
 masked-full). Only engages when --att-context is set + T>=2*BS + band mask supplied;
 full-attention (no --att-context) is unaffected. --att-context help updated.
 Verified: default engages windowed, gate=0 uses masked-full, output IDENTICAL.
@@ -336,8 +336,8 @@ on a rel_pos_local_attn model it is exact to training.
 ### R5 (2026-07-15) — reduce the FULL-attention O(T²) rel-pos bias (query-tiled BD)
 
 Q: "can we reduce the O(T²) rel-pos bias?" A: yes, for EXACT full attention too.
-build_tiled_attn (gated CRISPASR_FC_TILED_ATTN=1): process queries in blocks of
-BS (default 512, CRISPASR_FC_TILED_BLOCK) against ALL keys, computing only a
+build_tiled_attn (gated STELNETTTS_FC_TILED_ATTN=1): process queries in blocks of
+BS (default 512, STELNETTTS_FC_TILED_BLOCK) against ALL keys, computing only a
 (T×BS) rel-pos bias slab per block via a per-block rel_shift (offset (T-1)-b*BS).
 Peak O(T·BS) instead of O(T²). Bit-exact vs monolithic full attention
 (tools/dev/tiledbd_parity.cpp: 0..1e-8 across T/BS/head sweeps incl. non-div T).
@@ -361,6 +361,6 @@ fc_gpu_manual_attn MATERIALIZES O(T²) scores+BD — that IS what tiling reduces
 (→ O(T·block)). Can't measure on M1. Added tiled_full config to the CUDA kernel
 (tools/kaggle/windowed-attn-cuda) to validate the GPU payoff.
 
-STATUS: build_tiled_attn kept, gated OFF (CRISPASR_FC_TILED_ATTN=1), documented as a
+STATUS: build_tiled_attn kept, gated OFF (STELNETTTS_FC_TILED_ATTN=1), documented as a
 CUDA-side memory lever. Speed on Metal is worse (manual) so not for Metal use.
 OPEN: run the CUDA kernel to confirm tiled_full GPU peak << full_attention.

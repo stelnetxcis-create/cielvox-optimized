@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# package-lib-bundle.sh — make a libcrispasr bundle loadable and ergonomic.
+# package-lib-bundle.sh — make a libstelnettts bundle loadable and ergonomic.
 #
 # Usage: tools/package-lib-bundle.sh <bundle-dir>
 #
@@ -15,11 +15,11 @@
 # WHY FLATTEN. Downstream app bundles (Flutter/Xcode Frameworks, Android
 # jniLibs, a Rust target dir) want one directory of libraries. Splitting them
 # across src/ and ggml/src makes every consumer write a copy loop first.
-# crispasr-sys/build.rs already probes BOTH <dir>/src/lib* and <dir>/lib*, so a
+# stelnettts-sys/build.rs already probes BOTH <dir>/src/lib* and <dir>/lib*, so a
 # flat dir is something it can consume today.
 #
 # WHY SYMLINKS RATHER THAN MOVING. release.yml has long told consumers to point
-# CRISPASR_SYS_LIB_DIR at the extract dir, which resolves via <dir>/src/. Moving
+# STELNETTTS_SYS_LIB_DIR at the extract dir, which resolves via <dir>/src/. Moving
 # the files would break that silently. Real files live in lib/; src/ and
 # ggml/src/ become symlinks to it, so both spellings work and nothing is
 # duplicated.
@@ -42,8 +42,8 @@ echo "packaging lib bundle: $OUT"
 mkdir -p "$OUT/lib"
 for d in "$OUT/src" "$OUT/ggml/src"; do
     [ -d "$d" ] || continue
-    # -P: move symlinks as symlinks. The SOVERSION aliases (libcrispasr.so ->
-    # libcrispasr.so.1) are relative, so they keep resolving in the flat dir.
+    # -P: move symlinks as symlinks. The SOVERSION aliases (libstelnettts.so ->
+    # libstelnettts.so.1) are relative, so they keep resolving in the flat dir.
     find "$d" -maxdepth 1 \( -type f -o -type l \) -name 'lib*' -exec mv {} "$OUT/lib/" \;
 done
 # Replace the old dirs with symlinks to lib/ (relative, so the bundle stays
@@ -83,7 +83,7 @@ Darwin)
     ;;
 Linux)
     # Copy the external dependency closure FIRST, while the libraries still
-    # carry the RUNPATH that can find it (CrispASR #341, and #339 for why the
+    # carry the RUNPATH that can find it (StelnetTTS #341, and #339 for why the
     # order is not a detail). The published HIP bundle needed libomp.so — ROCm
     # clang's OpenMP runtime, which lives in /opt/rocm/lib/llvm/lib and is on no
     # loader search path — and shipped without it, because nothing here ever
@@ -95,11 +95,11 @@ Linux)
     bash "$HERE/../scripts/bundle-linux-runtime.sh" "$OUT/lib"
     # This overwrites what the bundler just set, so it has to carry the same
     # host-toolkit entries forward — otherwise a leg that declares
-    # CRISPASR_BUNDLE_EXTRA_RPATH gets it silently erased one line later, which
+    # STELNETTTS_BUNDLE_EXTRA_RPATH gets it silently erased one line later, which
     # is the shape of the bug this whole area is about.
     LIB_RPATH='$ORIGIN:$ORIGIN/../lib'
-    if [ -n "${CRISPASR_BUNDLE_EXTRA_RPATH:-}" ]; then
-        LIB_RPATH="$LIB_RPATH:${CRISPASR_BUNDLE_EXTRA_RPATH}"
+    if [ -n "${STELNETTTS_BUNDLE_EXTRA_RPATH:-}" ]; then
+        LIB_RPATH="$LIB_RPATH:${STELNETTTS_BUNDLE_EXTRA_RPATH}"
     fi
     for lib in "$OUT"/lib/*.so*; do
         [ -f "$lib" ] || continue

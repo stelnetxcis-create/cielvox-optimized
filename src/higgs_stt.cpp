@@ -1,19 +1,19 @@
 // higgs_stt.cpp — Qwen/Qwen3-ASR-0.6B ggml runtime
 //
 // STAGE 1 (current commit): loader + audio encoder conv front-end only.
-//   - Loads the GGUF produced by models/convert-qwen3-asr-to-gguf.py
+//   - Loads the GGUF produced by models/convert-cielvox2-asr-to-gguf.py
 //   - Computes the per-chunk Conv2D subsampler (conv2d1/2/3 + GELU) and the
 //     conv_out linear projection. Output shape (num_chunks, T_chunk_out, 896).
 //   - Exposed via higgs_stt_run_conv() for differential testing against
-//     /tmp/qwen3-asr-ref/jfk/conv_out.npy
+//     /tmp/cielvox2-asr-ref/jfk/conv_out.npy
 //
 // Subsequent stages will add the chunked self-attention encoder body, the
 // projector head, the Qwen3 0.6B LLM forward, and the audio-injection glue.
 //
-// See qwen3-asr-todo.md for the full plan.
+// See cielvox2-asr-todo.md for the full plan.
 
 #include "higgs_stt.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "../crisp_audio/include/crisp_audio.h"
 
 #ifndef M_PI
@@ -22,7 +22,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "crispasr_imatrix.h"
+#include "stelnettts_imatrix.h"
 #include "ggml-cpu.h"
 #include "gguf.h"
 
@@ -54,7 +54,7 @@
 static bool higgs_stt_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_HIGGS_STT_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_HIGGS_STT_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -200,7 +200,7 @@ struct higgs_stt_model {
     ggml_context* ctx = nullptr;
     ggml_backend_buffer_t buf = nullptr;
     // PLAN #69a: optional second buffer for layers spilled to CPU.
-    // Non-null only when CRISPASR_N_GPU_LAYERS triggered a split load.
+    // Non-null only when STELNETTTS_N_GPU_LAYERS triggered a split load.
     ggml_backend_buffer_t buf_cpu = nullptr;
     std::map<std::string, ggml_tensor*> tensors;
 
@@ -392,11 +392,11 @@ static bool higgs_stt_load_model(higgs_stt_model& model, higgs_stt_vocab& vocab,
     }
 
     // ---- pass 2: tensor data via shared helper ----
-    // PLAN #69a: when CRISPASR_N_GPU_LAYERS is set and < total layers,
+    // PLAN #69a: when STELNETTTS_N_GPU_LAYERS is set and < total layers,
     // route layers [N..total) onto the CPU backend.
     core_gguf::WeightLoad wl;
     int n_gpu_layers_env = -1;
-    if (const char* s = std::getenv("CRISPASR_N_GPU_LAYERS")) {
+    if (const char* s = std::getenv("STELNETTTS_N_GPU_LAYERS")) {
         n_gpu_layers_env = std::atoi(s);
     }
     const int total_layers = (int)model.hparams.llm_n_layers;
@@ -408,7 +408,7 @@ static bool higgs_stt_load_model(higgs_stt_model& model, higgs_stt_vocab& vocab,
                                            "higgs_stt", wl)) {
             return false;
         }
-        fprintf(stderr, "higgs_stt: layer offload: gpu=[0,%d), cpu=[%d,%d) (CRISPASR_N_GPU_LAYERS=%d)\n",
+        fprintf(stderr, "higgs_stt: layer offload: gpu=[0,%d), cpu=[%d,%d) (STELNETTTS_N_GPU_LAYERS=%d)\n",
                 n_gpu_layers_env, n_gpu_layers_env, total_layers, n_gpu_layers_env);
     } else {
         if (!core_gguf::load_weights(path, backend, "higgs_stt", wl)) {
@@ -1211,7 +1211,7 @@ extern "C" const char* higgs_stt_token_text(higgs_stt_context* ctx, int id) {
 // model gets them for free.
 #include "core/bpe.h"
 #include "core/beam_decode.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ngram_loop_fix.h"   // core_ngram::fix_loops (shared with moss-transcribe)
 #include "core/ggml_cpu_backend.h"
 
@@ -1326,8 +1326,8 @@ extern "C" higgs_stt_context* higgs_stt_init_from_file(const char* path, higgs_s
         ctx->model_path = path;
 
     // Try GPU backend first (Metal, CUDA, Vulkan...), fall back to CPU.
-    // crispasr_init_gpu_backend() picks the highest-priority available backend.
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    // stelnettts_init_gpu_backend() picks the highest-priority available backend.
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -1352,9 +1352,9 @@ extern "C" higgs_stt_context* higgs_stt_init_from_file(const char* path, higgs_s
     // for Q-format weights on Metal the CPU-buffer path would pay a
     // backend-transfer cost per matmul. See LEARNINGS § "runtime
     // QKV/MLP fusion on row-wise quantized weights is just byte-concat".
-    // Opt-out: CRISPASR_HIGGS_STT_FUSED_QKV=0.
+    // Opt-out: STELNETTTS_HIGGS_STT_FUSED_QKV=0.
     {
-        const char* fuse_env = getenv("CRISPASR_HIGGS_STT_FUSED_QKV");
+        const char* fuse_env = getenv("STELNETTTS_HIGGS_STT_FUSED_QKV");
         const bool fuse_enabled = (fuse_env == nullptr) || (atoi(fuse_env) != 0);
         auto& blocks = ctx->model.llm.blocks;
         bool can_fuse =
@@ -1415,7 +1415,7 @@ extern "C" higgs_stt_context* higgs_stt_init_from_file(const char* path, higgs_s
         if (ctx->backend_cpu && ctx->backend_cpu != ctx->backend)
             backends[n_be++] = ctx->backend_cpu;
         ctx->sched = ggml_backend_sched_new(backends, nullptr, n_be, 16384, false, false);
-        crispasr_imatrix_install(ctx->sched); // no-op unless CRISPASR_IMATRIX_OUT is set
+        stelnettts_imatrix_install(ctx->sched); // no-op unless STELNETTTS_IMATRIX_OUT is set
     }
     ctx->compute_meta.resize(ggml_tensor_overhead() * 16384 + ggml_graph_overhead_custom(16384, false));
 
@@ -1657,7 +1657,7 @@ extern "C" char* higgs_stt_transcribe(higgs_stt_context* ctx, const float* sampl
 
     // ---- detokenize + post-process ----
     std::string text = core_bpe::detokenize(ctx->vocab.id_to_token, out_ids.data(), out_ids.size());
-    if (crispasr_env::get("CRISPASR_HIGGS_DEBUG")) {
+    if (stelnettts_env::get("STELNETTTS_HIGGS_DEBUG")) {
         fprintf(stderr, "[higgs] raw %zu tokens, raw text:\n>>>%s<<<\n", out_ids.size(), text.c_str());
     }
     // Strip an optional <think>...</think> reasoning block.
@@ -1796,8 +1796,8 @@ extern "C" bool higgs_stt_kv_init(higgs_stt_context* ctx, int max_ctx) {
     // F16 KV cache: halves memory + ~2× cache read bandwidth on decode.
     // Conversion happens at the ggml_cpy() write into the cache view, and
     // ggml_mul_mat handles F16-on-F32 dot products natively for the read path.
-    // PLAN #60e + #69e: per-half KV dtype. CRISPASR_KV_QUANT sets both,
-    // CRISPASR_KV_QUANT_{K,V} override per half (default f16/f16).
+    // PLAN #60e + #69e: per-half KV dtype. STELNETTTS_KV_QUANT sets both,
+    // STELNETTTS_KV_QUANT_{K,V} override per half (default f16/f16).
     const auto kv_pair = core_attn::kv_dtype_pair_from_env("higgs_stt");
     ctx->kv_k = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.k, hd, max_ctx, n_kv, n_lay);
     ctx->kv_v = ggml_new_tensor_4d(ctx->kv_ctx, kv_pair.v, hd, max_ctx, n_kv, n_lay);
@@ -1914,10 +1914,10 @@ extern "C" float* higgs_stt_embed_tokens(higgs_stt_context* ctx, const int32_t* 
     const int d = (int)ctx->model.hparams.llm_d_model;
 
     // Fast path: single-token lookup avoids graph build + sched overhead.
-    // Gated by CRISPASR_HIGGS_STT_EMBED_FAST (default ON).
+    // Gated by STELNETTTS_HIGGS_STT_EMBED_FAST (default ON).
     static int use_fast = -1;
     if (use_fast < 0) {
-        const char* e = std::getenv("CRISPASR_HIGGS_STT_EMBED_FAST");
+        const char* e = std::getenv("STELNETTTS_HIGGS_STT_EMBED_FAST");
         use_fast = (!e || *e != '0') ? 1 : 0;
     }
     if (n_tokens == 1 && use_fast && ctx->model.llm.token_embd_w) {

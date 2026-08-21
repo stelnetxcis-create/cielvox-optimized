@@ -27,23 +27,23 @@
 #include "core/bpe.h"
 #include "core/ffn.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 // EU AI Act Art. 50(2): this file writes a real WAV of synthesized speech (see
 // csm_tts_diag_synth_wav), so it needs the mark like any other emitter.
 //
-// The header-only *_impl, not the crispasr_watermark_embed() C ABI: that symbol
-// lives in the session layer (src/crispasr_c_api.cpp), and a backend static lib
+// The header-only *_impl, not the stelnettts_watermark_embed() C ABI: that symbol
+// lives in the session layer (src/stelnettts_c_api.cpp), and a backend static lib
 // referencing it does not link — libcsm-tts.a is below that layer, which
 // test-csm-params found immediately. The impl is `inline`, so this adds no link
 // dependency at all.
 //
-// The header lives in src/core/ next to crispasr_c2pa.h, which is where marking
+// The header lives in src/core/ next to stelnettts_c2pa.h, which is where marking
 // primitives belong. It used to live under examples/cli/, so src/ reached into
 // the examples tree to find it — this call site was the second instance of that
 // inversion and the reason it got moved.
-#include "core/crispasr_watermark.h"
+#include "core/stelnettts_watermark.h"
 
 #include "ggml-backend.h"
 #include "ggml-cpu.h"
@@ -77,7 +77,7 @@ namespace {
 static bool csm_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_CSM_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_CSM_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -908,10 +908,10 @@ static ggml_tensor* build_mimi_dec_transformer(ggml_context* ctx, const std::vec
     // encoder), matching moshi's streaming Mimi. TTS→ASR A/B (2026-07, ~256 dec
     // frames > 250): causal 9.3% WER vs non-causal 12.0% — causal wins (modest,
     // single-sample) and is never worse; both stay fully intelligible (unlike the
-    // STT side where non-causal truncated). CRISPASR_MIMI_NONCAUSAL=1 restores the
+    // STT side where non-causal truncated). STELNETTTS_MIMI_NONCAUSAL=1 restores the
     // old full-attention path. Filled by the caller after alloc.
     ggml_tensor* attn_mask = nullptr;
-    if (!std::getenv("CRISPASR_MIMI_NONCAUSAL")) {
+    if (!std::getenv("STELNETTTS_MIMI_NONCAUSAL")) {
         attn_mask = ggml_new_tensor_2d(ctx, GGML_TYPE_F16, T, T); // [Lk, Lq]
         ggml_set_name(attn_mask, "mimi_dec_causal_mask");
         ggml_set_input(attn_mask);
@@ -951,7 +951,7 @@ static ggml_tensor* build_mimi_dec_transformer(ggml_context* ctx, const std::vec
         V = ggml_cont(ctx, ggml_permute(ctx, V, 0, 2, 1, 3));
 
         // Non-causal by default; causal+windowed if the mask was built
-        // (CRISPASR_MIMI_CAUSAL).
+        // (STELNETTTS_MIMI_CAUSAL).
         ggml_tensor* attn = ggml_flash_attn_ext(ctx, Q, K, V, attn_mask, 1.0f / sqrtf((float)head_dim), 0.0f, 0.0f);
         attn = ggml_reshape_2d(ctx, attn, dim, T);
 
@@ -1045,7 +1045,7 @@ extern "C" struct csm_tts_context* csm_tts_init_from_file(const char* path_model
     }
 
     // Backend
-    c->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    c->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!c->backend)
         c->backend = core_cpu_backend::init();
     c->backend_cpu = core_cpu_backend::init();
@@ -2002,7 +2002,7 @@ mimi_decode:
         ggml_tensor* inp = ggml_graph_get_tensor(graph, "mimi_upsampled");
         ggml_backend_tensor_set(inp, continuous.data(), 0, continuous.size() * sizeof(float));
 
-        // Fill the optional Mimi causal+sliding-window mask (CRISPASR_MIMI_CAUSAL):
+        // Fill the optional Mimi causal+sliding-window mask (STELNETTTS_MIMI_CAUSAL):
         // attend iff key k <= query q AND (q - k) < window (moshi Mimi = 250).
         if (ggml_tensor* mmask = ggml_graph_get_tensor(graph, "mimi_dec_causal_mask")) {
             const int Tm = (int)mmask->ne[1];
@@ -2032,7 +2032,7 @@ mimi_decode:
 }
 
 // ===================================================================
-// Diagnostic: backbone prefill per-layer dump (for crispasr-diff csm)
+// Diagnostic: backbone prefill per-layer dump (for stelnettts-diff csm)
 // ===================================================================
 
 extern "C" int csm_tts_run_backbone_dump(struct csm_tts_context* ctx, const char* text, int max_T, float* layer0_normed,
@@ -2416,7 +2416,7 @@ extern "C" int csm_tts_diag_synth_wav(struct csm_tts_context* ctx, const char* t
     }
 
     // Art. 50(2). This is a DIAGNOSTIC writer — it exists so a developer can
-    // listen to a parity run — but it is reached from crispasr-diff, which is
+    // listen to a parity run — but it is reached from stelnettts-diff, which is
     // an INSTALLED binary, and it writes a real, playable, distributable WAV of
     // synthesized speech. "It's a dev tool" is exactly the reasoning that left
     // the Wyoming server marking nothing for four releases; the file does not
@@ -2426,7 +2426,7 @@ extern "C" int csm_tts_diag_synth_wav(struct csm_tts_context* ctx, const char* t
     // signal rather than applied on top of a rescaled one. The spread-spectrum
     // watermark is band-limited and ~38 dB down, so it does not move an ASR
     // round-trip — which is what this file is usually fed to.
-    crispasr_watermark_embed_impl(pcm, n);
+    stelnettts_watermark_embed_impl(pcm, n);
 
     // Peak-normalise to 0.95 to avoid clipping on write.
     float peak = 1e-6f;

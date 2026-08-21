@@ -8,16 +8,16 @@ and reports the RUNPATH so a missing `$ORIGIN` is visible.
 
 Why this exists
 ---------------
-Ported from CrispEmbed, where the same check found that every Linux archive of
+Ported from StelnetEmbed, where the same check found that every Linux archive of
 every release was unlaunchable: `libggml-blas.so` needed an unbundled
 `libopenblas.so.0`, so the loader failed before `main()` and the process exited
 127 having printed nothing (SubtitleEdit#13205).
 
-CrispASR shipped the same class of defect, reported against v0.8.25:
+StelnetTTS shipped the same class of defect, reported against v0.8.25:
 
-    crispasr           NEEDED libopenblas.so.0, libgomp.so.1   (neither bundled)
-    crispasr-quantize  NEEDED libopenblas.so.0, libgomp.so.1   (neither bundled)
-    crispasr-quantize  RUNPATH=/home/runner/work/CrispASR/...  (no $ORIGIN at all,
+    stelnettts           NEEDED libopenblas.so.0, libgomp.so.1   (neither bundled)
+    stelnettts-quantize  NEEDED libopenblas.so.0, libgomp.so.1   (neither bundled)
+    stelnettts-quantize  RUNPATH=/home/runner/work/StelnetTTS/...  (no $ORIGIN at all,
                        so it cannot find its own bundled libc2pa_c.so either)
 
 The CI runner has `libopenblas-dev` and gcc's `libgomp` installed, so the build
@@ -27,7 +27,7 @@ a test: CI has no machine that lacks these libraries.
 
 Usage
 -----
-    python3 scripts/check-bundled-deps.py release/crispasr-linux-x86_64
+    python3 scripts/check-bundled-deps.py release/stelnettts-linux-x86_64
     python3 scripts/check-bundled-deps.py release/... --allow 'libcuda.so.*'
 """
 
@@ -251,7 +251,7 @@ def main() -> int:
             print(f"  {who}  needs  {lib}", file=sys.stderr)
         print("\nEither stop linking it (preferred — check whether it actually buys anything)\n"
               "or copy it plus its own dependencies into the package directory.\n"
-              "See CrispEmbed's SubtitleEdit#13205 and CrispASR #296.", file=sys.stderr)
+              "See StelnetEmbed's SubtitleEdit#13205 and StelnetTTS #296.", file=sys.stderr)
         rc = 1
 
     if args.max_glibc and glibc_floor[0]:

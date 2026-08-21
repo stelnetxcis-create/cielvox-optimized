@@ -1,8 +1,8 @@
 """AudioSeal watermark generator + detector reference dump backend.
 
 Captures stage-by-stage activations from the official PyTorch AudioSeal
-model (facebook/audioseal) so the CrispASR C++ AudioSeal implementation
-can be diffed via `crispasr-diff audioseal`.
+model (facebook/audioseal) so the StelnetTTS C++ AudioSeal implementation
+can be diffed via `stelnettts-diff audioseal`.
 
 Stages dumped (generator):
   as_input         — (1, 1, T) raw input audio at 16 kHz
@@ -29,7 +29,7 @@ Usage:
         --audio samples/jfk.wav \\
         --output /tmp/audioseal-ref.gguf
 
-    build/bin/crispasr-diff audioseal \\
+    build/bin/stelnettts-diff audioseal \\
         audioseal.gguf \\
         /tmp/audioseal-ref.gguf \\
         samples/jfk.wav

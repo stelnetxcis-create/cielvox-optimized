@@ -1,7 +1,7 @@
 # Language bindings
 
 All wrappers are thin shells over the same C-ABI surface in
-`src/crispasr_c_api.cpp`. Anything the CLI can do — transcribe, VAD,
+`src/stelnettts_c_api.cpp`. Anything the CLI can do — transcribe, VAD,
 diarize, LID, align, download — is one function call in every
 language.
 
@@ -12,10 +12,10 @@ callers don't hard-code per-backend rates:
 
 | C-ABI getter | Returns |
 |---|---|
-| `crispasr_session_input_sample_rate(s)` | Rate (Hz) the backend expects for input PCM — 16000 for Whisper-family, the model's native rate otherwise. Pair with `crispasr_audio_load_at_rate` to avoid a double resample. |
-| `crispasr_session_output_sample_rate(s)` | Rate (Hz) of the PCM `synthesize` / `synthesize_streaming` / `get_disclaimer_pcm` / `speech_to_speech` return — the "backend-native rate" those calls document. `0` = the backend produces no audio output (ASR-only). |
-| `crispasr_session_input_channels(s)` | `1` (mono) for every current backend. Source separation is the stereo exception and has its own surface (`separate*`). |
-| `crispasr_session_output_channels(s)` | `1` (mono), or `0` when the backend produces no audio output. |
+| `stelnettts_session_input_sample_rate(s)` | Rate (Hz) the backend expects for input PCM — 16000 for Whisper-family, the model's native rate otherwise. Pair with `stelnettts_audio_load_at_rate` to avoid a double resample. |
+| `stelnettts_session_output_sample_rate(s)` | Rate (Hz) of the PCM `synthesize` / `synthesize_streaming` / `get_disclaimer_pcm` / `speech_to_speech` return — the "backend-native rate" those calls document. `0` = the backend produces no audio output (ASR-only). |
+| `stelnettts_session_input_channels(s)` | `1` (mono) for every current backend. Source separation is the stereo exception and has its own surface (`separate*`). |
+| `stelnettts_session_output_channels(s)` | `1` (mono), or `0` when the backend produces no audio output. |
 
 All return `0` on a NULL/invalid session. Exposed as `output_sample_rate` /
 `input_channels` / `output_channels` (Rust, Ruby), `outputSampleRate()` /
@@ -32,7 +32,7 @@ backend doesn't expose that knob, but the call is safe to make.
 | C-ABI setter | Bindings name (Python/Rust/Go/Java) | Notes |
 |---|---|---|
 | `set_temperature(temp, seed)` | `set_temperature` / `set_temperature` / `SetTemperature` / `setTemperature` | ASR + TTS backends that sample; rc=-2 = no backend supports it |
-| `set_tts_seed(seed)` | `set_tts_seed` / `set_tts_seed` / `SetTTSSeed` / `setTtsSeed` | Chatterbox, vibevoice, qwen3-tts, orpheus; rc=-2 for others |
+| `set_tts_seed(seed)` | `set_tts_seed` / `set_tts_seed` / `SetTTSSeed` / `setTtsSeed` | Chatterbox, vibevoice, cielvox2-tts, orpheus; rc=-2 for others |
 | `set_max_new_tokens(n)` | `set_max_new_tokens` / `set_max_new_tokens` / `SetMaxNewTokens` / `setMaxNewTokens` | AR backends; ≤ 0 clears override |
 | `set_frequency_penalty(f)` | `set_frequency_penalty` / `set_frequency_penalty` / `SetFrequencyPenalty` / `setFrequencyPenalty` | AR backends; ≤ 0 disables |
 | `set_tts_steps(n)` | `set_tts_steps` / `set_tts_steps` / `SetTTSSteps` / `setTtsSteps` | Chatterbox S3Gen CFM steps; vibevoice DPM-Solver++ steps; kugelaudio; tada FM steps; irodori flow-matching ODE steps |
@@ -55,7 +55,7 @@ backend doesn't expose that knob, but the call is safe to make.
 | `set_sensitivity(preset)` | `set_sensitivity` / `set_sensitivity` / `SetSensitivity` / `setSensitivity` | The four thresholds above as one named bundle: `conservative` / `balanced` / `aggressive` (aliases `strict` / `default` / `loose`). `balanced` is the shipped defaults, so it is always a no-op. **rc=-2 means an unknown preset and every wrapper raises** — a typo must never decode silently at the defaults. A later `set_fallback_thresholds` overrides it. HTTP: the `sensitivity` form field, applied before the individual threshold fields so those still win. |
 | `set_alt_n(n)` | `set_alt_n` / `set_alt_n` / `SetAltN` / `setAltN` | Per-token alternative candidates (whisper greedy) |
 | `set_whisper_decode_extras(...)` | `set_whisper_decode_extras` / `set_whisper_decode_extras` / `SetWhisperDecodeExtras` / `setWhisperDecodeExtras` | suppress_nst, suppress_regex, carry_initial_prompt |
-| `set_ask(prompt)` | `set_ask` / `set_ask` / `SetAsk` / `setAsk` | Free-form prompt for instruct-tuned audio-LLM backends (granite, voxtral, qwen3-asr, glm-asr, gemma4-e2b, mimo-asr). Empty string clears. |
+| `set_ask(prompt)` | `set_ask` / `set_ask` / `SetAsk` / `setAsk` | Free-form prompt for instruct-tuned audio-LLM backends (granite, voxtral, cielvox2-asr, glm-asr, gemma4-e2b, mimo-asr). Empty string clears. |
 | `set_punc_model(alias\|path)` | `set_punc_model` / `set_punc_model` / `SetPuncModel` / `setPuncModel` | Load FireRedPunc/PCS punctuation restoration on the session (`auto`/`firered`/`fullstop`/`punctuate-all`/`pcs`/path; auto-downloads). Restores punctuation on backends that emit none (parakeet RNNT/CTC, …). `"none"`/`""` unloads. (Also Java/Ruby.) |
 | `set_hotwords(words, boost)` | `set_hotwords` / `set_hotwords` / `SetHotwords` / `setHotwords` | Comma-separated contextual-biasing hotwords, boosted per token match (parakeet CTC/TDT trie; LLM-backend prompt injection). Empty string clears. (All six wrappers.) |
 | `set_tts_phonemes(ipa)` | `set_tts_phonemes` / `set_tts_phonemes` / `SetTTSPhonemes` / `setTtsPhonemes` | #316: synthesize the given phonemes verbatim, skipping the G2P — the seam between text processing and the acoustic model. Use it to reproduce another implementation's pronunciation, or to tell a G2P bug from a model bug. Empty clears; rc=-2 on a backend with no phonemes-in call (kokoro and piper have one). Server: `"phonemes"` on `/v1/audio/speech`. CLI: `--tts-phonemes`. (All wrappers.) |
@@ -64,7 +64,7 @@ backend doesn't expose that knob, but the call is safe to make.
 ## Result field reference
 
 Everything a transcription result carries is read back through per-index
-accessors on the opaque `crispasr_session_result`, so adding a field is a new
+accessors on the opaque `stelnettts_session_result`, so adding a field is a new
 symbol rather than a layout change — old callers keep working. Every wrapper
 exposes them as struct/class members on its segment type.
 
@@ -87,17 +87,17 @@ exposes them as struct/class members on its segment type.
 
 > **Older libraries.** Each wrapper probes for `result_segment_speaker` before
 > calling it and falls back to `""`, so a wrapper built after v0.8.24 still runs
-> against a pre-v0.8.24 `libcrispasr`. The reverse (old wrapper, new library) is
+> against a pre-v0.8.24 `libstelnettts`. The reverse (old wrapper, new library) is
 > always fine — it simply ignores the symbol.
 
 > **Tip — chunk-boundary dedup for bindings.** When a binding drives a
 > CAP_UNBOUNDED_INPUT backend (parakeet, canary, …) chunk-by-chunk and
-> needs to stitch the output, call `crispasr_lcs_dedup_prefix_count`
+> needs to stitch the output, call `stelnettts_lcs_dedup_prefix_count`
 > between adjacent chunks. It returns the number of leading tokens of
 > `chunk[i]` that duplicate the tail of `chunk[i-1]` (NeMo-style
 > sub-word LCS over emitted token ids). The binding then drops that
 > many tokens from `chunk[i]` and rebuilds its own segment / word /
-> text representation. The C declaration lives in `include/crispasr.h`;
+> text representation. The C declaration lives in `include/stelnettts.h`;
 > see also the `--lcs-dedup` / `--lcs-min-length` CLI flags.
 
 > **CTC logits and vocab.** `transcribe_with_logits` / `TranscribeWithLogits`
@@ -113,15 +113,15 @@ exposes them as struct/class members on its segment type.
 | C / C++ | ✓ | Full (the C-ABI is the source of truth) |
 | Python | ✓ | Full — transcribe, VAD, diarize, LID, align, registry |
 | Rust | ✓ | Full — same surface as Python |
-| Dart / Flutter | ✓ | Full — used by [CrisperWeaver](https://github.com/CrispStrobe/CrisperWeaver) |
+| Dart / Flutter | ✓ | Full — used by [StelnetWeaver](https://github.com/Cyna/StelnetWeaver) |
 | Go | ✓ | Full (all 11 capabilities) |
 | Java | ✓ | Transcribe + align + LID; full session-setter parity (JNA) |
 | Ruby | ✓ | Transcribe; full session-setter parity (C ext) |
 | JavaScript / WASM | ✓ | `asrOpen`/`asrTranscribe` + session setters (backend-agnostic); plus the whisper-only `init`/`full_default` and the TTS surface. Built with emcc. |
 
-> **Setter parity.** Python, Rust (`crispasr-sys` + `crispasr` at the repo root),
-> Go, Dart, Java, and Ruby all expose the complete `crispasr_session_set_*`
-> surface from `include/crispasr_session.h`. The native Node addon
+> **Setter parity.** Python, Rust (`stelnettts-sys` + `stelnettts` at the repo root),
+> Go, Dart, Java, and Ruby all expose the complete `stelnettts_session_set_*`
+> surface from `include/stelnettts_session.h`. The native Node addon
 > (`examples/addon.node`) reaches it via `transcribeSession`; the WASM/JS binding
 > (`bindings/javascript/emscripten.cpp`) via the `asr*` functions
 > (`asrOpen`/`asrTranscribe`/`asrSet…`).
@@ -130,7 +130,7 @@ exposes them as struct/class members on its segment type.
 > ~30 s at energy minima and transcribes each piece (like the CLI/server),
 > collapsing any decode-loop repetition — so short-segment models (e.g.
 > moonshine) don't degrade or hang on a single long pass. Disable with
-> `CRISPASR_SESSION_AUTOCHUNK=0`; window via `CRISPASR_SESSION_CHUNK_SECONDS`.
+> `STELNETTTS_SESSION_AUTOCHUNK=0`; window via `STELNETTTS_SESSION_CHUNK_SECONDS`.
 > `transcribe_chunked` remains the explicit, tunable long-form control (and
 > parakeet has its own internal long-audio handling either way).
 >
@@ -151,13 +151,13 @@ exposes them as struct/class members on its segment type.
 > `asrTranscribeChunked` (WASM), `transcribeSession({chunk_seconds,…})` (Node
 > addon), and Rust `Session::transcribe_chunked[_with_language]`. Two ways to
 > surface per-window progress:
-> 1. **Poll (universal, no callback).** `crispasr_get_progress()` returns
+> 1. **Poll (universal, no callback).** `stelnettts_get_progress()` returns
 >    `0..100` (-1 idle) and now tracks the chunked-merge windows in lockstep (it
 >    was previously only fed by whisper). Exposed as `Session.get_progress`
 >    (Python/Ruby), `GetProgress()` (Go), `.getProgress()` (Java),
 >    `getTranscriptionProgress()` (Dart), `asrGetProgress()` (WASM). This is the
 >    Dart-friendly path (Dart FFI can't take C function-pointer callbacks).
-> 2. **Native callback.** `crispasr_session_set_progress_callback(s, cb,
+> 2. **Native callback.** `stelnettts_session_set_progress_callback(s, cb,
 >    user_data)` — `cb(processed_samples, total_samples, user_data)` fires once
 >    per finished window on the transcribe thread. Exposed where native
 >    callbacks are idiomatic and safe: C/C++, Rust
@@ -167,7 +167,7 @@ exposes them as struct/class members on its segment type.
 ## Python
 
 ```python
-from crispasr import (
+from stelnettts import (
     Session, diarize_segments, detect_language_pcm,
     align_words, cache_ensure_file, registry_default_bundle,
     # Diarize pipeline primitives (#107):
@@ -201,12 +201,12 @@ labels = agglomerative_cluster(embeddings, merge_threshold=0.5, max_speakers=8)
 emb.close()
 ```
 
-Install: `pip install crispasr` (or build locally from `python/`).
+Install: `pip install stelnettts` (or build locally from `python/`).
 
 ## Rust
 
 ```rust
-use crispasr::{
+use stelnettts::{
     Session, DiarizeMethod, DiarizeOptions, DiarizeSegment,
     LidMethod, detect_language_pcm, align_words,
     cache_ensure_file, registry_default_bundle,
@@ -237,59 +237,59 @@ let labels = agglomerative_cluster(&flat, (flat.len() / emb.dim() as usize) as i
                                    emb.dim(), 0.5, 8)?;
 ```
 
-Crates: `crispasr-sys/` (raw FFI) + `crispasr/` (high-level) at the repo
+Crates: `stelnettts-sys/` (raw FFI) + `stelnettts/` (high-level) at the repo
 root, both published on crates.io. The `-sys` crate's `build.rs` builds
-`libcrispasr` with cmake from the CrispASR sources, or links a pre-built copy
-when `CRISPASR_LIB_DIR` is set. The crates.io package does not vendor the C/C++
+`libstelnettts` with cmake from the StelnetTTS sources, or links a pre-built copy
+when `STELNETTTS_LIB_DIR` is set. The crates.io package does not vendor the C/C++
 sources, so consume via a **git dependency** to build from source
-(`crispasr = { git = "https://github.com/CrispStrobe/CrispASR" }`), or use
-`crispasr = "0.8"` from crates.io together with a pre-built lib + `CRISPASR_LIB_DIR`.
+(`stelnettts = { git = "https://github.com/Cyna/StelnetTTS" }`), or use
+`stelnettts = "0.8"` from crates.io together with a pre-built lib + `STELNETTTS_LIB_DIR`.
 
 ## Dart / Flutter
 
 ```dart
-import 'package:crispasr/crispasr.dart' as crispasr;
+import 'package:stelnettts/stelnettts.dart' as stelnettts;
 
-final sess = crispasr.CrispasrSession.open(modelPath, backend: 'parakeet');
+final sess = stelnettts.CrispasrSession.open(modelPath, backend: 'parakeet');
 final segs = sess.transcribeVad(pcm, vadModelPath);
 
-final lang = crispasr.detectLanguagePcm(
-  pcm: pcm, method: crispasr.LidMethod.whisper, modelPath: tinyPath);
-final words = crispasr.alignWords(
+final lang = stelnettts.detectLanguagePcm(
+  pcm: pcm, method: stelnettts.LidMethod.whisper, modelPath: tinyPath);
+final words = stelnettts.alignWords(
   alignerModel: ctcPath, transcript: text, pcm: pcm);
 ```
 
-Package: `flutter/crispasr/`.
+Package: `flutter/stelnettts/`.
 
 **Reference application:**
-[CrisperWeaver](https://github.com/CrispStrobe/CrisperWeaver) — a
+[StelnetWeaver](https://github.com/Cyna/StelnetWeaver) — a
 cross-platform Flutter desktop/mobile transcription app built on
-`package:crispasr`. Ships with a model browser + downloader (all 10
+`package:stelnettts`. Ships with a model browser + downloader (all 10
 backends + quants), drag-and-drop files, mic capture, SRT/VTT/TXT
 export, per-run performance metrics, and full en/de i18n. The v0.5.4
 release uses `transcribeVad` so every non-whisper backend benefits
-from stitched Silero VAD with zero CrisperWeaver-side work.
+from stitched Silero VAD with zero StelnetWeaver-side work.
 
 ## Go
 
 ```go
-import "github.com/CrispStrobe/CrispASR/bindings/go/crispasr"
+import "github.com/Cyna/StelnetTTS/bindings/go/stelnettts"
 
-sess, _ := crispasr.OpenSession("parakeet.gguf", crispasr.SessionOpts{Threads: 4})
+sess, _ := stelnettts.OpenSession("parakeet.gguf", stelnettts.SessionOpts{Threads: 4})
 defer sess.Close()
 _ = sess.SetMaxNewTokens(256)
 _ = sess.SetFrequencyPenalty(0.4)
-segs, _ := sess.Transcribe(pcm, crispasr.TranscribeOpts{Vad: true})
+segs, _ := sess.Transcribe(pcm, stelnettts.TranscribeOpts{Vad: true})
 ```
 
-Module: `bindings/go/crispasr/`.
+Module: `bindings/go/stelnettts/`.
 
 ## Java
 
 ```java
-import org.crispasr.CrispASR;
+import org.stelnettts.StelnetTTS;
 
-try (var sess = CrispASR.openSession("granite-speech.gguf")) {
+try (var sess = StelnetTTS.openSession("granite-speech.gguf")) {
     sess.setMaxNewTokens(256);
     sess.setFrequencyPenalty(0.4f);
     var segs = sess.transcribe(pcm);
@@ -301,9 +301,9 @@ JAR: `bindings/java/`.
 ## Ruby
 
 ```ruby
-require "crispasr"
+require "stelnettts"
 
-sess = CrispASR::Session.open("parakeet.gguf")
+sess = StelnetTTS::Session.open("parakeet.gguf")
 segs = sess.transcribe(pcm)
 ```
 
@@ -313,7 +313,7 @@ Gem: `bindings/ruby/`.
 
 `examples/addon.node` is a native N-API addon (built via cmake-js). Besides the
 legacy whisper-only `whisper()` entry point, it exposes `transcribeSession()`
-over the `crispasr_session` C-ABI — reaching every ASR backend plus the session
+over the `stelnettts_session` C-ABI — reaching every ASR backend plus the session
 post-processors (punctuation, `punc_model`, beam, translate, src/tgt lang):
 
 ```js
@@ -339,8 +339,8 @@ For browser / pure-WASM use, see `bindings/javascript` (emscripten).
 ```
 
 The xcframework drops into a Swift/Objective-C app via `package add
-crispasr.xcframework`; the Android NDK build produces an `.so` that
-Flutter or native Android consumes through `package:crispasr`'s FFI
+stelnettts.xcframework`; the Android NDK build produces an `.so` that
+Flutter or native Android consumes through `package:stelnettts`'s FFI
 layer.
 
 ## Text-to-speech
@@ -350,23 +350,23 @@ Ruby) reaches all TTS backends through the same two unified-C-API calls,
 so there is nothing TTS-specific per wrapper:
 
 - `synthesize(text) -> float32 PCM (mono, backend-native rate — 24 kHz
-  for most, 48 kHz for irodori/voxcpm2)` (`crispasr_session_synthesize`)
+  for most, 48 kHz for irodori/voxcpm2)` (`stelnettts_session_synthesize`)
 - `synthesize_streaming(text, cb, user)` — same, but fires `cb(pcm,
   n_samples, is_final, user)` once per sentence chunk as it's produced, for
-  progressive playback (`crispasr_session_synthesize_streaming`). The PCM is
+  progressive playback (`stelnettts_session_synthesize_streaming`). The PCM is
   owned by the call; copy it in the callback if you need to keep it.
 - `set_voice(path, ref_text?)` — `path` is a preset/baked-voice name
   **or** a `*.wav` clone reference (`ref_text` required for a WAV);
-  `set_instruct(...)` for qwen3-tts VoiceDesign.
+  `set_instruct(...)` for cielvox2-tts VoiceDesign.
 
 For cloning backends whose reference encode is expensive (irodori, indextts),
 the encoded conditioning is cached automatically (content-addressed on the
 reference audio) so a repeated reference skips the encode — this happens in the
-runtime, so wrappers get it for free. Control with `CRISPASR_TTS_REF_CACHE=0`
-(disable) / `CRISPASR_TTS_REF_CACHE_DIR` (location).
+runtime, so wrappers get it for free. Control with `STELNETTTS_TTS_REF_CACHE=0`
+(disable) / `STELNETTTS_TTS_REF_CACHE_DIR` (location).
 
 Open the TTS model GGUF like any other; the backend auto-detects from
-the GGUF architecture. Supported TTS backends: `kokoro`, `qwen3-tts`
+the GGUF architecture. Supported TTS backends: `kokoro`, `cielvox2-tts`
 (+ customvoice), `vibevoice-tts` / `vibevoice-1.5b`, `orpheus`,
 `chatterbox`, `indextts`, `voxcpm2-tts`, `cosyvoice3-tts`,
 `lfm2-audio`, and `mini-omni2`. See
@@ -387,10 +387,10 @@ the C API level (see
 cloning. Neither covers the third case: a **preset** voice shipped inside a
 model can be an identifiable individual — a named donor, or a corpus speaker
 such as VCTK's `p225` — and Art. 3(60) attaches to the audio resembling that
-person, not to which pipeline produced it. CrispASR resolves this automatically
+person, not to which pipeline produced it. StelnetTTS resolves this automatically
 where it has researched the model, and warns once per model where it has not.
 
-When you know the answer and CrispASR does not, say so:
+When you know the answer and StelnetTTS does not, say so:
 
 | Binding | Call |
 |---|---|
@@ -400,7 +400,7 @@ When you know the answer and CrispASR does not, say so:
 | Java | `session.setSpeakerIdentity("real_person")` |
 | C# | `session.SetSpeakerIdentity("real_person")` |
 | Dart | `session.setSpeakerIdentity('real_person')` |
-| Ruby | `CrispASR::Session.set_speaker_identity(handle, "real_person")` |
+| Ruby | `StelnetTTS::Session.set_speaker_identity(handle, "real_person")` |
 | WASM | `Module.ttsSetSpeakerIdentity("real_person")` |
 
 Values are `real_person`, `synthetic` and `unknown`. An unrecognised value
@@ -414,9 +414,9 @@ attest to. Do not reach for `synthetic` to quiet a warning you have not
 checked — of every model whose provenance this project has resolved, the large
 majority turned out to be real people.
 
-> **The CLI `--no-watermark` flag and the `CRISPASR_NO_WATERMARK` env var do
-> NOT affect the bindings.** They are wired into the `crispasr` CLI and server
-> only; `synthesize()` and `crispasr_watermark_embed()` watermark
+> **The CLI `--no-watermark` flag and the `STELNETTTS_NO_WATERMARK` env var do
+> NOT affect the bindings.** They are wired into the `stelnettts` CLI and server
+> only; `synthesize()` and `stelnettts_watermark_embed()` watermark
 > unconditionally. A binding consumer that legitimately needs unwatermarked
 > output uses `synthesize_raw()` and simply does not call `watermark_embed()` —
 > and thereby assumes the AI-content marking responsibility itself (see
@@ -425,7 +425,7 @@ majority turned out to be real people.
 
 ```python
 # Python (identical shape in every binding)
-s = crispasr.Session("cosyvoice3-llm-f16.gguf")   # backend auto-detected
+s = stelnettts.Session("cosyvoice3-llm-f16.gguf")   # backend auto-detected
 s.set_voice("fleurs-de")                          # baked-bank voice name
 pcm = s.synthesize("Hallo, das ist ein Test.")    # float32 @ 24 kHz
 # Voice cloning from a WAV:
@@ -436,20 +436,20 @@ pcm = s.synthesize("Clone my voice.")
 ## Voice conversion (SVC / RVC)
 
 **The session C ABI is the only surface — there is no CLI verb.** RVC's input is
-ContentVec features, which CrispASR does not produce (the caller owns the
+ContentVec features, which StelnetTTS does not produce (the caller owns the
 content encoder), so a command line has nothing to feed it.
 
 ```c
 // content: n_frames * content_dim, frame-major. f0_hz: n_frames, 0.0 = unvoiced.
 // The coarse mel-quantised pitch is derived internally — those constants are
 // model-side and replicating them in the caller guarantees drift.
-int crispasr_session_convert(crispasr_session* s, const float* content, int n_frames,
+int stelnettts_session_convert(stelnettts_session* s, const float* content, int n_frames,
                              const float* f0_hz, int speaker_id,
                              const float* noise_zp, const float* noise_sine);
-const float* crispasr_session_convert_audio(crispasr_session* s, int* out_n_samples);
-int crispasr_session_convert_content_dim(crispasr_session* s);   // 256 (v1) or 768 (v2)
-int crispasr_session_convert_n_speakers(crispasr_session* s);
-int crispasr_session_convert_sample_rate(crispasr_session* s);   // 32k/40k/48k
+const float* stelnettts_session_convert_audio(stelnettts_session* s, int* out_n_samples);
+int stelnettts_session_convert_content_dim(stelnettts_session* s);   // 256 (v1) or 768 (v2)
+int stelnettts_session_convert_n_speakers(stelnettts_session* s);
+int stelnettts_session_convert_sample_rate(stelnettts_session* s);   // 32k/40k/48k
 ```
 
 ### Check `convert_content_dim()` before you call
@@ -491,20 +491,20 @@ BTC chord weights.
 
 The `btc-chords` backend is a standalone task (CLI `--chords`) — audio in, a
 chord timeline out. It is exposed on the session C-ABI
-(`include/crispasr_session.h`) and, on top of that, in the WASM/JS binding:
+(`include/stelnettts_session.h`) and, on top of that, in the WASM/JS binding:
 
-- `crispasr_session_chords(s, pcm, n_samples, sample_rate)` — returns the span
+- `stelnettts_session_chords(s, pcm, n_samples, sample_rate)` — returns the span
   count, `-1` on error or on a backend with no chord arm. Input is mono
   float32 at any rate; it is resampled internally to the model's 22050 Hz.
-- `crispasr_session_chords_n_spans(s)`
-- `crispasr_session_chords_spans(s, &n)` — flat, session-owned float view,
+- `stelnettts_session_chords_n_spans(s)`
+- `stelnettts_session_chords_spans(s, &n)` — flat, session-owned float view,
   4 floats per span: `{start_ms, end_ms, label, confidence}`.
-- `crispasr_session_chords_span_name(s, idx)` — resolves `label` to a chord
+- `stelnettts_session_chords_span_name(s, idx)` — resolves `label` to a chord
   name (`"C"`, `"Am"`, `"G:7"`, `"N"` for no-chord).
-- `crispasr_session_chords_vocab_size(s)` — `25` or `170`, `0` if the session
+- `stelnettts_session_chords_vocab_size(s)` — `25` or `170`, `0` if the session
   has no chord arm; usable as a capability probe.
 
-`CRISPASR_BTC_MAJ_MIN=1` collapses the 170-class output to the 25-class
+`STELNETTTS_BTC_MAJ_MIN=1` collapses the 170-class output to the 25-class
 maj/min vocabulary (default off — full 170-class).
 
 ```js
@@ -518,11 +518,11 @@ The Go binding links `-lbtc-chords` (cgo LDFLAGS resynced) but adds no
 hand-written wrapper function; Python, Rust, Dart, Java and Ruby have no
 dedicated wrapper yet — the C ABI above is the surface for all of them.
 
-> **Weights are non-commercial.** The upstream BTC code is MIT and CrispASR
-> itself is MIT, but the shipped weights (`cstr/btc-chords-GGUF`) are
+> **Weights are non-commercial.** The upstream BTC code is MIT and StelnetTTS
+> itself is MIT, but the shipped weights (`Xenna/btc-chords-GGUF`) are
 > CC-BY-NC-SA — trained on Isophonics / Robbie Williams / UsPop2002 chord
 > annotations. The registry refuses to download them without
-> `--accept-license cc-by-nc-sa-4.0` (or the `CRISPASR_ACCEPT_LICENSE` env
+> `--accept-license cc-by-nc-sa-4.0` (or the `STELNETTTS_ACCEPT_LICENSE` env
 > var). A commercial product must supply its own weights.
 
 ## Speech-to-speech
@@ -534,7 +534,7 @@ pass. Available in Python, Go, Dart/Flutter, and the HTTP server
 (`POST /v1/audio/speech-to-speech`).
 
 - `speech_to_speech(pcm) -> (float32 PCM, transcript)`
-  (`crispasr_session_speech_to_speech`)
+  (`stelnettts_session_speech_to_speech`)
 
 Input defaults to 16 kHz mono float32 PCM. Python callers with another input
 rate call `set_pcm_sample_rate(rate)` before `speech_to_speech()`; Sidon and
@@ -545,7 +545,7 @@ empty transcript.
 ```python
 # Python
 import numpy as np, soundfile as sf
-s = crispasr.Session("lfm2-audio-1.5b-q5_k.gguf")
+s = stelnettts.Session("lfm2-audio-1.5b-q5_k.gguf")
 audio, sr = sf.read("input.wav", dtype="float32")  # must be 16 kHz mono
 out_pcm, transcript = s.speech_to_speech(audio)
 print(f"Transcript: {transcript}")
@@ -554,7 +554,7 @@ sf.write("output.wav", out_pcm, 24000)
 
 ```python
 # Sidon restoration from a 24 kHz source
-s = crispasr.Session("sidon-v0.1-f16.gguf")
+s = stelnettts.Session("sidon-v0.1-f16.gguf")
 audio, sr = sf.read("input.wav", dtype="float32")
 s.set_pcm_sample_rate(sr)
 restored, _ = s.speech_to_speech(audio)
@@ -563,7 +563,7 @@ sf.write("restored.wav", restored, 48000)
 
 ```python
 # VoxCPM2 AudioVAE upscaling
-s = crispasr.Session("voxcpm2-vae-f32.gguf")
+s = stelnettts.Session("voxcpm2-vae-f32.gguf")
 audio, sr = sf.read("input.wav", dtype="float32")
 s.set_pcm_sample_rate(sr)
 upscaled, _ = s.speech_to_speech(audio)

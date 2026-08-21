@@ -1,6 +1,6 @@
 """Audio comparison helpers for TTS diff harnesses.
 
-Three uses today (vibevoice-tts, qwen3-tts pipeline test, future TTS
+Three uses today (vibevoice-tts, cielvox2-tts pipeline test, future TTS
 backends):
 
   - sample-wise cosine at zero shift (catches everything that's wildly
@@ -13,7 +13,7 @@ backends):
     diffusion stochasticity drives most of the variance).
 
 `load_wav_mono` reads 16-bit PCM WAV in float64 [-1, 1]. WAV is the
-common output format across crispasr's TTS backends. If a backend ever
+common output format across stelnettts's TTS backends. If a backend ever
 needs float32 .raw files, route them through a small wrapper.
 
 The audio cos/xcorr math is plain numpy + scipy.signal.correlate. Avoids

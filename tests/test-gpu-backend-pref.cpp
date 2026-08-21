@@ -1,5 +1,5 @@
 // test-gpu-backend-pref.cpp — unit tests for the `--gpu-backend cpu`
-// short-circuit in core/gpu_backend_pref.h (CrispEmbed T18 sync) and the
+// short-circuit in core/gpu_backend_pref.h (StelnetEmbed T18 sync) and the
 // Metal pipeline-cache cap policy (PLAN #88 follow-up).
 //
 // Each TEST_CASE runs as its own ctest process (catch_discover_tests), so the
@@ -7,7 +7,7 @@
 // per case.
 //
 // The legacy-arm case doubles as the proof the gate can go red: with
-// CRISPASR_GPU_PREF_CPU_LEGACY=1 the helper reproduces the pre-fix behaviour
+// STELNETTTS_GPU_PREF_CPU_LEGACY=1 the helper reproduces the pre-fix behaviour
 // (fall through to ggml_backend_init_best), and on any box with a GPU backend
 // compiled in that returns a non-CPU backend — exactly what the fix forbids
 // by default.
@@ -38,9 +38,9 @@ bool have_gpu_device() {
 } // namespace
 
 TEST_CASE("gpu-backend-pref: cpu short-circuits to the CPU backend", "[unit]") {
-    unsetenv("CRISPASR_GPU_PREF_CPU_LEGACY");
-    crispasr_set_gpu_backend_pref("cpu");
-    ggml_backend_t b = crispasr_init_gpu_backend();
+    unsetenv("STELNETTTS_GPU_PREF_CPU_LEGACY");
+    stelnettts_set_gpu_backend_pref("cpu");
+    ggml_backend_t b = stelnettts_init_gpu_backend();
     REQUIRE(b != nullptr);
     // The whole point of the flag: no GPU backend, ever. Pre-fix this
     // returned ggml_backend_init_best() (Metal on Apple Silicon).
@@ -49,10 +49,10 @@ TEST_CASE("gpu-backend-pref: cpu short-circuits to the CPU backend", "[unit]") {
 }
 
 TEST_CASE("gpu-backend-pref: legacy gate restores the pre-fix fall-through", "[unit]") {
-    setenv("CRISPASR_GPU_PREF_CPU_LEGACY", "1", 1);
-    crispasr_set_gpu_backend_pref("cpu");
-    ggml_backend_t b = crispasr_init_gpu_backend();
-    unsetenv("CRISPASR_GPU_PREF_CPU_LEGACY");
+    setenv("STELNETTTS_GPU_PREF_CPU_LEGACY", "1", 1);
+    stelnettts_set_gpu_backend_pref("cpu");
+    ggml_backend_t b = stelnettts_init_gpu_backend();
+    unsetenv("STELNETTTS_GPU_PREF_CPU_LEGACY");
     REQUIRE(b != nullptr);
     if (have_gpu_device()) {
         // Red-gate proof: the legacy path is the defect the fix removes.
@@ -62,18 +62,18 @@ TEST_CASE("gpu-backend-pref: legacy gate restores the pre-fix fall-through", "[u
 }
 
 TEST_CASE("gpu-backend-pref: CPU_LEGACY=0 still short-circuits (value-parsed)", "[unit]") {
-    setenv("CRISPASR_GPU_PREF_CPU_LEGACY", "0", 1);
-    crispasr_set_gpu_backend_pref("cpu");
-    ggml_backend_t b = crispasr_init_gpu_backend();
-    unsetenv("CRISPASR_GPU_PREF_CPU_LEGACY");
+    setenv("STELNETTTS_GPU_PREF_CPU_LEGACY", "0", 1);
+    stelnettts_set_gpu_backend_pref("cpu");
+    ggml_backend_t b = stelnettts_init_gpu_backend();
+    unsetenv("STELNETTTS_GPU_PREF_CPU_LEGACY");
     REQUIRE(b != nullptr);
     REQUIRE(ggml_backend_is_cpu(b));
     ggml_backend_free(b);
 }
 
 TEST_CASE("gpu-backend-pref: empty pref still returns a backend", "[unit]") {
-    crispasr_set_gpu_backend_pref("");
-    ggml_backend_t b = crispasr_init_gpu_backend();
+    stelnettts_set_gpu_backend_pref("");
+    ggml_backend_t b = stelnettts_init_gpu_backend();
     REQUIRE(b != nullptr);
     ggml_backend_free(b);
 }
@@ -82,7 +82,7 @@ TEST_CASE("metal-pipeline-cache-policy: oversized archive disables the cache", "
 #if defined(__APPLE__)
     // Point the policy at a scratch dir holding a 2 MB fake archive with a
     // 1 MB cap; apply() must set ggml's own kill switch and say so.
-    std::string dir = "/tmp/crispasr-test-metal-cache";
+    std::string dir = "/tmp/stelnettts-test-metal-cache";
     std::string cmd = "mkdir -p " + dir;
     REQUIRE(std::system(cmd.c_str()) == 0);
     {
@@ -92,7 +92,7 @@ TEST_CASE("metal-pipeline-cache-policy: oversized archive disables the cache", "
     }
     unsetenv("GGML_METAL_PIPELINE_CACHE_DISABLE");
     setenv("GGML_METAL_PIPELINE_CACHE", dir.c_str(), 1);
-    setenv("CRISPASR_METAL_PIPELINE_CACHE_MAX_MB", "1", 1);
+    setenv("STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB", "1", 1);
     REQUIRE(core_metal_cache::apply());
     const char* dis = std::getenv("GGML_METAL_PIPELINE_CACHE_DISABLE");
     REQUIRE(dis != nullptr);
@@ -104,7 +104,7 @@ TEST_CASE("metal-pipeline-cache-policy: oversized archive disables the cache", "
 
 TEST_CASE("metal-pipeline-cache-policy: MAX_MB=0 means uncapped", "[unit]") {
 #if defined(__APPLE__)
-    std::string dir = "/tmp/crispasr-test-metal-cache";
+    std::string dir = "/tmp/stelnettts-test-metal-cache";
     std::string cmd = "mkdir -p " + dir;
     REQUIRE(std::system(cmd.c_str()) == 0);
     {
@@ -114,7 +114,7 @@ TEST_CASE("metal-pipeline-cache-policy: MAX_MB=0 means uncapped", "[unit]") {
     }
     unsetenv("GGML_METAL_PIPELINE_CACHE_DISABLE");
     setenv("GGML_METAL_PIPELINE_CACHE", dir.c_str(), 1);
-    setenv("CRISPASR_METAL_PIPELINE_CACHE_MAX_MB", "0", 1);
+    setenv("STELNETTTS_METAL_PIPELINE_CACHE_MAX_MB", "0", 1);
     REQUIRE(!core_metal_cache::apply());
     REQUIRE(std::getenv("GGML_METAL_PIPELINE_CACHE_DISABLE") == nullptr);
 #endif

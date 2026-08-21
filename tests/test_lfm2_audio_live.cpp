@@ -1,6 +1,6 @@
 // LFM2-Audio integration test — exercises ASR + TTS roundtrip.
 //
-// Requires CRISPASR_MODEL_LFM2_EN or CRISPASR_MODEL_LFM2_JP env var
+// Requires STELNETTTS_MODEL_LFM2_EN or STELNETTTS_MODEL_LFM2_JP env var
 // pointing to a GGUF model file. SKIPs cleanly when not set.
 //
 // Tests:
@@ -40,9 +40,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("lfm2-audio EN ASR", "[integration][lfm2]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_LFM2_EN");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_LFM2_EN");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_LFM2_EN not set");
+        SKIP("STELNETTTS_MODEL_LFM2_EN not set");
     }
 
     auto params = lfm2_audio_context_default_params();
@@ -67,9 +67,9 @@ TEST_CASE("lfm2-audio EN ASR", "[integration][lfm2]") {
 }
 
 TEST_CASE("lfm2-audio JP ASR", "[integration][lfm2]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_LFM2_JP");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_LFM2_JP");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_LFM2_JP not set");
+        SKIP("STELNETTTS_MODEL_LFM2_JP not set");
     }
 
     auto params = lfm2_audio_context_default_params();
@@ -84,9 +84,9 @@ TEST_CASE("lfm2-audio JP ASR", "[integration][lfm2]") {
 }
 
 TEST_CASE("lfm2-audio TTS", "[integration][lfm2]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_LFM2_JP");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_LFM2_JP");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_LFM2_JP not set");
+        SKIP("STELNETTTS_MODEL_LFM2_JP not set");
     }
 
     auto params = lfm2_audio_context_default_params();

@@ -1,7 +1,7 @@
 #include "common.h"
-#include "common-crispasr.h"
+#include "common-stelnettts.h"
 
-#include "crispasr.h"
+#include "stelnettts.h"
 #include "httplib.h"
 #include "json.hpp"
 #include "ws_stream.h"
@@ -243,7 +243,7 @@ void whisper_print_usage(int /*argc*/, char** argv, const whisper_params& params
 }
 
 bool whisper_params_parse(int argc, char** argv, whisper_params& params, server_params& sparams) {
-    if (const char* env_device = std::getenv("CRISPASR_ARG_DEVICE")) {
+    if (const char* env_device = std::getenv("STELNETTTS_ARG_DEVICE")) {
         params.gpu_device = std::stoi(env_device);
     }
 
@@ -443,8 +443,8 @@ std::string estimate_diarization_speaker(std::vector<std::vector<float>> pcmf32s
     std::string speaker = "";
     const int64_t n_samples = pcmf32s[0].size();
 
-    const int64_t is0 = timestamp_to_sample(t0, n_samples, CRISPASR_SAMPLE_RATE);
-    const int64_t is1 = timestamp_to_sample(t1, n_samples, CRISPASR_SAMPLE_RATE);
+    const int64_t is0 = timestamp_to_sample(t0, n_samples, STELNETTTS_SAMPLE_RATE);
+    const int64_t is1 = timestamp_to_sample(t1, n_samples, STELNETTTS_SAMPLE_RATE);
 
     double energy0 = 0.0f;
     double energy1 = 0.0f;
@@ -731,46 +731,46 @@ int main(int argc, char** argv) {
 
     if (!params.dtw.empty()) {
         cparams.dtw_token_timestamps = true;
-        cparams.dtw_aheads_preset = CRISPASR_AHEADS_NONE;
+        cparams.dtw_aheads_preset = STELNETTTS_AHEADS_NONE;
 
         if (params.dtw == "tiny") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_TINY;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_TINY;
         }
         if (params.dtw == "tiny.en") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_TINY_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_TINY_EN;
         }
         if (params.dtw == "base") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_BASE;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_BASE;
         }
         if (params.dtw == "base.en") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_BASE_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_BASE_EN;
         }
         if (params.dtw == "small") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_SMALL;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_SMALL;
         }
         if (params.dtw == "small.en") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_SMALL_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_SMALL_EN;
         }
         if (params.dtw == "medium") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_MEDIUM;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_MEDIUM;
         }
         if (params.dtw == "medium.en") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_MEDIUM_EN;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_MEDIUM_EN;
         }
         if (params.dtw == "large.v1") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V1;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V1;
         }
         if (params.dtw == "large.v2") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V2;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V2;
         }
         if (params.dtw == "large.v3") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V3;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V3;
         }
         if (params.dtw == "large.v3.turbo") {
-            cparams.dtw_aheads_preset = CRISPASR_AHEADS_LARGE_V3_TURBO;
+            cparams.dtw_aheads_preset = STELNETTTS_AHEADS_LARGE_V3_TURBO;
         }
 
-        if (cparams.dtw_aheads_preset == CRISPASR_AHEADS_NONE) {
+        if (cparams.dtw_aheads_preset == STELNETTTS_AHEADS_NONE) {
             fprintf(stderr, "error: unknown DTW preset '%s'\n", params.dtw.c_str());
             return 3;
         }
@@ -786,19 +786,19 @@ int main(int argc, char** argv) {
         return 3;
     }
 
-    // initialize openvino encoder. this has no effect on crispasr builds that don't have OpenVINO configured
+    // initialize openvino encoder. this has no effect on stelnettts builds that don't have OpenVINO configured
     whisper_ctx_init_openvino_encoder(ctx, nullptr, params.openvino_encode_device.c_str(), nullptr);
     state.store(SERVER_STATE_READY);
 
 
-    svr->set_default_headers({{"Server", "crispasr"},
+    svr->set_default_headers({{"Server", "stelnettts"},
                               {"Access-Control-Allow-Origin", "*"},
                               {"Access-Control-Allow-Headers", "content-type, authorization"}});
 
     std::string const default_content = R"(
     <html>
     <head>
-        <title>CrispASR Server</title>
+        <title>StelnetTTS Server</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width">
         <style>
@@ -822,7 +822,7 @@ int main(int argc, char** argv) {
         </style>
     </head>
     <body>
-        <h1>CrispASR Server</h1>
+        <h1>StelnetTTS Server</h1>
 
         <h2>)" + sparams.request_path + sparams.inference_path +
                                         R"(</h2>
@@ -908,7 +908,7 @@ int main(int argc, char** argv) {
         if (sparams.ffmpeg_converter) {
             // if file is not wav, convert to wav
             // write to temporary file
-            const std::string temp_filename = generate_temp_filename(sparams.tmp_dir, "crispasr-server", ".wav");
+            const std::string temp_filename = generate_temp_filename(sparams.tmp_dir, "stelnettts-server", ".wav");
             std::ofstream temp_file{temp_filename, std::ios::binary};
             temp_file << audio_file.content;
             temp_file.close();
@@ -969,7 +969,7 @@ int main(int argc, char** argv) {
             fprintf(stderr,
                     "%s: processing '%s' (%d samples, %.1f sec), %d threads, %d processors, lang = %s, task = %s, "
                     "%stimestamps = %d ...\n",
-                    __func__, filename.c_str(), int(pcmf32.size()), float(pcmf32.size()) / CRISPASR_SAMPLE_RATE,
+                    __func__, filename.c_str(), int(pcmf32.size()), float(pcmf32.size()) / STELNETTTS_SAMPLE_RATE,
                     params.n_threads, params.n_processors, params.language.c_str(),
                     params.translate ? "translate" : "transcribe", params.tinydiarize ? "tdrz = 1, " : "",
                     params.no_timestamps ? 0 : 1);
@@ -979,10 +979,10 @@ int main(int argc, char** argv) {
 
         // run the inference
         {
-            printf("Running crispasr inference on %s\n", filename.c_str());
-            whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+            printf("Running stelnettts inference on %s\n", filename.c_str());
+            whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
 
-            wparams.strategy = params.beam_size > 1 ? CRISPASR_SAMPLING_BEAM_SEARCH : CRISPASR_SAMPLING_GREEDY;
+            wparams.strategy = params.beam_size > 1 ? STELNETTTS_SAMPLING_BEAM_SEARCH : STELNETTTS_SAMPLING_GREEDY;
 
             wparams.print_realtime = false;
             wparams.print_progress = params.print_progress;
@@ -1120,7 +1120,7 @@ int main(int argc, char** argv) {
             std::string results = output_str(ctx, params, pcmf32s);
             json jres = json{{"task", params.translate ? "translate" : "transcribe"},
                              {"language", whisper_lang_str_full(whisper_full_lang_id(ctx))},
-                             {"duration", float(pcmf32.size()) / CRISPASR_SAMPLE_RATE},
+                             {"duration", float(pcmf32.size()) / STELNETTTS_SAMPLE_RATE},
                              {"text", results},
                              {"segments", json::array()}};
             // Only compute language probabilities if requested (expensive operation)
@@ -1221,7 +1221,7 @@ int main(int argc, char** argv) {
             exit(1);
         }
 
-        // initialize openvino encoder. this has no effect on crispasr builds that don't have OpenVINO configured
+        // initialize openvino encoder. this has no effect on stelnettts builds that don't have OpenVINO configured
         whisper_ctx_init_openvino_encoder(ctx, nullptr, params.openvino_encode_device.c_str(), nullptr);
 
         state.store(SERVER_STATE_READY);

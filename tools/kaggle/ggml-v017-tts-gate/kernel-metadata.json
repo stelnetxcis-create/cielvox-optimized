@@ -1,6 +1,6 @@
 {
-  "id": "chr1str/crispasr-ggml-v017-tts-gate",
-  "title": "crispasr ggml v017 tts gate",
+  "id": "chr1str/stelnettts-ggml-v017-tts-gate",
+  "title": "stelnettts ggml v017 tts gate",
   "code_file": "ggml_v017_tts_gate.py",
   "language": "python",
   "kernel_type": "script",
@@ -8,7 +8,7 @@
   "enable_gpu": "true",
   "enable_internet": "true",
   "competition_sources": [],
-  "dataset_sources": ["chr1str/crispasr-hf-token", "chr1str/crispasr-ccache"],
+  "dataset_sources": ["chr1str/stelnettts-hf-token", "chr1str/stelnettts-ccache"],
   "kernel_sources": [],
   "model_sources": []
 }

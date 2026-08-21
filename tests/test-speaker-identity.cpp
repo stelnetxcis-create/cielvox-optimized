@@ -24,17 +24,17 @@
 // that nobody researched would be the same mistake as guessing "synthetic" to
 // quiet a warning: silent, and wrong in the direction that removes a duty.
 
-#include "crispasr_speaker_identity.h"
-#include "crispasr_speaker_identity_models.h"
+#include "stelnettts_speaker_identity.h"
+#include "stelnettts_speaker_identity_models.h"
 
 #include <catch2/catch_test_macros.hpp>
 
-using crispasr_voice::parse_speaker_identity;
-using crispasr_voice::requires_consent_attestation;
-using crispasr_voice::requires_spoken_disclosure;
-using crispasr_voice::resolve_speaker_identity;
-using crispasr_voice::should_warn_unknown_identity;
-using crispasr_voice::SpeakerIdentity;
+using stelnettts_voice::parse_speaker_identity;
+using stelnettts_voice::requires_consent_attestation;
+using stelnettts_voice::requires_spoken_disclosure;
+using stelnettts_voice::resolve_speaker_identity;
+using stelnettts_voice::should_warn_unknown_identity;
+using stelnettts_voice::SpeakerIdentity;
 
 // ---------------------------------------------------------------------------
 // The split: two duties, two triggers.
@@ -129,11 +129,11 @@ TEST_CASE("the round trip through to_string is stable", "[unit][compliance]") {
     // These strings are written into GGUF metadata by bakers and read back by
     // the gate; a drift between writer and reader fails open.
     for (auto id : {SpeakerIdentity::RealPerson, SpeakerIdentity::Synthetic, SpeakerIdentity::Unknown}) {
-        REQUIRE(parse_speaker_identity(crispasr_voice::to_string(id)) == id);
+        REQUIRE(parse_speaker_identity(stelnettts_voice::to_string(id)) == id);
     }
-    REQUIRE(std::string(crispasr_voice::to_string(SpeakerIdentity::RealPerson)) == "real_person");
-    REQUIRE(std::string(crispasr_voice::speaker_identity_key()) == "crispasr.voice.speaker_identity");
-    REQUIRE(crispasr_voice::speaker_identity_key_for("af_heart") == "crispasr.voice.af_heart.speaker_identity");
+    REQUIRE(std::string(stelnettts_voice::to_string(SpeakerIdentity::RealPerson)) == "real_person");
+    REQUIRE(std::string(stelnettts_voice::speaker_identity_key()) == "stelnettts.voice.speaker_identity");
+    REQUIRE(stelnettts_voice::speaker_identity_key_for("af_heart") == "stelnettts.voice.af_heart.speaker_identity");
 }
 
 // ---------------------------------------------------------------------------
@@ -175,39 +175,39 @@ TEST_CASE("nothing declared resolves to unknown", "[unit][compliance]") {
 // ---------------------------------------------------------------------------
 
 TEST_CASE("the unknown-identity warning fires once per model", "[unit][compliance]") {
-    crispasr_voice::reset_unknown_identity_warnings_for_test();
-    REQUIRE(crispasr_voice::claim_unknown_identity_warning("kokoro"));
-    REQUIRE_FALSE(crispasr_voice::claim_unknown_identity_warning("kokoro"));
+    stelnettts_voice::reset_unknown_identity_warnings_for_test();
+    REQUIRE(stelnettts_voice::claim_unknown_identity_warning("kokoro"));
+    REQUIRE_FALSE(stelnettts_voice::claim_unknown_identity_warning("kokoro"));
     // Keyed per model, not per process: a server may load several backends and
     // each unanswered one is a separate thing the operator needs to know.
-    REQUIRE(crispasr_voice::claim_unknown_identity_warning("piper"));
-    REQUIRE_FALSE(crispasr_voice::claim_unknown_identity_warning("piper"));
+    REQUIRE(stelnettts_voice::claim_unknown_identity_warning("piper"));
+    REQUIRE_FALSE(stelnettts_voice::claim_unknown_identity_warning("piper"));
 }
 
 TEST_CASE("the test reset actually clears the state", "[unit][compliance]") {
     // Guarding the guard: an earlier draft kept the set and the reset in
     // separate function-local statics, so the reset compiled, ran, and did
     // nothing — which would have made every case above order-dependent.
-    crispasr_voice::reset_unknown_identity_warnings_for_test();
-    REQUIRE(crispasr_voice::claim_unknown_identity_warning("same-model"));
-    crispasr_voice::reset_unknown_identity_warnings_for_test();
-    REQUIRE(crispasr_voice::claim_unknown_identity_warning("same-model"));
+    stelnettts_voice::reset_unknown_identity_warnings_for_test();
+    REQUIRE(stelnettts_voice::claim_unknown_identity_warning("same-model"));
+    stelnettts_voice::reset_unknown_identity_warnings_for_test();
+    REQUIRE(stelnettts_voice::claim_unknown_identity_warning("same-model"));
 }
 
 TEST_CASE("the warning names what to do about it", "[unit][compliance]") {
     // A warning an operator cannot act on is one they learn to ignore, and this
     // one fires on every unresearched preset backend in the project.
-    const std::string w = crispasr_voice::unknown_identity_warning("kokoro");
+    const std::string w = stelnettts_voice::unknown_identity_warning("kokoro");
     REQUIRE(w.find("kokoro") != std::string::npos);
     REQUIRE(w.find("--speaker-identity real_person") != std::string::npos);
     REQUIRE(w.find("--speaker-identity synthetic") != std::string::npos);
     REQUIRE(w.find("Art. 50(4)") != std::string::npos);
     // An unnamed model still produces a usable line rather than a dangling quote.
-    REQUIRE(crispasr_voice::unknown_identity_warning("").find("<unknown-model>") != std::string::npos);
+    REQUIRE(stelnettts_voice::unknown_identity_warning("").find("<unknown-model>") != std::string::npos);
 }
 
 // ---------------------------------------------------------------------------
-// The researched verdicts (crispasr_speaker_identity_models.h).
+// The researched verdicts (stelnettts_speaker_identity_models.h).
 //
 // Unlike the mechanism above, these ARE claims about specific shipped models,
 // each backed by the provider's own documentation. They are pinned here so a
@@ -215,7 +215,7 @@ TEST_CASE("the warning names what to do about it", "[unit][compliance]") {
 // should show up as a failing test that someone has to justify.
 // ---------------------------------------------------------------------------
 
-using crispasr_voice::identity_for_model;
+using stelnettts_voice::identity_for_model;
 
 TEST_CASE("piper voices are named human donors", "[unit][compliance]") {
     // Every piper voice in the registry is one identifiable person: the Lessac
@@ -228,7 +228,7 @@ TEST_CASE("piper voices are named human donors", "[unit][compliance]") {
 }
 
 TEST_CASE("a kokoro CHECKPOINT declares nothing about whose voice it is", "[unit][compliance]") {
-    // A kokoro model is a backbone, not a voice — CrispASR's own card says so:
+    // A kokoro model is a backbone, not a voice — StelnetTTS's own card says so:
     // "This is a base model, not a voice. It pairs with a German voice pack."
     // Which person you hear is decided entirely by the style pack, so the model
     // must claim nothing. An earlier revision returned Synthetic here, which
@@ -240,7 +240,7 @@ TEST_CASE("a kokoro CHECKPOINT declares nothing about whose voice it is", "[unit
 TEST_CASE("the kokoro German HUI backbone is NOT inherited as synthetic", "[unit][compliance]") {
     // The conflict this project found while porting CrispTTS's research.
     // CrispTTS marks kokoro synthetic, which is right for the English packs.
-    // But CrispASR's German backbone is trained on HUI-Audio-Corpus-German,
+    // But StelnetTTS's German backbone is trained on HUI-Audio-Corpus-German,
     // whose narrators are NAMED — the same corpus CrispTTS itself cites when
     // marking the NeMo FastPitch German model real_person. Inheriting
     // "synthetic" here would assume the answer on the one variant there is a
@@ -380,17 +380,17 @@ TEST_CASE("the operator override still overrules every declared source", "[unit]
 }
 
 TEST_CASE("duty_rank orders the values", "[unit][compliance]") {
-    REQUIRE(crispasr_voice::duty_rank(SpeakerIdentity::RealPerson) >
-            crispasr_voice::duty_rank(SpeakerIdentity::Synthetic));
-    REQUIRE(crispasr_voice::duty_rank(SpeakerIdentity::Synthetic) >
-            crispasr_voice::duty_rank(SpeakerIdentity::Unknown));
+    REQUIRE(stelnettts_voice::duty_rank(SpeakerIdentity::RealPerson) >
+            stelnettts_voice::duty_rank(SpeakerIdentity::Synthetic));
+    REQUIRE(stelnettts_voice::duty_rank(SpeakerIdentity::Synthetic) >
+            stelnettts_voice::duty_rank(SpeakerIdentity::Unknown));
 }
 
 // ---------------------------------------------------------------------------
 // Voice-pack verdicts. kokoro's answer lives here, not on the checkpoint.
 // ---------------------------------------------------------------------------
 
-using crispasr_voice::identity_for_voice_pack;
+using stelnettts_voice::identity_for_voice_pack;
 
 TEST_CASE("the HUI-narrator kokoro packs are real people", "[unit][compliance]") {
     // The resolution of the conflict that held kokoro-de at unknown. df_eva and
@@ -446,7 +446,7 @@ TEST_CASE("the German cascade crosses an identity boundary", "[unit][compliance]
 // before uploading, not by reading the code.
 // ---------------------------------------------------------------------------
 
-using crispasr_voice::backend_for_architecture;
+using stelnettts_voice::backend_for_architecture;
 
 TEST_CASE("architectures that already match the backend name pass through", "[unit][compliance]") {
     REQUIRE(backend_for_architecture("piper") == "piper");

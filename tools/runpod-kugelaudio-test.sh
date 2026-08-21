@@ -1,5 +1,5 @@
 #!/bin/bash
-# CrispASR RunPod GPU test — KugelAudio TTS (Qwen2.5-7B + diffusion)
+# StelnetTTS RunPod GPU test — KugelAudio TTS (Qwen2.5-7B + diffusion)
 #
 # Spins up an RTX 3090 (24 GB VRAM), builds CUDA, downloads the Q4_K
 # GGUF (~5.3 GB), runs TTS synthesis, and validates via whisper ASR
@@ -26,7 +26,7 @@ GPU_TYPE="NVIDIA GeForce RTX 3090"
 GPU_ARCH=86  # sm_86 for RTX 3090
 IMAGE="runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub 2>/dev/null || echo "")
-POD_FILE="/tmp/crispasr-kugelaudio-pod-id.txt"
+POD_FILE="/tmp/stelnettts-kugelaudio-pod-id.txt"
 BRANCH="${1:-feature/kugelaudio-tts}"
 
 if [ "$BRANCH" = "teardown" ]; then
@@ -55,7 +55,7 @@ POD_INFO=$(python3 << PYEOF
 import runpod, json
 runpod.api_key = '$RPOD_API'
 pod = runpod.create_pod(
-    name="crispasr-kugelaudio-test",
+    name="stelnettts-kugelaudio-test",
     image_name="$IMAGE",
     gpu_type_id="$GPU_TYPE",
     gpu_count=1,
@@ -113,19 +113,19 @@ export CMAKE=\$(find /usr -path '*/cmake/data/bin/cmake' 2>/dev/null | head -1)
 [ -z "\$CMAKE" ] && CMAKE=cmake
 
 cd /runpod-volume
-rm -rf CrispASR build
-git clone --depth 1 --branch $BRANCH https://github.com/CrispStrobe/CrispASR.git
-cd CrispASR && git submodule update --init --depth 1 ggml
+rm -rf StelnetTTS build
+git clone --depth 1 --branch $BRANCH https://github.com/Cyna/StelnetTTS.git
+cd StelnetTTS && git submodule update --init --depth 1 ggml
 echo "SHA: \$(git rev-parse --short HEAD)"
 
 mkdir -p /runpod-volume/build
-\$CMAKE -G Ninja -S /runpod-volume/CrispASR -B /runpod-volume/build \
+\$CMAKE -G Ninja -S /runpod-volume/StelnetTTS -B /runpod-volume/build \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-  -DCRISPASR_BUILD_TESTS=OFF \
+  -DSTELNETTTS_BUILD_TESTS=OFF \
   -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=$GPU_ARCH
-ninja -C /runpod-volume/build -j\$(nproc) crispasr-cli
+ninja -C /runpod-volume/build -j\$(nproc) stelnettts-cli
 echo "=== Build OK ==="
-ls -la /runpod-volume/build/bin/crispasr
+ls -la /runpod-volume/build/bin/stelnettts
 REMOTE
 
 # ── Download GGUF ─────────────────────────────────────────────────
@@ -135,7 +135,7 @@ set -e
 export HF_HUB_ENABLE_HF_TRANSFER=1
 python3 -c "
 from huggingface_hub import hf_hub_download
-path = hf_hub_download('cstr/kugelaudio-0-open-GGUF', 'kugelaudio-0-open-q4_k.gguf',
+path = hf_hub_download('Xenna/kugelaudio-0-open-GGUF', 'kugelaudio-0-open-q4_k.gguf',
                        cache_dir='/runpod-volume/cache')
 print(f'GGUF: {path}')
 # Symlink for easy access
@@ -166,7 +166,7 @@ echo "=== Test: TTS synthesis ==="
 $SSH << 'REMOTE'
 set -e
 export LD_LIBRARY_PATH=/runpod-volume/build/src:/runpod-volume/build/ggml/src:/runpod-volume/build/ggml/src/ggml-cuda
-CLI=/runpod-volume/build/bin/crispasr
+CLI=/runpod-volume/build/bin/stelnettts
 
 echo "--- Backend list ---"
 $CLI --list-backends 2>&1 | grep kugelaudio
@@ -189,7 +189,7 @@ echo "=== Test: ASR roundtrip ==="
 $SSH << 'REMOTE'
 set -e
 export LD_LIBRARY_PATH=/runpod-volume/build/src:/runpod-volume/build/ggml/src:/runpod-volume/build/ggml/src/ggml-cuda
-CLI=/runpod-volume/build/bin/crispasr
+CLI=/runpod-volume/build/bin/stelnettts
 WHISPER=/runpod-volume/cache/ggml-base.en.bin
 
 echo "=== English roundtrip ==="

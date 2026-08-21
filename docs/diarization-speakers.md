@@ -1,6 +1,6 @@
 # Speaker labels in diarization — session-scoped clustering vs. named profiles
 
-CrispASR's diarization assigns a label to every transcribed segment. There
+StelnetTTS's diarization assigns a label to every transcribed segment. There
 are two very different ways to make those labels meaningful, with very
 different privacy and legal profiles. **Read this before enabling the second
 one.**
@@ -26,7 +26,7 @@ with the obligations in the last section understood.
 > here do not run in real time. See [`streaming.md`](streaming.md#speaker-diarization-while-streaming).
 
 > **From a binding?** The same native label is on the session ABI from v0.8.24 —
-> `crispasr_session_result_segment_speaker(result, i)` in C, `.speaker` on
+> `stelnettts_session_result_segment_speaker(result, i)` in C, `.speaker` on
 > Python's `SessionSegment`, `.Speaker` on Go's `TranscribeSegment`, `.speaker`
 > on Dart's `SessionSegment`. It is `""` when the backend does not diarize
 > natively, and its ordinals are **chunk-local** — `Speaker 1` from one
@@ -47,11 +47,11 @@ attached, and there is no database.
 ```bash
 # Easiest: opt-in convenience alias. Enables --diarize and session-scoped
 # clustering with the default embedder (auto-downloads ~46 MB TitaNet once).
-crispasr -m auto --backend cohere -f meeting.wav --diarize-speakers -ojf
+stelnettts -m auto --backend cohere -f meeting.wav --diarize-speakers -ojf
 
 # Best quality for >2 speakers / long meetings — combine with the pyannote
 # segmenter so segments also split at speaker-turn boundaries:
-crispasr -m auto --backend cohere -f meeting.wav \
+stelnettts -m auto --backend cohere -f meeting.wav \
     --diarize --diarize-method pyannote --sherpa-segment-model auto \
     --diarize-embedder auto -ojf
 ```
@@ -159,13 +159,13 @@ verification) and, on a match, all segments get the one name.
 ```bash
 # Enroll a reference clip (writes <db>/Alice.spkr — a stored voiceprint,
 # with the consent attestation recorded in the file):
-crispasr -f alice-sample.wav --enroll-speaker Alice --speaker-db ./voiceprints \
+stelnettts -f alice-sample.wav --enroll-speaker Alice --speaker-db ./voiceprints \
     --speaker-db-consent
 
 # Later, label a meeting of Alice and Bob (both enrolled, both consented).
 # --speaker-db with --diarize implies global clustering (--diarize-embedder
 # auto), so this is the full shared pipeline:
-crispasr -m auto -f meeting.wav --diarize-speakers \
+stelnettts -m auto -f meeting.wav --diarize-speakers \
     --speaker-db ./voiceprints --expect-speakers "Alice,Bob" \
     --speaker-db-consent -ojf
 # -> (Alice) ... / (Bob) ... / (speaker 2) ... for any third voice
@@ -211,7 +211,7 @@ identification* — identifying people **without their active involvement**
 against a reference database ([Art. 3(41)](https://artificialintelligenceact.eu/article/3/),
 [Recital 17](https://ai-act-service-desk.ec.europa.eu/en/ai-act/recital-17)) —
 is **high-risk** under [Annex III(1)(a)](https://artificialintelligenceact.eu/annex/3/),
-with heavyweight provider and deployer obligations. CrispASR therefore does
+with heavyweight provider and deployer obligations. StelnetTTS therefore does
 not implement that kind of system, and the constraints above are what keep
 this feature outside it:
 
@@ -244,24 +244,24 @@ outside Annex III(1)(a), and what the Act requires of you as deployer — is in
 
 ## Implementation notes
 
-- Session clustering: `crispasr_remap_speakers_via_embeddings()` in
-  `examples/cli/crispasr_diarize_cli.cpp` — per-recording embedding extraction
-  + agglomerative clustering (`src/crispasr_speaker_cluster.cpp`). No
+- Session clustering: `stelnettts_remap_speakers_via_embeddings()` in
+  `examples/cli/stelnettts_diarize_cli.cpp` — per-recording embedding extraction
+  + agglomerative clustering (`src/stelnettts_speaker_cluster.cpp`). No
   persistence.
-- Embedder adapters (pluggable): `src/crispasr_speaker_embedder.{h,cpp}`
+- Embedder adapters (pluggable): `src/stelnettts_speaker_embedder.{h,cpp}`
   (TitaNet-Large 192-d default; IndexTTS-BigVGAN ECAPA-TDNN 512-d).
 - Named profiles: `src/speaker_db.{h,cpp}` — the `.spkr` on-disk format
   (v2 adds the consent attestation + enrollment timestamp) and cosine
   matching. `speaker_db_retain()` narrows a loaded db to the claimed roster
   before any match. Enroll and identify must use the **same** embedder so
   dimensions match.
-- Cluster identification: `crispasr_identify_speaker_clusters()` /
-  `crispasr_identify_single_speaker()` in
-  `examples/cli/crispasr_diarize_cli.cpp`, driven from
-  `crispasr_apply_global_speaker_stages()` in `examples/cli/crispasr_run.cpp`
+- Cluster identification: `stelnettts_identify_speaker_clusters()` /
+  `stelnettts_identify_single_speaker()` in
+  `examples/cli/stelnettts_diarize_cli.cpp`, driven from
+  `stelnettts_apply_global_speaker_stages()` in `examples/cli/stelnettts_run.cpp`
   (one post-merge stage shared by the sequential and parallel output paths).
-- C API: `crispasr_speaker_db_open(dir, expected_names_csv, consent_attested)`
-  and `crispasr_speaker_db_enroll2(..., consent_attested)` are the only entry
+- C API: `stelnettts_speaker_db_open(dir, expected_names_csv, consent_attested)`
+  and `stelnettts_speaker_db_enroll2(..., consent_attested)` are the only entry
   points; the pre-#266 ungated `_load`/`_enroll` symbols refuse at runtime.
 
 See [`cli.md`](cli.md#diarization) for the full diarization flag reference.
@@ -340,8 +340,8 @@ This also moves toward pyannote's own design rather than away from it:
 upstream infers on a sliding 10 s window, and one continuous 48-minute scan
 was the outlier.
 
-Tunable with `CRISPASR_PYANNOTE_CHUNK_S` (0 restores the single scan) and
-`CRISPASR_PYANNOTE_CHUNK_CONTEXT_S`.
+Tunable with `STELNETTTS_PYANNOTE_CHUNK_S` (0 restores the single scan) and
+`STELNETTTS_PYANNOTE_CHUNK_CONTEXT_S`.
 
 Because each chunk numbers its local speakers arbitrarily, chunks are stitched
 by choosing, per seam, the relabelling of {spk0, spk1, spk2} that best matches

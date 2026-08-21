@@ -29,7 +29,7 @@ pipeline_tag: automatic-speech-recognition
 
 # OmniASR-CTC-1B (GGUF)
 
-GGUF conversion of Facebook's [omniASR-CTC-1B](https://github.com/facebookresearch/omnilingual-asr) for use with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+GGUF conversion of Facebook's [omniASR-CTC-1B](https://github.com/facebookresearch/omnilingual-asr) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model Details
 
@@ -41,14 +41,14 @@ GGUF conversion of Facebook's [omniASR-CTC-1B](https://github.com/facebookresear
 - **License**: Apache 2.0
 - **Input**: Raw 16 kHz mono PCM (no mel features)
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Auto-detected from GGUF metadata (omniasr-ctc arch)
-crispasr --backend omniasr -m omniasr-ctc-1b-q4_k.gguf -f audio.wav
+stelnettts --backend omniasr -m omniasr-ctc-1b-q4_k.gguf -f audio.wav
 
 # With language specification
-crispasr --backend omniasr -m omniasr-ctc-1b-q4_k.gguf -l de -f audio.wav
+stelnettts --backend omniasr -m omniasr-ctc-1b-q4_k.gguf -l de -f audio.wav
 ```
 
 ## Available Files
@@ -69,7 +69,7 @@ python models/convert-omniasr-ctc-to-gguf.py \
 
 Quantized with:
 ```bash
-crispasr-quantize omniasr-ctc-1b.gguf omniasr-ctc-1b-q4_k.gguf Q4_K
+stelnettts-quantize omniasr-ctc-1b.gguf omniasr-ctc-1b-q4_k.gguf Q4_K
 ```
 
 ## Comparison with OmniASR-CTC-300M

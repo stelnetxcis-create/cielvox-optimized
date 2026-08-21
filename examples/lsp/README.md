@@ -13,10 +13,10 @@ make lsp
 ```
 Install the plugin itself by copying or symlinking whisper.vim into ~/.vim/autoload/
 
-In your vimrc, set the path of your crispasr directory and optionally add some keybinds.
+In your vimrc, set the path of your stelnettts directory and optionally add some keybinds.
 
 ```vim
-let g:whisper_dir = "~/crispasr"
+let g:whisper_dir = "~/stelnettts"
 " Start listening for commands when Ctrl - g is pressed in normal mode
 nnoremap <C-G> call whisper#requestCommands()<CR>
 " Start unguided transcription when Ctrl - g is pressed in insert mode
@@ -58,11 +58,11 @@ Log information is sent to a special `whisper_log` buffer and can be accessed wi
 ## Vim plugin configuration
 
 `g:whisper_dir`  
-A full path to the crispasr repo. It can be expanded in the definition like so:
+A full path to the stelnettts repo. It can be expanded in the definition like so:
 ```vim
-let g:whisper_dir = expand("~/crispasr/")
+let g:whisper_dir = expand("~/stelnettts/")
 ```
-(The CRISPASR_CPP_HOME environment variable is also checked for users of the existing crispasr.nvim script)
+(The STELNETTTS_CPP_HOME environment variable is also checked for users of the existing stelnettts.nvim script)
 
 `g:whisper_lsp_path`  
 Can be used to manually set the path to the language server.

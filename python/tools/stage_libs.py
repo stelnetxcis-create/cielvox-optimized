@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Stage a prebuilt libcrispasr bundle into the `crispasr` package for wheel
+"""Stage a prebuilt libstelnettts bundle into the `stelnettts` package for wheel
 building.
 
 The release workflow (`release.yml`) already builds relocatable
-`libcrispasr-<platform>[-cuda|-vulkan].tar.gz` bundles whose libraries have
+`libstelnettts-<platform>[-cuda|-vulkan].tar.gz` bundles whose libraries have
 their rpaths rewritten to `$ORIGIN` / `@loader_path` (see
 `tools/package-lib-bundle.sh`). This script copies those libraries next to
-`crispasr/_binding.py` — where `_find_lib()` probes first — and best-effort
+`stelnettts/_binding.py` — where `_find_lib()` probes first — and best-effort
 compiles the tiny `_helpers.c` shim, so that `python -m build` produces a
 self-contained platform wheel.
 
 Usage:
-    python tools/stage_libs.py --bundle <extracted-bundle-dir> [--pkg crispasr]
+    python tools/stage_libs.py --bundle <extracted-bundle-dir> [--pkg stelnettts]
 
 Symlinks are materialised as real files: the wheel (a zip) cannot be relied on
 to preserve symlinks across pip versions, and soname-based inter-library
@@ -84,7 +84,7 @@ def copy_libs(lib_dir: Path, pkg: Path) -> list[str]:
         if not _is_lib(entry):
             continue
         # Resolve symlinks to real bytes but keep the entry's own name, so both
-        # `libcrispasr.so` (what _find_lib opens) and `libcrispasr.so.1` (what
+        # `libstelnettts.so` (what _find_lib opens) and `libstelnettts.so.1` (what
         # the ggml backends' SONAME refers to) exist as loadable real files.
         src = entry.resolve()
         if not src.is_file():
@@ -101,11 +101,11 @@ def copy_libs(lib_dir: Path, pkg: Path) -> list[str]:
 def vendor_linux_deps(pkg: Path) -> tuple[list[str], list[str], list[str]]:
     """Copy the staged libraries' EXTERNAL dependencies into the package.
 
-    The release bundle is relocatable but NOT self-contained: `libcrispasr.so`
+    The release bundle is relocatable but NOT self-contained: `libstelnettts.so`
     and `libwhisper.so` carry a DT_NEEDED on `libopenblas.so.0` (and on
     libespeak-ng / libfdk-aac / libasound) which the bundle does not ship. On a
     CI runner that happens to have them installed nothing looks wrong; on a
-    user's machine `pip install crispasr` then fails at import with
+    user's machine `pip install stelnettts` then fails at import with
     "libopenblas.so.0: cannot open shared object file" — exactly what v0.8.24's
     smoke test caught on linux-x86_64 and linux-arm64.
 
@@ -177,12 +177,12 @@ def vendor_linux_deps(pkg: Path) -> tuple[list[str], list[str], list[str]]:
 
 def compile_helpers(pkg: Path, include_dir: Path, extra_includes: list[Path]) -> None:
     """Compile `_helpers.c` into the package dir. Best-effort: the legacy
-    whisper `CrispASR` class uses it, but the modern `Session` API does not, so
+    whisper `StelnetTTS` class uses it, but the modern `Session` API does not, so
     a failure only degrades that one class — never fail the wheel over it.
 
-    `extra_includes` matters more than it looks: `crispasr.h` line 4 includes
+    `extra_includes` matters more than it looks: `stelnettts.h` line 4 includes
     `ggml.h`, which lives in the bundle's `ggml/include`, NOT next to
-    `crispasr.h`. Passing only the latter made every wheel — on every platform —
+    `stelnettts.h`. Passing only the latter made every wheel — on every platform —
     print "helpers compile failed: 'ggml.h' file not found" and ship without the
     legacy class. Because the failure is deliberately non-fatal it was a warning
     nobody read."""
@@ -190,22 +190,22 @@ def compile_helpers(pkg: Path, include_dir: Path, extra_includes: list[Path]) ->
     if not src.exists():
         print("stage_libs: no _helpers.c, skipping helpers", flush=True)
         return
-    if not (include_dir / "crispasr.h").exists():
-        print(f"stage_libs: no crispasr.h under {include_dir}, skipping helpers",
+    if not (include_dir / "stelnettts.h").exists():
+        print(f"stage_libs: no stelnettts.h under {include_dir}, skipping helpers",
               flush=True)
         return
     inc_flags = [f"-I{include_dir}"] + [f"-I{p}" for p in extra_includes]
     system = platform.system()
     try:
         if system == "Windows":
-            # cl needs the import lib; the bundle ships crispasr.lib alongside.
-            implib = next(iter(pkg.glob("crispasr.lib")), None) or next(
-                iter(include_dir.parent.rglob("crispasr.lib")), None)
+            # cl needs the import lib; the bundle ships stelnettts.lib alongside.
+            implib = next(iter(pkg.glob("stelnettts.lib")), None) or next(
+                iter(include_dir.parent.rglob("stelnettts.lib")), None)
             if implib is None:
-                print("stage_libs: no crispasr.lib, skipping Windows helpers",
+                print("stage_libs: no stelnettts.lib, skipping Windows helpers",
                       flush=True)
                 return
-            out = pkg / "crispasr_helpers.dll"
+            out = pkg / "stelnettts_helpers.dll"
             subprocess.run(
                 ["cl", "/nologo", "/LD", str(src)]
                 + [f"/I{p}" for p in [include_dir] + extra_includes]
@@ -214,12 +214,12 @@ def compile_helpers(pkg: Path, include_dir: Path, extra_includes: list[Path]) ->
             )
         else:
             ext = "dylib" if system == "Darwin" else "so"
-            out = pkg / f"libcrispasr_helpers.{ext}"
+            out = pkg / f"libstelnettts_helpers.{ext}"
             rpath = "@loader_path" if system == "Darwin" else "$ORIGIN"
             cc = os.environ.get("CC", "cc")
             subprocess.run(
                 [cc, "-shared", "-fPIC", str(src)] + inc_flags
-                + [f"-L{pkg}", "-lcrispasr", f"-Wl,-rpath,{rpath}", "-o", str(out)],
+                + [f"-L{pkg}", "-lstelnettts", f"-Wl,-rpath,{rpath}", "-o", str(out)],
                 check=True,
             )
             if system == "Darwin":
@@ -228,16 +228,16 @@ def compile_helpers(pkg: Path, include_dir: Path, extra_includes: list[Path]) ->
         print(f"stage_libs: compiled helpers -> {out.name}", flush=True)
     except (subprocess.CalledProcessError, OSError) as exc:
         print(f"stage_libs: WARNING helpers compile failed ({exc}); the wheel "
-              "will work for the Session API but not the legacy CrispASR class",
+              "will work for the Session API but not the legacy StelnetTTS class",
               flush=True)
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True, type=Path,
-                    help="extracted libcrispasr-<platform> bundle directory")
-    ap.add_argument("--pkg", type=Path, default=Path(__file__).parent.parent / "crispasr",
-                    help="the crispasr package directory to stage into")
+                    help="extracted libstelnettts-<platform> bundle directory")
+    ap.add_argument("--pkg", type=Path, default=Path(__file__).parent.parent / "stelnettts",
+                    help="the stelnettts package directory to stage into")
     args = ap.parse_args()
 
     bundle = args.bundle
@@ -245,7 +245,7 @@ def main() -> int:
         raise SystemExit(f"stage_libs: bundle not found: {bundle}")
     pkg = args.pkg
     if not (pkg / "_binding.py").exists():
-        raise SystemExit(f"stage_libs: {pkg} is not the crispasr package")
+        raise SystemExit(f"stage_libs: {pkg} is not the stelnettts package")
 
     lib_dir = find_lib_dir(bundle)
     copied = copy_libs(lib_dir, pkg)
@@ -253,7 +253,7 @@ def main() -> int:
     for n in copied:
         print(f"  {n}", flush=True)
 
-    # crispasr.h includes ggml.h, which the bundle keeps in a separate tree.
+    # stelnettts.h includes ggml.h, which the bundle keeps in a separate tree.
     include_dir = bundle / "include"
     extra_includes = [d for d in (bundle / "ggml" / "include", bundle / "ggml")
                       if d.is_dir()]

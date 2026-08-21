@@ -1,7 +1,7 @@
 // src/core/align.h — duration-based alignment helpers for TTS pipelines.
 //
 // Every TTS with explicit duration prediction (FastSpeech, VITS,
-// StyleTTS, Kokoro, qwen3-tts talker) needs the same primitive: take a
+// StyleTTS, Kokoro, cielvox2-tts talker) needs the same primitive: take a
 // per-token feature matrix and a per-token integer duration vector,
 // and return a per-frame feature matrix where each token's features
 // are repeated `dur[i]` times. PyTorch reference:

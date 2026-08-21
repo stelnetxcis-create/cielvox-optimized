@@ -20,7 +20,7 @@ base_model: Wespeaker/wespeaker-voxceleb-resnet34-LM
 GGUF conversion of
 [`Wespeaker/wespeaker-voxceleb-resnet34-LM`](https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM),
 a 256-dimensional speaker-embedding model, for the `--diarize-method foxnose`
-diarizer in **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+diarizer in **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## ⚠ Licence — attribution is required
 
@@ -72,7 +72,7 @@ rather than assumed:
 ## Verification
 
 Per-stage against the upstream PyTorch model run as an oracle
-(`crispasr-diff wespeaker`), on an 11 s clip:
+(`stelnettts-diff wespeaker`), on an 11 s clip:
 
 | stage | cos_mean |
 |---|---|
@@ -84,7 +84,7 @@ Per-stage against the upstream PyTorch model run as an oracle
 Discriminative check on real audio: two windows of the same speaker score
 cosine **0.595**, against **0.100** for a different speaker.
 
-End-to-end, the CrispASR diarizer built on this model scores **DER 3.93%**
+End-to-end, the StelnetTTS diarizer built on this model scores **DER 3.93%**
 against the upstream Python pipeline's own output (same pinned speaker count,
 0.25 s collar) with **zero speaker confusion** — the residual is entirely
 false alarm from a different speech-segmentation source.
@@ -110,7 +110,7 @@ scores 7.3% there and 33.1% on the fuller corpus.
 ## Usage
 
 ```bash
-crispasr -m <asr-model.gguf> -f audio.wav \
+stelnettts -m <asr-model.gguf> -f audio.wav \
     --diarize --diarize-method foxnose \
     --diarize-embedder wespeaker-resnet34-lm.gguf
 ```
@@ -123,5 +123,5 @@ python models/convert-wespeaker-to-gguf.py \
     --output wespeaker-resnet34-lm.gguf
 ```
 
-The CrispASR runtime is an independent implementation written from the
+The StelnetTTS runtime is an independent implementation written from the
 published architecture; no upstream source is incorporated.

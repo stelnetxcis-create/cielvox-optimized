@@ -37,12 +37,12 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 RESULTS = WORK / "adaln_vad_diag.json"
-CLONE = Path("/kaggle/temp/CrispASR")  # not /kaggle/working (gotcha #22)
+CLONE = Path("/kaggle/temp/StelnetTTS")  # not /kaggle/working (gotcha #22)
 
 if not CLONE.exists():
     try:
         subprocess.run(["git", "clone", "--recurse-submodules",
-                        "https://github.com/CrispStrobe/CrispASR.git", str(CLONE)],
+                        "https://github.com/Cyna/StelnetTTS.git", str(CLONE)],
                        check=True, timeout=1800)
     except Exception as e:  # noqa: BLE001
         print(f"clone failed: {e}", flush=True)
@@ -226,7 +226,7 @@ results = {}
 
 def build_and_run(label, cc, cxx, build_type):
     bdir = f"build-{label}"
-    flags = (f"-DCMAKE_BUILD_TYPE={build_type} -DGGML_NATIVE=OFF -DCRISPASR_BUILD_TESTS=ON "
+    flags = (f"-DCMAKE_BUILD_TYPE={build_type} -DGGML_NATIVE=OFF -DSTELNETTTS_BUILD_TESTS=ON "
              f"-DCMAKE_C_COMPILER={cc} -DCMAKE_CXX_COMPILER={cxx} "
              + " ".join(kh.cache_and_link_flags()))
     if not sh(f"which {cc}").stdout.strip():

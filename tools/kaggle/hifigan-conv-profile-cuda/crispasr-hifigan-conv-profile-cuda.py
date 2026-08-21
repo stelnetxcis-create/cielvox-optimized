@@ -1,5 +1,5 @@
 """
-CrispASR — melotts HiFi-GAN conv per-op profile on a CLEAN CUDA P100.
+StelnetTTS — melotts HiFi-GAN conv per-op profile on a CLEAN CUDA P100.
 
 Question this kernel answers: on M1 Metal, the melotts HiFi-GAN decode graph runs
 ~37x slower than its own FLOP/bandwidth roofline (measured gpu_us ~4.0e6 unloaded
@@ -32,17 +32,17 @@ import sys
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 REPS = int(os.environ.get("REPS", "5"))
 TTS_TEXT = "Hello there, this is a vocoder op profile measurement."
 
-# melotts registry model (cstr/melotts-en-v2-GGUF): decoder GGUF + BERT companion.
-MELO_REPO = "cstr/melotts-en-v2-GGUF"
+# melotts registry model (Xenna/melotts-en-v2-GGUF): decoder GGUF + BERT companion.
+MELO_REPO = "Xenna/melotts-en-v2-GGUF"
 MELO_FILE = "melotts-en-v2-f16.gguf"
 BERT_FILE = "bert-base-uncased-q4k.gguf"
 
@@ -87,10 +87,10 @@ def sh(cmd, **kw):
 
 
 # ── Pre-clone for shared harness ──────────────────────────────────────────
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF}", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF}", flush=True)
 if not REPO.exists():
-    sh(f"git clone --depth 1 --branch {CRISPASR_REF} --recursive "
-       f"https://github.com/CrispStrobe/CrispASR {REPO}", check=True)
+    sh(f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive "
+       f"https://github.com/Cyna/StelnetTTS {REPO}", check=True)
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
@@ -99,7 +99,7 @@ kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("clone.done", sha=sha, ref=CRISPASR_REF)
+kh.step("clone.done", sha=sha, ref=STELNETTTS_REF)
 
 # ── Build (CUDA) ──────────────────────────────────────────────────────────
 kh.step("build.begin")
@@ -112,8 +112,8 @@ njobs = kh.safe_build_jobs(gpu=True)
 with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}")
-assert CRISPASR.is_file(), "crispasr binary missing after build"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}")
+assert CRISPASR.is_file(), "stelnettts binary missing after build"
 kh.step("build.done", binary=str(CRISPASR))
 
 # ── Download melotts + BERT ───────────────────────────────────────────────

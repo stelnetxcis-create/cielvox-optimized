@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert OpenMOSS-Team/MOSS-Transcribe-preview-2B to GGUF format for CrispASR.
+"""Convert OpenMOSS-Team/MOSS-Transcribe-preview-2B to GGUF format for StelnetTTS.
 
 Architecture (config.json + stock transformers Qwen3OmniMoeAudioEncoder):
   Audio encoder (qwen3_omni_moe_audio_encoder): 128-mel → 3× Conv2d(stride 2,
@@ -22,7 +22,7 @@ Usage:
         --output moss-transcribe-preview-2b-f16.gguf
 
     # Then quantize:
-    crispasr-quantize moss-transcribe-preview-2b-f16.gguf \\
+    stelnettts-quantize moss-transcribe-preview-2b-f16.gguf \\
                       moss-transcribe-preview-2b-q4_k.gguf q4_k
 """
 

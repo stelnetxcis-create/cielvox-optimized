@@ -1,5 +1,5 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — dots.tts CUDA verify (PLAN #200)
+# # StelnetTTS — dots.tts CUDA verify (PLAN #200)
 #
 # The dots.tts-soar backend (Qwen2.5-1.5B LLM + PatchEncoder + DiT flow-match
 # head + BigVGAN vocoder) was developed and validated on CPU and Apple Metal.
@@ -8,10 +8,10 @@
 # copy hazards — but it had never run on CUDA. This kernel closes that gap.
 #
 # What it does:
-# 1. Clone CrispASR @ env CRISPASR_REF (default: main — dots work is merged).
+# 1. Clone StelnetTTS @ env STELNETTTS_REF (default: main — dots work is merged).
 # 2. Build with -DGGML_CUDA=ON.
-# 3. Run `crispasr --backend dots-tts -m auto --auto-download --tts ...` on
-#    CUDA (GPU is the CLI default via crispasr_backend_should_use_gpu):
+# 3. Run `stelnettts --backend dots-tts -m auto --auto-download --tts ...` on
+#    CUDA (GPU is the CLI default via stelnettts_backend_should_use_gpu):
 #      a. "Hello world." — short single-patch smoke test.
 #      b. A multi-sentence paragraph — exercises the incremental streaming
 #         PatchEncoder (O(N)) and EOS over many AR steps on the GPU.
@@ -48,13 +48,13 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = REPO / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get("CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get("STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git")
 
 PROGRESS = RESULTS / "progress.jsonl"
 _T0 = time.time()
@@ -88,12 +88,12 @@ def run(cmd, check=True, capture=False, env=None, cwd=None, timeout=None):
 
 
 # ─────────────────────────── cell 2 (code) — clone + build ───────────────
-step("start", ref=CRISPASR_REF)
+step("start", ref=STELNETTTS_REF)
 
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-     CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+     STELNETTTS_REPO, str(REPO)])
 
 # Harness lives in the cloned repo — import it now that the clone succeeded.
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
@@ -125,26 +125,26 @@ cmake_args = [
 run(cmake_args)
 step("cmake_done")
 
-# Just need crispasr CLI + libs; skip examples we don't use. Stream the
+# Just need stelnettts CLI + libs; skip examples we don't use. Stream the
 # build line-by-line with a heartbeat so a hang/OOM is visible mid-run.
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
         f"-j{kh.safe_build_jobs(gpu=True)}")
 step("build_done")
 
-CLI = BUILD / "examples" / "cli" / "crispasr"
+CLI = BUILD / "examples" / "cli" / "stelnettts"
 if not CLI.exists():
     # Older layouts:
-    candidates = list(BUILD.rglob("crispasr"))
+    candidates = list(BUILD.rglob("stelnettts"))
     candidates = [c for c in candidates if c.is_file() and os.access(c, os.X_OK)]
     if not candidates:
-        raise SystemExit("crispasr binary not found after build")
+        raise SystemExit("stelnettts binary not found after build")
     CLI = candidates[0]
-print(f"crispasr binary: {CLI}", flush=True)
+print(f"stelnettts binary: {CLI}", flush=True)
 step("cli_found", path=str(CLI))
 
-# Ensure libcrispasr.so is loadable.
+# Ensure libstelnettts.so is loadable.
 LIB_DIR = BUILD / "src"
 os.environ["LD_LIBRARY_PATH"] = f"{LIB_DIR}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 
@@ -285,7 +285,7 @@ step("long_done", verdict=r["verdict"], rc=r["rc"], wav=r["wav"], asr=r["asr"])
 # ─────────────────────────── cell 5 (code) — summary ──────────────────────
 summary = {
     "ts": datetime.now(timezone.utc).isoformat(),
-    "ref": CRISPASR_REF,
+    "ref": STELNETTTS_REF,
     "gpu": gpu_name,
     "results": results,
     "verdicts": {r["name"]: r["verdict"] for r in results},

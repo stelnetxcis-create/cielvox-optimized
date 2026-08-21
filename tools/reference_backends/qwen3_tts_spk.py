@@ -2,7 +2,7 @@
 
 Runs the PyTorch Qwen3TTSSpeakerEncoder on a fixed deterministic audio
 input (440 Hz sine, 3 s, 24 kHz) and dumps the intermediate activations
-so crispasr-diff can verify the C++ ECAPA forward numerically.
+so stelnettts-diff can verify the C++ ECAPA forward numerically.
 
 Stages dumped:
   spk_mel          (T_mel, 128)    log-mel input
@@ -40,9 +40,9 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
     if ref_path.is_dir() and str(ref_path) not in sys.path:
         sys.path.insert(0, str(ref_path))
 
-    from qwen_tts.core.models.modeling_qwen3_tts import (
+    from qwen_tts.core.models.modeling_cielvox2_tts import (
         Qwen3TTSSpeakerEncoder, mel_spectrogram)
-    from qwen_tts.core.models.configuration_qwen3_tts import (
+    from qwen_tts.core.models.configuration_cielvox2_tts import (
         Qwen3TTSSpeakerEncoderConfig, Qwen3TTSConfig)
     from transformers import AutoModel
 

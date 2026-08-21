@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 
 os.environ["PYTHONUNBUFFERED"] = "1"
@@ -38,7 +38,7 @@ import shutil
 if REPO.exists():
     shutil.rmtree(REPO)
 run(["git", "clone", "--depth", "1", "--recursive",
-     "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+     "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 try:
@@ -61,21 +61,21 @@ BUILD.mkdir(parents=True, exist_ok=True)
 cmake_args = [
     "cmake", "-S", str(REPO), "-B", str(BUILD),
     "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-    "-DCRISPASR_BUILD_TESTS=OFF",
+    "-DSTELNETTTS_BUILD_TESTS=OFF",
 ] + kh.cache_and_link_flags()
 run(cmake_args)
 kh.step("cmake_done")
 
 with kh.build_heartbeat("build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=False)}")
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr")
+    cands = [c for c in BUILD.rglob("stelnettts")
              if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found"
+    assert cands, "stelnettts binary not found"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}")
@@ -94,7 +94,7 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 moss_model = Path(hf_hub_download(
-    "cstr/MOSS-Audio-4B-Instruct-GGUF",
+    "Xenna/MOSS-Audio-4B-Instruct-GGUF",
     "moss-audio-4b-instruct-q4_k.gguf",
     cache_dir=str(MODELS), token=token))
 kh.step("model_downloaded")

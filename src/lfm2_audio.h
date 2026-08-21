@@ -67,7 +67,7 @@ int lfm2_audio_synthesize_stream(struct lfm2_audio_context* ctx, const char* tex
 int lfm2_audio_n_mels(struct lfm2_audio_context* ctx);
 int lfm2_audio_sample_rate(struct lfm2_audio_context* ctx);
 
-// ---- Stage-level entry points (for crispasr-diff testing) ----
+// ---- Stage-level entry points (for stelnettts-diff testing) ----
 
 // Log-mel spectrogram. Row-major (T_mel, n_mels). Caller frees.
 float* lfm2_audio_compute_mel(struct lfm2_audio_context* ctx, const float* samples, int n_samples, int* out_T_mel,

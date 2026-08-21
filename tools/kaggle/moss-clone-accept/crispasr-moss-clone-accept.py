@@ -25,9 +25,9 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TMP = Path("/kaggle/temp"); TMP.mkdir(parents=True, exist_ok=True)
-REPO = TMP / "CrispASR"
+REPO = TMP / "StelnetTTS"
 BUILD = TMP / "build"
-GGUF_REPO = "cstr/moss-tts-local-v1.5-GGUF"
+GGUF_REPO = "Xenna/moss-tts-local-v1.5-GGUF"
 BACKBONE = os.environ.get("MOSS_BACKBONE", "moss-tts-local-v1.5-q4_k.gguf")
 CODEC = os.environ.get("MOSS_CODEC", "moss-tts-local-v1.5-codec-enc.gguf")
 TEXT = ("The quick brown fox jumps over the lazy dog while the morning light "
@@ -35,7 +35,7 @@ TEXT = ("The quick brown fox jumps over the lazy dog while the morning light "
 
 if not REPO.exists():
     subprocess.run(["git", "clone", "--depth", "1", "--recurse-submodules",
-                    "--shallow-submodules", "https://github.com/CrispStrobe/CrispASR.git", str(REPO)],
+                    "--shallow-submodules", "https://github.com/Cyna/StelnetTTS.git", str(REPO)],
                    check=True, timeout=2400)
 
 _h = REPO / "tools" / "kaggle"
@@ -65,19 +65,19 @@ if token:
 # the session limit, so this one needs the GPU.
 cuda = kh.detect_cuda_arch()
 kh.step("cmake", cuda_arch=cuda)
-flags = ["-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_BUILD_TESTS=OFF",
-         "-DCRISPASR_BUILD_EXAMPLES=ON", "-DCRISPASR_BUILD_SERVER=OFF",
+flags = ["-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_BUILD_TESTS=OFF",
+         "-DSTELNETTTS_BUILD_EXAMPLES=ON", "-DSTELNETTTS_BUILD_SERVER=OFF",
          "-DGGML_CUDA=ON", f"-DCMAKE_CUDA_ARCHITECTURES={cuda}"] + kh.cache_and_link_flags()
 with kh.build_heartbeat("cmake.configure"):
     rc, out = sh(f"cmake -S {REPO} -B {BUILD} -G Ninja " + " ".join(flags))
 if rc != 0:
     print(out[-6000:], flush=True); raise SystemExit("configure failed")
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli "
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli "
                         f"-j{kh.safe_build_jobs(gpu=True)}")
-cli = BUILD / "bin" / "crispasr"
+cli = BUILD / "bin" / "stelnettts"
 if not cli.exists():
-    raise SystemExit("crispasr-cli missing after build")
+    raise SystemExit("stelnettts-cli missing after build")
 
 kh.step("download models")
 from huggingface_hub import hf_hub_download  # noqa: E402

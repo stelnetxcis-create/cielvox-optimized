@@ -1,5 +1,5 @@
 """
-CrispASR — Qwen3-TTS CP_DIRECT CUDA validation (PLAN §232, #245)
+StelnetTTS — Qwen3-TTS CP_DIRECT CUDA validation (PLAN §232, #245)
 
 Tests the sched-free persistent code_pred / talker-bucket graphs on CUDA.
 CP_DIRECT dispatches the code predictor through two gallocr-allocated
@@ -10,9 +10,9 @@ This kernel verifies that claim on a Kaggle P100/T4 and A/Bs performance.
 
 Matrix (all seed 42, same text):
   1. base      — no env (validated default path)
-  2. o15       — QWEN3_TTS_O15=1 (the historical #56 crasher; context)
-  3. direct    — QWEN3_TTS_CP_DIRECT=1
-  4. direct_lk — QWEN3_TTS_CP_DIRECT=1 + QWEN3_TTS_LK_BUCKET=1
+  2. o15       — CIELVOX2_TTS_O15=1 (the historical #56 crasher; context)
+  3. direct    — CIELVOX2_TTS_CP_DIRECT=1
+  4. direct_lk — CIELVOX2_TTS_CP_DIRECT=1 + CIELVOX2_TTS_LK_BUCKET=1
 
 Acceptance: every run rc=0 + WAV md5 identical to base + ASR roundtrip
 intelligible. Perf: ms/frame per config.
@@ -30,14 +30,14 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 TTS_TEXT = "Please call Stella. Ask her to bring these things with her from the store."
 
@@ -55,7 +55,7 @@ def run(cmd, check=True, env=None, timeout=None):
 
 # ── Clone + CUDA build ──────────────────────────────────────────────
 import shutil
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 print(f"  disk: {shutil.disk_usage('/kaggle/working')}", flush=True)
 Path("/kaggle/working/started.txt").write_text("started\n")
 
@@ -63,8 +63,8 @@ if REPO.exists():
     shutil.rmtree(REPO)
 run(
     [
-        "git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-        "--recursive", CRISPASR_REPO, str(REPO),
+        "git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+        "--recursive", STELNETTTS_REPO, str(REPO),
     ]
 )
 
@@ -81,7 +81,7 @@ kh.resolve_hf_token()
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
 ).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 gpu_name = subprocess.check_output(
@@ -98,7 +98,7 @@ cmake_args = (
     [
         "cmake", "-S", str(REPO), "-B", str(BUILD),
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-        "-DCRISPASR_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -107,25 +107,25 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
     cands = [
         c
-        for c in BUILD.rglob("crispasr")
+        for c in BUILD.rglob("stelnettts")
         if c.is_file() and os.access(c, os.X_OK)
     ]
-    assert cands, "crispasr binary not found after build"
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 )
 kh.step("build_done", cli=str(CLI))
 
-# ── Download qwen3-tts model + tokenizer + parakeet for ASR roundtrip ──
+# ── Download cielvox2-tts model + tokenizer + parakeet for ASR roundtrip ──
 kh.step("downloading models")
 try:
     from huggingface_hub import hf_hub_download
@@ -140,17 +140,17 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 tts_model = Path(hf_hub_download(
-    "cstr/qwen3-tts-0.6b-base-GGUF",
-    "qwen3-tts-12hz-0.6b-base-q8_0.gguf",
+    "Xenna/cielvox2-tts-0.6b-base-GGUF",
+    "cielvox2-tts-12hz-0.6b-base-q8_0.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 tts_codec = Path(hf_hub_download(
-    "cstr/qwen3-tts-tokenizer-12hz-GGUF",
-    "qwen3-tts-tokenizer-12hz.gguf",
+    "Xenna/cielvox2-tts-tokenizer-12hz-GGUF",
+    "cielvox2-tts-tokenizer-12hz.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 asr_model = Path(hf_hub_download(
-    "cstr/parakeet-tdt-0.6b-v2-GGUF",
+    "Xenna/parakeet-tdt-0.6b-v2-GGUF",
     "parakeet-tdt-0.6b-v2-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
@@ -159,16 +159,16 @@ kh.step("models_downloaded")
 
 # ── Run TTS under one env config ────────────────────────────────────
 def run_tts(label, env_overrides, timeout=600):
-    """Run qwen3-tts synthesis and return dict with results."""
+    """Run cielvox2-tts synthesis and return dict with results."""
     kh.step(f"{label}.start")
     out_wav = WORK / f"tts-{label}.wav"
     if out_wav.exists():
         out_wav.unlink()
 
-    env = {"QWEN3_TTS_BENCH": "1"}
+    env = {"CIELVOX2_TTS_BENCH": "1"}
     env.update(env_overrides)
 
-    # Use jfk.wav from the repo as voice reference (qwen3-tts requires 24kHz)
+    # Use jfk.wav from the repo as voice reference (cielvox2-tts requires 24kHz)
     voice_ref_16k = REPO / "samples" / "jfk.wav"
     voice_ref = WORK / "jfk_24k.wav"
     if not voice_ref.exists():
@@ -188,7 +188,7 @@ def run_tts(label, env_overrides, timeout=600):
     ref_text = "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
 
     cmd = [
-        str(CLI), "--backend", "qwen3-tts",
+        str(CLI), "--backend", "cielvox2-tts",
         "-m", str(tts_model),
         "--codec-model", str(tts_codec),
         "--voice", str(voice_ref),
@@ -231,7 +231,7 @@ def run_tts(label, env_overrides, timeout=600):
 
     bench_lines = [
         ln for ln in combined.splitlines()
-        if "qwen3_tts:" in ln and ("ms" in ln or "bench" in ln.lower())
+        if "cielvox2_tts:" in ln and ("ms" in ln or "bench" in ln.lower())
     ]
 
     ar_match = re.search(
@@ -286,9 +286,9 @@ def run_tts(label, env_overrides, timeout=600):
 # in v1). Output equivalence: md5, else PCM cosine (CPU showed a 1-LSB
 # realization drift on the FASTCONV K=1 matmul; cos 1.00000000).
 MATRIX = [
-    ("base", {"QWEN3_TTS_CODEC_FASTCONV": "0", "QWEN3_TTS_CP_DIRECT": "0"}),
+    ("base", {"CIELVOX2_TTS_CODEC_FASTCONV": "0", "CIELVOX2_TTS_CP_DIRECT": "0"}),
     ("direct", {}),
-    ("direct_lk", {"QWEN3_TTS_LK_BUCKET": "1"}),
+    ("direct_lk", {"CIELVOX2_TTS_LK_BUCKET": "1"}),
 ]
 results = {}
 for label, env_overrides in MATRIX:
@@ -333,7 +333,7 @@ asr_direct = (
 
 # ── Summary ────────────────────────────────────────────────────────
 print("\n" + "=" * 64, flush=True)
-print(f"SUMMARY — qwen3-tts CP_DIRECT CUDA test — {sha[:8]} on {gpu_name}", flush=True)
+print(f"SUMMARY — cielvox2-tts CP_DIRECT CUDA test — {sha[:8]} on {gpu_name}", flush=True)
 print("=" * 64, flush=True)
 base_md5 = results["base"]["md5"]
 for label, _ in MATRIX:

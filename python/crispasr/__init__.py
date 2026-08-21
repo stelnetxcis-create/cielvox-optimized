@@ -1,11 +1,11 @@
-"""CrispASR — lightweight speech recognition via ggml."""
+"""StelnetTTS — lightweight speech recognition via ggml."""
 
 from ._binding import (
     AlignedWord,
     ChatAborted,
     ChatMessage,
     ChatSession,
-    CrispASR,
+    StelnetTTS,
     DiarizeMethod,
     DiarizeSegment,
     KokoroResolved,
@@ -44,7 +44,7 @@ __all__ = [
     "ChatAborted",
     "ChatMessage",
     "ChatSession",
-    "CrispASR",
+    "StelnetTTS",
     "DiarizeMethod",
     "DiarizeSegment",
     "KokoroResolved",

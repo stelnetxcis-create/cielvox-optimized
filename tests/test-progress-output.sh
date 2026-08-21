@@ -2,20 +2,20 @@
 # test-progress-output.sh — verify -pp/--print-progress emits per-slice
 # progress on stderr for unified backends (issue #130).
 #
-# Requires: crispasr binary built, samples/jfk.wav, a model.
+# Requires: stelnettts binary built, samples/jfk.wav, a model.
 # The test uses parakeet with VAD to ensure multiple slices, then checks
 # that stderr contains "progress = " lines.
 #
 # Usage:
 #   ./tests/test-progress-output.sh
-#   CRISPASR=./build/bin/crispasr ./tests/test-progress-output.sh
+#   CRISPASR=./build/bin/stelnettts ./tests/test-progress-output.sh
 #
 # Exit code: 0 if all pass, 1 if any fail.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR:-./build/bin/crispasr}"
+CRISPASR="${CRISPASR:-./build/bin/stelnettts}"
 SAMPLE="${SAMPLE:-./samples/jfk.wav}"
 PASS=0
 FAIL=0

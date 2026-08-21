@@ -1,12 +1,12 @@
-// test_server_wav_writer.cpp — unit tests for crispasr_make_wav_int16.
+// test_server_wav_writer.cpp — unit tests for stelnettts_make_wav_int16.
 //
-// The WAV serializer used by /v1/audio/speech and crispasr_diff. The
+// The WAV serializer used by /v1/audio/speech and stelnettts_diff. The
 // header layout is fixed by RFC 2361 (WAVEFORMATEX); we test every
 // field at the byte level so a future "tidy-up" refactor can't
 // silently change the wire format that downstream OpenAI clients
 // depend on.
 
-#include "core/crispasr_wav_writer.h"
+#include "core/stelnettts_wav_writer.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -35,7 +35,7 @@ int16_t le_i16(const std::string& s, size_t off) {
 
 TEST_CASE("WAV header magic bytes", "[unit][wav]") {
     std::vector<float> samples = {0.0f, 0.5f, -0.5f};
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
 
     REQUIRE(wav.size() >= 44);
     REQUIRE(wav.substr(0, 4) == "RIFF");
@@ -47,10 +47,10 @@ TEST_CASE("WAV header magic bytes", "[unit][wav]") {
 TEST_CASE("WAV header field values", "[unit][wav]") {
     std::vector<float> samples(100, 0.0f);
     const int rate = 24000;
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), rate);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), rate);
 
     // RIFF size = file_size - 8 (includes data + LIST/INFO chunk).
-    const size_t info_size = crispasr_wav_make_info_chunk().size();
+    const size_t info_size = stelnettts_wav_make_info_chunk().size();
     REQUIRE(le_u32(wav, 4) == 36 + samples.size() * 2 + info_size);
 
     // fmt chunk size is 16 for PCM.
@@ -79,10 +79,10 @@ TEST_CASE("WAV header field values", "[unit][wav]") {
 }
 
 TEST_CASE("WAV body size matches sample count", "[unit][wav]") {
-    const size_t info_size = crispasr_wav_make_info_chunk().size();
+    const size_t info_size = stelnettts_wav_make_info_chunk().size();
     for (int n : {1, 17, 256, 24000, 100000}) {
         std::vector<float> samples(n, 0.5f);
-        std::string wav = crispasr_make_wav_int16(samples.data(), n, 24000);
+        std::string wav = stelnettts_make_wav_int16(samples.data(), n, 24000);
         REQUIRE(wav.size() == 44 + (size_t)n * 2 + info_size);
     }
 }
@@ -91,7 +91,7 @@ TEST_CASE("WAV serializer clamps samples outside [-1, 1]", "[unit][wav]") {
     // Without clamping, +1.5 * 32767 = 49150 wraps as int16. We need
     // the wire bytes to stay at +/- 32767 instead.
     std::vector<float> samples = {0.0f, 1.5f, -1.5f, 2.0f, -2.0f};
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
 
     REQUIRE(le_i16(wav, 44 + 0) == 0);
     REQUIRE(le_i16(wav, 44 + 2) == 32767);
@@ -106,7 +106,7 @@ TEST_CASE("WAV serializer rounds samples correctly", "[unit][wav]") {
     // -0.5f * 32767 = -16383.5 → lround → -16384.
     // Tiny epsilons should round to 0 and 1.
     std::vector<float> samples = {0.5f, -0.5f, 0.00001f, 0.000031f};
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
 
     REQUIRE(le_i16(wav, 44 + 0) == 16384);
     REQUIRE(le_i16(wav, 44 + 2) == -16384);
@@ -116,7 +116,7 @@ TEST_CASE("WAV serializer rounds samples correctly", "[unit][wav]") {
 
 TEST_CASE("WAV serializer handles boundary values", "[unit][wav]") {
     std::vector<float> samples = {1.0f, -1.0f};
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
 
     REQUIRE(le_i16(wav, 44 + 0) == 32767);
     REQUIRE(le_i16(wav, 44 + 2) == -32767);
@@ -125,7 +125,7 @@ TEST_CASE("WAV serializer handles boundary values", "[unit][wav]") {
 TEST_CASE("WAV serializer accepts varied sample rates", "[unit][wav]") {
     std::vector<float> samples = {0.0f};
     for (int rate : {8000, 16000, 22050, 24000, 44100, 48000, 96000}) {
-        std::string wav = crispasr_make_wav_int16(samples.data(), 1, rate);
+        std::string wav = stelnettts_make_wav_int16(samples.data(), 1, rate);
         REQUIRE(le_u32(wav, 24) == (uint32_t)rate);
         REQUIRE(le_u32(wav, 28) == (uint32_t)rate * 2);
     }
@@ -135,16 +135,16 @@ TEST_CASE("regression #122: WAV header reflects backend's native rate", "[unit][
     // Issue #122: /v1/audio/speech hardcoded 24 kHz in the WAV header,
     // but voxcpm2-tts emits at 48 kHz natively. A 48 kHz buffer with a
     // 24 kHz header plays at half speed → audibly distorted. Fix routes
-    // backend->tts_sample_rate() into crispasr_make_wav_int16.
+    // backend->tts_sample_rate() into stelnettts_make_wav_int16.
     //
     // The writer itself was always correct for arbitrary rates; this
-    // test pins the two values that matter on the wire (qwen3-tts =
+    // test pins the two values that matter on the wire (cielvox2-tts =
     // 24 kHz, voxcpm2-tts = 48 kHz) so a future "tidy-up" can't drop
     // sample-rate plumbing without a red test. The matching live
     // integration coverage lives in tests/test-server-voxcpm2-rate.sh.
     std::vector<float> samples(48, 0.5f);
     for (int rate : {24000, 48000}) {
-        std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), rate);
+        std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), rate);
         REQUIRE(le_u32(wav, 24) == (uint32_t)rate);
         REQUIRE(le_u32(wav, 28) == (uint32_t)(rate * 2)); // byte_rate
         REQUIRE(le_u16(wav, 22) == 1);                    // mono
@@ -155,8 +155,8 @@ TEST_CASE("regression #122: WAV header reflects backend's native rate", "[unit][
 TEST_CASE("WAV serializer handles empty input", "[unit][wav]") {
     // n_samples = 0 should produce header + LIST/INFO (no sample data),
     // not crash and not undersize the buffer.
-    const size_t info_size = crispasr_wav_make_info_chunk().size();
-    std::string wav = crispasr_make_wav_int16(nullptr, 0, 24000);
+    const size_t info_size = stelnettts_wav_make_info_chunk().size();
+    std::string wav = stelnettts_make_wav_int16(nullptr, 0, 24000);
     REQUIRE(wav.size() == 44 + info_size);
     REQUIRE(wav.substr(0, 4) == "RIFF");
     REQUIRE(le_u32(wav, 4) == 36 + info_size); // 36 + 0 + info
@@ -164,7 +164,7 @@ TEST_CASE("WAV serializer handles empty input", "[unit][wav]") {
 
     // Negative sample count: be defensive — treat as zero, do not
     // dereference the pointer (which may be nullptr).
-    std::string wav_neg = crispasr_make_wav_int16(nullptr, -5, 24000);
+    std::string wav_neg = stelnettts_make_wav_int16(nullptr, -5, 24000);
     REQUIRE(wav_neg.size() == 44 + info_size);
     REQUIRE(le_u32(wav_neg, 40) == 0);
 }
@@ -174,18 +174,18 @@ TEST_CASE("WAV total size in RIFF header matches actual byte count", "[unit][wav
     // itself). Verify that invariant for several lengths.
     for (int n : {0, 1, 100, 24000}) {
         std::vector<float> samples(n, 0.0f);
-        std::string wav = crispasr_make_wav_int16(samples.data(), n, 24000);
+        std::string wav = stelnettts_make_wav_int16(samples.data(), n, 24000);
         REQUIRE(le_u32(wav, 4) + 8 == wav.size());
     }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// crispasr_make_pcm_int16_le (OpenAI's response_format=pcm)
+// stelnettts_make_pcm_int16_le (OpenAI's response_format=pcm)
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("PCM int16 LE has no header", "[unit][pcm]") {
     std::vector<float> samples = {0.0f, 0.5f, -0.5f};
-    std::string pcm = crispasr_make_pcm_int16_le(samples.data(), (int)samples.size());
+    std::string pcm = stelnettts_make_pcm_int16_le(samples.data(), (int)samples.size());
 
     // Body must NOT start with RIFF — that would mean we accidentally
     // wrote a WAV header into the OpenAI pcm stream.
@@ -196,14 +196,14 @@ TEST_CASE("PCM int16 LE has no header", "[unit][pcm]") {
 TEST_CASE("PCM body size = 2 × n_samples", "[unit][pcm]") {
     for (int n : {1, 17, 256, 24000, 100000}) {
         std::vector<float> samples(n, 0.5f);
-        std::string pcm = crispasr_make_pcm_int16_le(samples.data(), n);
+        std::string pcm = stelnettts_make_pcm_int16_le(samples.data(), n);
         REQUIRE(pcm.size() == (size_t)n * 2);
     }
 }
 
 TEST_CASE("PCM applies same clamp as WAV writer", "[unit][pcm]") {
     std::vector<float> samples = {0.0f, 1.5f, -1.5f, 2.0f, -2.0f, 1.0f, -1.0f};
-    std::string pcm = crispasr_make_pcm_int16_le(samples.data(), (int)samples.size());
+    std::string pcm = stelnettts_make_pcm_int16_le(samples.data(), (int)samples.size());
 
     REQUIRE(le_i16(pcm, 0) == 0);
     REQUIRE(le_i16(pcm, 2) == 32767);
@@ -216,7 +216,7 @@ TEST_CASE("PCM applies same clamp as WAV writer", "[unit][pcm]") {
 
 TEST_CASE("PCM applies same rounding as WAV writer", "[unit][pcm]") {
     std::vector<float> samples = {0.5f, -0.5f, 0.00001f, 0.000031f};
-    std::string pcm = crispasr_make_pcm_int16_le(samples.data(), (int)samples.size());
+    std::string pcm = stelnettts_make_pcm_int16_le(samples.data(), (int)samples.size());
 
     REQUIRE(le_i16(pcm, 0) == 16384);
     REQUIRE(le_i16(pcm, 2) == -16384);
@@ -225,11 +225,11 @@ TEST_CASE("PCM applies same rounding as WAV writer", "[unit][pcm]") {
 }
 
 TEST_CASE("PCM handles empty input", "[unit][pcm]") {
-    std::string pcm = crispasr_make_pcm_int16_le(nullptr, 0);
+    std::string pcm = stelnettts_make_pcm_int16_le(nullptr, 0);
     REQUIRE(pcm.empty());
 
     // Negative is treated as zero, no pointer deref.
-    std::string pcm_neg = crispasr_make_pcm_int16_le(nullptr, -7);
+    std::string pcm_neg = stelnettts_make_pcm_int16_le(nullptr, -7);
     REQUIRE(pcm_neg.empty());
 }
 
@@ -239,7 +239,7 @@ TEST_CASE("PCM handles empty input", "[unit][pcm]") {
 
 TEST_CASE("WAV contains LIST/INFO chunk with AI provenance", "[unit][wav][metadata]") {
     std::vector<float> samples(100, 0.0f);
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
 
     // The LIST chunk should appear after the data chunk
     const size_t data_end = 44 + samples.size() * 2;
@@ -250,8 +250,8 @@ TEST_CASE("WAV contains LIST/INFO chunk with AI provenance", "[unit][wav][metada
     // ISFT sub-chunk should be present
     auto found_isft = wav.find("ISFT", data_end);
     REQUIRE(found_isft != std::string::npos);
-    // The ISFT value should contain "CrispASR"
-    REQUIRE(wav.find("CrispASR", found_isft) != std::string::npos);
+    // The ISFT value should contain "StelnetTTS"
+    REQUIRE(wav.find("StelnetTTS", found_isft) != std::string::npos);
 
     // ICMT sub-chunk should be present with AI notice
     auto found_icmt = wav.find("ICMT", data_end);
@@ -261,7 +261,7 @@ TEST_CASE("WAV contains LIST/INFO chunk with AI provenance", "[unit][wav][metada
 
 TEST_CASE("WAV RIFF size accounts for LIST/INFO chunk", "[unit][wav][metadata]") {
     std::vector<float> samples(100, 0.0f);
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
     // RIFF size field = file_size - 8
     REQUIRE(le_u32(wav, 4) + 8 == wav.size());
 }
@@ -271,7 +271,7 @@ TEST_CASE("WAV RIFF size accounts for LIST/INFO chunk", "[unit][wav][metadata]")
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("ID3v2 tag structure is valid", "[unit][mp3][metadata]") {
-    std::string tag = crispasr_make_id3v2_ai_tag();
+    std::string tag = stelnettts_make_id3v2_ai_tag();
 
     // Header: "ID3" magic
     REQUIRE(tag.size() >= 10);
@@ -291,11 +291,11 @@ TEST_CASE("ID3v2 tag structure is valid", "[unit][mp3][metadata]") {
     REQUIRE(tag.find("TXXX") != std::string::npos);
     REQUIRE(tag.find("AI_GENERATED") != std::string::npos);
     REQUIRE(tag.find("GENERATOR") != std::string::npos);
-    REQUIRE(tag.find("CrispASR") != std::string::npos);
+    REQUIRE(tag.find("StelnetTTS") != std::string::npos);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// crispasr_make_pcm_int16_le (OpenAI's response_format=pcm)
+// stelnettts_make_pcm_int16_le (OpenAI's response_format=pcm)
 // ──────────────────────────────────────────────────────────────────────────
 
 TEST_CASE("PCM byte-stream matches WAV data chunk byte-for-byte", "[unit][pcm]") {
@@ -303,7 +303,7 @@ TEST_CASE("PCM byte-stream matches WAV data chunk byte-for-byte", "[unit][pcm]")
     // 44-byte header and trailing LIST/INFO chunk differ. Verify by
     // extracting just the data region from the WAV.
     std::vector<float> samples = {0.0f, 0.25f, -0.25f, 0.5f, -0.5f, 0.99f, -0.99f, 1.0f, -1.0f};
-    std::string wav = crispasr_make_wav_int16(samples.data(), (int)samples.size(), 24000);
-    std::string pcm = crispasr_make_pcm_int16_le(samples.data(), (int)samples.size());
+    std::string wav = stelnettts_make_wav_int16(samples.data(), (int)samples.size(), 24000);
+    std::string pcm = stelnettts_make_pcm_int16_le(samples.data(), (int)samples.size());
     REQUIRE(wav.substr(44, pcm.size()) == pcm);
 }

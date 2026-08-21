@@ -136,7 +136,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
 
         encoded, enc_len = model.encoder(feats, feat_len)
         T_enc = int(enc_len.item())
-        # encoder() returns (B, d_model, T_enc); crispasr keeps (T_enc, d_model).
+        # encoder() returns (B, d_model, T_enc); stelnettts keeps (T_enc, d_model).
         enc_td = encoded[0, :, :T_enc].transpose(0, 1).contiguous()
         if "encoder_output" in stages:
             out["encoder_output"] = enc_td.detach().cpu().float().numpy()

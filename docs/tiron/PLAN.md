@@ -1,6 +1,6 @@
 # Tiron — multi-speaker meeting ASR (Whisper large-v3 + inline speaker tokens)
 
-Issue: https://github.com/CrispStrobe/CrispASR/issues/295
+Issue: https://github.com/Cyna/StelnetTTS/issues/295
 Model: https://huggingface.co/Trelis/tiron  (Apache-2.0, 2B bf16, `model.safetensors` 3.09 GB)
 Harness (ref, Apache-2.0): https://github.com/TrelisResearch/tiron
 
@@ -14,16 +14,16 @@ Branch: `feat/tiron-asr` · worktree `.claude/worktrees/feat-tiron`
 |---|---|
 | 1 C runtime `src/<name>.{h,cpp}` | N/A — runs on the whisper backend |
 | 2 CLI adapter | N/A — whisper adapter |
-| 3 factory + detect | ✅ `tiron`→whisper alias (crispasr_backend.cpp); legacy-magic routing |
+| 3 factory + detect | ✅ `tiron`→whisper alias (stelnettts_backend.cpp); legacy-magic routing |
 | 4/5 CMake + lib | ✅ `tiron_link.cpp` in src/CMakeLists |
-| 6 C-ABI / bindings / multi-surface | ✅ decode+grammar+windowing in `whisper_full` (all surfaces); **linking hoisted to `crispasr_tiron_link_transcript` (lib) + called by CLI AND server**; session C-ABI is raw ASR (no diarize by design); bindings dispatch dynamically via whisper path |
-| 7 registry | ✅ tiron row (cstr/tiron-GGML) |
-| 8 quantize rules | ✅ uses `crispasr-legacy-quantize` (whisper-bin quantizer) |
+| 6 C-ABI / bindings / multi-surface | ✅ decode+grammar+windowing in `whisper_full` (all surfaces); **linking hoisted to `stelnettts_tiron_link_transcript` (lib) + called by CLI AND server**; session C-ABI is raw ASR (no diarize by design); bindings dispatch dynamically via whisper path |
+| 7 registry | ✅ tiron row (Xenna/tiron-GGML) |
+| 8 quantize rules | ✅ uses `stelnettts-legacy-quantize` (whisper-bin quantizer) |
 | 9 reference dumper (py) | ✅ `tools/reference_backends/tiron.py` + registered |
-| 9 crispasr-diff C++ branch | ✅ `crispasr-diff tiron <model> <ref.gguf> <audio>` — decoded-output word overlap vs generated_text (q8_0 -> 1.000 PASS) |
+| 9 stelnettts-diff C++ branch | ✅ `stelnettts-diff tiron <model> <ref.gguf> <audio>` — decoded-output word overlap vs generated_text (q8_0 -> 1.000 PASS) |
 | 10 bindings docstrings | ✅ functional (dynamic dispatch); documented in README + architecture.md |
-| 11 go LDFLAGS | N/A — tiron_link.cpp is in crispasr-lib (no new -l) |
-| 12 README / architecture / live test / env | ✅ README (experimental row), architecture.md section, `tests/test-tiron-live.sh` + ctest + `CRISPASR_MODEL_TIRON` |
+| 11 go LDFLAGS | N/A — tiron_link.cpp is in stelnettts-lib (no new -l) |
+| 12 README / architecture / live test / env | ✅ README (experimental row), architecture.md section, `tests/test-tiron-live.sh` + ctest + `STELNETTTS_MODEL_TIRON` |
 
 ---
 
@@ -38,7 +38,7 @@ Branch: `feat/tiron-asr` · worktree `.claude/worktrees/feat-tiron`
   a speaker vocab -> CLI passes the whole clip (no overlap double-slicing);
   non-overlapping fixed 30 s windows + onset pad + silent-window RMS gate in
   whisper_full.
-- **Linking wired (a):** crispasr_apply_tiron_linking -> crispasr_tiron_link_speakers
+- **Linking wired (a):** stelnettts_apply_tiron_linking -> stelnettts_tiron_link_speakers
   -> SPEAKER_NN (opt-in --diarize-embedder). multispeaker.wav -> 2 meeting-level
   speakers, all content incl. the tail the single-window reference truncated.
 - **Everything green:** builds clean (Metal), test-tiron-link 13/13, regular
@@ -51,32 +51,32 @@ Branch: `feat/tiron-asr` · worktree `.claude/worktrees/feat-tiron`
 - **Status:** Phase 2 (decode mode) + Phase 3 (cross-window linking runtime)
   IMPLEMENTED + build clean on macOS (Metal, Release). Kaggle convert/validate
   run in flight.
-- **Phase 3 DONE:** `src/tiron_link.{h,cpp}` — `crispasr_tiron_link_speakers()`
+- **Phase 3 DONE:** `src/tiron_link.{h,cpp}` — `stelnettts_tiron_link_speakers()`
   promotes window-local `<|speakerN|>` indices to meeting-level ids by
   clustering per-(window,local-speaker) group voiceprints. REUSES the existing
-  stack: `crispasr_make_speaker_embedder` (TitaNet/ECAPA) +
-  `crispasr_agglomerative_cluster` + `crispasr_cluster_centroids`. Adds the
+  stack: `stelnettts_make_speaker_embedder` (TitaNet/ECAPA) +
+  `stelnettts_agglomerative_cluster` + `stelnettts_cluster_centroids`. Adds the
   within-window must-link (aggregate a group's audio into one clean embedding =
   upstream "spine"), acoustic attach for short groups, temporal fallback,
   no-embedder degradation. Unit test `tests/test-tiron-link.cpp` (fake embedder,
   no model): proves linking follows VOICE not local index — 13 assertions PASS.
   Wired into `src/CMakeLists.txt` + `tests/CMakeLists.txt` (label unit;diarize).
-- **Phase 2 recap:** `src/crispasr.cpp` — speaker-token detection on load
-- **Done:** `src/crispasr.cpp` — speaker-token detection on load
+- **Phase 2 recap:** `src/stelnettts.cpp` — speaker-token detection on load
+- **Done:** `src/stelnettts.cpp` — speaker-token detection on load
   (`token_speaker_beg`/`n_speakers`/`has_speakers` + `is_timestamp`/`is_speaker`
-  helpers), `tiron` decode flag (auto-on for a speaker vocab, `CRISPASR_WHISPER_TIRON=0`
+  helpers), `tiron` decode flag (auto-on for a speaker vocab, `STELNETTTS_WHISPER_TIRON=0`
   reverts to stock for A/B), timestamp heuristics bypassed (pairing / max_initial_ts /
   increasing-ts / ts-vs-text forcing), samplers keep `.tid` to real timestamps only,
   emitter renders `<|speakerN|>` inline + splits segments only on real timestamps,
   seek-window no longer advances ~30 s on a speaker token.
 - **Next:** run the Kaggle kernel `tools/kaggle/tiron-convert-f5-ab/` on a CUDA
   box. It does Phase 1 (convert → f16/q8_0/q4_k → validate the tiron decode on
-  multispeaker.wav + jfk.wav + `CRISPASR_WHISPER_TIRON=0` A/B → upload to
-  `cstr/tiron-GGML`) AND the F5 #294 perf A/B fleet (EMBED_GPU / F16_ACT /
+  multispeaker.wav + jfk.wav + `STELNETTTS_WHISPER_TIRON=0` A/B → upload to
+  `Xenna/tiron-GGML`) AND the F5 #294 perf A/B fleet (EMBED_GPU / F16_ACT /
   BATCH_CFG / EPSS 7-step / CFG_INTERVAL / DIT_SKIP + recommended stack, each
   with ode_solve ms + ASR-roundtrip proof-of-work). Rebased onto main
   `5b8ed72b6` so the clone has the full F5 lever set.
-- **⚠ recovery note:** the tiron `src/crispasr.cpp` edits were first made in the
+- **⚠ recovery note:** the tiron `src/stelnettts.cpp` edits were first made in the
   SHARED main tree by mistake ([[isolate-worktree-on-shared-tree]]); moved via
   patch into the worktree, main tree restored clean, real build re-run WITH the
   changes present (the first "builds clean" had compiled the unmodified file).
@@ -132,7 +132,7 @@ branch is just an un-deleted duplicate):
 1. **Converter** `models/convert-h5-to-ggml.py` — merges `added_tokens.json`,
    sizes the table to `vocab_size`, serializes every token at its real id. So
    Tiron's `<|speakerN|>` strings land in the GGML vocab with correct names.
-2. **Loader** `src/crispasr.cpp` `whisper_vocab` — special tokens resolved **by
+2. **Loader** `src/stelnettts.cpp` `whisper_vocab` — special tokens resolved **by
    string lookup** (`<|startoftranscript|>`, `<|translate|>`, `<|0.00|>` → token_beg,
    …), NOT magic n_vocab offsets. A 51904-vocab loads and places all specials
    correctly (the old `n_vocab >= 51865` / `- 51765` arithmetic is the fallback
@@ -145,7 +145,7 @@ emission** path, which assumes "every id ≥ token_beg is a timestamp."
 
 ## The one real problem: `id >= token_beg` ⇒ "timestamp" is pervasive
 
-`whisper_process_logits` (`src/crispasr.cpp` ~6650–6810) and the segment emitter
+`whisper_process_logits` (`src/stelnettts.cpp` ~6650–6810) and the segment emitter
 (~8150–8250) all treat the whole `[token_beg, n_logits)` band as timestamps:
 
 - `no_timestamps` masks `[token_beg, n_logits)` → would kill speaker tokens.
@@ -170,16 +170,16 @@ every loop.
 
 ### Phase 1 — conversion (unblocks validation)
 Convert `Trelis/tiron` → legacy GGML `.bin` (whisper format) f16, then q8_0 + q4_k
-via `crispasr-quantize`. Reuse the #258 converter (no code change needed — it
+via `stelnettts-quantize`. Reuse the #258 converter (no code change needed — it
 already handles the extended vocab). Venue: TBD (local 16 GB Mac, memory-guarded,
-vs Kaggle `issue258` kernel template adapted for Tiron). Upload → `cstr/tiron-GGML`.
+vs Kaggle `issue258` kernel template adapted for Tiron). Upload → `Xenna/tiron-GGML`.
 Verify the card lands with `license: apache-2.0` + attribution.
 
 ### Phase 2 — tiron decode mode (core C++)  ← IN FLIGHT
 1. `whisper_vocab`: add `id token_speaker_beg = 0; int n_speakers = 0; bool has_speakers`.
    Detect on load: if `<|speaker1|>` ∈ vocab → set them; `token_ts_end` = speaker_beg.
 2. `whisper_full_params`: add `bool tiron` (auto-enabled when `has_speakers`, env
-   override `CRISPASR_WHISPER_TIRON`). Default greedy, `no_timestamps=false`,
+   override `STELNETTTS_WHISPER_TIRON`). Default greedy, `no_timestamps=false`,
    `suppress_blank=false`, `suppress_nst=false`.
 3. `whisper_process_logits`: when `tiron`, skip the pairing rule, max_initial_ts,
    increasing-ts, and timestamp-vs-text forcing; keep only the structural-special
@@ -196,7 +196,7 @@ Follow-up: cross-window ECAPA linking (reuse existing titanet/ecapa embed backen
 + clustering) to promote local indices → meeting-level `SPEAKER_00`… JSON/SRT/VTT.
 
 ### Phase 4 — 12-point checklist
-Registry auto-download row (`cstr/tiron-GGML`), CLI/C-ABI parity for the speaker
+Registry auto-download row (`Xenna/tiron-GGML`), CLI/C-ABI parity for the speaker
 output, quantize rules, diff-harness stage (optional), bindings docstrings, README,
 `docs/architecture.md`, live test + `env-live-tests.sh`, Go LDFLAGS (no new lib →
 likely no-op). Detection stays architecture=`whisper` / legacy-magic; a `tiron`

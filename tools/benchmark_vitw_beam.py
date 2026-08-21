@@ -13,7 +13,7 @@ echo, dropout, mixed) provide the acoustic diversity needed to expose
 beam search quality differences that JFK (clean canonical speech) cannot.
 
 Usage:
-    # Default: qwen3-asr, 5 samples/split, real_noise+syn_noise+real_mixed
+    # Default: cielvox2-asr, 5 samples/split, real_noise+syn_noise+real_mixed
     python tools/benchmark_vitw_beam.py
 
     # Full sweep: three backends, all English splits, 10 samples each
@@ -27,10 +27,10 @@ Usage:
     python tools/benchmark_vitw_beam.py --json vitw_beam_results.json
 
 Environment:
-    CRISPASR_BIN    — path to crispasr binary (default: build-ninja-compile/bin/crispasr)
-    CRISPASR_QWEN3_MODEL   — override qwen3-asr model path
-    CRISPASR_GRANITE_MODEL — override granite-4.1 model path
-    CRISPASR_VOXTRAL_MODEL — override voxtral model path
+    STELNETTTS_BIN    — path to stelnettts binary (default: build-ninja-compile/bin/stelnettts)
+    STELNETTTS_QWEN3_MODEL   — override cielvox2-asr model path
+    STELNETTTS_GRANITE_MODEL — override granite-4.1 model path
+    STELNETTTS_VOXTRAL_MODEL — override voxtral model path
 """
 
 from __future__ import annotations
@@ -55,13 +55,13 @@ from typing import Optional
 REPO = Path(__file__).resolve().parents[1]
 HF_HOME = "/Volumes/backups/ai/huggingface-hub"
 TMPDIR = "/Volumes/backups/ai/tmp/vitw_bench"
-MODEL_DIR = Path("/Volumes/backups/ai/crispasr")
+MODEL_DIR = Path("/Volumes/backups/ai/stelnettts")
 
 SAMPLE_JFK = str(REPO / "samples" / "jfk.wav")
 
 BIN = os.environ.get(
-    "CRISPASR_BIN",
-    str(REPO / "build-ninja-compile" / "bin" / "crispasr"),
+    "STELNETTTS_BIN",
+    str(REPO / "build-ninja-compile" / "bin" / "stelnettts"),
 )
 
 
@@ -75,15 +75,15 @@ def _model(env_var: str, filename: str) -> str:
 
 BACKENDS: dict[str, dict] = {
     "qwen3": {
-        "model": _model("CRISPASR_QWEN3_MODEL", "qwen3-asr-0.6b-q4_k.gguf"),
+        "model": _model("STELNETTTS_QWEN3_MODEL", "cielvox2-asr-0.6b-q4_k.gguf"),
         "cli_backend": "qwen3",
     },
     "granite-4.1": {
-        "model": _model("CRISPASR_GRANITE_MODEL", "granite-speech-4.1-2b-q4_k.gguf"),
+        "model": _model("STELNETTTS_GRANITE_MODEL", "granite-speech-4.1-2b-q4_k.gguf"),
         "cli_backend": "granite-4.1",
     },
     "voxtral": {
-        "model": _model("CRISPASR_VOXTRAL_MODEL", "voxtral-mini-3b-2507-q4_k.gguf"),
+        "model": _model("STELNETTTS_VOXTRAL_MODEL", "voxtral-mini-3b-2507-q4_k.gguf"),
         "cli_backend": "voxtral",
     },
 }
@@ -169,7 +169,7 @@ class RunResult:
     elapsed_s: float
 
 
-def run_crispasr(wav_path: str, backend_name: str, beam_size: int) -> tuple[str, float]:
+def run_stelnettts(wav_path: str, backend_name: str, beam_size: int) -> tuple[str, float]:
     """Returns (transcription, elapsed_s).
 
     The CLI writes transcription to stdout and all init/debug logs to stderr,
@@ -187,11 +187,11 @@ def run_crispasr(wav_path: str, backend_name: str, beam_size: int) -> tuple[str,
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     elapsed = time.perf_counter() - t0
     if r.returncode != 0:
-        raise RuntimeError(f"crispasr failed (rc={r.returncode}):\n{r.stderr[:500]}")
+        raise RuntimeError(f"stelnettts failed (rc={r.returncode}):\n{r.stderr[:500]}")
     # Stdout is the transcription; stderr is init/debug logs.
     # Strip any blank lines or stray timing annotations the CLI may emit.
     lines = [l for l in r.stdout.splitlines()
-             if l.strip() and not l.startswith("[") and not l.startswith("crispasr:")]
+             if l.strip() and not l.startswith("[") and not l.startswith("stelnettts:")]
     return " ".join(lines).strip(), elapsed
 
 
@@ -201,7 +201,7 @@ def warmup(backend_name: str) -> float:
         print(f"  [warmup] jfk.wav not found at {SAMPLE_JFK}, skipping warmup")
         return 0.0
     print(f"  [warmup] {backend_name} — compiling Metal pipelines (this takes a while)...")
-    _, elapsed = run_crispasr(SAMPLE_JFK, backend_name, beam_size=1)
+    _, elapsed = run_stelnettts(SAMPLE_JFK, backend_name, beam_size=1)
     print(f"  [warmup] done in {elapsed:.1f}s")
     return elapsed
 
@@ -374,9 +374,9 @@ def main() -> None:
             sys.exit(f"Unknown backend '{b}'. Available: {', '.join(BACKENDS)}")
         if not BACKENDS[b]["model"]:
             sys.exit(f"Model not found for backend '{b}'. "
-                     f"Set CRISPASR_{b.upper().replace('-','_')}_MODEL or place in {MODEL_DIR}")
+                     f"Set STELNETTTS_{b.upper().replace('-','_')}_MODEL or place in {MODEL_DIR}")
     if not os.path.exists(BIN):
-        sys.exit(f"crispasr binary not found at {BIN}. Set CRISPASR_BIN or build first.")
+        sys.exit(f"stelnettts binary not found at {BIN}. Set STELNETTTS_BIN or build first.")
 
     print(f"Backends : {backends}")
     print(f"Beams    : {beams}")
@@ -422,7 +422,7 @@ def main() -> None:
                     _save_wav(sample["pcm"], sample["sr"], wav_path)
 
                     try:
-                        hyp, elapsed = run_crispasr(wav_path, backend, beam)
+                        hyp, elapsed = run_stelnettts(wav_path, backend, beam)
                     except Exception as e:
                         print(f"    [WARN] {backend} beam={beam} sample {idx}: {e}")
                         hyp, elapsed = "", 0.0

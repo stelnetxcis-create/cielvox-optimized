@@ -5,7 +5,7 @@ tags:
   - tts
   - bark
   - gguf
-  - crispasr
+  - stelnettts
 language:
   - en
   - de
@@ -23,7 +23,7 @@ language:
 
 # Bark Small — GGUF
 
-[Suno Bark](https://github.com/suno-ai/bark) (MIT license) converted to GGUF for native C++ inference with [CrispASR](https://github.com/CrispStrobe/CrispASR).
+[Suno Bark](https://github.com/suno-ai/bark) (MIT license) converted to GGUF for native C++ inference with [StelnetTTS](https://github.com/Cyna/StelnetTTS).
 
 ## Model details
 
@@ -44,17 +44,17 @@ language:
 
 All variants pack the 3 sub-models (text/semantic, coarse acoustic, fine acoustic) + EnCodec decoder into a single GGUF file. No companion model needed.
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
 # Auto-download and synthesize
-crispasr --backend bark -m auto --tts "Hello, how are you today?" --tts-output hello.wav
+stelnettts --backend bark -m auto --tts "Hello, how are you today?" --tts-output hello.wav
 
 # With a specific quantization
-crispasr --backend bark -m bark-small-q4_k.gguf --tts "The quick brown fox" --tts-output fox.wav
+stelnettts --backend bark -m bark-small-q4_k.gguf --tts "The quick brown fox" --tts-output fox.wav
 
 # With a German speaker prompt (when supported)
-crispasr --backend bark -m bark-small-q8_0.gguf --tts "Hallo Welt" --voice v2/de_speaker_3 --tts-output hallo.wav
+stelnettts --backend bark -m bark-small-q8_0.gguf --tts "Hallo Welt" --voice v2/de_speaker_3 --tts-output hallo.wav
 ```
 
 ## Conversion
@@ -62,8 +62,8 @@ crispasr --backend bark -m bark-small-q8_0.gguf --tts "Hallo Welt" --voice v2/de
 Produced with:
 ```bash
 python models/convert-bark-to-gguf.py --output bark-small-f16.gguf
-crispasr-quantize bark-small-f16.gguf bark-small-q8_0.gguf q8_0
-crispasr-quantize bark-small-f16.gguf bark-small-q4_k.gguf q4_k
+stelnettts-quantize bark-small-f16.gguf bark-small-q8_0.gguf q8_0
+stelnettts-quantize bark-small-f16.gguf bark-small-q4_k.gguf q4_k
 ```
 
 ## Architecture details
@@ -91,14 +91,14 @@ crispasr-quantize bark-small-f16.gguf bark-small-q4_k.gguf q4_k
 ## Credits
 
 - Original model: [Suno AI](https://github.com/suno-ai/bark) (MIT)
-- GGUF conversion + C++ runtime: [CrispASR](https://github.com/CrispStrobe/CrispASR)
+- GGUF conversion + C++ runtime: [StelnetTTS](https://github.com/Cyna/StelnetTTS)
 
 ## Voice provenance (EU AI Act Art. 50(4))
 
 **Not established.** Suno's README documents 100+ speaker presets and a prompt library, and says nothing about where those voices came from. Third-party write-ups describe them as "fully synthetic"; that phrasing is not in Suno's own documentation, and a summary is not a provider statement.
 
-CrispASR records this as `speaker_identity=unknown`. CrispASR warns once per model and adds **no** disclosure. If you know these presets reproduce identifiable people, pass `--speaker-identity real_person`. Do not pass `synthetic` to silence the warning unless you have a source — that is the direction that silently removes a disclosure.
+StelnetTTS records this as `speaker_identity=unknown`. StelnetTTS warns once per model and adds **no** disclosure. If you know these presets reproduce identifiable people, pass `--speaker-identity real_person`. Do not pass `synthetic` to silence the warning unless you have a source — that is the direction that silently removes a disclosure.
 
 Override per run with `--speaker-identity`, or stamp a file permanently with
 `models/stamp-speaker-identity.py`. See
-[`docs/eu-ai-act.md` §6.2a](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md).
+[`docs/eu-ai-act.md` §6.2a](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md).

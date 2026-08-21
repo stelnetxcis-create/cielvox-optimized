@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Piano transcription reference dumper for crispasr-diff parity testing.
+Piano transcription reference dumper for stelnettts-diff parity testing.
 
 Runs the upstream PyTorch model, dumps intermediate activations at each
 boundary for comparison with the C++ GGUF implementation:
@@ -17,7 +17,7 @@ Usage:
         --audio samples/jfk.wav \\
         --output-dir /mnt/volume1/tmp-overflow/piano-ref
 
-With crispasr-diff:
+With stelnettts-diff:
     python tools/dump_reference.py piano_transcription \\
         --model /mnt/storage/models/piano-transcription/model.pth \\
         --audio samples/jfk.wav
@@ -187,7 +187,7 @@ def dump_intermediates(model, audio: np.ndarray, output_dir: str):
 
         print(f"Detected {events_json['total_notes']} notes, {events_json['total_pedals']} pedal events")
 
-    # Write all intermediates to a single GGUF for crispasr-diff
+    # Write all intermediates to a single GGUF for stelnettts-diff
     write_ref_gguf(output_dir)
 
 
@@ -200,7 +200,7 @@ def save_tensor(tensor: torch.Tensor, name: str, output_dir: str):
 
 
 def write_ref_gguf(output_dir: str):
-    """Write all .npy intermediates into a single reference GGUF for crispasr-diff."""
+    """Write all .npy intermediates into a single reference GGUF for stelnettts-diff."""
     gguf_path = os.path.join(output_dir, "ref.gguf")
     writer = GGUFWriter(gguf_path, "piano-transcription-ref")
 

@@ -32,8 +32,8 @@ def main():
     log("=== Parakeet-Unified v5 — full conversion ===")
 
     # HF token
-    for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-              "/kaggle/input/datasets/chr1s4/crispasr-hf-token/hf_token.txt"]:
+    for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+              "/kaggle/input/datasets/chr1s4/stelnettts-hf-token/hf_token.txt"]:
         if os.path.exists(p):
             tok = open(p).read().strip()
             os.environ["HF_TOKEN"] = tok
@@ -43,19 +43,19 @@ def main():
     # Install deps
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "gguf", "pyyaml"], check=False)
 
-    # Clone CrispASR
-    cdir = Path("/tmp/CrispASR")
+    # Clone StelnetTTS
+    cdir = Path("/tmp/StelnetTTS")
     if not cdir.exists():
         subprocess.check_call(["git", "clone", "--depth", "1",
-            "https://github.com/CrispStrobe/CrispASR.git", str(cdir)])
+            "https://github.com/Cyna/StelnetTTS.git", str(cdir)])
 
     # Build
-    log("Building CrispASR...")
+    log("Building StelnetTTS...")
     subprocess.run("apt-get update -qq && apt-get install -y cmake ninja-build g++ 2>/dev/null || true",
                    shell=True, capture_output=True)
     bdir = cdir / "build"
     subprocess.check_call(["cmake", "-G", "Ninja", "-B", str(bdir),
-                          "-DCMAKE_BUILD_TYPE=Release", "-DCRISPASR_NO_C2PA_NATIVE=ON"], cwd=str(cdir))
+                          "-DCMAKE_BUILD_TYPE=Release", "-DSTELNETTTS_NO_C2PA_NATIVE=ON"], cwd=str(cdir))
     subprocess.check_call(["cmake", "--build", str(bdir), "-j2"], cwd=str(cdir))
     log("Build OK")
 
@@ -218,9 +218,9 @@ def main():
         results["gguf_f16_mb"] = round(gguf_sz, 1)
         log(f"  F16 GGUF: {gguf_sz:.0f} MB")
 
-        # Step 7: Test with CrispASR
-        log("Testing with CrispASR...")
-        CLI = str(bdir / "bin" / "crispasr")
+        # Step 7: Test with StelnetTTS
+        log("Testing with StelnetTTS...")
+        CLI = str(bdir / "bin" / "stelnettts")
         JFK = str(cdir / "samples" / "jfk.wav")
         r2 = subprocess.run([CLI, "--backend", "parakeet", "-m", out_f16, "-f", JFK, "-np"],
                            capture_output=True, text=True, timeout=300)
@@ -233,7 +233,7 @@ def main():
         # Step 8: Quantize Q4_K
         if True:  # upload even if test fails — debug SIGABRT later
             log("Quantizing Q4_K...")
-            QUANT = str(bdir / "bin" / "crispasr-quantize")
+            QUANT = str(bdir / "bin" / "stelnettts-quantize")
             out_q4k = str(WORK / "parakeet-unified-en-0.6b-q4_k.gguf")
             subprocess.run([QUANT, out_f16, out_q4k, "q4_k"], capture_output=True, timeout=300)
             if os.path.exists(out_q4k):
@@ -245,7 +245,7 @@ def main():
             try:
                 from huggingface_hub import HfApi
                 api = HfApi(token=os.environ.get("HF_TOKEN"))
-                repo = "cstr/parakeet-unified-en-0.6b-GGUF"
+                repo = "Xenna/parakeet-unified-en-0.6b-GGUF"
                 api.create_repo(repo, exist_ok=True)
                 for fpath in [out_f16, out_q4k]:
                     if os.path.exists(fpath):
@@ -273,7 +273,7 @@ if __name__ == "__main__":
         traceback.print_exc()
 
 # Cleanup
-for p in [Path("/tmp/CrispASR"), Path("/tmp/.hf"), WORK / ".hf"]:
+for p in [Path("/tmp/StelnetTTS"), Path("/tmp/.hf"), WORK / ".hf"]:
     shutil.rmtree(str(p), ignore_errors=True)
 for f in WORK.glob("*.nemo"):
     f.unlink(missing_ok=True)

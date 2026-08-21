@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert Zyphra/Zonos-v0.1-transformer HuggingFace safetensors -> GGUF F16
-for the CrispASR `zonos_tts` backend.
+for the StelnetTTS `zonos_tts` backend.
 
 Zonos is a ~500M-param text-to-speech model (Apache 2.0) with:
   - Prefix conditioning: phoneme embeddings + speaker + emotion + pitch/rate/etc

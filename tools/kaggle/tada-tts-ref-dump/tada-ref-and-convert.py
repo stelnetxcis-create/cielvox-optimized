@@ -1,5 +1,5 @@
 # %% [markdown]
-# # CrispASR — TADA-3B-ML reference dump + GGUF conversion
+# # StelnetTTS — TADA-3B-ML reference dump + GGUF conversion
 #
 # Downloads HumeAI/tada-3b-ml + HumeAI/tada-codec on Kaggle's
 # 30 GB-RAM CPU notebook, runs the reference backend to dump
@@ -7,7 +7,7 @@
 # to GGUF F16, and uploads everything to HuggingFace.
 #
 # Outputs:
-#   - tada-ref.gguf: reference activation dump for crispasr-diff
+#   - tada-ref.gguf: reference activation dump for stelnettts-diff
 #   - tada-tts-3b-ml-f16.gguf: main model GGUF
 #   - tada-codec-f16.gguf: codec decoder GGUF
 #
@@ -23,17 +23,17 @@ os.environ["TRANSFORMERS_NO_TF"] = "1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # %% [code]
-# ── Cell 2: clone CrispASR + install deps ──
+# ── Cell 2: clone StelnetTTS + install deps ──
 import subprocess
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 
 if not REPO.exists():
     subprocess.check_call([
         "git", "clone", "--depth", "1", "--branch", "feature/tada-tts",
-        "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+        "https://github.com/Cyna/StelnetTTS.git", str(REPO),
     ])
 
 # Import harness
@@ -166,19 +166,19 @@ if model_gguf.exists() and model_gguf.stat().st_size > 0:
     try:
         kh.sh_with_progress(
             f"cmake -G Ninja -B {build_dir} -S {REPO}"
-            f" -DCMAKE_BUILD_TYPE=Release -DCRISPASR_NO_C2PA_NATIVE=ON -DGGML_CUDA=OFF"
+            f" -DCMAKE_BUILD_TYPE=Release -DSTELNETTTS_NO_C2PA_NATIVE=ON -DGGML_CUDA=OFF"
             f" -DCMAKE_C_COMPILER_LAUNCHER=ccache"
             f" -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
         )
         kh.sh_with_progress(
             f"cmake --build {build_dir} -j{kh.safe_build_jobs(gpu=False)}"
-            f" --target crispasr-quantize"
+            f" --target stelnettts-quantize"
         )
-        # Find the binary (may be in bin/ or examples/crispasr-quantize/)
+        # Find the binary (may be in bin/ or examples/stelnettts-quantize/)
         quantize_bin = None
         for candidate in [
-            build_dir / "bin" / "crispasr-quantize",
-            build_dir / "examples" / "crispasr-quantize" / "crispasr-quantize",
+            build_dir / "bin" / "stelnettts-quantize",
+            build_dir / "examples" / "stelnettts-quantize" / "stelnettts-quantize",
         ]:
             if candidate.exists():
                 quantize_bin = candidate
@@ -186,7 +186,7 @@ if model_gguf.exists() and model_gguf.stat().st_size > 0:
         if quantize_bin is None:
             # Brute force search
             import glob
-            hits = glob.glob(str(build_dir / "**" / "crispasr-quantize"), recursive=True)
+            hits = glob.glob(str(build_dir / "**" / "stelnettts-quantize"), recursive=True)
             if hits:
                 quantize_bin = Path(hits[0])
 
@@ -198,7 +198,7 @@ if model_gguf.exists() and model_gguf.stat().st_size > 0:
             print(f"[cell 7] Q4_K: {model_q4k} ({model_q4k.stat().st_size / 1e9:.2f} GB)")
         else:
             print(f"[cell 7] quantize binary not found — listing build/bin:")
-            kh.sh_with_progress(f"find {build_dir} -name 'crispasr*' -type f | head -20")
+            kh.sh_with_progress(f"find {build_dir} -name 'stelnettts*' -type f | head -20")
     except Exception as e:
         print(f"[cell 7] quantization failed: {e}")
 else:
@@ -232,13 +232,13 @@ tags:
 - llama
 - flow-matching
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # TADA-3B-ML — GGUF (ggml-quantised)
 
-GGUF / ggml conversion of [`HumeAI/tada-3b-ml`](https://huggingface.co/HumeAI/tada-3b-ml) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`HumeAI/tada-3b-ml`](https://huggingface.co/HumeAI/tada-3b-ml) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 TADA-3B-ML is a 4B-param text-to-speech model built on Meta Llama 3.2 3B with a flow-matching (FM) speech decoder and custom Hume codec. Key innovation: **1:1 token alignment** — every text token maps to exactly one speech vector (no 7:1 expansion like Orpheus/SNAC), eliminating transcript hallucination. 10 languages (en, es, ja, zh, de, fr, it, pt, ko, ar). 24 kHz mono output.
 
@@ -280,18 +280,18 @@ Output: float32 mono @ 24 kHz
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target crispasr-cli
+cmake --build build -j --target stelnettts-cli
 
 # 2. Pull the model + codec
-huggingface-cli download cstr/tada-tts-3b-ml-GGUF tada-tts-3b-ml-q4_k.gguf --local-dir .
-huggingface-cli download cstr/tada-tts-3b-ml-GGUF tada-codec-f16.gguf --local-dir .
+huggingface-cli download Xenna/tada-tts-3b-ml-GGUF tada-tts-3b-ml-q4_k.gguf --local-dir .
+huggingface-cli download Xenna/tada-tts-3b-ml-GGUF tada-codec-f16.gguf --local-dir .
 
 # 3. Synthesise
-./build/bin/crispasr --backend tada \\
+./build/bin/stelnettts --backend tada \\
     -m tada-tts-3b-ml-q4_k.gguf \\
     --codec-model tada-codec-f16.gguf \\
     --tts "Hello, this is a test of the TADA speech synthesis system." \\
@@ -316,7 +316,7 @@ kh.step("uploading to HuggingFace")
 try:
     from huggingface_hub import HfApi
     api = HfApi(token=token)
-    repo_id = "cstr/tada-tts-3b-ml-GGUF"
+    repo_id = "Xenna/tada-tts-3b-ml-GGUF"
 
     api.create_repo(repo_id=repo_id, exist_ok=True, repo_type="model")
 

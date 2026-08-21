@@ -10,7 +10,7 @@
 //      is also a valid configuration.
 //   2. document the per-backend coverage. Each section is guarded
 //      by `__has_include("backend.h")` so the test auto-skips
-//      backends that aren't built into the current libcrispasr
+//      backends that aren't built into the current libstelnettts
 //      slice. A backend that gets disabled in CMake silently drops
 //      its section rather than failing.
 //
@@ -29,7 +29,7 @@
 // structs default `use_flash` to FALSE (per the upstream-derived
 // defaults) — the session-API runtime override
 // (`g_open_flash_attn_tls` → `p.use_flash = ...` in
-// `crispasr_session_open_explicit`) is what enables flash-attn at
+// `stelnettts_session_open_explicit`) is what enables flash-attn at
 // session-open time. So for these three the per-backend default
 // is correctly FALSE; the test pins that fact rather than
 // imposing a uniform "always true" expectation that would mask
@@ -62,10 +62,10 @@ TEST_CASE("flash-attn defaults: cohere use_flash=false (upstream)", "[unit][flas
 }
 #endif
 
-#if __has_include("qwen3_asr.h")
-#include "qwen3_asr.h"
-TEST_CASE("flash-attn defaults: qwen3-asr flash_attn=true", "[unit][flash_attn]") {
-    auto p = qwen3_asr_context_default_params();
+#if __has_include("cielvox2_asr.h")
+#include "cielvox2_asr.h"
+TEST_CASE("flash-attn defaults: cielvox2-asr flash_attn=true", "[unit][flash_attn]") {
+    auto p = cielvox2_asr_context_default_params();
     REQUIRE(p.flash_attn == true);
 }
 #endif
@@ -105,10 +105,10 @@ TEST_CASE("flash-attn defaults: vibevoice flash_attn=true + tts_steps=20", "[uni
 }
 #endif
 
-#if __has_include("qwen3_tts.h")
-#include "qwen3_tts.h"
-TEST_CASE("flash-attn defaults: qwen3-tts flash_attn=true + temperature=0", "[unit][flash_attn]") {
-    auto p = qwen3_tts_context_default_params();
+#if __has_include("cielvox2_tts.h")
+#include "cielvox2_tts.h"
+TEST_CASE("flash-attn defaults: cielvox2-tts flash_attn=true + temperature=0", "[unit][flash_attn]") {
+    auto p = cielvox2_tts_context_default_params();
     REQUIRE(p.flash_attn == true);
     // PLAN round 5: the code-predictor's sampler now reads
     // cparams.temperature instead of the hardcoded 0.9f. Default

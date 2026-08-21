@@ -13,7 +13,7 @@ contract is SVC_RECORD_SHAPES.md.
 LICENCE. RVC's code is MIT, but CHECKPOINTS are not uniformly so — community
 voice models have unclear provenance and some forks add non-commercial terms.
 Pass --license to stamp the GGUF; it is deliberately REQUIRED rather than
-defaulted, so nobody ships a model whose terms were never considered. CrispASR's
+defaulted, so nobody ships a model whose terms were never considered. StelnetTTS's
 registry gate matches on that tag.
 
 Details that are NOT the obvious default — each one a silent bug if assumed:

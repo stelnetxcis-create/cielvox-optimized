@@ -1,15 +1,15 @@
-# crispasr/tests/earnings21
+# stelnettts/tests/earnings21
 
 [Earnings-21](https://arxiv.org/abs/2104.11348) is a real-world benchmark
 dataset that contains 39-hours of long-form English speech, sourced from
 public earning calls.
 
 This directory contains a set of scripts to evaluate the performance of
-crispasr on Earnings-21 corpus.
+stelnettts on Earnings-21 corpus.
 
 ## Quick Start
 
-1. (Pre-requirement) Compile `crispasr` and prepare the Whisper
+1. (Pre-requirement) Compile `stelnettts` and prepare the Whisper
    model in `ggml` format.
 
    ```
@@ -19,7 +19,7 @@ crispasr on Earnings-21 corpus.
    $ ./models/download-ggml-model.sh tiny
    ```
 
-   Consult [crispasr/README.md](../../README.md) for more details.
+   Consult [stelnettts/README.md](../../README.md) for more details.
 
 2. Download the audio files.
 
@@ -54,8 +54,8 @@ crispasr on Earnings-21 corpus.
 Create `eval.conf` and override variables.
 
 ```
-CRISPASR_MODEL = large-v3-turbo
-CRISPASR_FLAGS = --no-prints --threads 8 --language en --output-txt
+STELNETTTS_MODEL = large-v3-turbo
+STELNETTTS_FLAGS = --no-prints --threads 8 --language en --output-txt
 ```
 
 Check out `eval.mk` for more details.
@@ -83,5 +83,5 @@ $ ./models/download-vad-model.sh silero-v6.2.0
 Create `eval.conf` with the following content:
 
 ```
-CRISPASR_FLAGS = --no-prints --language en --output-txt --vad --vad-model ../../models/ggml-silero-v6.2.0.bin
+STELNETTTS_FLAGS = --no-prints --language en --output-txt --vad --vad-model ../../models/ggml-silero-v6.2.0.bin
 ```

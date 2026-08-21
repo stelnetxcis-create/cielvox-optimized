@@ -1,10 +1,10 @@
-# # CrispASR vs transcribe.cpp — head-to-head GPU benchmark
+# # StelnetTTS vs transcribe.cpp — head-to-head GPU benchmark
 #
-# Systematic evaluation of CrispASR against transcribe.cpp
+# Systematic evaluation of StelnetTTS against transcribe.cpp
 # (https://github.com/handy-computer/transcribe.cpp) on shared ASR models.
 #
 # For each overlapping model family this kernel:
-#   1. Downloads the CrispASR GGUF from cstr/ HF repos
+#   1. Downloads the StelnetTTS GGUF from Xenna/ HF repos
 #   2. Downloads the transcribe.cpp GGUF from handy-computer/ HF repos
 #   3. Runs both on jfk.wav and measures:
 #        - Transcript text (WER vs reference)
@@ -12,17 +12,17 @@
 #        - Model load time
 #        - Peak RSS (via /proc/self/status)
 #   4. Cleans up both GGUFs before the next model to stay within ~20 GB scratch
-#   5. Streams per-model results to cstr/crispasr-kaggle-progress on HF
+#   5. Streams per-model results to Xenna/stelnettts-kaggle-progress on HF
 #
 # "transcribe.cpp only" models (GigaAM family) are tested with transcribe.cpp
-# only — these represent a CrispASR coverage gap.
+# only — these represent a StelnetTTS coverage gap.
 #
-# References: tools/kaggle-benchmark-all-backends.py (CrispASR full sweep),
+# References: tools/kaggle-benchmark-all-backends.py (StelnetTTS full sweep),
 # transcribe.cpp docs/models/*, scripts/wer/run.py
 #
 # Account:  chr1s4 (GPU quota, separate from chr1str's 30 h/week)
-# Datasets: chr1s4/crispasr-hf-token  (HF auth)
-#           chr1s4/crispasr-ccache     (warm CrispASR build, ~3 min vs ~20 min)
+# Datasets: chr1s4/stelnettts-hf-token  (HF auth)
+#           chr1s4/stelnettts-ccache     (warm StelnetTTS build, ~3 min vs ~20 min)
 
 import io
 import json
@@ -46,7 +46,7 @@ WORK = Path("/kaggle/working")
 _PROGRESS = WORK / "progress.jsonl"
 _T0 = time.time()
 _HF_LAST_PUSH = 0.0
-_HF_REPO = "cstr/crispasr-kaggle-progress"
+_HF_REPO = "Xenna/stelnettts-kaggle-progress"
 _HF_PATH = (
     f"runs/{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     f"-transcribe-cpp-bench.jsonl"
@@ -60,12 +60,12 @@ JFK_DURATION_S = 11.0  # approximate duration of jfk.wav
 # ── Model pairs to benchmark ─────────────────────────────────────────────────
 # Format:
 #   family:              human-readable name
-#   ca_backend:          CrispASR -b flag (or None = whisper file-based)
-#   ca_url:              CrispASR GGUF download URL
-#   ca_file:             local filename for CrispASR GGUF
+#   ca_backend:          StelnetTTS -b flag (or None = whisper file-based)
+#   ca_url:              StelnetTTS GGUF download URL
+#   ca_file:             local filename for StelnetTTS GGUF
 #   tc_url:              transcribe.cpp GGUF download URL
 #   tc_file:             local filename for transcribe.cpp GGUF
-#   ca_wer_libri:        CrispASR LibriSpeech test-clean WER (from docs, None if unknown)
+#   ca_wer_libri:        StelnetTTS LibriSpeech test-clean WER (from docs, None if unknown)
 #   tc_wer_libri:        transcribe.cpp LibriSpeech test-clean WER (from their docs)
 #   timeout_s:           per-model timeout for both inference calls
 #   notes:               benchmark notes
@@ -81,39 +81,39 @@ SHARED_MODELS = [
         "ca_wer_libri":  None,
         "tc_wer_libri":  "5.12%",
         "timeout_s":     60,
-        "notes":         "CrispASR ggml-base.bin vs t.cpp Q8_0 (same weights, different GGUF schemas)",
+        "notes":         "StelnetTTS ggml-base.bin vs t.cpp Q8_0 (same weights, different GGUF schemas)",
     },
     {
         "family":        "Moonshine Tiny",
         "ca_backend":    "moonshine",
-        "ca_url":        "https://huggingface.co/cstr/moonshine-tiny-GGUF/resolve/main/moonshine-tiny-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/moonshine-tiny-GGUF/resolve/main/moonshine-tiny-q4_k.gguf",
         "ca_file":       "moonshine-tiny-q4_k.gguf",
-        "ca_companion":  "https://huggingface.co/cstr/moonshine-tiny-GGUF/resolve/main/tokenizer.bin",
+        "ca_companion":  "https://huggingface.co/Xenna/moonshine-tiny-GGUF/resolve/main/tokenizer.bin",
         "tc_url":        "https://huggingface.co/handy-computer/moonshine-tiny-gguf/resolve/main/moonshine-tiny-Q8_0.gguf",
         "tc_file":       "moonshine-tiny-Q8_0.gguf",
         "ca_wer_libri":  None,
         "tc_wer_libri":  "4.60%",
         "timeout_s":     60,
-        "notes":         "CrispASR Q4_K vs t.cpp Q8_0",
+        "notes":         "StelnetTTS Q4_K vs t.cpp Q8_0",
     },
     {
         "family":        "SenseVoice Small",
         "ca_backend":    "sensevoice",
-        "ca_url":        "https://huggingface.co/cstr/sensevoice-small-GGUF/resolve/main/sensevoice-small-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/sensevoice-small-GGUF/resolve/main/sensevoice-small-q4_k.gguf",
         "ca_file":       "sensevoice-small-q4_k.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/SenseVoiceSmall-gguf/resolve/main/SenseVoiceSmall-Q8_0.gguf",
         "tc_file":       "SenseVoiceSmall-Q8_0.gguf",
         "ca_wer_libri":  None,
         "tc_wer_libri":  "3.13%",
         "timeout_s":     60,
-        "notes":         "CrispASR Q4_K vs t.cpp Q8_0; SenseVoice emits emotion/LID tags in CrispASR",
+        "notes":         "StelnetTTS Q4_K vs t.cpp Q8_0; SenseVoice emits emotion/LID tags in StelnetTTS",
     },
     {
         "family":        "Moonshine Streaming Tiny",
         "ca_backend":    "moonshine-streaming",
-        "ca_url":        "https://huggingface.co/cstr/moonshine-streaming-tiny-GGUF/resolve/main/moonshine-streaming-tiny-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/moonshine-streaming-tiny-GGUF/resolve/main/moonshine-streaming-tiny-q4_k.gguf",
         "ca_file":       "moonshine-streaming-tiny-q4_k.gguf",
-        "ca_companion":  "https://huggingface.co/cstr/moonshine-streaming-tiny-GGUF/resolve/main/tokenizer.bin",
+        "ca_companion":  "https://huggingface.co/Xenna/moonshine-streaming-tiny-GGUF/resolve/main/tokenizer.bin",
         "tc_url":        "https://huggingface.co/handy-computer/moonshine-streaming-tiny-gguf/resolve/main/moonshine-streaming-tiny-Q8_0.gguf",
         "tc_file":       "moonshine-streaming-tiny-Q8_0.gguf",
         "ca_wer_libri":  None,
@@ -124,31 +124,31 @@ SHARED_MODELS = [
     {
         "family":        "Parakeet TDT 0.6B",
         "ca_backend":    "parakeet",
-        "ca_url":        "https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF/resolve/main/parakeet-tdt-0.6b-v3-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/parakeet-tdt-0.6b-v3-GGUF/resolve/main/parakeet-tdt-0.6b-v3-q4_k.gguf",
         "ca_file":       "parakeet-tdt-0.6b-v3-q4_k.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v2-gguf/resolve/main/parakeet-tdt-0.6b-v2-Q4_K_M.gguf",
         "tc_file":       "parakeet-tdt-0.6b-v2-Q4_K_M.gguf",
         "ca_wer_libri":  None,
         "tc_wer_libri":  "1.72%",
         "timeout_s":     90,
-        "notes":         "CrispASR v3 (25 EU langs) vs t.cpp v2 (EN only) — different checkpoints",
+        "notes":         "StelnetTTS v3 (25 EU langs) vs t.cpp v2 (EN only) — different checkpoints",
     },
     {
         "family":        "Qwen3-ASR 0.6B",
         "ca_backend":    "qwen3",
-        "ca_url":        "https://huggingface.co/cstr/qwen3-asr-0.6b-GGUF/resolve/main/qwen3-asr-0.6b-q4_k.gguf",
-        "ca_file":       "qwen3-asr-0.6b-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/cielvox2-asr-0.6b-GGUF/resolve/main/cielvox2-asr-0.6b-q4_k.gguf",
+        "ca_file":       "cielvox2-asr-0.6b-q4_k.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/Qwen3-ASR-0.6B-gguf/resolve/main/Qwen3-ASR-0.6B-Q4_K_M.gguf",
         "tc_file":       "Qwen3-ASR-0.6B-Q4_K_M.gguf",
         "ca_wer_libri":  None,
         "tc_wer_libri":  "2.26%",
         "timeout_s":     90,
-        "notes":         "CrispASR Q4_K vs t.cpp Q4_K_M; same upstream checkpoint; Q8_0 t.cpp=2.11%",
+        "notes":         "StelnetTTS Q4_K vs t.cpp Q4_K_M; same upstream checkpoint; Q8_0 t.cpp=2.11%",
     },
     {
         "family":        "Canary 1B v2",
         "ca_backend":    "canary",
-        "ca_url":        "https://huggingface.co/cstr/canary-1b-v2-GGUF/resolve/main/canary-1b-v2-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/canary-1b-v2-GGUF/resolve/main/canary-1b-v2-q4_k.gguf",
         "ca_file":       "canary-1b-v2-q4_k.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/canary-1b-v2-gguf/resolve/main/canary-1b-v2-Q4_K_M.gguf",
         "tc_file":       "canary-1b-v2-Q4_K_M.gguf",
@@ -160,31 +160,31 @@ SHARED_MODELS = [
     {
         "family":        "FunASR Nano 2512",
         "ca_backend":    "funasr",
-        "ca_url":        "https://huggingface.co/cstr/funasr-nano-GGUF/resolve/main/funasr-nano-2512-q8_0.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/funasr-nano-GGUF/resolve/main/funasr-nano-2512-q8_0.gguf",
         "ca_file":       "funasr-nano-2512-q8_0.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/Fun-ASR-Nano-2512-gguf/resolve/main/Fun-ASR-Nano-2512-Q8_0.gguf",
         "tc_file":       "Fun-ASR-Nano-2512-Q8_0.gguf",
         "ca_wer_libri":  None,
         "tc_wer_libri":  "1.79%",
         "timeout_s":     120,
-        "notes":         "Both Q8_0 (CrispASR uses Q8_0 to avoid CUDA F16×F32 saturation bug)",
+        "notes":         "Both Q8_0 (StelnetTTS uses Q8_0 to avoid CUDA F16×F32 saturation bug)",
     },
     {
         "family":        "Nemotron 3.5 ASR Streaming 0.6B",
         "ca_backend":    "nemotron",
-        "ca_url":        "https://huggingface.co/cstr/nemotron-3.5-asr-streaming-0.6b-GGUF/resolve/main/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/nemotron-3.5-asr-streaming-0.6b-GGUF/resolve/main/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
         "ca_file":       "nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf/resolve/main/nemotron-3.5-asr-streaming-0.6b-Q8_0.gguf",
         "tc_file":       "nemotron-3.5-asr-streaming-0.6b-Q8_0.gguf",
         "ca_wer_libri":  None,
         "tc_wer_libri":  None,
         "timeout_s":     120,
-        "notes":         "CrispASR Q4_K vs t.cpp Q8_0",
+        "notes":         "StelnetTTS Q4_K vs t.cpp Q8_0",
     },
     {
         "family":        "Cohere Transcribe",
         "ca_backend":    "cohere",
-        "ca_url":        "https://huggingface.co/cstr/cohere-transcribe-03-2026-GGUF/resolve/main/cohere-transcribe-q4_k.gguf",
+        "ca_url":        "https://huggingface.co/Xenna/cohere-transcribe-03-2026-GGUF/resolve/main/cohere-transcribe-q4_k.gguf",
         "ca_file":       "cohere-transcribe-q4_k.gguf",
         "tc_url":        "https://huggingface.co/handy-computer/cohere-transcribe-03-2026-gguf/resolve/main/cohere-transcribe-03-2026-Q4_K_M.gguf",
         "tc_file":       "cohere-transcribe-03-2026-Q4_K_M.gguf",
@@ -203,11 +203,11 @@ SHARED_MODELS = [
         "ca_wer_libri":  None,
         "tc_wer_libri":  "2.01%",
         "timeout_s":     180,
-        "notes":         "CrispASR ggml .bin vs t.cpp Q8_0; larger model tests GPU scaling",
+        "notes":         "StelnetTTS ggml .bin vs t.cpp Q8_0; larger model tests GPU scaling",
     },
 ]
 
-# Models that exist ONLY in transcribe.cpp (CrispASR coverage gaps)
+# Models that exist ONLY in transcribe.cpp (StelnetTTS coverage gaps)
 TC_ONLY_MODELS = [
     {
         "family":        "GigaAM v3 E2E-CTC",
@@ -215,7 +215,7 @@ TC_ONLY_MODELS = [
         "tc_file":       "gigaam-v3-e2e-ctc-Q8_0.gguf",
         "tc_wer_libri":  "5.50%",
         "timeout_s":     90,
-        "notes":         "Russian-focused + EN ASR; no CrispASR equivalent yet",
+        "notes":         "Russian-focused + EN ASR; no StelnetTTS equivalent yet",
     },
 ]
 
@@ -365,12 +365,12 @@ def download_gguf(url: str, dest: Path, timeout: int = 600) -> bool:
     return True
 
 
-def run_crispasr(binary: Path, model: Path, audio: Path, backend: str | None,
+def run_stelnettts(binary: Path, model: Path, audio: Path, backend: str | None,
                  timeout: int = 120, no_gpu: bool = False) -> dict:
-    """Run crispasr; return structured result with per-stage timing breakdown.
+    """Run stelnettts; return structured result with per-stage timing breakdown.
 
-    CrispASR outputs transcript to stdout, timing to stderr:
-      stderr: "crispasr: transcribed X.Xs audio in Y.YYs (Z.Zx realtime)"
+    StelnetTTS outputs transcript to stdout, timing to stderr:
+      stderr: "stelnettts: transcribed X.Xs audio in Y.YYs (Z.Zx realtime)"
     Per-stage bench lines (when *_BENCH=1):
       stderr: "  <backend>_bench: <stage>  <ms> ms"
     """
@@ -385,7 +385,7 @@ def run_crispasr(binary: Path, model: Path, audio: Path, backend: str | None,
     # Also enable common subsystems + batched decode for GPU runs
     for k in ["MOONSHINE_BENCH", "MOONSHINE_STREAMING_BENCH", "NEMOTRON_BENCH",
               "COHERE_BENCH", "PARAKEET_BENCH", "SENSEVOICE_BENCH", "FUNASR_BENCH",
-              "QWEN3_ASR_BENCH", "VOXTRAL_BENCH", "WHISPER_BENCH"]:
+              "CIELVOX2_ASR_BENCH", "VOXTRAL_BENCH", "WHISPER_BENCH"]:
         bench_env[k] = "1"
     # §232: batched TDT/RNNT decode DISABLED — v14 showed 5-9x SLOWER on GPU.
     # The CPU sgemm for 32 frames computes unused logits; sequential sgemv is
@@ -407,10 +407,10 @@ def run_crispasr(binary: Path, model: Path, audio: Path, backend: str | None,
                 "stderr_tail": "TIMEOUT", "bench": {}}
     infer_s = round(time.time() - t0, 3)
 
-    # Extract transcript from stdout — CrispASR outputs plain text, one segment per line
+    # Extract transcript from stdout — StelnetTTS outputs plain text, one segment per line
     transcript = out.strip()
 
-    # Extract RTF from stderr: "crispasr: transcribed X.Xs audio in Y.YYs (Z.Zx realtime)"
+    # Extract RTF from stderr: "stelnettts: transcribed X.Xs audio in Y.YYs (Z.Zx realtime)"
     rtf = None
     for line in err.splitlines():
         m = re.search(r"transcribed.*?(\d+\.?\d*)x realtime", line)
@@ -498,7 +498,7 @@ def run_transcribe_cpp(binary: Path, model: Path, audio: Path,
 
 
 # ── Stream results to HF dataset ─────────────────────────────────────────────
-SWEEP_REPO = "cstr/crispasr-kaggle-progress"
+SWEEP_REPO = "Xenna/stelnettts-kaggle-progress"
 RUN_TAG = f"transcribe-cpp-bench-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
 SWEEP_PREFIX = f"transcribe-cpp-bench/{RUN_TAG}"
 _hf_api = None
@@ -556,46 +556,46 @@ os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 step("install_deps.done")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 1: Clone CrispASR (feature branch) + kaggle_harness
+# STEP 1: Clone StelnetTTS (feature branch) + kaggle_harness
 # ─────────────────────────────────────────────────────────────────────────────
-CRISPASR_DIR = WORK / "CrispASR"
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
-CRISPASR_BRANCH = "feat/transcribe-cpp-eval"
+STELNETTTS_DIR = WORK / "StelnetTTS"
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
+STELNETTTS_BRANCH = "feat/transcribe-cpp-eval"
 
-step("clone_crispasr.begin", branch=CRISPASR_BRANCH)
-if CRISPASR_DIR.exists():
+step("clone_stelnettts.begin", branch=STELNETTTS_BRANCH)
+if STELNETTTS_DIR.exists():
     run_cmd(
-        f"cd {CRISPASR_DIR} && git fetch --depth 1 origin {CRISPASR_BRANCH} "
+        f"cd {STELNETTTS_DIR} && git fetch --depth 1 origin {STELNETTTS_BRANCH} "
         f"&& git reset --hard FETCH_HEAD",
         timeout=120,
     )
-    step("clone_crispasr.updated")
+    step("clone_stelnettts.updated")
 else:
     ok, _, err, _ = run_cmd(
-        f"git clone --depth 1 --branch {CRISPASR_BRANCH} {CRISPASR_URL} {CRISPASR_DIR}",
+        f"git clone --depth 1 --branch {STELNETTTS_BRANCH} {STELNETTTS_URL} {STELNETTTS_DIR}",
         timeout=300,
     )
     if not ok:
         # Branch may not be pushed yet — fall back to main
-        step("clone_crispasr.branch_missing", fallback="main")
+        step("clone_stelnettts.branch_missing", fallback="main")
         run_cmd(
-            f"git clone --depth 1 {CRISPASR_URL} {CRISPASR_DIR}",
+            f"git clone --depth 1 {STELNETTTS_URL} {STELNETTTS_DIR}",
             timeout=300,
         )
-    step("clone_crispasr.done")
+    step("clone_stelnettts.done")
 
 # git clone --depth 1 does not pull submodules; ggml is one since 2026-07-07
 # and cmake fails at add_subdirectory(ggml) without it (#238 lesson).
-if not (CRISPASR_DIR / "ggml" / "CMakeLists.txt").exists():
-    step("clone_crispasr.submodule_init.begin")
+if not (STELNETTTS_DIR / "ggml" / "CMakeLists.txt").exists():
+    step("clone_stelnettts.submodule_init.begin")
     subprocess.run(
-        ["git", "-C", str(CRISPASR_DIR), "submodule", "update",
+        ["git", "-C", str(STELNETTTS_DIR), "submodule", "update",
          "--init", "--recursive", "--depth", "1"],
         check=True,
     )
-    step("clone_crispasr.submodule_init.done")
+    step("clone_stelnettts.submodule_init.done")
 
-sys.path.insert(0, str(CRISPASR_DIR / "tools" / "kaggle"))
+sys.path.insert(0, str(STELNETTTS_DIR / "tools" / "kaggle"))
 # Also accept bundled harness in same dir as this script
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kaggle_harness as kh  # noqa: E402
@@ -606,15 +606,15 @@ kh.resolve_hf_token()
 _init_hf_streaming()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 2: Build CrispASR with CUDA (using kaggle_harness)
+# STEP 2: Build StelnetTTS with CUDA (using kaggle_harness)
 # ─────────────────────────────────────────────────────────────────────────────
-kh.step("build_crispasr.begin")
-_build_log = (WORK / "build_crispasr.log").open("a")
+kh.step("build_stelnettts.begin")
+_build_log = (WORK / "build_stelnettts.log").open("a")
 
 _tc = kh.install_build_toolchain()
 has_gpu = os.path.exists("/usr/local/cuda/bin/nvcc")
-CRISPASR_BUILD = CRISPASR_DIR / "build"
-CRISPASR_BUILD.mkdir(exist_ok=True)
+STELNETTTS_BUILD = STELNETTTS_DIR / "build"
+STELNETTTS_BUILD.mkdir(exist_ok=True)
 
 _cuda_arch = kh.detect_cuda_arch() if has_gpu else None
 _cuda_flags = kh.cuda_build_flags(_cuda_arch) if has_gpu else []
@@ -624,27 +624,27 @@ _gen = ["-G", "Ninja"] if _tc.get("ninja") else []
 
 _cmake_ret = subprocess.run(
     ["cmake"] + _gen + [
-        "-B", str(CRISPASR_BUILD),
+        "-B", str(STELNETTTS_BUILD),
         "-DCMAKE_BUILD_TYPE=Release",
-    ] + _cuda_flags + _cache_flags + [str(CRISPASR_DIR)],
+    ] + _cuda_flags + _cache_flags + [str(STELNETTTS_DIR)],
     stdout=_build_log, stderr=_build_log,
     env={**os.environ, "CCACHE_DIR": "/kaggle/working/.ccache"},
 )
 if _cmake_ret.returncode != 0:
     _build_log.flush()
-    print("=== build_crispasr.log (tail) ===", flush=True)
-    print(open(str(WORK / "build_crispasr.log")).read()[-4000:], flush=True)
-    raise subprocess.CalledProcessError(_cmake_ret.returncode, "cmake configure (CrispASR)")
+    print("=== build_stelnettts.log (tail) ===", flush=True)
+    print(open(str(WORK / "build_stelnettts.log")).read()[-4000:], flush=True)
+    raise subprocess.CalledProcessError(_cmake_ret.returncode, "cmake configure (StelnetTTS)")
 
-with kh.build_heartbeat("cmake.build.crispasr"):
+with kh.build_heartbeat("cmake.build.stelnettts"):
     subprocess.run(
-        ["cmake", "--build", str(CRISPASR_BUILD), f"-j{_jobs}", "--target", "crispasr"],
+        ["cmake", "--build", str(STELNETTTS_BUILD), f"-j{_jobs}", "--target", "stelnettts"],
         check=True, stdout=_build_log, stderr=_build_log, timeout=30 * 60,
     )
 
-CRISPASR_BIN = CRISPASR_BUILD / "bin" / "crispasr"
-assert CRISPASR_BIN.is_file(), f"crispasr binary missing: {CRISPASR_BIN}"
-kh.step("build_crispasr.done", binary=str(CRISPASR_BIN))
+STELNETTTS_BIN = STELNETTTS_BUILD / "bin" / "stelnettts"
+assert STELNETTTS_BIN.is_file(), f"stelnettts binary missing: {STELNETTTS_BIN}"
+kh.step("build_stelnettts.done", binary=str(STELNETTTS_BIN))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 3: Clone and build transcribe.cpp
@@ -673,7 +673,7 @@ TC_BUILD = TC_DIR / "build"
 # Fix CUDA::cuda_driver on Kaggle: the target_link_libraries(ggml-cuda ...
 # CUDA::cuda_driver) in transcribe.cpp's ggml fork fails because libcuda.so
 # only lives in /usr/local/cuda/lib64/stubs/. The real fix is GGML_CUDA_NO_VMM=ON
-# which gates the CUDA::cuda_driver link entirely (same flag CrispASR uses).
+# which gates the CUDA::cuda_driver link entirely (same flag StelnetTTS uses).
 # Also export LIBRARY_PATH so the linker finds the stub at link time.
 _tc_cuda_flags = ["-DTRANSCRIBE_CUDA=ON"] if has_gpu else []
 if has_gpu and _cuda_arch:
@@ -728,9 +728,9 @@ step("build_transcribecpp.done", binary=str(TC_BIN))
 # STEP 4: Prepare test audio
 # ─────────────────────────────────────────────────────────────────────────────
 JFK_WAV = WORK / "jfk.wav"
-# Use jfk.wav from CrispASR samples (16 kHz mono WAV)
+# Use jfk.wav from StelnetTTS samples (16 kHz mono WAV)
 if not JFK_WAV.exists():
-    shutil.copy(CRISPASR_DIR / "samples" / "jfk.wav", JFK_WAV)
+    shutil.copy(STELNETTTS_DIR / "samples" / "jfk.wav", JFK_WAV)
 step("audio.ready", file=str(JFK_WAV))
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -742,9 +742,9 @@ MODELS_DIR.mkdir(exist_ok=True)
 results = []
 
 
-def _bench_crispasr(ca_gguf, backend, timeout, no_gpu, label):
-    """Run CrispASR and return a dict of prefixed result keys."""
-    res = run_crispasr(CRISPASR_BIN, ca_gguf, JFK_WAV,
+def _bench_stelnettts(ca_gguf, backend, timeout, no_gpu, label):
+    """Run StelnetTTS and return a dict of prefixed result keys."""
+    res = run_stelnettts(STELNETTTS_BIN, ca_gguf, JFK_WAV,
                        backend=backend, timeout=timeout, no_gpu=no_gpu)
     norm = normalise(res["transcript"])
     wer = wer_simple(JFK_REF, norm)
@@ -818,14 +818,14 @@ for m in SHARED_MODELS:
 
     # ── GPU runs ────────────────────────────────────────────────────────
     if ca_dl:
-        row.update(_bench_crispasr(ca_gguf, m["ca_backend"], m["timeout_s"],
+        row.update(_bench_stelnettts(ca_gguf, m["ca_backend"], m["timeout_s"],
                                    no_gpu=False, label="gpu"))
     if tc_dl:
         row.update(_bench_transcribe_cpp(tc_gguf, m["timeout_s"], label="gpu"))
 
     # ── CPU runs (-ng / no CUDA) ────────────────────────────────────────
     if ca_dl:
-        row.update(_bench_crispasr(ca_gguf, m["ca_backend"], m["timeout_s"],
+        row.update(_bench_stelnettts(ca_gguf, m["ca_backend"], m["timeout_s"],
                                    no_gpu=True, label="cpu"))
     if tc_dl:
         # transcribe.cpp: set CUDA_VISIBLE_DEVICES="" to force CPU
@@ -861,7 +861,7 @@ for m in SHARED_MODELS:
     step(f"bench.cleanup", family=fam)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 6: transcribe.cpp-only models (CrispASR coverage gaps)
+# STEP 6: transcribe.cpp-only models (StelnetTTS coverage gaps)
 # ─────────────────────────────────────────────────────────────────────────────
 tc_only_results = []
 for m in TC_ONLY_MODELS:
@@ -906,8 +906,8 @@ for m in TC_ONLY_MODELS:
 # STEP 7: Print final summary
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "=" * 95)
-print("BENCHMARK SUMMARY — CrispASR vs transcribe.cpp")
-print(f"CUDA arch: {_cuda_arch or 'N/A'}  | Branch: {CRISPASR_BRANCH}")
+print("BENCHMARK SUMMARY — StelnetTTS vs transcribe.cpp")
+print(f"CUDA arch: {_cuda_arch or 'N/A'}  | Branch: {STELNETTTS_BRANCH}")
 print("=" * 95)
 for mode in ["gpu", "cpu"]:
     print(f"\n  [{mode.upper()} mode]")
@@ -922,7 +922,7 @@ for mode in ["gpu", "cpu"]:
 print("=" * 95)
 
 if tc_only_results:
-    print("\ntranscribe.cpp-only models (CrispASR coverage gaps):")
+    print("\ntranscribe.cpp-only models (StelnetTTS coverage gaps):")
     for row in tc_only_results:
         tc_rtf = f"{row.get('tc_rtf', ''):.3f}" if row.get("tc_rtf") is not None else "FAIL"
         tc_wer = f"{row.get('tc_jfk_wer', 0)*100:.1f}%" if row.get("tc_jfk_wer") is not None else "FAIL"
@@ -935,7 +935,7 @@ print(f"\nTotal elapsed: {round(time.time() - _T0, 0):.0f}s", flush=True)
 # ─────────────────────────────────────────────────────────────────────────────
 summary = {
     "run_tag": RUN_TAG,
-    "branch": CRISPASR_BRANCH,
+    "branch": STELNETTTS_BRANCH,
     "gpu": _cuda_arch,
     "elapsed_s": round(time.time() - _T0, 1),
     "shared_models": results,

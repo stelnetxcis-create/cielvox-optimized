@@ -17,7 +17,7 @@ base_model: UsefulSensors/moonshine-streaming-medium
 
 # Moonshine Streaming Medium -- GGUF
 
-GGUF conversions and quantisations of [`UsefulSensors/moonshine-streaming-medium`](https://huggingface.co/UsefulSensors/moonshine-streaming-medium) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF conversions and quantisations of [`UsefulSensors/moonshine-streaming-medium`](https://huggingface.co/UsefulSensors/moonshine-streaming-medium) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 ## Available variants
 
@@ -35,10 +35,10 @@ GGUF conversions and quantisations of [`UsefulSensors/moonshine-streaming-medium
 - **Source:** [`UsefulSensors/moonshine-streaming-medium`](https://huggingface.co/UsefulSensors/moonshine-streaming-medium)
 - **Designed for:** Low-latency streaming ASR on edge devices
 
-## Usage with CrispASR
+## Usage with StelnetTTS
 
 ```bash
-./build/bin/crispasr --backend moonshine-streaming -m moonshine-streaming-medium-q4_k.gguf -f audio.wav
+./build/bin/stelnettts --backend moonshine-streaming -m moonshine-streaming-medium-q4_k.gguf -f audio.wav
 ```
 
 ## Notes

@@ -21,9 +21,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR_BIN:-./build-ninja-compile/bin/crispasr}"
+CRISPASR="${STELNETTTS_BIN:-./build-ninja-compile/bin/stelnettts}"
 if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="./build/bin/crispasr"
+    CRISPASR="./build/bin/stelnettts"
 fi
 
 # Resolve the parakeet-ja model from the standard HF cache. Skip if missing.
@@ -37,7 +37,7 @@ if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
 fi
 
 if [ ! -x "$CRISPASR" ]; then
-    echo "ERROR: crispasr binary not found (tried $CRISPASR)"
+    echo "ERROR: stelnettts binary not found (tried $CRISPASR)"
     exit 1
 fi
 
@@ -45,7 +45,7 @@ fi
 SAMPLES="samples/ja/reazon_baseball_14s.wav samples/ja/reazon_meal_11s.wav samples/ja/reazon_raft_8s.wav"
 for f in $SAMPLES; do
     if [ ! -f "$f" ]; then
-        echo "SKIP: $f not in repo (samples/ja/.gitignore excludes them; download from cstr/crispasr-regression-fixtures)"
+        echo "SKIP: $f not in repo (samples/ja/.gitignore excludes them; download from Xenna/stelnettts-regression-fixtures)"
         exit 2
     fi
 done

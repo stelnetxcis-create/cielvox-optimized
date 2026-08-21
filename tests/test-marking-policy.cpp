@@ -9,9 +9,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_marking_policy.h"
+#include "stelnettts_marking_policy.h"
 
-using crispasr_marking::decide;
+using stelnettts_marking::decide;
 
 TEST_CASE("non-clone output is not policed", "[unit][marking]") {
     // Nothing prepends a disclaimer to non-clone output, so the field is a
@@ -93,7 +93,7 @@ TEST_CASE("an attestation on a request that keeps the disclaimer changes nothing
 // server with a model loaded.
 // ---------------------------------------------------------------------------
 
-using crispasr_marking::decide_raw_surface;
+using stelnettts_marking::decide_raw_surface;
 
 TEST_CASE("a container-less surface always forces the watermark", "[unit][marking]") {
     // No container ⇒ no C2PA manifest is possible ⇒ the watermark is the only

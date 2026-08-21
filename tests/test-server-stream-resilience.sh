@@ -1,31 +1,31 @@
 #!/bin/bash
 # test-server-stream-resilience.sh — the streaming TTS worker is a DETACHED
 # thread; an exception escaping it would call std::terminate and crash the whole
-# server. This test forces a worker exception (CRISPASR_TEST_STREAM_THROW=1 +
+# server. This test forces a worker exception (STELNETTTS_TEST_STREAM_THROW=1 +
 # the magic input "__throw_test__") and asserts the server survives and keeps
 # serving — i.e. the worker's try/catch contains the failure.
 #
-# Auto-discovers a qwen3-tts GGUF (base or customvoice); SKIPs (exit 0) without
+# Auto-discovers a cielvox2-tts GGUF (base or customvoice); SKIPs (exit 0) without
 # one. Base model auto-discovers its voice-default + tokenizer siblings.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 CRISPASR=""
-for cand in build/bin/crispasr build/bin/Release/crispasr.exe build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build/bin/Release/stelnettts.exe build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then CRISPASR="$cand"; break; fi
 done
 if [ -z "$CRISPASR" ]; then
-    echo "ERROR: crispasr binary not found. Build first."
+    echo "ERROR: stelnettts binary not found. Build first."
     exit 2
 fi
 
-MODEL="${CRISPASR_TEST_QWEN3_TTS_MODEL:-}"
+MODEL="${STELNETTTS_TEST_CIELVOX2_TTS_MODEL:-}"
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     MODEL=""
-    for dir in "${CRISPASR_MODELS:-}" "${CRISPASR_MODELS_DIR:-}" "$HOME/crispasr-live-cache" "$HOME/.cache/crispasr"; do
+    for dir in "${STELNETTTS_MODELS:-}" "${STELNETTTS_MODELS_DIR:-}" "$HOME/stelnettts-live-cache" "$HOME/.cache/stelnettts"; do
         [ -n "$dir" ] && [ -d "$dir" ] || continue
-        for cand in "$dir"/qwen3-tts-*base*.gguf "$dir"/qwen3-tts-*customvoice*.gguf "$dir"/qwen3-tts-*.gguf; do
+        for cand in "$dir"/cielvox2-tts-*base*.gguf "$dir"/cielvox2-tts-*customvoice*.gguf "$dir"/cielvox2-tts-*.gguf; do
             case "$cand" in *tokenizer*|*codec*|*voice*) continue ;; esac
             [ -f "$cand" ] && { MODEL="$cand"; break; }
         done
@@ -33,17 +33,17 @@ if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
     done
 fi
 if [ -z "$MODEL" ] || [ ! -f "$MODEL" ]; then
-    echo "SKIP: no qwen3-tts GGUF found (set CRISPASR_TEST_QWEN3_TTS_MODEL or CRISPASR_MODELS_DIR)"
+    echo "SKIP: no cielvox2-tts GGUF found (set STELNETTTS_TEST_CIELVOX2_TTS_MODEL or STELNETTTS_MODELS_DIR)"
     exit 0
 fi
 case "$MODEL" in
-    *customvoice*|*-cv-*|*voicedesign*) BACKEND="qwen3-tts-customvoice" ;;
-    *)                                  BACKEND="qwen3-tts" ;;
+    *customvoice*|*-cv-*|*voicedesign*) BACKEND="cielvox2-tts-customvoice" ;;
+    *)                                  BACKEND="cielvox2-tts" ;;
 esac
 
 PORT="${PORT:-11473}"
 CACHE_DIR=$(dirname "$MODEL")
-SERVER_LOG=$(mktemp -t crispasr-stream-resil.XXXXXX)
+SERVER_LOG=$(mktemp -t stelnettts-stream-resil.XXXXXX)
 SERVER_PID=""
 trap 'if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi; rm -f "$SERVER_LOG"' EXIT
 
@@ -52,7 +52,7 @@ echo "model:   $MODEL"
 echo "backend: $BACKEND"
 
 # Start the server with the throw injection ARMED.
-CRISPASR_TEST_STREAM_THROW=1 "$CRISPASR" --server --backend "$BACKEND" -m "$MODEL" \
+STELNETTTS_TEST_STREAM_THROW=1 "$CRISPASR" --server --backend "$BACKEND" -m "$MODEL" \
     --cache-dir "$CACHE_DIR" --host 127.0.0.1 --port "$PORT" --no-prints > "$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 
@@ -97,7 +97,7 @@ else
 fi
 
 # Request B: a normal streamed request must still succeed (server kept serving).
-TMP=$(mktemp -t crispasr-resil.XXXXXX.pcm)
+TMP=$(mktemp -t stelnettts-resil.XXXXXX.pcm)
 code=$(curl -s -N -X POST "http://127.0.0.1:$PORT/v1/audio/speech" -H 'Content-Type: application/json' \
     -d '{"input":"The server is still alive and serving.","response_format":"pcm","stream":true}' \
     -o "$TMP" -w "%{http_code}" --max-time 180)

@@ -27,16 +27,16 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 OUT  = WORK / "lang-refs"
 OUT.mkdir(exist_ok=True)
 
-# -- Phase 0: Clone CrispASR + import harness (bundled copy as fallback) --
-CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+# -- Phase 0: Clone StelnetTTS + import harness (bundled copy as fallback) --
+STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 if not REPO.exists():
     try:
         subprocess.check_call(["git", "clone", "--depth", "1",
-                               CRISPASR_URL, str(REPO)])
+                               STELNETTTS_URL, str(REPO)])
         sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     except Exception:
         pass  # fall through to bundled copy

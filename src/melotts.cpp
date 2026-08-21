@@ -25,8 +25,8 @@
 
 #include "core/conv.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
+#include "core/stelnettts_env.h"
 
 #include <algorithm>
 #include <cassert>
@@ -47,7 +47,7 @@
 static bool melotts_use_scalar() {
     static int v = -1;
     if (v < 0)
-        v = (crispasr_env::get("CRISPASR_MELOTTS_FORCE_SCALAR") != nullptr) ? 1 : 0;
+        v = (stelnettts_env::get("STELNETTTS_MELOTTS_FORCE_SCALAR") != nullptr) ? 1 : 0;
     return v != 0;
 }
 #endif
@@ -59,7 +59,7 @@ static bool melotts_use_scalar() {
 static bool melotts_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MELOTTS_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MELOTTS_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -2697,7 +2697,7 @@ struct melotts_context* melotts_init_from_file(const char* path_model, struct me
     }
     core_cpu_backend::set_n_threads(ctx->backend_cpu, params.n_threads);
 
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : ctx->backend_cpu;
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : ctx->backend_cpu;
     if (!ctx->backend)
         ctx->backend = ctx->backend_cpu;
 
@@ -2744,9 +2744,9 @@ struct melotts_context* melotts_init_from_file(const char* path_model, struct me
                 ctx->hp.n_layers_trans_flow, ctx->hp.n_upsample_stages, ctx->hp.sample_rate, ctx->hp.n_speakers);
     }
 
-    // Pre-cache all weights as F32 (CRISPASR_MELOTTS_WEIGHT_CACHE, default ON).
+    // Pre-cache all weights as F32 (STELNETTTS_MELOTTS_WEIGHT_CACHE, default ON).
     {
-        const char* env = std::getenv("CRISPASR_MELOTTS_WEIGHT_CACHE");
+        const char* env = std::getenv("STELNETTTS_MELOTTS_WEIGHT_CACHE");
         ctx->weight_cache_enabled = (!env || *env != '0');
     }
     if (ctx->weight_cache_enabled && ctx->w_ctx) {

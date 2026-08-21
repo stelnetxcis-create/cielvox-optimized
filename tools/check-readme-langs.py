@@ -49,14 +49,14 @@ LANG_CELL_RE = re.compile(r"^([a-z]{2,3}(?:-[A-Z]{2})?)(?:\s+[a-z]{2,3}(?:-[A-Z]
 def parse_table_rows(text: str) -> list[dict]:
     """Yield (repo, langs, line_no) for every HF link in every model row.
     A row may list multiple upstream models that share the same language
-    column — each is checked separately. Skips cstr/* mirrors (downstream,
+    column — each is checked separately. Skips Xenna/* mirrors (downstream,
     not source of truth)."""
     rows = []
     for i, line in enumerate(text.splitlines(), 1):
         if not line.startswith("| "):
             continue
         repos = [m.group(1).rstrip("/") for m in HF_LINK_RE.finditer(line)]
-        repos = [r for r in repos if not r.lower().startswith("cstr/")]
+        repos = [r for r in repos if not r.lower().startswith("Xenna/")]
         if not repos:
             continue
         # Find the rightmost cell matching the language pattern.

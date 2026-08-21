@@ -1,7 +1,7 @@
 // test-segment-hygiene.cpp — §W2 length cap, §W5 repeat merge, §W6 filters.
 //
 // This is harness-blind territory: everything here happens downstream of the
-// logits, so crispasr-diff reports cos 1.000000 whether it works or not. These
+// logits, so stelnettts-diff reports cos 1.000000 whether it works or not. These
 // tests are the only place the behaviour is checked.
 //
 // Each transform is OFF by default, so the first thing every section asserts is
@@ -16,8 +16,8 @@
 #include <string>
 #include <vector>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 using namespace core_seg_hygiene;
@@ -312,7 +312,7 @@ TEST_CASE("with no env set, nothing is enabled and apply_all is identity", "[seg
 TEST_CASE("each env knob enables exactly its own stage", "[seg-hygiene]") {
     {
         ScopedEnv e;
-        e.set("CRISPASR_SEG_MAX_CHARS", "40");
+        e.set("STELNETTTS_SEG_MAX_CHARS", "40");
         const auto c = config_from_env();
         REQUIRE(c.cap.max_codepoints == 40);
         REQUIRE_FALSE(c.filter.enabled);
@@ -320,7 +320,7 @@ TEST_CASE("each env knob enables exactly its own stage", "[seg-hygiene]") {
     }
     {
         ScopedEnv e;
-        e.set("CRISPASR_SEG_DROP_NONVERBAL", "1");
+        e.set("STELNETTTS_SEG_DROP_NONVERBAL", "1");
         const auto c = config_from_env();
         REQUIRE(c.filter.enabled);
         REQUIRE(c.filter.drop_nonverbal);
@@ -329,8 +329,8 @@ TEST_CASE("each env knob enables exactly its own stage", "[seg-hygiene]") {
     }
     {
         ScopedEnv e;
-        e.set("CRISPASR_SEG_LOGPROB_THOLD", "-0.8");
-        e.set("CRISPASR_SEG_LOGPROB_MARGIN", "0.4");
+        e.set("STELNETTTS_SEG_LOGPROB_THOLD", "-0.8");
+        e.set("STELNETTTS_SEG_LOGPROB_MARGIN", "0.4");
         const auto c = config_from_env();
         REQUIRE(c.filter.enabled);
         REQUIRE(c.filter.use_logprob);
@@ -340,9 +340,9 @@ TEST_CASE("each env knob enables exactly its own stage", "[seg-hygiene]") {
     }
     {
         ScopedEnv e;
-        e.set("CRISPASR_SEG_MERGE_REPEATS", "1");
-        e.set("CRISPASR_SEG_MERGE_MIN_RUN", "5");
-        e.set("CRISPASR_SEG_MERGE_GAP_CS", "500");
+        e.set("STELNETTTS_SEG_MERGE_REPEATS", "1");
+        e.set("STELNETTTS_SEG_MERGE_MIN_RUN", "5");
+        e.set("STELNETTTS_SEG_MERGE_GAP_CS", "500");
         const auto c = config_from_env();
         REQUIRE(c.merge.enabled);
         REQUIRE(c.merge.min_run == 5);
@@ -352,9 +352,9 @@ TEST_CASE("each env knob enables exactly its own stage", "[seg-hygiene]") {
 
 TEST_CASE("a zero or unparseable env value does not enable a stage", "[seg-hygiene]") {
     ScopedEnv e;
-    e.set("CRISPASR_SEG_MAX_CHARS", "0");
-    e.set("CRISPASR_SEG_DROP_NONVERBAL", "0");
-    e.set("CRISPASR_SEG_MERGE_REPEATS", "0");
+    e.set("STELNETTTS_SEG_MAX_CHARS", "0");
+    e.set("STELNETTTS_SEG_DROP_NONVERBAL", "0");
+    e.set("STELNETTTS_SEG_MERGE_REPEATS", "0");
     const auto c = config_from_env();
     REQUIRE_FALSE(any_enabled(c));
 }
@@ -434,11 +434,11 @@ TEST_CASE("merge_segments actually calls the hygiene pass", "[seg-hygiene][wirin
     // was correct, unit-tested and NEVER CALLED for its entire life. A pure
     // predicate test cannot catch that — the predicate is fine, the join is
     // missing. So this asserts the CALL, in the one function all four
-    // `merge_segments(...)` sites in crispasr_run.cpp pass through.
+    // `merge_segments(...)` sites in stelnettts_run.cpp pass through.
     //
     // If this goes red, the hygiene has gone inert: restore the call rather
     // than deleting the test.
-    const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/examples/cli/crispasr_run.cpp";
+    const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/examples/cli/stelnettts_run.cpp";
     std::ifstream f(path, std::ios::binary);
     REQUIRE(f.good());
     std::ostringstream ss;
@@ -450,7 +450,7 @@ TEST_CASE("merge_segments actually calls the hygiene pass", "[seg-hygiene][wirin
     REQUIRE(src.find("core_seg_hygiene::apply_all(") != std::string::npos);
 
     // And it must sit inside merge_segments(), not merely somewhere in the file.
-    const size_t fn = src.find("std::vector<crispasr_segment> merge_segments(");
+    const size_t fn = src.find("std::vector<stelnettts_segment> merge_segments(");
     REQUIRE(fn != std::string::npos);
     const size_t call = src.find("core_seg_hygiene::apply_all(", fn);
     REQUIRE(call != std::string::npos);
@@ -459,12 +459,12 @@ TEST_CASE("merge_segments actually calls the hygiene pass", "[seg-hygiene][wirin
 }
 
 TEST_CASE("the session ABI has its own hygiene arm", "[seg-hygiene][wiring]") {
-    // crispasr_c_api.cpp REIMPLEMENTS every backend's transcribe inline and
+    // stelnettts_c_api.cpp REIMPLEMENTS every backend's transcribe inline and
     // never calls the CLI adapter, so the merge_segments() wiring above reaches
     // nothing here — bindings and the server would silently miss all of §W2,
     // §W5 and §W6. This asserts the session arm exists and is actually invoked,
     // not merely defined.
-    const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/src/crispasr_c_api.cpp";
+    const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/src/stelnettts_c_api.cpp";
     std::ifstream f(path, std::ios::binary);
     REQUIRE(f.good());
     std::ostringstream ss;

@@ -1,5 +1,5 @@
 """
-CrispASR — Qwen3-TTS O15 CUDA validation (PLAN #52 step 4)
+StelnetTTS — Qwen3-TTS O15 CUDA validation (PLAN #52 step 4)
 
 Tests whether the O15 (persistent code-predictor graph reuse) path works
 on CUDA. O15 was reverted to default-OFF in commit 61c42bfb after a
@@ -8,7 +8,7 @@ The ggml fork has been updated since; this kernel checks if the crash is
 resolved on a Kaggle P100.
 
 Plan:
-  1. CUDA build of crispasr-cli.
+  1. CUDA build of stelnettts-cli.
   2. TTS synthesis with O15=OFF (baseline) — verify it produces audio.
   3. TTS synthesis with O15=ON — check for crash or correctness regression.
   4. Compare: both should produce valid WAV; ASR roundtrip both through
@@ -27,17 +27,17 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "fix/337-qwen3-tts-hip")
-CRISPASR_COMMIT = os.environ.get(
-    "CRISPASR_COMMIT", "e6a179b6958cccc0f3f22a9be7e577d12c1d9218"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "fix/337-cielvox2-tts-hip")
+STELNETTTS_COMMIT = os.environ.get(
+    "STELNETTTS_COMMIT", "e6a179b6958cccc0f3f22a9be7e577d12c1d9218"
 )
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 TTS_TEXT = "Please call Stella. Ask her to bring these things with her from the store."
 
@@ -55,7 +55,7 @@ def run(cmd, check=True, env=None, timeout=None):
 
 # ── Clone + CUDA build ──────────────────────────────────────────────
 import shutil
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 print(f"  disk: {shutil.disk_usage('/kaggle/working')}", flush=True)
 Path("/kaggle/working/started.txt").write_text("started\n")
 
@@ -63,12 +63,12 @@ if REPO.exists():
     shutil.rmtree(REPO)
 run(
     [
-        "git", "clone", "--depth", "1", "--branch", CRISPASR_REF,
-        CRISPASR_REPO, str(REPO),
+        "git", "clone", "--depth", "1", "--branch", STELNETTTS_REF,
+        STELNETTTS_REPO, str(REPO),
     ]
 )
-run(["git", "-C", str(REPO), "fetch", "--depth", "1", "origin", CRISPASR_COMMIT])
-run(["git", "-C", str(REPO), "checkout", "--detach", CRISPASR_COMMIT])
+run(["git", "-C", str(REPO), "fetch", "--depth", "1", "origin", STELNETTTS_COMMIT])
+run(["git", "-C", str(REPO), "checkout", "--detach", STELNETTTS_COMMIT])
 run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive"])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
@@ -84,7 +84,7 @@ kh.resolve_hf_token()
 sha = subprocess.check_output(
     ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
 ).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 gpu_name = subprocess.check_output(
@@ -101,7 +101,7 @@ cmake_args = (
     [
         "cmake", "-G", "Ninja", "-S", str(REPO), "-B", str(BUILD),
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-        "-DCRISPASR_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -110,25 +110,25 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
     cands = [
         c
-        for c in BUILD.rglob("crispasr")
+        for c in BUILD.rglob("stelnettts")
         if c.is_file() and os.access(c, os.X_OK)
     ]
-    assert cands, "crispasr binary not found after build"
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = (
     f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 )
 kh.step("build_done", cli=str(CLI))
 
-# ── Download qwen3-tts model + tokenizer + parakeet for ASR roundtrip ──
+# ── Download cielvox2-tts model + tokenizer + parakeet for ASR roundtrip ──
 kh.step("downloading models")
 try:
     from huggingface_hub import hf_hub_download
@@ -143,17 +143,17 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 tts_model = Path(hf_hub_download(
-    "cstr/qwen3-tts-0.6b-base-GGUF",
-    "qwen3-tts-12hz-0.6b-base-q8_0.gguf",
+    "Xenna/cielvox2-tts-0.6b-base-GGUF",
+    "cielvox2-tts-12hz-0.6b-base-q8_0.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 tts_codec = Path(hf_hub_download(
-    "cstr/qwen3-tts-tokenizer-12hz-GGUF",
-    "qwen3-tts-tokenizer-12hz.gguf",
+    "Xenna/cielvox2-tts-tokenizer-12hz-GGUF",
+    "cielvox2-tts-tokenizer-12hz.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 asr_model = Path(hf_hub_download(
-    "cstr/parakeet-tdt-0.6b-v2-GGUF",
+    "Xenna/parakeet-tdt-0.6b-v2-GGUF",
     "parakeet-tdt-0.6b-v2-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
@@ -162,29 +162,29 @@ kh.step("models_downloaded")
 
 # ── Run TTS with O15=OFF and O15=ON ────────────────────────────────
 def run_tts(label, o15_value, extra_env=None, gpu_backend=None, replay_codes=None, timeout=300):
-    """Run qwen3-tts synthesis and return dict with results."""
+    """Run cielvox2-tts synthesis and return dict with results."""
     kh.step(f"{label}.start")
     out_wav = WORK / f"tts-{label}.wav"
     if out_wav.exists():
         out_wav.unlink()
 
     env = {
-        "QWEN3_TTS_O15": str(o15_value),
-        "QWEN3_TTS_BENCH": "1",
+        "CIELVOX2_TTS_O15": str(o15_value),
+        "CIELVOX2_TTS_BENCH": "1",
     }
     dump_dir = RESULTS / f"{label}_dump"
     dump_dir.mkdir(parents=True, exist_ok=True)
     env.update({
-        "CRISPASR_QWEN3_TTS_GREEDY": "1",
-        "CRISPASR_QWEN3_TTS_DUMP_DIR": str(dump_dir),
-        "CRISPASR_QWEN3_TTS_DUMP_LOGITS": str(dump_dir),
+        "STELNETTTS_CIELVOX2_TTS_GREEDY": "1",
+        "STELNETTTS_CIELVOX2_TTS_DUMP_DIR": str(dump_dir),
+        "STELNETTTS_CIELVOX2_TTS_DUMP_LOGITS": str(dump_dir),
     })
     if replay_codes:
-        env["CRISPASR_QWEN3_TTS_REPLAY_CODES"] = str(replay_codes)
+        env["STELNETTTS_CIELVOX2_TTS_REPLAY_CODES"] = str(replay_codes)
     if extra_env:
         env.update(extra_env)
 
-    # Use jfk.wav from the repo as voice reference (qwen3-tts requires 24kHz)
+    # Use jfk.wav from the repo as voice reference (cielvox2-tts requires 24kHz)
     voice_ref_16k = REPO / "samples" / "jfk.wav"
     voice_ref = WORK / "jfk_24k.wav"
     if not voice_ref.exists():
@@ -207,7 +207,7 @@ def run_tts(label, o15_value, extra_env=None, gpu_backend=None, replay_codes=Non
     ref_text = "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
 
     cmd = [
-        str(CLI), "--backend", "qwen3-tts",
+        str(CLI), "--backend", "cielvox2-tts",
         "-m", str(tts_model),
         "--codec-model", str(tts_codec),
         "--voice", str(voice_ref),
@@ -250,7 +250,7 @@ def run_tts(label, o15_value, extra_env=None, gpu_backend=None, replay_codes=Non
     # Extract bench lines
     bench_lines = [
         ln for ln in combined.splitlines()
-        if "qwen3_tts:" in ln and ("ms" in ln or "bench" in ln.lower())
+        if "cielvox2_tts:" in ln and ("ms" in ln or "bench" in ln.lower())
     ]
 
     # Extract ar_loop timing
@@ -320,7 +320,7 @@ def make_replay_codes(dump_dir):
     np.savetxt(out, codes.reshape(-1, 16), fmt="%d")
     return out, codes.size // 16
 
-replay_cpu = run_tts("replay_cpu", 0, {"CRISPASR_QWEN3_TTS_TALKER_SCHED": "1"}, "cpu")
+replay_cpu = run_tts("replay_cpu", 0, {"STELNETTTS_CIELVOX2_TTS_TALKER_SCHED": "1"}, "cpu")
 replay_codes, replay_frames = make_replay_codes(RESULTS / "replay_cpu_dump")
 replay_gpu = run_tts("replay_gpu", 0, {}, "auto", replay_codes)
 
@@ -384,7 +384,7 @@ asr_on = asr_roundtrip("o15_on", on["wav_path"]) if on["wav_ok"] else ""
 
 # ── Summary ────────────────────────────────────────────────────────
 print("\n" + "=" * 64, flush=True)
-print(f"SUMMARY — qwen3-tts O15 CUDA test — {sha[:8]} on {gpu_name}", flush=True)
+print(f"SUMMARY — cielvox2-tts O15 CUDA test — {sha[:8]} on {gpu_name}", flush=True)
 print("=" * 64, flush=True)
 print(f"  O15=OFF: rc={off['rc']}  wav={'OK' if off['wav_ok'] else 'FAIL'}  "
       f"{off['ms_per_frame'] or '?'} ms/frame  {off['elapsed']}s wall", flush=True)
@@ -405,7 +405,7 @@ if o15_works and o15_faster:
     print(f"\n  VERDICT: O15 WORKS on CUDA ({gpu_name}). "
           f"Speedup: {off['ms_per_frame']:.1f} -> {on['ms_per_frame']:.1f} ms/frame "
           f"({(1 - on['ms_per_frame']/off['ms_per_frame'])*100:.0f}% faster).", flush=True)
-    print("  ACTION: flip QWEN3_TTS_O15 default back to ON.", flush=True)
+    print("  ACTION: flip CIELVOX2_TTS_O15 default back to ON.", flush=True)
 elif o15_works:
     print(f"\n  VERDICT: O15 runs without crash but no speedup.", flush=True)
 elif on["rc"] != 0:

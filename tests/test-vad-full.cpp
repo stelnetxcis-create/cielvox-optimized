@@ -1,5 +1,5 @@
-#include "crispasr.h"
-#include "common-crispasr.h"
+#include "stelnettts.h"
+#include "common-stelnettts.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -19,9 +19,9 @@ static std::string env_or(const char* name, const char* fallback) {
 }
 
 int main() {
-    std::string whisper_model_path = env_or("CRISPASR_MODEL_WHISPER", CRISPASR_MODEL_PATH);
-    std::string vad_model_path = env_or("CRISPASR_VAD_MODEL", VAD_MODEL_PATH);
-    std::string sample_path = env_or("CRISPASR_AUDIO_EN", SAMPLE_PATH);
+    std::string whisper_model_path = env_or("STELNETTTS_MODEL_WHISPER", STELNETTTS_MODEL_PATH);
+    std::string vad_model_path = env_or("STELNETTTS_VAD_MODEL", VAD_MODEL_PATH);
+    std::string sample_path = env_or("STELNETTTS_AUDIO_EN", SAMPLE_PATH);
 
     // Load the sample audio file
     std::vector<float> pcmf32;
@@ -32,7 +32,7 @@ int main() {
     struct whisper_context* wctx = whisper_init_from_file_with_params(whisper_model_path.c_str(), cparams);
     assert(wctx != nullptr);
 
-    struct whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_BEAM_SEARCH);
+    struct whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_BEAM_SEARCH);
     wparams.vad = true;
     wparams.vad_model_path = vad_model_path.c_str();
 

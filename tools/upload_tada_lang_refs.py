@@ -10,8 +10,8 @@ from pathlib import Path
 from huggingface_hub import HfApi
 
 REPOS = [
-    "cstr/tada-tts-1b-GGUF",
-    "cstr/tada-tts-3b-ml-GGUF",
+    "Xenna/tada-tts-1b-GGUF",
+    "Xenna/tada-tts-3b-ml-GGUF",
 ]
 
 def main():

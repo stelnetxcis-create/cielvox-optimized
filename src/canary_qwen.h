@@ -73,7 +73,7 @@ int canary_qwen_frame_dur_cs(struct canary_qwen_context* ctx);
 int canary_qwen_n_mels(struct canary_qwen_context* ctx);
 int canary_qwen_sample_rate(struct canary_qwen_context* ctx);
 
-// ---- Stage-level entry points (for crispasr-diff testing) ----
+// ---- Stage-level entry points (for stelnettts-diff testing) ----
 
 // Log-mel spectrogram of raw 16 kHz mono PCM, row-major (n_mels, T_mel).
 float* canary_qwen_compute_mel(struct canary_qwen_context* ctx, const float* samples, int n_samples, int* out_n_mels,

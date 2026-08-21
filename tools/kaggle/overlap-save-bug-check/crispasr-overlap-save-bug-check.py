@@ -1,5 +1,5 @@
 """
-CrispASR — overlap-save A/B harness on Kaggle CPU for the inconclusive backends
+StelnetTTS — overlap-save A/B harness on Kaggle CPU for the inconclusive backends
 
 PLAN #114 audit follow-up. The local-M1 run of `tools/check-overlap-save-bug.sh`
 on 2026-05-25 came back inconclusive for granite-4.1 and omniasr-llm because
@@ -9,13 +9,13 @@ wall budget — fine for two backends × two runs (default overlap vs nooverlap)
 × ~90 s audio.
 
 Scope:
-  - Build crispasr CPU-only from current main.
+  - Build stelnettts CPU-only from current main.
   - Download granite-4.1 + omniasr-llm GGUFs.
   - Synthesize a ~90 s audio by concatenating samples/jfk.wav eight times.
   - Run each backend twice (default --chunk-overlap 3.0 vs --chunk-overlap 0).
   - Compare SRT outputs: last timestamp, segment count, char count.
   - If nooverlap produces materially more output → SUSPECTED-BUG, add backend
-    to kBlocked in examples/cli/crispasr_chunk_context_gate.h.
+    to kBlocked in examples/cli/stelnettts_chunk_context_gate.h.
 
 Patterns lifted from tools/kaggle/mimo-asr-cpu-vs-gpu/ (HISTORY 2026-05-26).
 """
@@ -29,7 +29,7 @@ from pathlib import Path
 
 # ── Working dirs ────────────────────────────────────────────────────────
 ROOT = Path("/kaggle/working")
-REPO = ROOT / "CrispASR"
+REPO = ROOT / "StelnetTTS"
 BUILD = ROOT / "build"
 MODELS = ROOT / "models"
 AUDIO_DIR = ROOT / "audio"
@@ -44,12 +44,12 @@ for d in (BUILD, MODELS, AUDIO_DIR, OUT_DIR):
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-print(f"[clone] ref={CRISPASR_REF}", flush=True)
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+print(f"[clone] ref={STELNETTTS_REF}", flush=True)
 if not REPO.exists():
     _clone_cmd = (
-        f"git clone --depth 1 --branch {CRISPASR_REF} "
-        f"https://github.com/CrispStrobe/CrispASR.git {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} "
+        f"https://github.com/Cyna/StelnetTTS.git {REPO}"
     )
 else:
     _clone_cmd = f"git -C {REPO} pull --ff-only"
@@ -77,7 +77,7 @@ cmake_flags = [
     f"cmake {REPO} -B{BUILD} -GNinja",
     "-DCMAKE_BUILD_TYPE=Release",
     "-DBUILD_SHARED_LIBS=ON",
-    "-DCRISPASR_BUILD_TESTS=OFF",
+    "-DSTELNETTTS_BUILD_TESTS=OFF",
 ] + kh.cache_and_link_flags()  # ccache launchers + mold linker flags
 cmake_cmd = " ".join(cmake_flags)
 njobs = kh.safe_build_jobs(gpu=False)
@@ -86,10 +86,10 @@ with kh.build_heartbeat("cmake-configure"):
 kh.step("build.configured")
 with kh.build_heartbeat("cmake-build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}"
     )
-CRISPASR = BUILD / "bin" / "crispasr"
-assert CRISPASR.is_file(), f"crispasr binary missing at {CRISPASR}"
+CRISPASR = BUILD / "bin" / "stelnettts"
+assert CRISPASR.is_file(), f"stelnettts binary missing at {CRISPASR}"
 kh.step("build.done", binary=str(CRISPASR))
 
 # ── Step 3: download GGUFs (granite-4.1 + omniasr-llm) ──────────────────
@@ -102,8 +102,8 @@ from huggingface_hub import hf_hub_download
 # The two inconclusive backends from the M1 harness run on 2026-05-25.
 # Add more here to widen the audit later.
 BACKEND_GGUFS = [
-    ("granite-4.1", "cstr/granite-speech-4.1-2b-GGUF", "granite-speech-4.1-2b-q4_k.gguf"),
-    ("omniasr-llm", "cstr/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf"),
+    ("granite-4.1", "Xenna/granite-speech-4.1-2b-GGUF", "granite-speech-4.1-2b-q4_k.gguf"),
+    ("omniasr-llm", "Xenna/omniasr-llm-300m-v2-GGUF", "omniasr-llm-300m-v2-q4_k.gguf"),
 ]
 backend_model = {}
 for backend, repo_id, fname in BACKEND_GGUFS:
@@ -242,7 +242,7 @@ print()
 print("Interpretation:")
 for backend, v in verdicts.items():
     if v["verdict"] == "SUSPECTED-BUG":
-        print(f"  {backend}: add to kBlocked in examples/cli/crispasr_chunk_context_gate.h")
+        print(f"  {backend}: add to kBlocked in examples/cli/stelnettts_chunk_context_gate.h")
     elif v["verdict"] == "OK":
         print(f"  {backend}: opt-out NOT needed; leave default chunking on")
     elif v["verdict"] == "BOTH-FAIL":

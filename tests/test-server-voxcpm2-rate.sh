@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-server-voxcpm2-rate.sh — regression for issue #122.
 #
-# Boots crispasr-server with voxcpm2-q4_k and hits /v1/audio/speech
+# Boots stelnettts-server with voxcpm2-q4_k and hits /v1/audio/speech
 # with the user's reported input. Verifies that the WAV the server
 # returns declares 48 kHz (voxcpm2's native rate) in the header
 # rather than the previously-hardcoded 24 kHz. A 48 kHz buffer with
@@ -12,8 +12,8 @@
 #   ./tests/test-server-voxcpm2-rate.sh [--port N] [--keep-server]
 #
 # Requires:
-#   - build/bin/crispasr-server (or build-ninja-compile/bin/crispasr-server)
-#   - voxcpm2-q4_k.gguf in CRISPASR_MODELS dir or VOXCPM2_MODEL env var
+#   - build/bin/stelnettts-server (or build-ninja-compile/bin/stelnettts-server)
+#   - voxcpm2-q4_k.gguf in STELNETTTS_MODELS dir or VOXCPM2_MODEL env var
 #
 # Exit code: 0 if all pass, non-zero otherwise. SKIPs (exit 0) when the
 # model file isn't present so CI without the asset doesn't false-fail.
@@ -31,16 +31,16 @@ for arg in "$@"; do
     esac
 done
 
-# Locate the binary. /v1/audio/speech lives in crispasr_server.cpp,
-# which is linked into the unified `crispasr` binary (--server mode) —
-# not the legacy `crispasr-server` (examples/server/server.cpp), which
+# Locate the binary. /v1/audio/speech lives in stelnettts_server.cpp,
+# which is linked into the unified `stelnettts` binary (--server mode) —
+# not the legacy `stelnettts-server` (examples/server/server.cpp), which
 # only carries the older /inference endpoint.
 SERVER_BIN=""
-for cand in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for cand in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     if [ -x "$cand" ]; then SERVER_BIN="$cand --server"; break; fi
 done
 if [ -z "$SERVER_BIN" ]; then
-    echo "ERROR: crispasr binary not found. Build first (cmake --build build --target crispasr-cli)."
+    echo "ERROR: stelnettts binary not found. Build first (cmake --build build --target stelnettts-cli)."
     exit 2
 fi
 
@@ -48,19 +48,19 @@ fi
 VOXCPM2_MODEL="${VOXCPM2_MODEL:-}"
 if [ -z "$VOXCPM2_MODEL" ]; then
     for cand in \
-        "${CRISPASR_MODELS:-/Volumes/backups/ai/crispasr-models}/voxcpm2-q4_k.gguf" \
+        "${STELNETTTS_MODELS:-/Volumes/backups/ai/stelnettts-models}/voxcpm2-q4_k.gguf" \
         "/Volumes/backups/ai/cache/huggingface/voxcpm2/voxcpm2-q4_k.gguf" \
-        "$HOME/.cache/crispasr/voxcpm2-q4_k.gguf"; do
+        "$HOME/.cache/stelnettts/voxcpm2-q4_k.gguf"; do
         if [ -f "$cand" ]; then VOXCPM2_MODEL="$cand"; break; fi
     done
 fi
 if [ -z "$VOXCPM2_MODEL" ] || [ ! -f "$VOXCPM2_MODEL" ]; then
-    echo "SKIP: voxcpm2-q4_k.gguf not found (set VOXCPM2_MODEL or CRISPASR_MODELS)"
+    echo "SKIP: voxcpm2-q4_k.gguf not found (set VOXCPM2_MODEL or STELNETTTS_MODELS)"
     exit 0
 fi
 
-SERVER_LOG=$(mktemp -t crispasr-vox-srv.XXXXXX)
-echo "Starting crispasr-server on :$PORT (voxcpm2-tts, model=$VOXCPM2_MODEL)…"
+SERVER_LOG=$(mktemp -t stelnettts-vox-srv.XXXXXX)
+echo "Starting stelnettts-server on :$PORT (voxcpm2-tts, model=$VOXCPM2_MODEL)…"
 $SERVER_BIN \
     -m "$VOXCPM2_MODEL" \
     --host 127.0.0.1 --port "$PORT" --no-prints \
@@ -110,7 +110,7 @@ assert() {
 echo
 echo "=== issue #122 regression — voxcpm2 WAV must declare 48 kHz ==="
 
-TMPWAV=$(mktemp -t crispasr-vox.XXXXXX.wav)
+TMPWAV=$(mktemp -t stelnettts-vox.XXXXXX.wav)
 code=$(curl -s -X POST \
     -H 'Content-Type: application/json' \
     -d '{"model":"voxcpm2-q4_k","input":"Tom and Maria are going for a walk","response_format":"wav"}' \

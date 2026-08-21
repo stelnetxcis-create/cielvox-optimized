@@ -14,8 +14,8 @@
 // matters: identical output, whatever the worker count.
 //
 // Deterministic fake embedder — no model, no download, no ggml.
-#include "crispasr_diarize_cli.h"
-#include "crispasr_speaker_embedder.h"
+#include "stelnettts_diarize_cli.h"
+#include "stelnettts_speaker_embedder.h"
 #include "whisper_params.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -64,7 +64,7 @@ private:
 };
 
 struct Fixture {
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     std::vector<float> audio;
 };
 
@@ -74,7 +74,7 @@ Fixture make_fixture(int n_segs, bool poison_one = false) {
     Fixture f;
     f.audio.resize((size_t)n_segs * 16000);
     for (int i = 0; i < n_segs; i++) {
-        crispasr_segment s;
+        stelnettts_segment s;
         s.t0 = (int64_t)i * 100; // centiseconds
         s.t1 = (int64_t)(i + 1) * 100;
         s.text = "seg" + std::to_string(i);
@@ -89,20 +89,20 @@ Fixture make_fixture(int n_segs, bool poison_one = false) {
 
 std::vector<std::string> speakers_with_workers(int workers, int n_segs, bool poison = false) {
     if (workers > 0)
-        setenv("CRISPASR_SPEAKER_EMBED_WORKERS", std::to_string(workers).c_str(), 1);
+        setenv("STELNETTTS_SPEAKER_EMBED_WORKERS", std::to_string(workers).c_str(), 1);
     else
-        unsetenv("CRISPASR_SPEAKER_EMBED_WORKERS");
+        unsetenv("STELNETTTS_SPEAKER_EMBED_WORKERS");
 
     Fixture f = make_fixture(n_segs, poison);
     FakeEmbedder emb;
     whisper_params params;
-    crispasr_remap_speakers_via_embeddings(f.segs, f.audio.data(), (int)f.audio.size(), &emb, params);
+    stelnettts_remap_speakers_via_embeddings(f.segs, f.audio.data(), (int)f.audio.size(), &emb, params);
 
     std::vector<std::string> out;
     out.reserve(f.segs.size());
     for (const auto& s : f.segs)
         out.push_back(s.speaker);
-    unsetenv("CRISPASR_SPEAKER_EMBED_WORKERS");
+    unsetenv("STELNETTTS_SPEAKER_EMBED_WORKERS");
     return out;
 }
 

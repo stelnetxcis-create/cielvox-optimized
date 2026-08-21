@@ -8,7 +8,7 @@
 
 #include "common-sdl.h"
 #include "common.h"
-#include "crispasr.h"
+#include "stelnettts.h"
 #include "grammar-parser.h"
 
 #include <algorithm>
@@ -173,8 +173,8 @@ static std::string transcribe(whisper_context* ctx, const whisper_params& params
     n_tokens = 0;
     t_ms = 0;
 
-    //whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
-    whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_BEAM_SEARCH);
+    //whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
+    whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_BEAM_SEARCH);
 
     wparams.print_progress = false;
     wparams.print_special = params.print_special;
@@ -378,13 +378,13 @@ static int process_command_list(struct whisper_context* ctx, audio_async& audio,
 
         audio.get(2000, pcmf32_cur);
 
-        if (::vad_simple(pcmf32_cur, CRISPASR_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
+        if (::vad_simple(pcmf32_cur, STELNETTTS_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
                          params.print_energy)) {
             fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);
 
             const auto t_start = std::chrono::high_resolution_clock::now();
 
-            whisper_full_params wparams = whisper_full_default_params(CRISPASR_SAMPLING_GREEDY);
+            whisper_full_params wparams = whisper_full_default_params(STELNETTTS_SAMPLING_GREEDY);
 
             wparams.print_progress = false;
             wparams.print_special = params.print_special;
@@ -535,7 +535,7 @@ static int always_prompt_transcription(struct whisper_context* ctx, audio_async&
         {
             audio.get(2000, pcmf32_cur);
 
-            if (::vad_simple(pcmf32_cur, CRISPASR_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
+            if (::vad_simple(pcmf32_cur, STELNETTTS_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
                              params.print_energy)) {
                 fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);
 
@@ -631,7 +631,7 @@ static int process_general_transcription(struct whisper_context* ctx, audio_asyn
         {
             audio.get(2000, pcmf32_cur);
 
-            if (::vad_simple(pcmf32_cur, CRISPASR_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
+            if (::vad_simple(pcmf32_cur, STELNETTTS_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold,
                              params.print_energy)) {
                 fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);
 
@@ -669,11 +669,11 @@ static int process_general_transcription(struct whisper_context* ctx, audio_asyn
                     // we have heard the activation phrase, now detect the commands
                     audio.get(params.command_ms, pcmf32_cur);
 
-                    //printf("len prompt:  %.4f\n", pcmf32_prompt.size() / (float) CRISPASR_SAMPLE_RATE);
-                    //printf("len command: %.4f\n", pcmf32_cur.size() / (float) CRISPASR_SAMPLE_RATE);
+                    //printf("len prompt:  %.4f\n", pcmf32_prompt.size() / (float) STELNETTTS_SAMPLE_RATE);
+                    //printf("len command: %.4f\n", pcmf32_cur.size() / (float) STELNETTTS_SAMPLE_RATE);
 
                     // prepend 3 second of silence
-                    pcmf32_cur.insert(pcmf32_cur.begin(), 3.0f * CRISPASR_SAMPLE_RATE, 0.0f);
+                    pcmf32_cur.insert(pcmf32_cur.begin(), 3.0f * STELNETTTS_SAMPLE_RATE, 0.0f);
 
                     // prepend the prompt audio
                     pcmf32_cur.insert(pcmf32_cur.begin(), pcmf32_prompt.begin(), pcmf32_prompt.end());
@@ -779,7 +779,7 @@ int main(int argc, char** argv) {
     // init audio
 
     audio_async audio(30 * 1000);
-    if (!audio.init(params.capture_id, CRISPASR_SAMPLE_RATE)) {
+    if (!audio.init(params.capture_id, STELNETTTS_SAMPLE_RATE)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }

@@ -5,7 +5,7 @@
 //   truecaser_crf  — CRF with context features (24 MB)
 //   truecaser_lstm — BiLSTM character-level (3.2 MB, recommended)
 //
-// Used by CrispASR (post-ASR German truecasing) and CrispEmbed (post-OCR).
+// Used by StelnetTTS (post-ASR German truecasing) and StelnetEmbed (post-OCR).
 
 #ifndef CRISP_TRUECASE_H
 #define CRISP_TRUECASE_H

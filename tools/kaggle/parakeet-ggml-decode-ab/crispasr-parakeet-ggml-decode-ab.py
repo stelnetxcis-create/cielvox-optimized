@@ -1,5 +1,5 @@
 """
-CrispASR — Transducer GPU decode: cblas vs ggml-graph A/B on P100 (§232)
+StelnetTTS — Transducer GPU decode: cblas vs ggml-graph A/B on P100 (§232)
 
 Question this kernel answers (P100, the ONLY hardware where the win is
 measurable — see LEARNINGS 29-30): does running the transducer decode's LSTM
@@ -28,13 +28,13 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
 SAMPLE = WORK / "jfk.wav"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 REPS = int(os.environ.get("REPS", "5"))
 EXPECTED = "ask not what your country can do for you"
 
@@ -44,11 +44,11 @@ def _sh_preclone(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF} for shared harness", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF} for shared harness", flush=True)
 if not REPO.exists():
     _sh_preclone(
-        f"git clone --depth 1 --branch {CRISPASR_REF} --recursive "
-        f"https://github.com/CrispStrobe/CrispASR {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive "
+        f"https://github.com/Cyna/StelnetTTS {REPO}"
     )
 
 import sys
@@ -59,10 +59,10 @@ import kaggle_harness as kh  # noqa: E402
 kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
-kh.step("script.start", ref=CRISPASR_REF)
+kh.step("script.start", ref=STELNETTTS_REF)
 
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("clone.done", sha=sha, ref=CRISPASR_REF)
+kh.step("clone.done", sha=sha, ref=STELNETTTS_REF)
 
 # ── Build (CUDA) ──────────────────────────────────────────────────────────
 kh.step("build.begin")
@@ -79,8 +79,8 @@ with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 kh.step("build.configured")
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}")
-assert CRISPASR.is_file(), "crispasr binary missing after build"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}")
+assert CRISPASR.is_file(), "stelnettts binary missing after build"
 kh.step("build.done", binary=str(CRISPASR))
 
 # ── Download models + JFK ─────────────────────────────────────────────────
@@ -92,9 +92,9 @@ from huggingface_hub import hf_hub_download  # noqa: E402
 
 # (backend, HF repo, filename, GGML gate env, DECODE_TIMING env, decode-log regex)
 BACKENDS = [
-    ("parakeet", "cstr/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf",
+    ("parakeet", "Xenna/parakeet-tdt-0.6b-v3-GGUF", "parakeet-tdt-0.6b-v3-q4_k.gguf",
      "PARAKEET_GGML_DECODE", "PARAKEET_DECODE_TIMING", r"parakeet: tdt_decode ([\d.]+) ms"),
-    ("nemotron", "cstr/nemotron-3.5-asr-streaming-0.6b-GGUF", "nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
+    ("nemotron", "Xenna/nemotron-3.5-asr-streaming-0.6b-GGUF", "nemotron-3.5-asr-streaming-0.6b-q4_k.gguf",
      "NEMOTRON_GGML_DECODE", "NEMOTRON_DECODE_TIMING", r"nemotron: rnnt_decode ([\d.]+) ms"),
 ]
 model_paths = {}

@@ -8,11 +8,11 @@
 //
 // GGUF has a magic + structured header, so seed from a real (small) .gguf for
 // useful coverage:
-//   cmake -B build-fuzz -DCRISPASR_FUZZ=ON -DCRISPASR_SANITIZE_ADDRESS=ON \
-//         -DCRISPASR_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-//   cmake --build build-fuzz --target crispasr-fuzz-gguf
+//   cmake -B build-fuzz -DSTELNETTTS_FUZZ=ON -DSTELNETTTS_SANITIZE_ADDRESS=ON \
+//         -DSTELNETTTS_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+//   cmake --build build-fuzz --target stelnettts-fuzz-gguf
 //   mkdir -p corpus && cp some-small-model.gguf corpus/
-//   ./build-fuzz/bin/crispasr-fuzz-gguf -max_len=2097152 corpus
+//   ./build-fuzz/bin/stelnettts-fuzz-gguf -max_len=2097152 corpus
 
 #include <cstddef>
 #include <cstdint>
@@ -24,7 +24,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (size > 8u * 1024u * 1024u)
         return 0;
 
-    const char* path = "crispasr_fuzz_gguf.bin";
+    const char* path = "stelnettts_fuzz_gguf.bin";
     FILE* f = std::fopen(path, "wb");
     if (!f)
         return 0;

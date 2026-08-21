@@ -52,7 +52,7 @@ Usage:
   python models/convert-sensevoice-to-gguf.py \\
       --input FunAudioLLM/SenseVoiceSmall \\
       --bpemodel /path/to/chn_jpn_yue_eng_ko_spectok.bpe.model \\
-      --output /Volumes/backups/ai/crispasr-models/sensevoice-small/sensevoice-small-f16.gguf
+      --output /Volumes/backups/ai/stelnettts-models/sensevoice-small/sensevoice-small-f16.gguf
 """
 
 import argparse

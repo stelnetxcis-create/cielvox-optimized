@@ -19,7 +19,7 @@
 // Usage:
 //   voxtral-test-llm voxtral-mini-3b-2507.gguf /tmp/voxtral-ref.gguf
 
-#include "crispasr_diff.h"
+#include "stelnettts_diff.h"
 #include "voxtral.h"
 
 #include <algorithm>
@@ -38,7 +38,7 @@ int main(int argc, char ** argv) {
     const char * model_path = argv[1];
     const char * ref_path   = argv[2];
 
-    crispasr_diff::Ref ref;
+    stelnettts_diff::Ref ref;
     if (!ref.load(ref_path)) return 2;
 
     if (!ref.has("llm_input_ids") || !ref.has("llm_logits")) {

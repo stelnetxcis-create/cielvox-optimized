@@ -40,7 +40,7 @@
 #include <direct.h> // _mkdir
 #endif
 
-namespace crispasr_ref_cache {
+namespace stelnettts_ref_cache {
 
 inline const char kMagic[4] = {'C', 'R', 'C', '1'};
 
@@ -48,8 +48,8 @@ inline const char kMagic[4] = {'C', 'R', 'C', '1'};
 //
 // This blob is written by one layer and read by another that never compiles
 // with it: the CLI transcribes the reference clip and saves it
-// (examples/cli/crispasr_tts_ref_text.h), and the session C ABI reads it back
-// (src/crispasr_c_api.cpp) because it cannot run ASR itself. Nothing links the
+// (examples/cli/stelnettts_tts_ref_text.h), and the session C ABI reads it back
+// (src/stelnettts_c_api.cpp) because it cannot run ASR itself. Nothing links the
 // two, so a literal on each side would be free to drift — and the failure is
 // silent: the session simply stops finding transcripts that are sitting right
 // next to the clip, and reports "needs a transcript" as if none existed.
@@ -58,9 +58,9 @@ inline const char kMagic[4] = {'C', 'R', 'C', '1'};
 inline constexpr const char* kCv3RefTextSuffix = ".cv3reftext";
 inline constexpr uint32_t kVersion = 1;
 
-// Globally disable via CRISPASR_TTS_REF_CACHE=0.
+// Globally disable via STELNETTTS_TTS_REF_CACHE=0.
 inline bool disabled() {
-    const char* e = std::getenv("CRISPASR_TTS_REF_CACHE");
+    const char* e = std::getenv("STELNETTTS_TTS_REF_CACHE");
     return e && std::strcmp(e, "0") == 0;
 }
 
@@ -161,9 +161,9 @@ inline uint64_t fnv1a(const void* data, size_t n) {
     return h;
 }
 
-// Cache directory: CRISPASR_TTS_REF_CACHE_DIR, else <temp>/crispasr-tts-refcache.
+// Cache directory: STELNETTTS_TTS_REF_CACHE_DIR, else <temp>/stelnettts-tts-refcache.
 inline std::string cache_dir() {
-    if (const char* d = std::getenv("CRISPASR_TTS_REF_CACHE_DIR"))
+    if (const char* d = std::getenv("STELNETTTS_TTS_REF_CACHE_DIR"))
         if (*d)
             return d;
     const char* tmp = std::getenv("TMPDIR");
@@ -178,7 +178,7 @@ inline std::string cache_dir() {
 #endif
     while (!base.empty() && (base.back() == '/' || base.back() == '\\'))
         base.pop_back();
-    std::string dir = base + "/crispasr-tts-refcache";
+    std::string dir = base + "/stelnettts-tts-refcache";
     // best-effort; ignored if it exists
 #ifdef _WIN32
     _mkdir(dir.c_str());
@@ -197,7 +197,7 @@ inline std::string content_path(const char* tag, const void* key, size_t key_len
 }
 
 // Content-addressed float-blob get/put keyed on `key` bytes (e.g. the raw
-// reference PCM). Returns true on a cache hit. Disabled by CRISPASR_TTS_REF_CACHE=0.
+// reference PCM). Returns true on a cache hit. Disabled by STELNETTTS_TTS_REF_CACHE=0.
 inline bool get_floats(const char* tag, const void* key, size_t key_len, std::vector<uint32_t>& shape,
                        std::vector<float>& out) {
     if (disabled())
@@ -214,7 +214,7 @@ inline void put_floats(const char* tag, const void* key, size_t key_len, const s
 
 // ── content-addressed raw-byte blob get/put ──
 // Same as get_floats/put_floats but for opaque payloads (e.g. int32 RVQ codes)
-// that aren't float32. Returns true on a cache hit. Disabled by CRISPASR_TTS_REF_CACHE=0.
+// that aren't float32. Returns true on a cache hit. Disabled by STELNETTTS_TTS_REF_CACHE=0.
 inline bool get_bytes(const char* tag, const void* key, size_t key_len, std::vector<uint32_t>& shape,
                       std::vector<uint8_t>& out) {
     if (disabled())
@@ -229,4 +229,4 @@ inline void put_bytes(const char* tag, const void* key, size_t key_len, const st
     save(content_path(tag, key, key_len), tag, shape, data, nbytes);
 }
 
-} // namespace crispasr_ref_cache
+} // namespace stelnettts_ref_cache

@@ -1,7 +1,7 @@
-# Music transcription in CrispASR
+# Music transcription in StelnetTTS
 
 Porting the CometBeat / mus-textbook "transcription → SOTA" model roster
-(`docs/TRANSCRIPTION_SOTA_HANDOFF.md` in that repo) from ONNX to CrispASR
+(`docs/TRANSCRIPTION_SOTA_HANDOFF.md` in that repo) from ONNX to StelnetTTS
 ggml/GGUF backends.
 
 ## NOW — active work
@@ -15,26 +15,26 @@ ggml/GGUF backends.
   real tone sweep, decoding 220.6 / 440.4 / 881.4 Hz at 0.95–0.97 confidence.
   `tests/test_crepe_parity.cpp` is the acceptance gate.
 - **Done**: CREPE wired through the 12-point checklist — `CAP_PITCH = 1u << 24`,
-  `examples/cli/crispasr_backend_crepe.cpp` (redirect shim, mirroring the
+  `examples/cli/stelnettts_backend_crepe.cpp` (redirect shim, mirroring the
   htdemucs one), the `--pitch` early dispatcher
-  (`examples/cli/crispasr_pitch_cli.{h,cpp}`, mirroring `--separate`), factory /
+  (`examples/cli/stelnettts_pitch_cli.{h,cpp}`, mirroring `--separate`), factory /
   roster / arch auto-detect (`crepe`) / filename heuristic in
-  `crispasr_backend.cpp`, the session C ABI (`crispasr_session_pitch*` in
-  `src/crispasr_c_api.cpp` + `include/crispasr_session.h`), registry entries for
-  `cstr/crepe-GGUF` (**tiny is the default**), CMake linkage, README + docs/cli.md.
+  `stelnettts_backend.cpp`, the session C ABI (`stelnettts_session_pitch*` in
+  `src/stelnettts_c_api.cpp` + `include/stelnettts_session.h`), registry entries for
+  `Xenna/crepe-GGUF` (**tiny is the default**), CMake linkage, README + docs/cli.md.
 - **Done**: ✅ **BTC chord recognition** (branch `feat/cqt-and-chords`), full
   12-point checklist. `models/convert-btc-to-gguf.py` (213 tensors, both
   checkpoints), `tools/btc_torch_parity.py` (numpy spec, cos 0.99999995 /
   1.00000004 vs torch), `src/btc_chords.{h,cpp}`, the `--chords` early
-  dispatcher (`examples/cli/crispasr_chords_cli.{h,cpp}`), arch auto-detect
-  (`btc` → `btc-chords`) in `crispasr_detect_backend_from_gguf`, session C ABI
-  (`crispasr_session_chords*`), wasm bindings (`sessionChords`), Go cgo
+  dispatcher (`examples/cli/stelnettts_chords_cli.{h,cpp}`), arch auto-detect
+  (`btc` → `btc-chords`) in `stelnettts_detect_backend_from_gguf`, session C ABI
+  (`stelnettts_session_chords*`), wasm bindings (`sessionChords`), Go cgo
   LDFLAGS, registry entries, CMake linkage, README + docs/cli.md,
-  `tests/test_btc_chords_live.cpp` + `CRISPASR_MODEL_BTC_CHORDS`.
-  **`crispasr-diff btc` = 13/13 stages at cos 1.000000**; live session test
+  `tests/test_btc_chords_live.cpp` + `STELNETTTS_MODEL_BTC_CHORDS`.
+  **`stelnettts-diff btc` = 13/13 stages at cos 1.000000**; live session test
   41 assertions. Weights are CC-BY-NC-SA and ship behind
   `--accept-license cc-by-nc-sa-4.0`. Defaults to the **170-class** vocabulary
-  (`CRISPASR_BTC_MAJ_MIN=1` collapses to maj/min — the reverse is impossible).
+  (`STELNETTTS_BTC_MAJ_MIN=1` collapses to maj/min — the reverse is impossible).
 - **Done**: 🐞 **`core/cqt.h` was missing librosa's `scale=True`** — every bin
   came out low by `sqrt(N_k)` (152× at bin 0), so BTC read the features as
   near-silence and emitted `N` for every frame. Fixed by folding `sqrt(N)` into
@@ -65,9 +65,9 @@ ggml/GGUF backends.
   pipeline with an exact frame-count match. `mir_eval` agreement with the torch
   reference went **86.63 % → 98.56 %** (tetrads), 99.17 % root. Guarded by
   `[geometry]` tests; GGUFs carry `btc.inst_len_sec` and were re-uploaded.
-- **Published**: `cstr/btc-chords-GGUF` — 4 GGUFs (170/25-class x f16/f32) +
+- **Published**: `Xenna/btc-chords-GGUF` — 4 GGUFs (170/25-class x f16/f32) +
   model card, all 13/13 at cos 1.000000. Licence gate verified live.
-- **Done**: `cstr/crepe-GGUF` is PUBLISHED (verified 2026-07-20: f16 + q8_0 +
+- **Done**: `Xenna/crepe-GGUF` is PUBLISHED (verified 2026-07-20: f16 + q8_0 +
   q4_k for both tiny and full, 7 files). The earlier "not published yet" note
   was stale -- another session landed it. NOTE: the registry only lists the f16
   variants; the q8_0/q4_k uploads have no registry entry, so `-m auto` can
@@ -81,7 +81,7 @@ ggml/GGUF backends.
   saved. Quantize BTC from the f16 — only 73/213 tensors are quantizable, so a
   q8_0 from f32 lands at 7.5 MB, larger than the f16.
 - **Done**: 📋 **Guitar tablature scoped — `GUITAR_TAB_SPEC.md` (§GT1).** A caller
-  asked whether CrispASR should ship a `(string, fret)` **emission scorer** while
+  asked whether StelnetTTS should ship a `(string, fret)` **emission scorer** while
   their Viterbi/DP applies the hard constraints. Verdict is split by arm.
   **Audio → tab: adopt as proposed.** TabCNN (ISMIR 2019, ~0.8 M params) *is*
   already an emission scorer — six independent per-string softmaxes over 21 fret
@@ -143,7 +143,7 @@ ggml/GGUF backends.
   they share no metric, and MIDI-to-Tab *consumes GuitarSet's training split*.
 - **Next**: `core/stft.h` extraction is independent (CREPE needs no STFT).
 - **Done**: 🎸 **TabCNN ground-truth harness + converter landed.** The
-  crispasr-diff regime works here — no golden oracle needed.
+  stelnettts-diff regime works here — no golden oracle needed.
   **Provenance correction**: the EGSet12 weights are a pickled
   `amt_tools.models.tabcnn.TabCNN`, NOT the Keras `andywiggins/tab-cnn`. So the
   reference implementation is **amt-tools (MIT)** and **no clean-room constraint
@@ -252,12 +252,12 @@ Three graph decisions got it from the first working version (RTF 31) to here:
    *is* the channel-fastest flatten the classifier wants.
 3. **F32-baked conv kernels** (`ggml_conv_1d` casts an F16 kernel to F32 inside
    the graph — in a persistent graph that re-casts 44 MB per 10 ms frame).
-   Gated `CRISPASR_CREPE_NO_BAKE_F32=1`. Honest note: this one measured
-   **neutral** here, unlike qwen3-tts CODEC_FASTCONV. Kept gated-on because it
+   Gated `STELNETTTS_CREPE_NO_BAKE_F32=1`. Honest note: this one measured
+   **neutral** here, unlike cielvox2-tts CODEC_FASTCONV. Kept gated-on because it
    is provably redundant work, but it was not the win.
 
-Gates: `CRISPASR_CREPE_NO_GPU=1`, `CRISPASR_CREPE_NO_BAKE_F32=1`,
-`CRISPASR_CREPE_DEBUG=1`.
+Gates: `STELNETTTS_CREPE_NO_GPU=1`, `STELNETTTS_CREPE_NO_BAKE_F32=1`,
+`STELNETTTS_CREPE_DEBUG=1`.
 
 ### `ggml_conv_1d` returns a tensor whose declared shape contradicts its data for N > 1
 
@@ -290,14 +290,14 @@ Corroborating facts:
   builder, so the reshape between them is untested. That is the mechanism by
   which this survived.
 
-#### ✅ AUDIT COMPLETE — landed in the fork (`CrispStrobe/ggml@662b05fb`)
+#### ✅ AUDIT COMPLETE — landed in the fork (`Cyna/ggml@662b05fb`)
 
 The open question was whether any existing caller passes N > 1. Answered, and
 **my original safety argument was wrong**:
 
-- **CrispEmbed: zero `ggml_conv_1d` callers.** Unaffected entirely. (Its only 1-D
+- **StelnetEmbed: zero `ggml_conv_1d` callers.** Unaffected entirely. (Its only 1-D
   conv use is two `ggml_conv_1d_dw` calls, a different function, both N == 1.)
-- **CrispASR: 141 call sites** — 11 more than my `grep` found, because
+- **StelnetTTS: 141 call sites** — 11 more than my `grep` found, because
   `ggml_conv_1d_ph` forwards to `ggml_conv_1d` without matching the literal
   string. **136 pass N == 1.** **2 pass N > 1.** 0 unknown.
 
@@ -318,10 +318,10 @@ depended on the broken layout.
 **The branches diverge only when N > 1 AND OC > 1** — which no caller in either
 repo does. CREPE would have been the first, which is why it surfaced here.
 
-Gates run: standalone repro (both shape classes, all N) cos = 1.0; CrispASR unit
+Gates run: standalone repro (both shape classes, all N) cos = 1.0; StelnetTTS unit
 suite **1032/1032**; CREPE parity unchanged at cos = 1.0.
 
-**Companion, now also landed (`CrispStrobe/ggml@655c14e4`): `ggml_conv_1d_dw`
+**Companion, now also landed (`Cyna/ggml@655c14e4`): `ggml_conv_1d_dw`
 batch support.** The first description of this (mine, repeating an agent's) was
 wrong: it does NOT silently drop the batch dim. It reshapes to `[T,1,C,N]` and
 hits `GGML_ASSERT(b->ne[3] == 1)` at `ggml.c:4476`, i.e. it **aborts** — a safe
@@ -333,7 +333,7 @@ nothing can depend on an abort).
 
 ### CREPE weights are published
 
-**https://huggingface.co/cstr/crepe-GGUF** — all six files (f16/q8_0/q4_k ×
+**https://huggingface.co/Xenna/crepe-GGUF** — all six files (f16/q8_0/q4_k ×
 tiny/full), `license: mit` verified present on the card via
 `model_info(expand=["cardData"])`, public, ungated. So `-m auto` /
 `--auto-download` now resolves. Published deliberately *before* the accuracy
@@ -442,20 +442,20 @@ Three traps, all now pinned by `tools/crepe_numpy_parity.py`:
 ## Verdict: yes for the neural models, no for two of the seven
 
 The handoff lists 7 workers. They are not the same kind of thing — four are
-neural models (a CrispASR port makes sense), two are pure score-level algorithms
+neural models (a StelnetTTS port makes sense), two are pure score-level algorithms
 (they belong in Dart), and one is already shipped here.
 
-| Worker | CrispASR? | Status / why |
+| Worker | StelnetTTS? | Status / why |
 |---|---|---|
-| **W-SEP** | ✅ **already done** | HTDemucs (`src/htdemucs.cpp`, §248 full parity, `cstr/htdemucs-GGUF`) + Mel-Band RoFormer (`src/mel_band_roformer.cpp`, waveform bit-exact 2.4e-7). Both shipped with `--separate`, auto-download, C ABI, Python `Session.separate()`. **Don't export Open-Unmix to ONNX — call CrispASR.** |
+| **W-SEP** | ✅ **already done** | HTDemucs (`src/htdemucs.cpp`, §248 full parity, `Xenna/htdemucs-GGUF`) + Mel-Band RoFormer (`src/mel_band_roformer.cpp`, waveform bit-exact 2.4e-7). Both shipped with `--separate`, auto-download, C ABI, Python `Session.separate()`. **Don't export Open-Unmix to ONNX — call StelnetTTS.** |
 | **W-CREPE** | ✅ port — start here | 6-layer 1D CNN on raw 16 kHz audio → 360-bin activation. No STFT, no attention, MIT. The single easiest port in the repo's history. |
 | **W-PIANO** (slice 1) | ✅ port | Kong/ByteDance high-res piano CNN + biGRU on log-mel. `core/mel.h` covers the front-end; needs a **GRU** in `core/` (only LSTM exists today). |
 | **Basic Pitch** | ✅ port | Already ONNX in the app; Apache-2.0, ~4 MB CNN over a harmonic-CQT stack. Needs a **CQT** front-end (absent). |
 | **W-HARMONY** | ⚠️ port, licence-gated | Small CRNN/CQT chord model. Architecture is easy; the work is finding a checkpoint whose **licence** is actually permissive. Timebox the checkpoint hunt before the port. |
 | **W-DRUMS** | ⚠️ mostly DSP | Onset + band-energy classification is DSP, and DSP belongs where the app is. Only worth a backend if a permissive drum-transcription CNN is chosen. |
 | **W-MT3** (slice 2) | ⚠️ frontier, timebox | T5 encoder-decoder over spectrogram frames → MIDI-like tokens, Apache-2.0. The *architecture* is well-trodden in ggml (easier than ONNX, honestly). The risk is the **checkpoint format** — T5X/JAX gin, not HF safetensors — so the converter is the whole job. Feasibility memo before committing. |
-| **W-METRE** | ❌ **not CrispASR** | Downbeat DP + metrical quantisation. No model, no tensors. Pure algorithm over a `RhythmGrid`. Keep in Dart. |
-| **W-NOTATION** | ❌ **not CrispASR** | Voice separation, staff split, enharmonic spelling — operates on `crisp_notation` score types, not audio. Keep in Dart. |
+| **W-METRE** | ❌ **not StelnetTTS** | Downbeat DP + metrical quantisation. No model, no tensors. Pure algorithm over a `RhythmGrid`. Keep in Dart. |
+| **W-NOTATION** | ❌ **not StelnetTTS** | Voice separation, staff split, enharmonic spelling — operates on `crisp_notation` score types, not audio. Keep in Dart. |
 
 So: **5 of 7 are worth porting, 1 is already done, 2 should stay in Dart.**
 
@@ -465,9 +465,9 @@ So: **5 of 7 are worth porting, 1 is already done, 2 should stay in Dart.**
    higher quality than the Open-Unmix fallback the handoff proposes, with
    per-stage cosine parity already validated. That alone justifies the seam.
 2. **One runtime for the whole chain.** Separation → F0 → notes currently means
-   ONNX Runtime *plus* whatever runs the stems. CrispASR already owns the audio
+   ONNX Runtime *plus* whatever runs the stems. StelnetTTS already owns the audio
    IO, resampling, chunking, and model auto-download.
-3. **Quantization.** `crispasr-quantize` gives q8_0/q4_k for free; these models
+3. **Quantization.** `stelnettts-quantize` gives q8_0/q4_k for free; these models
    ship as f32 ONNX. CREPE-full at q8_0 is a phone-sized model.
 4. **Metal / CUDA / WASM** come from ggml, not from a per-model ONNX EP story.
 
@@ -480,7 +480,7 @@ packaging, not capability. The capability wins are W-SEP (done), piano, and MT3.
 ## Architecture: a new task surface, not a `transcribe()` overload
 
 `docs/source-separation-surface.md` already settled this argument for stems: a
-task that returns something other than `crispasr_segment`s must **not** be
+task that returns something other than `stelnettts_segment`s must **not** be
 layered onto `transcribe()`; it gets its own early dispatcher before the ASR
 backend is constructed. Music transcription (audio in → note events out) is the
 same shape, so it copies that design:
@@ -489,8 +489,8 @@ same shape, so it copies that design:
   `src/core/separation_io.h` (header-only, unit-testable without linking a
   backend). Carries the Dart-side seam types: `{midi, onMs, offMs, confidence}`
   note events, `{timeMs, f0Hz, voicedProb}` pitch frames.
-- `examples/cli/crispasr_music_cli.{h,cpp}` — early route, mirroring
-  `crispasr_separate_cli.{h,cpp}`, hooked once from `cli.cpp`.
+- `examples/cli/stelnettts_music_cli.{h,cpp}` — early route, mirroring
+  `stelnettts_separate_cli.{h,cpp}`, hooked once from `cli.cpp`.
 - `CAP_MUSIC_TRANSCRIBE = 1u << 24` (bit 23 now belongs to `CAP_STREAMING`
   after the collision fix; 22 stays `CAP_SEPARATE`).
 - A MIDI writer in `core/` so the CLI can emit `.mid` directly. MusicXML
@@ -531,7 +531,7 @@ possible model, which is exactly how you want to debug a new surface.
 
 - `models/convert-crepe-to-gguf.py` — from the MIT Keras/`torchcrepe` weights.
 - `src/crepe.{h,cpp}` + the 12-point checklist in `docs/contributing.md`.
-- Parity: `tools/reference_backends/crepe.py` → `crispasr-diff crepe`, per-stage
+- Parity: `tools/reference_backends/crepe.py` → `stelnettts-diff crepe`, per-stage
   cos ≥ 0.999 vs `torchcrepe`.
 - **Acceptance is the decoded output, not cosine** (HARD RULE #3): synth a
   C-major scale → `crepe` → note segmentation → note-F ≥ 0.9 with **zero octave
@@ -580,7 +580,7 @@ nobody spends a week on it.
 
 BTC-ISMIR19 is the obvious port — MIT code, pretrained checkpoints committed to
 the repo, architecture we can already build (bi-directional self-attention over
-CQT; every op exists in the CrispASR ggml stack). The catch is upstream of the
+CQT; every op exists in the StelnetTTS ggml stack). The catch is upstream of the
 code: its checkpoints were trained on **Isophonics annotations, which are
 CC BY-NC-SA** (non-commercial, share-alike), as are Robbie Williams and
 UsPop2002.
@@ -613,7 +613,7 @@ Voxtral-4B-TTS (CC-BY-NC-4.0) and the German moonshine models (CC-BY-NC-SA-4.0).
 Why this is sound:
 
 - **Our code stays MIT.** The BTC architecture is written from the paper into
-  the CrispASR ggml stack; nothing GPL/AGPL is copied. CrispASR and CometBeat
+  the StelnetTTS ggml stack; nothing GPL/AGPL is copied. StelnetTTS and CometBeat
   can both be commercial.
 - **The restriction rides with the WEIGHTS, not the software.** Users obtain
   NC weights only after attesting they will not use them commercially, and the
@@ -625,38 +625,38 @@ Training a clean model on the ChoCo CC-BY subset (option 1 above) remains the
 target for a *commercially usable* chord tier. It is now a follow-up, not a
 prerequisite, and the BTC port is what proves the architecture + surface first.
 
-#### Required mechanism — MIRROR CrispEmbed, do not invent one
+#### Required mechanism — MIRROR StelnetEmbed, do not invent one
 
 **`--i-have-rights` is the WRONG flag.** It attests *speaker consent for voice
 cloning* — a third-party-rights question. Licence compliance is unrelated, and
 one flag must not silently grant two different permissions. A separate mechanism
 is required.
 
-**CrispEmbed already has the right one** (`examples/cli/model_mgr.{h,cpp}`), and
-it is stricter than anything CrispASR does today. Mirror it rather than inventing
+**StelnetEmbed already has the right one** (`examples/cli/model_mgr.{h,cpp}`), and
+it is stricter than anything StelnetTTS does today. Mirror it rather than inventing
 a parallel design — the two repos should behave identically:
 
-| CrispEmbed (existing) | CrispASR (to add) |
+| StelnetEmbed (existing) | StelnetTTS (to add) |
 |---|---|
 | `license_requires_acceptance(spdx)` — `cc-by-nc*`, `gemma`, `llama*`, `lfm1.0`, `other` | same predicate, same tag list |
-| `resolve_model(arg, auto_download, accepted_license)` | extend `crispasr_resolve_model()` with the same parameter |
+| `resolve_model(arg, auto_download, accepted_license)` | extend `stelnettts_resolve_model()` with the same parameter |
 | `--accept-license <spdx>` | `--accept-license <spdx>` |
-| `CRISPEMBED_ACCEPT_LICENSE` env fallback | `CRISPASR_ACCEPT_LICENSE` |
+| `CRISPEMBED_ACCEPT_LICENSE` env fallback | `STELNETTTS_ACCEPT_LICENSE` |
 | accepts the exact SPDX tag, or `all` / `*` | same |
 | TTY: prints licence + model-card URL, prompts `[y/N]` | same |
 | non-TTY without acceptance: **refuses** | same |
 | **`auto_download` alone is NOT sufficient** | same — this is the key property |
 
-Two things CrispEmbed's design gets right that a blanket NC flag would not:
+Two things StelnetEmbed's design gets right that a blanket NC flag would not:
 
 1. **Acceptance is per-licence, not blanket.** The user attests to a *specific*
    SPDX tag; `all` exists but is opt-in.
-2. **SPDX tags, not substring matching.** CrispASR currently tests
+2. **SPDX tags, not substring matching.** StelnetTTS currently tests
    `license.find("NC")`, and that same NC-detection logic is duplicated in three
-   places (`crispasr_model_registry.cpp` + two spots in
-   `crispasr_model_mgr_cli.cpp`). Moving to SPDX tags de-duplicates it.
+   places (`stelnettts_model_registry.cpp` + two spots in
+   `stelnettts_model_mgr_cli.cpp`). Moving to SPDX tags de-duplicates it.
 
-What CrispASR must change:
+What StelnetTTS must change:
 
 - Registry `license` becomes an SPDX tag (`cc-by-nc-sa-4.0`) with the prose
   reason kept separately, so the predicate is exact rather than a substring hit.
@@ -691,16 +691,16 @@ Priority: RMVPE > FCPE, and neither is urgent while CREPE-tiny hits RTF 0.28.
 
 ---
 
-## Additional CrispASR tasks from the cross-runtime scoping (2026-07-20)
+## Additional StelnetTTS tasks from the cross-runtime scoping (2026-07-20)
 
 Fell out of scoping which models CometBeat's **pure-Dart** ONNX runtime can
 carry. That runtime can afford ~10–15 min for an offline whole-song analysis
 job, which is a very different budget from interactive use — and it changes what
-is worth having on the CrispASR side too.
+is worth having on the StelnetTTS side too.
 
 ### A cheap-separator tier
 
-CrispASR has the two *best* separators (HTDemucs, Mel-Band RoFormer) and neither
+StelnetTTS has the two *best* separators (HTDemucs, Mel-Band RoFormer) and neither
 of the *cheap* ones. That is a real gap for low-end hardware and for the
 pure-Dart path:
 
@@ -720,7 +720,7 @@ while an all-conv U-Net is roughly an order of magnitude cheaper.
 
 ### Pitch tiers below and above CREPE
 
-- **`CRISPASR_CREPE_HOP` knob.** CREPE's cost is linear in frame count, so
+- **`STELNETTTS_CREPE_HOP` knob.** CREPE's cost is linear in frame count, so
   doubling the hop from the reference 10 ms to 20 ms halves the work for a
   modest resolution loss. Cheapest possible quality/speed lever on an already
   shipped backend; expose it and document the tradeoff.
@@ -741,8 +741,8 @@ while an all-conv U-Net is roughly an order of magnitude cheaper.
 
 ### Division of labour with the pure-Dart runtime
 
-CrispASR is the native/performance path; the Dart runtime is the web/WASM path
-and the fallback. They should NOT both chase the same models. CrispASR keeps the
+StelnetTTS is the native/performance path; the Dart runtime is the web/WASM path
+and the fallback. They should NOT both chase the same models. StelnetTTS keeps the
 heavy, highest-quality engines (HTDemucs, Mel-Band RoFormer, RMVPE, and MT3 if
 it ever lands); the Dart runtime takes the small permissive ones it can actually
 finish in-budget (Basic Pitch, CREPE-tiny, BTC chords, Spleeter). `core/cqt.h`
@@ -751,11 +751,11 @@ implementations diff-checkable against each other.
 
 ## Open questions
 
-- **Where does the app call this from?** CrispASR has Dart/Flutter bindings, so
+- **Where does the app call this from?** StelnetTTS has Dart/Flutter bindings, so
   the seam can be FFI. But the handoff's engines are `!kIsWeb`-guarded with a
-  pure-Dart web fallback — CrispASR's WASM build could actually *remove* that
+  pure-Dart web fallback — StelnetTTS's WASM build could actually *remove* that
   caveat. Worth confirming with the app author before designing the binding.
-- **Model hosting.** Existing convention is `cstr/<name>-GGUF` on HF with a
+- **Model hosting.** Existing convention is `Xenna/<name>-GGUF` on HF with a
   `license:` YAML tag that must be verified post-upload. CREPE (MIT), RMVPE
   (MIT weights), Basic Pitch (Apache-2.0) and piano_transcription (MIT) are all
   clean. The chord checkpoint is the one that does NOT survive vetting — see the
@@ -787,9 +787,9 @@ implementations diff-checkable against each other.
 
 ## Suggested order (highest leverage first)
 
-0. ~~**Licence-acceptance gate, ported from CrispEmbed**~~ ✅ **DONE** — land BEFORE any NC
+0. ~~**Licence-acceptance gate, ported from StelnetEmbed**~~ ✅ **DONE** — land BEFORE any NC
    weights are registered, so there is never a window in which they are
-   downloadable ungated. Also de-duplicates CrispASR's three copies of
+   downloadable ungated. Also de-duplicates StelnetTTS's three copies of
    substring-based NC detection.
 1. **`core/cqt.h`** — unblocks Basic Pitch AND the chord model. Infrastructure,
    no licence risk, reusable.
@@ -817,7 +817,7 @@ against `origin/main` rather than assumed:
 Landed on main (`05ee77b17`). `CrispasrSession.separate(Float32List pcmStereo)
 -> List<Stem>` where `Stem = ({String name, Float32List pcm})`, plus a
 `separateSampleRate` probe. Verified end-to-end through the real FFI against
-`cstr/htdemucs-GGUF` q4_k: 4 stems (drums/bass/other/vocals), interleaved
+`Xenna/htdemucs-GGUF` q4_k: 4 stems (drums/bass/other/vocals), interleaved
 lengths exactly matching the input, ~4 s for 2 s of audio.
 ⚠️ Two contract points: input is **interleaved** stereo (`L,R,L,R…`) at 44100 Hz,
 and the native side counts samples **per channel** — an odd-length buffer now
@@ -826,29 +826,29 @@ downmix to mono and resample 44100→16000 first; the dartdoc carries the recipe
 **Not on pub.dev yet — it needs an 0.8.17 release.**
 
 **2. Piano — bindable TODAY, but through `transcribe()`, not a note-event API.**
-`piano-transcription` is session-openable now (`crispasr_session_open(path,
+`piano-transcription` is session-openable now (`stelnettts_session_open(path,
 backend: "piano-transcription")`; it is in the C ABI backend list). There is
 **no dedicated note-event C ABI**. The CLI adapter converts each detected note
-into one `crispasr_segment`: `t0`/`t1` are onset/offset, and `text` is the note
+into one `stelnettts_segment`: `t0`/`t1` are onset/offset, and `text` is the note
 name plus velocity (e.g. `"C4 v=80"`), with `CAP_TIMESTAMPS_NATIVE`.
 So `loadCrispasrPiano` can be un-stubbed immediately by opening that backend and
 parsing segments — but string-parsing `"C4 v=80"` back into a `NoteEvent` is
-lossy and ugly. **A proper `crispasr_session_piano_notes*` C ABI returning
+lossy and ugly. **A proper `stelnettts_session_piano_notes*` C ABI returning
 `{midi, onMs, offMs, velocity}` is the right fix and is now a §251 item.** Say if
 you want it prioritised — it is small, and it is the difference between a hack
 and a real seam.
 
 **3. The dylib — correcting an assumption: the pub package does NOT ship or
-download one.** `crispasr` is a pure Dart FFI package; it opens whatever native
+download one.** `stelnettts` is a pure Dart FFI package; it opens whatever native
 library the host app provides. `CrispasrSession.open` probes, in order:
-`libcrispasr.dylib`, `crispasr.framework/crispasr`, `libwhisper.dylib`,
-`whisper.framework/whisper` on macOS/iOS (`libcrispasr.so` on Linux/Android), or
-you pass `libPath:` explicitly. **Canonical filename: `libcrispasr.dylib`.**
-Your cached 0.8.10 has no `crispasr_session_pitch`, which is exactly why your
+`libstelnettts.dylib`, `stelnettts.framework/stelnettts`, `libwhisper.dylib`,
+`whisper.framework/whisper` on macOS/iOS (`libstelnettts.so` on Linux/Android), or
+you pass `libPath:` explicitly. **Canonical filename: `libstelnettts.dylib`.**
+Your cached 0.8.10 has no `stelnettts_session_pitch`, which is exactly why your
 fallback fires — correct behaviour. You need a dylib built from **0.8.16+** for
 pitch + the `crepe` registry entry, and **0.8.17+ for `separate()`**. Build it
-from the repo (`cmake --build build --target crispasr`) and bundle
-`build/src/libcrispasr.dylib`. Your `tiny-q8_0` (~0.50 MB) choice is right —
+from the repo (`cmake --build build --target stelnettts`) and bundle
+`build/src/libstelnettts.dylib`. Your `tiny-q8_0` (~0.50 MB) choice is right —
 q4_k moves the argmax pitch bin on ~1 frame in 7 at tiny.
 
 **4. BTC licensing — your read is correct.** Keep your MIT ONNX BTC plus the
@@ -865,7 +865,7 @@ and not a bug in either.
 
 ### New §251 item from this exchange
 
-- [x] **`crispasr_session_piano_notes*` C ABI** — SHIPPED (`include/crispasr_session.h:440`,
+- [x] **`stelnettts_session_piano_notes*` C ABI** — SHIPPED (`include/stelnettts_session.h:440`,
   Dart `pianoNotes()`). Return structured note events
   (`{midi, onMs, offMs, velocity}`) instead of forcing consumers to parse
   `"C4 v=80"` out of segment text. Then bind it in Dart mirroring `pitch()`.
@@ -887,7 +887,7 @@ Park) and **ships both checkpoints inside that MIT repo**: `test/btc_model.pt`
 the GitHub licence + contents API.
 
 This contradicts the §BTC decision to gate the weights non-commercially behind
-`crispasr_accept_noncommercial()` / `--accept-noncommercial`. That apparatus may
+`stelnettts_accept_noncommercial()` / `--accept-noncommercial`. That apparatus may
 rest on a wrong premise — most likely a third-party HF mirror was mistaken for
 the source. **Owner of the BTC work should confirm which artifact the NC belief
 came from before more is built on the gate.** Not unilaterally removed here: the
@@ -952,7 +952,7 @@ production-ready (cb F1 0.243) — ignore that head.
   that is not clean.
 - `livechord-bar-arbitrator` — Apache-2.0, 750 KB, already ONNX so it drops into
   CometBeat's onnx path with no conversion. Consumes **no audio** (28-dim symbolic
-  features over chords/beats/downbeats). For CrispASR the rule-based fallback it
+  features over chords/beats/downbeats). For StelnetTTS the rule-based fallback it
   ships alongside is a few hundred lines of deterministic C++ we would rather own.
 
 ### Porting gotchas that would silently corrupt a port
@@ -1238,7 +1238,7 @@ silently mis-folding.
 
 - [x] **Surfaces DONE** — `--beats` CLI (+ `--beats-format text|json`), the
   backend shim and all four registration sites, the session C ABI
-  (`crispasr_session_beats` / `_n_events` / `_events` / `_tempo_bpm` /
+  (`stelnettts_session_beats` / `_n_events` / `_events` / `_tempo_bpm` /
   `_sample_rate`), README + docs/cli.md, a regenerated feature matrix, and the
   Dart binding (`beats()`, `beatsSampleRate`, `beatsTempoBpm`, the `Beat`
   record) with a live test. `tools/check-backend-wiring.py` REQUIRED passes.
@@ -1246,7 +1246,7 @@ silently mis-folding.
   That tool landed on `main` mid-task and immediately earned its keep: it
   caught beat-this missing from c_api dispatch, `available_backends` and the
   feature-matrix regen — three of the four sites in exactly the trap
-  `crispasr_backend_btc.cpp`'s header warns about. **Run it before claiming a
+  `stelnettts_backend_btc.cpp`'s header warns about. **Run it before claiming a
   backend is wired**; the CLI working proves nothing about the other surfaces.
 
   Dart live test on a 20 s 120 BPM click track: 38 beats, 14 downbeats,
@@ -1288,7 +1288,7 @@ silently mis-folding.
   already `(D, H, N, B)`, removing a permute and simplifying the per-head
   gating. Parity unchanged to 7 digits.
 
-- [x] **Weights published + registry entry DONE.** `cstr/beat-this-GGUF` is
+- [x] **Weights published + registry entry DONE.** `Xenna/beat-this-GGUF` is
   public with `beat-this-f16.gguf` (41 MB, default) and `beat-this-f32.gguf`
   (81 MB, parity reference), both SHA-256-verified against the local artifacts
   that the parity runs used. `--beats -m auto --auto-download` fetches into a
@@ -1312,8 +1312,8 @@ silently mis-folding.
   One optional step remains, and it is the user's call because it is
   irreversible: **publishing the Dart package to pub.dev.** `VERSION` is already
   0.8.19 and the `v0.8.18`/`v0.8.19` tags exist, but there is **no
-  `crispasr-v0.8.19` tag** — the publish workflow triggers on that `crispasr-v*`
-  tag, and the last one pushed was `crispasr-v0.8.17`. So everything since 0.8.17
+  `stelnettts-v0.8.19` tag** — the publish workflow triggers on that `stelnettts-v*`
+  tag, and the last one pushed was `stelnettts-v0.8.17`. So everything since 0.8.17
   (beats, and the intervening native fixes) is on `main` but NOT on pub.dev.
-  Pushing `crispasr-v0.8.19` would publish it; a pub.dev version cannot be
+  Pushing `stelnettts-v0.8.19` would publish it; a pub.dev version cannot be
   unpublished, so it waits for an explicit go-ahead.

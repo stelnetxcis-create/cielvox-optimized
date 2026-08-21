@@ -161,7 +161,7 @@ Found by the end-to-end acceptance test, NOT by the per-stage diff — the diff
 replays the reference's own `input_feat` by design, so it cannot see a front-end
 error. Two separate gates are needed and this is why.
 
-Dumping the runtime's features (`CRISPASR_BTC_DUMP_FEAT=<path>`) and scoring
+Dumping the runtime's features (`STELNETTTS_BTC_DUMP_FEAT=<path>`) and scoring
 them against `librosa.cqt` on the same file:
 
     frame count   87 vs 87          exact
@@ -220,7 +220,7 @@ Measured on the upstream 257 s test clip:
 Implementing `librosa.cqt` faithfully but calling it once is a silent accuracy
 bug: our features scored cos **0.9993** against a continuous transform and only
 **0.8815** against the reference pipeline. This is invisible to
-`crispasr-diff btc`, whose reference dump replays `input_feat` by design.
+`stelnettts-diff btc`, whose reference dump replays `input_feat` by design.
 
 ## 12. Frame duration is `inst_len / timestep`, not `hop / sample_rate`
 

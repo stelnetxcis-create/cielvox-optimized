@@ -3,7 +3,7 @@
 The audio used to calibrate importance matrices (imatrix) for GGUF ASR
 quantisation lives as a dataset on the Hub (not in git — it's audio):
 
-**[`cstr/crispasr-imatrix-calib`](https://huggingface.co/datasets/cstr/crispasr-imatrix-calib)** — CC0, 24 EN + 24 DE clips.
+**[`Xenna/stelnettts-imatrix-calib`](https://huggingface.co/datasets/Xenna/stelnettts-imatrix-calib)** — CC0, 24 EN + 24 DE clips.
 
 ## Provenance / how to rebuild
 
@@ -29,7 +29,7 @@ for lang in ["en", "de"]:
                 break
 ```
 
-crispasr decodes mp3 natively (miniaudio), so feed the clips straight in — see
+stelnettts decodes mp3 natively (miniaudio), so feed the clips straight in — see
 [`../imatrix_ab.py`](imatrix_ab.py) and [`../../docs/quantize.md`](../../docs/quantize.md).
 
 **Scale up for production:** more clips, and the languages/domains you actually

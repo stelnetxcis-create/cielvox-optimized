@@ -13,12 +13,12 @@
 
 For x86_64 there is no symmetric knob. The default behaviour is `GGML_NATIVE=ON`, which picks up whatever CPU features the build host advertises. On GitHub-hosted Linux runners this is fragile because the `ubuntu-22.04` pool is heterogeneous: some VMs have AVX512 / AVX512_VBMI / AVX512_VNNI, some don't. The runner that runs the build step may have those features; the runner that runs the bench step (same workflow, same `runs-on`, but a different physical VM under Azure's allocator) may not. Result: build succeeds, bench SIGILLs (exit 132) on its first AVX512 instruction.
 
-## Repro (observed in CrispASR's downstream sync of `build.yml`)
+## Repro (observed in StelnetTTS's downstream sync of `build.yml`)
 
 `.github/workflows/build.yml` job `ggml-ci-x64-cpu-high-perf` on a recent push:
 
 ```
-+ ./build-ci-release/bin/crispasr-bench -m .../ggml-tiny.en.bin -t 4 -nfa
++ ./build-ci-release/bin/stelnettts-bench -m .../ggml-tiny.en.bin -t 4 -nfa
 …
 system_info: AVX512 = 1 | AVX512_VBMI = 1 | AVX512_VNNI = 1
 …
@@ -62,4 +62,4 @@ None. Default-OFF, opt-in. The flag combination is the same one `cmake -DGGML_NA
 
 ## Tested in
 
-CrispASR's downstream `build.yml` ran the new path on its `ggml-ci-x64-cpu-high-perf` job and the SIGILL is gone. We're also keeping the in-tree `GG_BUILD_NO_AVX512=0` (i.e. omitting it) on `ggml-ci-x64-cpu-low-perf` and the arm64 jobs, so the existing matrix coverage is unchanged.
+StelnetTTS's downstream `build.yml` ran the new path on its `ggml-ci-x64-cpu-high-perf` job and the SIGILL is gone. We're also keeping the in-tree `GG_BUILD_NO_AVX512=0` (i.e. omitting it) on `ggml-ci-x64-cpu-low-perf` and the arm64 jobs, so the existing matrix coverage is unchanged.

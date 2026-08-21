@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""CrispASR canary-qwen diff diagnostic on Kaggle.
+"""StelnetTTS canary-qwen diff diagnostic on Kaggle.
 
 Phase 1: Compute Python reference mel using NeMo-identical STFT + mel
          filterbank (torchaudio/librosa). Save to reference GGUF.
-Phase 2: Run crispasr-diff canary-qwen to compare C++ vs Python mel.
+Phase 2: Run stelnettts-diff canary-qwen to compare C++ vs Python mel.
 Phase 3: Full transcription to check end-to-end output.
 
 This kernel finds the first diverging stage in the pipeline.
@@ -27,7 +27,7 @@ except (AttributeError, ValueError):
     pass
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 PROGRESS = WORK / "progress.jsonl"
 T0 = time.time()
@@ -53,13 +53,13 @@ _step("start")
 
 try:
     # ── Clone + harness ───────────────────────────────────────────────
-    CRISPASR_URL = "https://github.com/CrispStrobe/CrispASR.git"
+    STELNETTTS_URL = "https://github.com/Cyna/StelnetTTS.git"
 
     _step("clone")
     if not REPO.exists():
         subprocess.check_call(
             ["git", "clone", "--recursive",
-             CRISPASR_URL, str(REPO)])
+             STELNETTTS_URL, str(REPO)])
     sys.path.insert(0, str(REPO / "tools" / "kaggle"))
     try:
         import kaggle_harness as kh
@@ -107,20 +107,20 @@ try:
 
     sh(f"cmake -S {REPO} -B {BUILD} -G Ninja "
        f"-DCMAKE_BUILD_TYPE=Release "
-       f"-DCRISPASR_BUILD_TESTS=OFF "
-       f"-DCRISPASR_BUILD_EXAMPLES=ON "
-       f"-DCRISPASR_BUILD_SERVER=OFF "
+       f"-DSTELNETTTS_BUILD_TESTS=OFF "
+       f"-DSTELNETTTS_BUILD_EXAMPLES=ON "
+       f"-DSTELNETTTS_BUILD_SERVER=OFF "
        + " ".join(build_flags))
 
     kh.step("build_compile")
     with kh.build_heartbeat("cmake.build"):
         sh(f"stdbuf -oL -eL cmake --build {BUILD} "
-           f"--target crispasr-cli crispasr-quantize crispasr-diff "
+           f"--target stelnettts-cli stelnettts-quantize stelnettts-diff "
            f"-j{kh.safe_build_jobs(gpu=True)}")
 
-    CRISPASR_BIN = BUILD / "bin" / "crispasr"
-    QUANTIZE_BIN = BUILD / "bin" / "crispasr-quantize"
-    DIFF_BIN = BUILD / "bin" / "crispasr-diff"
+    STELNETTTS_BIN = BUILD / "bin" / "stelnettts"
+    QUANTIZE_BIN = BUILD / "bin" / "stelnettts-quantize"
+    DIFF_BIN = BUILD / "bin" / "stelnettts-diff"
     kh.step("build_done")
 
     # ── Download + convert model ──────────────────────────────────────
@@ -240,7 +240,7 @@ try:
     kh.step("reference_dump_done", mel_shape=list(mel_np.shape))
 
     # ══════════════════════════════════════════════════════════════════
-    # PHASE 2: crispasr-diff (mel comparison)
+    # PHASE 2: stelnettts-diff (mel comparison)
     # ══════════════════════════════════════════════════════════════════
     kh.step("run_diff")
     diff_result = subprocess.run(
@@ -266,11 +266,11 @@ try:
 
     # C++ mel via the stage API
     cpp_mel_result = subprocess.run(
-        [str(CRISPASR_BIN), "--backend", "canary-qwen",
+        [str(STELNETTTS_BIN), "--backend", "canary-qwen",
          "-m", str(GGUF_F16), "-f", str(JFK_WAV),
          "-t", "4", "-l", "en", "--no-prints", "--debug-mode"],
         capture_output=True, text=True, timeout=300,
-        env={**os.environ, "CRISPASR_CANARY_QWEN_DEBUG": "1"})
+        env={**os.environ, "STELNETTTS_CANARY_QWEN_DEBUG": "1"})
     print("=== DEBUG MODE STDERR (first 2000 chars) ===", flush=True)
     print(cpp_mel_result.stderr[:2000], flush=True)
 
@@ -279,12 +279,12 @@ try:
     # ══════════════════════════════════════════════════════════════════
     kh.step("transcribe_jfk")
     result = subprocess.run(
-        [str(CRISPASR_BIN), "--backend", "canary-qwen",
+        [str(STELNETTTS_BIN), "--backend", "canary-qwen",
          "-m", str(GGUF_F16), "-f", str(JFK_WAV),
          "-t", "4", "-l", "en", "--no-prints"],
         capture_output=True, text=True, timeout=600,
         env={**os.environ, "CANARY_QWEN_BENCH": "1",
-             "CRISPASR_CANARY_QWEN_DEBUG": "1"})
+             "STELNETTTS_CANARY_QWEN_DEBUG": "1"})
 
     print("=== TRANSCRIBE STDOUT ===", flush=True)
     print(result.stdout, flush=True)

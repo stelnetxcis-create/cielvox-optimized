@@ -4,21 +4,21 @@
 # `--speaker-db` matching is a deliberately restricted feature (closed-roster
 # confirmation of claimed, consenting participants; never in streaming mode;
 # see docs/diarization-speakers.md §2). The three hard gates in
-# crispasr_run_backend() (examples/cli/crispasr_run.cpp) all fire BEFORE any
+# stelnettts_run_backend() (examples/cli/stelnettts_run.cpp) all fire BEFORE any
 # model resolution/loading, so this test needs no models and no network:
 #
 #   (a) --stream + --speaker-db          -> exit 26, "not available in streaming mode"
 #   (b) --speaker-db-consent, no roster  -> exit 27, "requires --expect-speakers"
 #   (c) --speaker-db, no consent         -> warn "speaker-db ignored", run continues
 #
-# Usage: test-speaker-db-gates.sh <path-to-crispasr-binary> [repo-source-dir]
+# Usage: test-speaker-db-gates.sh <path-to-stelnettts-binary> [repo-source-dir]
 set -uo pipefail
 
 CRISPASR="${1:-}"
 SRC_DIR="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 if [ -z "$CRISPASR" ] || [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found (pass as \$1)"; exit 0
+    echo "SKIP: stelnettts binary not found (pass as \$1)"; exit 0
 fi
 
 JFK="$SRC_DIR/samples/jfk.wav"
@@ -34,7 +34,7 @@ fail() { echo "FAIL: $1"; exit 1; }
 # Never let a real model cache / model dir leak into these gate checks —
 # they must not touch the network or an existing local model. Every
 # invocation below gets its own empty HOME + cache-dir.
-unset CRISPASR_MODELS_DIR CRISPASR_MODEL_WHISPER
+unset STELNETTTS_MODELS_DIR STELNETTTS_MODEL_WHISPER
 
 # ── (a) streaming + speaker-db -> exit 26 ──────────────────────────────────
 OUT_A="$TMP/a.stderr"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# verify-lib-bundle.sh — prove a packaged libcrispasr bundle actually LOADS.
+# verify-lib-bundle.sh — prove a packaged libstelnettts bundle actually LOADS.
 #
 # Usage: tools/verify-lib-bundle.sh <bundle-dir>
 #
@@ -10,7 +10,7 @@
 # for every consumer, because presence is not resolvability:
 #
 #   macOS: LC_RPATH was the CI runner's build tree
-#          (/Users/runner/work/CrispASR/CrispASR/build-libs/ggml/src), which
+#          (/Users/runner/work/StelnetTTS/StelnetTTS/build-libs/ggml/src), which
 #          exists nowhere else, so @rpath/libggml.0.dylib resolved to nothing.
 #   Linux: DT_RUNPATH was '$ORIGIN:$ORIGIN/../../ggml/src' — one level too high,
 #          pointing outside the bundle. Relative, so it leaked no CI path and
@@ -146,10 +146,10 @@ if failures:
 print(f"  rpath closure OK: every bundled dependency of {len(concrete)} libs resolves internally")
 
 # ── Best-effort confirmation: actually dlopen ────────────────────────────────
-pats = ("libcrispasr.*.dylib", "libcrispasr.so.*")
+pats = ("libstelnettts.*.dylib", "libstelnettts.so.*")
 cands = [f for p in pats for f in glob.glob(os.path.join(LIBDIR, p)) if not os.path.islink(f)]
 if not cands:
-    print("  ERROR: no concrete libcrispasr in the bundle"); sys.exit(1)
+    print("  ERROR: no concrete libstelnettts in the bundle"); sys.exit(1)
 lib = sorted(cands)[0]
 
 try:
@@ -169,7 +169,7 @@ except OSError as e:
         print("   ", line[:300])
     sys.exit(1)
 
-required = ["crispasr_session_open_explicit", "crispasr_session_close"]
+required = ["stelnettts_session_open_explicit", "stelnettts_session_close"]
 absent = [s for s in required if not hasattr(h, s)]
 if absent:
     print("  ERROR: loaded, but these symbols do not resolve:", ", ".join(absent))

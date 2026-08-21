@@ -20,14 +20,14 @@
 #include <sstream>
 #include <string>
 
-#ifndef CRISPASR_SOURCE_DIR
-#error "CRISPASR_SOURCE_DIR must be defined by the build"
+#ifndef STELNETTTS_SOURCE_DIR
+#error "STELNETTTS_SOURCE_DIR must be defined by the build"
 #endif
 
 namespace {
 
 std::string read_file(const std::string& rel) {
-    const std::string path = std::string(CRISPASR_SOURCE_DIR) + "/" + rel;
+    const std::string path = std::string(STELNETTTS_SOURCE_DIR) + "/" + rel;
     std::ifstream f(path);
     INFO("reading " << rel);
     REQUIRE(f.good());
@@ -184,7 +184,7 @@ TEST_CASE("omnivoice instruct: the runtime validates and renders per text", "[un
 // "instructions" field onto params.tts_instruct, and init()-only application
 // left it dead on every line after the first.
 TEST_CASE("omnivoice instruct: the CLI adapter applies it PER CALL", "[unit][omnivoice]") {
-    const std::string src = read_file("examples/cli/crispasr_backend_omnivoice.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_backend_omnivoice.cpp");
     const size_t synth = src.find("std::vector<float> synthesize(");
     REQUIRE(synth != std::string::npos);
     const std::string body = src.substr(synth);
@@ -194,7 +194,7 @@ TEST_CASE("omnivoice instruct: the CLI adapter applies it PER CALL", "[unit][omn
 }
 
 TEST_CASE("omnivoice instruct: a bad --tts-instruct fails init", "[unit][omnivoice]") {
-    const std::string src = read_file("examples/cli/crispasr_backend_omnivoice.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_backend_omnivoice.cpp");
     const size_t init = src.find("bool init(");
     REQUIRE(init != std::string::npos);
     const size_t synth = src.find("std::vector<float> synthesize(");
@@ -204,13 +204,13 @@ TEST_CASE("omnivoice instruct: a bad --tts-instruct fails init", "[unit][omnivoi
 }
 
 // The third backend to be missing from a session-ABI dispatch for the same
-// reason. `crispasr_session_set_instruct` existed and handled qwen3-tts and
+// reason. `stelnettts_session_set_instruct` existed and handled cielvox2-tts and
 // parler; omnivoice fell through to `return -3` — "this backend has no instruct
 // contract" — which is why voice design was unreachable from every binding.
 TEST_CASE("omnivoice instruct: the session ABI dispatches to omnivoice", "[unit][omnivoice]") {
-    const std::string src = read_file("src/crispasr_c_api.cpp");
-    const size_t fn = src.find("crispasr_session_set_instruct(crispasr_session* s, const char* instruct) {");
-    INFO("crispasr_session_set_instruct not found");
+    const std::string src = read_file("src/stelnettts_c_api.cpp");
+    const size_t fn = src.find("stelnettts_session_set_instruct(stelnettts_session* s, const char* instruct) {");
+    INFO("stelnettts_session_set_instruct not found");
     REQUIRE(fn != std::string::npos);
     // Bound the search to the function body so a mention elsewhere in this
     // 10k-line file cannot make the guard pass.
@@ -222,7 +222,7 @@ TEST_CASE("omnivoice instruct: the session ABI dispatches to omnivoice", "[unit]
 }
 
 TEST_CASE("omnivoice instruct: the server rejects a bad value with 400", "[unit][omnivoice]") {
-    const std::string src = read_file("examples/cli/crispasr_server.cpp");
+    const std::string src = read_file("examples/cli/stelnettts_server.cpp");
     REQUIRE(contains(src, "core/omnivoice_instruct.h"));
     REQUIRE(contains(src, "core_omnivoice_instruct::parse(instructions)"));
     REQUIRE(contains(src, "invalid_instructions"));

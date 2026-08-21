@@ -1,7 +1,7 @@
 // Unit tests for core/powerset.h — the pyannote-seg-3.0 class layout.
 //
 // This file exists because the layout was wrong in production and nothing
-// caught it. `SPK_MASK` in crispasr_diarize.cpp had classes 3 and 4 swapped,
+// caught it. `SPK_MASK` in stelnettts_diarize.cpp had classes 3 and 4 swapped,
 // so every frame in which the THIRD local speaker was talking alone got
 // scored as the first two speakers overlapping. On the VoxConverse dev shard
 // that cost ~15 DER points (48.21% -> 33.37%).

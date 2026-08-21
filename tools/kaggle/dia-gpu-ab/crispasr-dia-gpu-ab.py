@@ -1,5 +1,5 @@
 """
-CrispASR — dia TTS CPU vs GPU A/B on CUDA (P100) (§232, PLAN item 5)
+StelnetTTS — dia TTS CPU vs GPU A/B on CUDA (P100) (§232, PLAN item 5)
 
 Question this kernel answers: does the new dia GPU path (main model on a backend
 buffer via core_gguf::load_weights, gated DIA_TTS_GPU) win on a real CUDA box,
@@ -31,15 +31,15 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/232-dia-gpu")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/232-dia-gpu")
 REPS = int(os.environ.get("REPS", "3"))
 STEPS = int(os.environ.get("DIA_STEPS", "384"))  # ~4.3s audio — full prompt through "behind" for the ASR roundtrip
-DIA_REPO = os.environ.get("DIA_REPO", "cstr/dia-1.6b-GGUF")
+DIA_REPO = os.environ.get("DIA_REPO", "Xenna/dia-1.6b-GGUF")
 PROMPT = (
     "[S1] The quick brown fox jumps over the lazy dog while the sun sets slowly "
     "behind the distant mountains tonight."
@@ -51,11 +51,11 @@ def _sh_preclone(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF} for shared harness", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF} for shared harness", flush=True)
 if not REPO.exists():
     _sh_preclone(
-        f"git clone --depth 1 --branch {CRISPASR_REF} --recursive "
-        f"https://github.com/CrispStrobe/CrispASR {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive "
+        f"https://github.com/Cyna/StelnetTTS {REPO}"
     )
 
 import sys
@@ -66,10 +66,10 @@ import kaggle_harness as kh  # noqa: E402
 kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
-kh.step("script.start", ref=CRISPASR_REF)
+kh.step("script.start", ref=STELNETTTS_REF)
 
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("clone.done", sha=sha, ref=CRISPASR_REF)
+kh.step("clone.done", sha=sha, ref=STELNETTTS_REF)
 
 # ── Build (CUDA) ──────────────────────────────────────────────────────────
 kh.step("build.begin")
@@ -86,8 +86,8 @@ with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 kh.step("build.configured")
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}")
-assert CRISPASR.is_file(), "crispasr binary missing after build"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}")
+assert CRISPASR.is_file(), "stelnettts binary missing after build"
 kh.step("build.done", binary=str(CRISPASR))
 
 # ── Download dia model + DAC codec ────────────────────────────────────────

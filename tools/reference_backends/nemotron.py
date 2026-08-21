@@ -1,5 +1,5 @@
 """
-Nemotron-3.5-ASR-Streaming reference backend for crispasr-diff.
+Nemotron-3.5-ASR-Streaming reference backend for stelnettts-diff.
 
 model_dir: HF id "nvidia/nemotron-3.5-asr-streaming-0.6b" or local .nemo path.
 audio: 16 kHz mono WAV.

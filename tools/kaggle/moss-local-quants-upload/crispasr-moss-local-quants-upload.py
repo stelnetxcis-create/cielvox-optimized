@@ -5,26 +5,26 @@
 # the higher-precision quants are finally usable. This builds the FIXED branch (the
 # v0.8.23 binary still has the runaway), quantizes f16 -> q6_k/q8_0, validates each
 # with BOTH a natural-stop check AND a TTS->whisper round-trip, and uploads only on
-# pass to cstr/moss-tts-local-v1.5-GGUF (which already has f16 + q4_k + codec).
+# pass to Xenna/moss-tts-local-v1.5-GGUF (which already has f16 + q4_k + codec).
 
 # %% [code]
 import json, os, re, subprocess, sys, shutil
 from pathlib import Path
 
-REPO = Path("/kaggle/temp/CrispASR")
+REPO = Path("/kaggle/temp/StelnetTTS")
 WORK = Path("/kaggle/working")
-REF = os.environ.get("CRISPASR_REF", "fix/249-moss")
-REPO_ID = "cstr/moss-tts-local-v1.5-GGUF"
+REF = os.environ.get("STELNETTTS_REF", "fix/249-moss")
+REPO_ID = "Xenna/moss-tts-local-v1.5-GGUF"
 BASE = "moss-tts-local-v1.5"
 QUANTS = ["q6_k", "q8_0"]
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--recursive", "--depth", "1", "--branch", REF,
-                           "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
     subprocess.check_call(["git", "-C", str(REPO), "submodule", "update", "--init",
                            "--recursive", "--depth", "1"], timeout=1800)
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
 import kaggle_harness as kh  # noqa: E402
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("start", ref=REF)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -59,12 +59,12 @@ def robust_download(repo, fname, local_dir, tries=3, timeout=1200):
 BUILD = REPO / "build"
 step("cmake.configure")
 subprocess.run(["cmake", "-G", "Ninja", "-B", str(BUILD), "-S", str(REPO),
-                "-DCMAKE_BUILD_TYPE=Release"] + kh.crispasr_cmake_flags(), check=True)
+                "-DCMAKE_BUILD_TYPE=Release"] + kh.stelnettts_cmake_flags(), check=True)
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr-cli crispasr-quantize "
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts-cli stelnettts-quantize "
                         f"-j{kh.safe_build_jobs(gpu=False)}")
-CLI = (BUILD / "bin" / "crispasr") if (BUILD / "bin" / "crispasr").exists() else next(iter(BUILD.rglob("crispasr")))
-QUANT = next(iter(BUILD.rglob("crispasr-quantize")))
+CLI = (BUILD / "bin" / "stelnettts") if (BUILD / "bin" / "stelnettts").exists() else next(iter(BUILD.rglob("stelnettts")))
+QUANT = next(iter(BUILD.rglob("stelnettts-quantize")))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD/'src'}:{BUILD/'ggml'/'src'}:{os.environ.get('LD_LIBRARY_PATH','')}"
 step("build.done", cli=str(CLI), quant=str(QUANT))
 
@@ -92,7 +92,7 @@ def norm(s):
 
 def validate(backbone):
     wav = WORK / f"{Path(backbone).stem}.wav"
-    env = {**os.environ, "CRISPASR_MOSS_TTS_LOCAL_DEBUG": "1", "CRISPASR_MOSS_TTS_LOCAL_MAX_FRAMES": "400"}
+    env = {**os.environ, "STELNETTTS_MOSS_TTS_LOCAL_DEBUG": "1", "STELNETTTS_MOSS_TTS_LOCAL_MAX_FRAMES": "400"}
     with kh.build_heartbeat(f"synth.{Path(backbone).stem}"):
         p = subprocess.run([str(CLI), "--backend", "moss-tts-local", "-m", str(backbone), "--codec-model",
                             str(CODEC), "--tts", SYN, "--seed", "7", "--tts-output", str(wav)],

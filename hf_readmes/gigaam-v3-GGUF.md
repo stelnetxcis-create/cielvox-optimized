@@ -22,7 +22,7 @@ base_model: ai-sage/GigaAM-v3
 
 GGUF conversions of [`ai-sage/GigaAM-v3`](https://huggingface.co/ai-sage/GigaAM-v3)
 for use with the `gigaam` backend in
-**[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+**[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 GigaAM-v3 is a 220 M-parameter Conformer foundation model for **Russian** ASR,
 pretrained with a HuBERT-CTC objective on ~700 K hours of Russian speech. The
@@ -45,9 +45,9 @@ identical to the PyTorch reference.
 ## Usage
 
 ```bash
-crispasr --backend gigaam -m gigaam-v3-e2e-rnnt-q8_0.gguf -f audio.wav
+stelnettts --backend gigaam -m gigaam-v3-e2e-rnnt-q8_0.gguf -f audio.wav
 # or let the registry fetch it:
-crispasr --backend gigaam -m auto --auto-download -f audio.wav
+stelnettts --backend gigaam -m auto --auto-download -f audio.wav
 ```
 
 Audio is 16 kHz mono. Long inputs are sliced by the CLI's VAD/chunking; the
@@ -56,7 +56,7 @@ model itself has a ~25 s practical window (full attention, O(T²)).
 ## Verification
 
 Every file was checked against a per-stage PyTorch reference dumped from the
-upstream `modeling_gigaam.py` (`crispasr-diff gigaam <model> <ref> <wav>`), on
+upstream `modeling_gigaam.py` (`stelnettts-diff gigaam <model> <ref> <wav>`), on
 GigaAM's own `example.wav`:
 
 | variant | mel | encoder (cos) | transcript vs PyTorch |
@@ -82,7 +82,7 @@ a blank-vs-token argmax where a flipped decision derails the greedy decode.
 python models/convert-gigaam-to-gguf.py \
     --model ai-sage/GigaAM-v3 --revision e2e_rnnt \
     --output gigaam-v3-e2e-rnnt-f16.gguf
-./build/bin/crispasr-quantize gigaam-v3-e2e-rnnt-f16.gguf \
+./build/bin/stelnettts-quantize gigaam-v3-e2e-rnnt-f16.gguf \
     gigaam-v3-e2e-rnnt-q8_0.gguf q8_0
 ```
 

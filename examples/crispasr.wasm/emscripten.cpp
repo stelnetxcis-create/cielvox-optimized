@@ -1,4 +1,4 @@
-#include "crispasr.h"
+#include "stelnettts.h"
 
 #include <emscripten.h>
 #include <emscripten/bind.h>
@@ -69,7 +69,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
             }
 
             struct whisper_full_params params =
-                whisper_full_default_params(whisper_sampling_strategy::CRISPASR_SAMPLING_GREEDY);
+                whisper_full_default_params(whisper_sampling_strategy::STELNETTTS_SAMPLING_GREEDY);
             bool is_multilingual = whisper_is_multilingual(g_contexts[index]);
 
             params.print_realtime = true;
@@ -99,7 +99,7 @@ EMSCRIPTEN_BINDINGS(whisper) {
                        whisper_print_system_info());
 
                 printf("%s: processing %d samples, %.1f sec, %d threads, %d processors, lang = %s, task = %s ...\n",
-                       __func__, int(pcmf32.size()), float(pcmf32.size()) / CRISPASR_SAMPLE_RATE, params.n_threads, 1,
+                       __func__, int(pcmf32.size()), float(pcmf32.size()) / STELNETTTS_SAMPLE_RATE, params.n_threads, 1,
                        params.language, params.translate ? "translate" : "transcribe");
 
                 printf("\n");

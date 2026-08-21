@@ -17,8 +17,8 @@ subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
     "safetensors", "transformers", "sentencepiece", "huggingface_hub", "soundfile"])
 
 # HF token
-for p in ["/kaggle/input/crispasr-hf-token/hf_token.txt",
-          "/kaggle/input/datasets/chr1str/crispasr-hf-token/hf_token.txt"]:
+for p in ["/kaggle/input/stelnettts-hf-token/hf_token.txt",
+          "/kaggle/input/datasets/chr1str/stelnettts-hf-token/hf_token.txt"]:
     if os.path.exists(p):
         os.environ["HF_TOKEN"] = open(p).read().strip()
         break
@@ -134,7 +134,7 @@ try:
         fpath = WORK / fname
         if fpath.exists():
             api.upload_file(path_or_fileobj=str(fpath), path_in_repo=fname,
-                          repo_id="cstr/irodori-tts-GGUF", repo_type="model")
+                          repo_id="Xenna/irodori-tts-GGUF", repo_type="model")
             log(f"Uploaded {fname}")
 except Exception as e:
     log(f"Upload failed: {e}")

@@ -7,20 +7,20 @@ policy avoids the O(T²) single-pass rel-pos-bias OOM (issue #257) and that the
 ## Run
 ```bash
 # 1. Merge the code to main (or push the feature branch) so the kernel can clone it.
-# 2. Ensure the private dataset chr1str/crispasr-hf-token exists (HF_TOKEN secret).
+# 2. Ensure the private dataset chr1str/stelnettts-hf-token exists (HF_TOKEN secret).
 bash push.sh
-kaggle kernels status  chr1str/crispasr-parakeet-mem-policy-cuda
-kaggle kernels output  chr1str/crispasr-parakeet-mem-policy-cuda -p ./out
+kaggle kernels status  chr1str/stelnettts-parakeet-mem-policy-cuda
+kaggle kernels output  chr1str/stelnettts-parakeet-mem-policy-cuda -p ./out
 ```
 
 ## Knobs (env, set in the kernel or as Kaggle params)
-- `CRISPASR_REF` (default `main`) — branch/tag to build.
+- `STELNETTTS_REF` (default `main`) — branch/tag to build.
 - `DURATIONS` (default `60,120,225`) — jfk-tiled clip lengths (s) for the sweep.
 - `FREE_MB` (default `2600`) — simulated small-card free VRAM (torch hog) for the OOM test.
-- `MODEL_REPO`/`MODEL_FILE` — default `cstr/parakeet-tdt-1.1b-GGUF` q4_k.
+- `MODEL_REPO`/`MODEL_FILE` — default `Xenna/parakeet-tdt-1.1b-GGUF` q4_k.
 
 ## Reads
 - **Check 1**: estimate vs measured single-pass peak VRAM (ratio ~1 validates the coeff).
-- **Check 2**: `CRISPASR_PARAKEET_VRAM_BUDGET_MB` → streamed → peak « single-pass, transcript full.
+- **Check 2**: `STELNETTTS_PARAKEET_VRAM_BUDGET_MB` → streamed → peak « single-pass, transcript full.
 - **Check 3**: under a torch VRAM-hog (~`FREE_MB` free), single-pass OOMs, the budget policy
   completes with a full transcript — the direct proof it fixes the reporter's OOM.

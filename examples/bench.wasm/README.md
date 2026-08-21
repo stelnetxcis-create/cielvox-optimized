@@ -1,8 +1,8 @@
 # bench.wasm
 
-Benchmark the performance of crispasr in the browser using WebAssembly
+Benchmark the performance of stelnettts in the browser using WebAssembly
 
-Link: https://ggml.ai/crispasr/bench.wasm/
+Link: https://ggml.ai/stelnettts/bench.wasm/
 
 Terminal version: [examples/bench](/examples/bench)
 
@@ -10,8 +10,8 @@ Terminal version: [examples/bench](/examples/bench)
 
 ```bash
 # build using Emscripten (v3.1.2)
-git clone https://github.com/CrispStrobe/CrispASR
-cd crispasr
+git clone https://github.com/Cyna/StelnetTTS
+cd stelnettts
 mkdir build-em && cd build-em
 emcmake cmake ..
 make -j
@@ -32,13 +32,13 @@ cp bin/libbench.js        /path/to/html/
 cp bin/libbench.worker.js /path/to/html/
 ```
 
-> 📝 **Note:** By default this example is built with `CRISPASR_WASM_SINGLE_FILE=ON`
+> 📝 **Note:** By default this example is built with `STELNETTTS_WASM_SINGLE_FILE=ON`
 > which means that that a separate .wasm file will not be generated. Instead, the
 > WASM module is embedded in the main JS file as a base64 encoded string. To
 > generate a separate .wasm file, you need to disable this option by passing
-> `-DCRISPASR_WASM_SINGLE_FILE=OFF`:
+> `-DSTELNETTTS_WASM_SINGLE_FILE=OFF`:
 > ```console
-> emcmake cmake .. -DCRISPASR_WASM_SINGLE_FILE=OFF
+> emcmake cmake .. -DSTELNETTTS_WASM_SINGLE_FILE=OFF
 > ```
 > This will generate a `libbench.wasm` file in the build/bin directory.
 

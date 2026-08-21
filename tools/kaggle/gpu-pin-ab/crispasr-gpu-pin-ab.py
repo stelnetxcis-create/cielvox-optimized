@@ -1,14 +1,14 @@
 """
-CrispASR — CPU-vs-GPU A/B for the newly GPU-enabled CPU-pinned backends on CUDA
+StelnetTTS — CPU-vs-GPU A/B for the newly GPU-enabled CPU-pinned backends on CUDA
 (§232 audit follow-up to dia).
 
 Backends covered — each was CPU-pinned and got an opt-in GPU path
 (core_gguf::load_weights already put weights on ctx->backend; the fix pointed
 that at a GPU backend + made the sched 2-backend):
 
-  * paraformer  (non-AR ASR, SAN-M encoder + CIF)   gate CRISPASR_PARAFORMER_GPU
-  * m2m100      (418M encoder-decoder MT)            gate CRISPASR_M2M100_GPU
-  * madlad/t5   (3B T5 encoder-decoder MT)           gate CRISPASR_T5_GPU
+  * paraformer  (non-AR ASR, SAN-M encoder + CIF)   gate STELNETTTS_PARAFORMER_GPU
+  * m2m100      (418M encoder-decoder MT)            gate STELNETTTS_M2M100_GPU
+  * madlad/t5   (3B T5 encoder-decoder MT)           gate STELNETTTS_T5_GPU
 
 Why CUDA: on M1 (Apple Accelerate cblas) these were roughly neutral — small
 models / short sequences are launch-bound (LEARNING 34) and Accelerate is fast
@@ -31,12 +31,12 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 MODELS = WORK / "models"
-CRISPASR = BUILD / "bin" / "crispasr"
+CRISPASR = BUILD / "bin" / "stelnettts"
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "feat/232-dia-gpu")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "feat/232-dia-gpu")
 REPS = int(os.environ.get("REPS", "3"))
 MT_TEXT = "The quick brown fox jumps over the lazy dog while the sun sets behind the mountains."
 
@@ -46,11 +46,11 @@ def _sh_preclone(cmd: str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-print(f"[pre-clone] cloning CrispASR @ {CRISPASR_REF} for shared harness", flush=True)
+print(f"[pre-clone] cloning StelnetTTS @ {STELNETTTS_REF} for shared harness", flush=True)
 if not REPO.exists():
     _sh_preclone(
-        f"git clone --depth 1 --branch {CRISPASR_REF} --recursive "
-        f"https://github.com/CrispStrobe/CrispASR {REPO}"
+        f"git clone --depth 1 --branch {STELNETTTS_REF} --recursive "
+        f"https://github.com/Cyna/StelnetTTS {REPO}"
     )
 
 import sys
@@ -61,7 +61,7 @@ import kaggle_harness as kh  # noqa: E402
 kh.init_progress()
 if kh.resolve_hf_token():
     print("[auth] HF token resolved", flush=True)
-kh.step("script.start", ref=CRISPASR_REF)
+kh.step("script.start", ref=STELNETTTS_REF)
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
 kh.step("clone.done", sha=sha)
 
@@ -77,8 +77,8 @@ with kh.build_heartbeat("cmake-configure"):
     kh.sh_with_progress(cmake_cmd)
 kh.step("build.configured")
 with kh.build_heartbeat("cmake-build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli -- -j{njobs}")
-assert CRISPASR.is_file(), "crispasr binary missing after build"
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli -- -j{njobs}")
+assert CRISPASR.is_file(), "stelnettts binary missing after build"
 kh.step("build.done")
 
 # ── Models ────────────────────────────────────────────────────────────────
@@ -103,16 +103,16 @@ SAMPLE_ZH = REPO / "samples" / "paraformer_zh.wav"
 
 # (name, gpu_env, [cmd args after the binary], needs_model_repo/cands)
 CONFIGS = [
-    dict(name="paraformer", gate="CRISPASR_PARAFORMER_GPU",
-         repo="cstr/paraformer-zh-GGUF", cands=["paraformer-zh-q4_k.gguf", "paraformer-zh-q8_0.gguf"],
+    dict(name="paraformer", gate="STELNETTTS_PARAFORMER_GPU",
+         repo="Xenna/paraformer-zh-GGUF", cands=["paraformer-zh-q4_k.gguf", "paraformer-zh-q8_0.gguf"],
          args=lambda m: ["--backend", "paraformer", "-m", str(m), "-f", str(SAMPLE_ZH), "-np"],
          gpu_marker="paraformer: GPU backend enabled"),
-    dict(name="m2m100", gate="CRISPASR_M2M100_GPU",
-         repo="cstr/m2m100-418m-GGUF", cands=["m2m100-418m-q4_k.gguf", "m2m100-418m-q8_0.gguf"],
+    dict(name="m2m100", gate="STELNETTTS_M2M100_GPU",
+         repo="Xenna/m2m100-418m-GGUF", cands=["m2m100-418m-q4_k.gguf", "m2m100-418m-q8_0.gguf"],
          args=lambda m: ["--backend", "m2m100", "-m", str(m), "--text", MT_TEXT, "-sl", "en", "-tl", "de", "--no-prints"],
          gpu_marker="m2m100: GPU backend enabled"),
-    dict(name="madlad", gate="CRISPASR_T5_GPU",
-         repo="cstr/madlad400-3b-mt-GGUF", cands=["madlad400-3b-mt-q4_k.gguf"],
+    dict(name="madlad", gate="STELNETTTS_T5_GPU",
+         repo="Xenna/madlad400-3b-mt-GGUF", cands=["madlad400-3b-mt-q4_k.gguf"],
          args=lambda m: ["--backend", "madlad", "-m", str(m), "--text", MT_TEXT, "-sl", "en", "-tl", "de", "--no-prints"],
          gpu_marker="t5: GPU backend enabled"),
 ]

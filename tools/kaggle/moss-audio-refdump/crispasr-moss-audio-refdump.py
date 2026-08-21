@@ -1,26 +1,26 @@
 # %% [markdown]
-# # CrispASR — MOSS-Audio-4B-Instruct reference activation dump
+# # StelnetTTS — MOSS-Audio-4B-Instruct reference activation dump
 #
 # Run the Python reference model on samples/jfk.wav and dump per-stage
-# activations as a GGUF tensor archive for crispasr-diff validation.
-# Upload to `cstr/MOSS-Audio-4B-Instruct-GGUF` as the ref GGUF.
+# activations as a GGUF tensor archive for stelnettts-diff validation.
+# Upload to `Xenna/MOSS-Audio-4B-Instruct-GGUF` as the ref GGUF.
 
 # %% [code]
 import os, subprocess, sys, shutil
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 MOSS_GITHUB = WORK / "MOSS-Audio-github"
 OUT_REF = WORK / "moss-audio-4b-instruct-ref.gguf"
-BRANCH = os.environ.get("CRISPASR_REF", "feature/moss-audio")
+BRANCH = os.environ.get("STELNETTTS_REF", "feature/moss-audio")
 
-print(f"[1] cloning CrispASR {BRANCH}", flush=True)
+print(f"[1] cloning StelnetTTS {BRANCH}", flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
 subprocess.check_call([
     "git", "clone", "--depth", "1", "--branch", BRANCH,
-    "https://github.com/CrispStrobe/CrispASR.git", str(REPO),
+    "https://github.com/Cyna/StelnetTTS.git", str(REPO),
 ])
 
 sys.path.insert(0, str(REPO / "tools" / "kaggle"))
@@ -119,7 +119,7 @@ print(f"  ref GGUF: {OUT_REF} ({OUT_REF.stat().st_size / (1024**2):.1f} MiB)", f
 kh.step("refdump_done", size_mib=round(OUT_REF.stat().st_size / (1024**2), 1))
 
 # %% [code]
-HF_REPO = "cstr/MOSS-Audio-4B-Instruct-GGUF"
+HF_REPO = "Xenna/MOSS-Audio-4B-Instruct-GGUF"
 hf_token = os.environ.get("HF_TOKEN")
 if hf_token:
     from huggingface_hub import HfApi

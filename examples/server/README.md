@@ -1,4 +1,4 @@
-# crispasr/examples/server
+# stelnettts/examples/server
 
 Simple http server. WAV Files are passed to the inference model via http requests.
 
@@ -7,9 +7,9 @@ Demo video: see the project history and upstream example documentation.
 ## Usage
 
 ```
-./build/bin/crispasr-server -h
+./build/bin/stelnettts-server -h
 
-usage: ./build/bin/crispasr-server [options]
+usage: ./build/bin/stelnettts-server [options]
 
 options:
   -h,        --help              [default] show this help message and exit

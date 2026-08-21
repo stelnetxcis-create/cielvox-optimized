@@ -1,5 +1,5 @@
 """
-CrispASR — Qwen3-TTS 1.7B small_to_mtp fold, CUDA validation (#161)
+StelnetTTS — Qwen3-TTS 1.7B small_to_mtp fold, CUDA validation (#161)
 
 The 1.7B talker->code_predictor bridge projection (small_to_mtp) used to run
 as 16 separate single-matmul GPU graphs per frame (2 at step-0 + 14 in the
@@ -11,7 +11,7 @@ Commit 816ab541 folds the projection into the code_pred graph (default ON for
 1.7B). This kernel measures the win on real CUDA and confirms correctness:
 
   A: fused   (default)                  — projection inside the code_pred graph
-  B: nofuse  (QWEN3_TTS_CP_MTP_NOFUSE=1) — old per-step external projection
+  B: nofuse  (CIELVOX2_TTS_CP_MTP_NOFUSE=1) — old per-step external projection
 
 For each: ar_breakdown code_pred ms, talker ms, ms/frame, total rtf, and an
 ASR roundtrip (parakeet) to confirm the audio is still correct speech.
@@ -30,14 +30,14 @@ import time
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 RESULTS = WORK / "results"
 RESULTS.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
-CRISPASR_REPO = os.environ.get(
-    "CRISPASR_REPO", "https://github.com/CrispStrobe/CrispASR.git"
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
+STELNETTTS_REPO = os.environ.get(
+    "STELNETTTS_REPO", "https://github.com/Cyna/StelnetTTS.git"
 )
 # Medium-length text → ~80-130 frames, so per-frame dispatch overhead is well
 # averaged (excosy's complaint is long inputs).
@@ -60,13 +60,13 @@ def run(cmd, check=True, env=None, timeout=None):
 
 
 # ── Clone + CUDA build ──────────────────────────────────────────────
-print(f"[start] ref={CRISPASR_REF}", flush=True)
+print(f"[start] ref={STELNETTTS_REF}", flush=True)
 print(f"  disk: {shutil.disk_usage('/kaggle/working')}", flush=True)
 Path("/kaggle/working/started.txt").write_text("started\n")
 
 if REPO.exists():
     shutil.rmtree(REPO)
-run(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, CRISPASR_REPO, str(REPO)])
+run(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, STELNETTTS_REPO, str(REPO)])
 
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 try:
@@ -79,7 +79,7 @@ kh.init_progress()
 kh.resolve_hf_token()
 
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-kh.step("cloned", sha=sha, ref=CRISPASR_REF)
+kh.step("cloned", sha=sha, ref=STELNETTTS_REF)
 
 run(["nvidia-smi", "-L"])
 gpu_name = subprocess.check_output(
@@ -96,7 +96,7 @@ cmake_args = (
     [
         "cmake", "-S", str(REPO), "-B", str(BUILD),
         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON",
-        "-DCRISPASR_BUILD_TESTS=OFF",
+        "-DSTELNETTTS_BUILD_TESTS=OFF",
     ]
     + kh.cuda_build_flags(arch)
     + kh.cache_and_link_flags()
@@ -105,19 +105,19 @@ run(cmake_args)
 kh.step("cmake_done")
 with kh.build_heartbeat("cmake.build"):
     kh.sh_with_progress(
-        f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-cli"
+        f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-cli"
         f" -j{kh.safe_build_jobs(gpu=True)}"
     )
 
-CLI = BUILD / "bin" / "crispasr"
+CLI = BUILD / "bin" / "stelnettts"
 if not CLI.exists():
-    cands = [c for c in BUILD.rglob("crispasr") if c.is_file() and os.access(c, os.X_OK)]
-    assert cands, "crispasr binary not found after build"
+    cands = [c for c in BUILD.rglob("stelnettts") if c.is_file() and os.access(c, os.X_OK)]
+    assert cands, "stelnettts binary not found after build"
     CLI = cands[0]
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("build_done", cli=str(CLI))
 
-# ── Download 1.7B qwen3-tts + tokenizer + parakeet for ASR roundtrip ──
+# ── Download 1.7B cielvox2-tts + tokenizer + parakeet for ASR roundtrip ──
 kh.step("downloading models")
 try:
     from huggingface_hub import hf_hub_download
@@ -130,15 +130,15 @@ MODELS = WORK / "models"
 MODELS.mkdir(exist_ok=True)
 
 tts_model = Path(hf_hub_download(
-    "cstr/qwen3-tts-1.7b-base-GGUF", "qwen3-tts-12hz-1.7b-base-q8_0.gguf",
+    "Xenna/cielvox2-tts-1.7b-base-GGUF", "cielvox2-tts-12hz-1.7b-base-q8_0.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 tts_codec = Path(hf_hub_download(
-    "cstr/qwen3-tts-tokenizer-12hz-GGUF", "qwen3-tts-tokenizer-12hz.gguf",
+    "Xenna/cielvox2-tts-tokenizer-12hz-GGUF", "cielvox2-tts-tokenizer-12hz.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 asr_model = Path(hf_hub_download(
-    "cstr/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q4_k.gguf",
+    "Xenna/parakeet-tdt-0.6b-v2-GGUF", "parakeet-tdt-0.6b-v2-q4_k.gguf",
     cache_dir=str(MODELS), token=token,
 ))
 kh.step("models_downloaded")
@@ -163,17 +163,17 @@ REF_TEXT = ("And so my fellow Americans, ask not what your country can do for yo
             "ask what you can do for your country.")
 
 
-# ── Run TTS: fused (default) vs nofuse (QWEN3_TTS_CP_MTP_NOFUSE=1) ──
+# ── Run TTS: fused (default) vs nofuse (CIELVOX2_TTS_CP_MTP_NOFUSE=1) ──
 def run_tts(label, extra_env=None, timeout=600):
     kh.step(f"{label}.start")
     out_wav = WORK / f"tts-{label}.wav"
     if out_wav.exists():
         out_wav.unlink()
-    env = {"QWEN3_TTS_BENCH": "1"}
+    env = {"CIELVOX2_TTS_BENCH": "1"}
     if extra_env:
         env.update(extra_env)
     cmd = [
-        str(CLI), "--backend", "qwen3-tts",
+        str(CLI), "--backend", "cielvox2-tts",
         "-m", str(tts_model), "--codec-model", str(tts_codec),
         "--voice", str(voice_ref), "--ref-text", REF_TEXT,
         "--i-have-rights", "--no-spoken-disclaimer",
@@ -226,7 +226,7 @@ def run_tts(label, extra_env=None, timeout=600):
 
 
 fused = run_tts("fused")  # default ON for 1.7B
-nofuse = run_tts("nofuse", {"QWEN3_TTS_CP_MTP_NOFUSE": "1"})
+nofuse = run_tts("nofuse", {"CIELVOX2_TTS_CP_MTP_NOFUSE": "1"})
 
 
 # ── ASR roundtrip both WAVs (parakeet, greedy to avoid #161 beam cost) ──
@@ -252,7 +252,7 @@ asr_nofuse = asr_roundtrip("nofuse", nofuse["wav_path"]) if nofuse["wav_ok"] els
 
 # ── Summary ─────────────────────────────────────────────────────────
 print("\n" + "=" * 64, flush=True)
-print(f"SUMMARY — qwen3-tts 1.7B small_to_mtp fold — {sha[:8]} on {gpu_name}", flush=True)
+print(f"SUMMARY — cielvox2-tts 1.7B small_to_mtp fold — {sha[:8]} on {gpu_name}", flush=True)
 print("=" * 64, flush=True)
 for r in (nofuse, fused):
     print(f"  {r['label']:7s}: rc={r['rc']} wav={'OK' if r['wav_ok'] else 'FAIL'} "

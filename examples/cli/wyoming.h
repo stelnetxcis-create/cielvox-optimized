@@ -1,7 +1,7 @@
 // wyoming.h — Wyoming protocol TCP server (STT + TTS for Home Assistant).
 //
 // Wyoming is a peer-to-peer JSONL-over-TCP protocol used by Home Assistant's
-// Assist voice pipeline. One CrispASR server instance can replace both a
+// Assist voice pipeline. One StelnetTTS server instance can replace both a
 // wyoming-faster-whisper STT service and a wyoming-piper TTS service.
 //
 // Wire format:
@@ -18,13 +18,13 @@
 //                    audio-chunk* +
 //                    audio-stop
 //
-// Usage from crispasr_server.cpp:
+// Usage from stelnettts_server.cpp:
 //   wyoming_start(backend, model_mutex, params, port);
 //   wyoming_stop();
 
 #pragma once
 
-#include "crispasr_backend.h"
+#include "stelnettts_backend.h"
 #include "whisper_params.h"
 #include <mutex>
 

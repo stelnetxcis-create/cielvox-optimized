@@ -53,7 +53,7 @@ to the original at the end of `ggml_backend_sched_compute_splits` so
 the user's gf is left in its original state between sched calls.
 ~30 LOC across struct, split_graph, compute_splits, free.
 
-Patch in our fork: `ggml/src/ggml-backend.cpp` (`// CrispASR patch
+Patch in our fork: `ggml/src/ggml-backend.cpp` (`// StelnetTTS patch
 (#83 r9 follow-up #4)` blocks). Posting the diff below for review:
 
 ```c

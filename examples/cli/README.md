@@ -1,12 +1,12 @@
-# crispasr/examples/cli
+# stelnettts/examples/cli
 
 This is the main example demonstrating most of the functionality of the Whisper model.
-It can be used as a reference for using the `crispasr` library in other projects.
+It can be used as a reference for using the `stelnettts` library in other projects.
 
 ```
-./build/bin/crispasr -h
+./build/bin/stelnettts -h
 
-usage: ./build/bin/crispasr [options] file0 file1 ...
+usage: ./build/bin/stelnettts [options] file0 file1 ...
 supported audio formats: flac, mp3, ogg, wav
 
 options:

@@ -108,7 +108,7 @@ void kyutai_stt_result_ex_free(struct kyutai_stt_result_ex* r);
 // must be at least as long as the lookahead so the LM can flush the final word.
 /// Does this checkpoint support `lang` (ISO-639-1, lowercase)? Empty or "auto"
 /// always returns 1. stt-1b-en_fr supports en+fr; stt-2.6b-en is English-only,
-/// and CrispASR used to warn "English-only model" for both (#366).
+/// and StelnetTTS used to warn "English-only model" for both (#366).
 int kyutai_stt_supports_language(struct kyutai_stt_context* ctx, const char* lang);
 
 /// Comma-separated languages this checkpoint supports, for diagnostics.
@@ -137,7 +137,7 @@ struct kyutai_stt_result_ex* kyutai_stt_transcribe_ex(struct kyutai_stt_context*
 // re-runs `kyutai_stt_transcribe_ex` over the window every `step_ms`.
 // Each decode is bit-exact-batch for its window. Latency >= step_ms;
 // for audio longer than `length_ms` only the last `length_ms` is
-// transcribed (mirrors whisper's `crispasr_stream_*` semantics).
+// transcribed (mirrors whisper's `stelnettts_stream_*` semantics).
 struct kyutai_stt_stream;
 
 struct kyutai_stt_stream* kyutai_stt_stream_open(struct kyutai_stt_context* ctx, int step_ms, int length_ms);

@@ -3,9 +3,9 @@
 // Multilingual speech recognition (30 languages) using a 2D-conv subsampler
 // + 18-layer Whisper-style encoder + 28-layer Qwen3 0.6B LLM with audio-token
 // injection. Models are loaded from GGUF files produced by:
-//   `python models/convert-qwen3-asr-to-gguf.py --input <hf_dir> --output X.gguf`
+//   `python models/convert-cielvox2-asr-to-gguf.py --input <hf_dir> --output X.gguf`
 //
-// Reference: github.com/predict-woo/qwen3-asr.cpp (MIT) — used for
+// Reference: github.com/predict-woo/cielvox2-asr.cpp (MIT) — used for
 // architecture discovery only; no source vendored.
 
 #pragma once
@@ -57,7 +57,7 @@ void higgs_stt_set_max_new_tokens(struct higgs_stt_context* ctx, int n);
 // These let a test driver feed pre-computed mel features (matching the
 // PyTorch reference processor) and pull intermediate activations back out,
 // so we can diff against ground-truth .npy files dumped by
-// models/qwen3-asr-reference-dump.py.
+// models/cielvox2-asr-reference-dump.py.
 
 // Run the conv front-end only on a (n_mels, T_mel) mel spectrogram.
 // Output is a malloc'd float buffer of shape (num_chunks, T_chunk_out, 896)

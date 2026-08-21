@@ -650,7 +650,7 @@ struct context {
     // `EspeakG2P(language="de")`), so espeak's sentence-level de-stressing is
     // in the training data and the citation form is a spelling the model never
     // saw. That is source evidence, not a preference.
-    // CRISPASR_G2P_DE_UNSTRESS=0 restores the citation forms for A/B.
+    // STELNETTTS_G2P_DE_UNSTRESS=0 restores the citation forms for A/B.
     bool unstress_function_words = true;
 };
 

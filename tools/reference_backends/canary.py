@@ -2,7 +2,7 @@
 
 Loads `nvidia/canary-1b-v2` (or any compatible NeMo .nemo Canary
 checkpoint) via the NeMo toolkit and captures the mel features and the
-final encoder output for crispasr-diff comparison against the C++
+final encoder output for stelnettts-diff comparison against the C++
 runtime.
 
 Stages:

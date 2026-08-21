@@ -1,13 +1,13 @@
-# CrispASR and the EU AI Act
+# StelnetTTS and the EU AI Act
 
-CrispASR's position under **Regulation (EU) 2024/1689** (the EU AI Act): which
+StelnetTTS's position under **Regulation (EU) 2024/1689** (the EU AI Act): which
 obligations attach to this software, which ones this project discharges in code,
 which ones it cannot discharge for you, and where the enforcement actually lives
 so it doesn't rot.
 
 **This is not legal advice.** The classifications below are this project's
 reasoned position on its own software, not a regulator's ruling. If you deploy
-CrispASR commercially in the EU, get your own review — especially for the
+StelnetTTS commercially in the EU, get your own review — especially for the
 sections marked **deployer duty**.
 
 ---
@@ -18,11 +18,11 @@ The Act assigns duties by role, not by who wrote the code.
 
 | Role | Who that is here |
 |---|---|
-| **Provider** of the AI system | Whoever *places it on the market or puts it into service under their own name*. For the upstream models, that's OpenAI / NVIDIA / Mistral / Alibaba / … For a product you ship that embeds CrispASR, **that's you**. |
-| **Deployer** | Whoever uses an AI system under their own authority — you, running `crispasr` on real people's audio. Most Art. 50 duties land here. |
+| **Provider** of the AI system | Whoever *places it on the market or puts it into service under their own name*. For the upstream models, that's OpenAI / NVIDIA / Mistral / Alibaba / … For a product you ship that embeds StelnetTTS, **that's you**. |
+| **Deployer** | Whoever uses an AI system under their own authority — you, running `stelnettts` on real people's audio. Most Art. 50 duties land here. |
 | This project | Publishes a runtime under MIT. It is neither the provider of the underlying models nor the deployer of your pipeline. Its job is to make sure the runtime doesn't *stop* you complying, and to hand you the machinery you need. |
 
-The practical consequence: **CrispASR can mark its output, but it cannot inform
+The practical consequence: **StelnetTTS can mark its output, but it cannot inform
 your users.** Sections 5 and 6 split accordingly.
 
 ---
@@ -43,7 +43,7 @@ deferral moved only the *high-risk* regime: the Art. 5 prohibitions were never
 deferred, and neither were the Art. 50 duties for emotion recognition and
 deepfakes.
 
-CrispASR was placed on the market before 2 Aug 2026, so its Art. 50(2) marking
+StelnetTTS was placed on the market before 2 Aug 2026, so its Art. 50(2) marking
 deadline is 2 Dec 2026. It has marked its output since well before that.
 
 ---
@@ -51,7 +51,7 @@ deadline is 2 Dec 2026. It has marked its output since well before that.
 ## 3. The open-source exemption, and what it does not cover
 
 Art. 2(12) exempts AI systems released under free and open-source licences.
-CrispASR is MIT. That exemption is narrower than it sounds — it **does not
+StelnetTTS is MIT. That exemption is narrower than it sounds — it **does not
 apply** to:
 
 - **prohibited practices** (Art. 5),
@@ -70,10 +70,10 @@ obligation attaches to placing a high-risk system on the market at all.
 
 ## 4. Prohibited practices (Art. 5) — in force since Feb 2025
 
-| Practice | CrispASR |
+| Practice | StelnetTTS |
 |---|---|
 | **Art. 5(1)(f)** — inferring emotions of natural persons in **workplace or education** settings | **Capability removed entirely.** See §4.1. |
-| **Art. 5(1)(g)** — biometric categorisation to deduce race, political opinions, trade-union membership, religion, sex life or sexual orientation | Not implemented. CrispASR infers no protected attribute. See §4.3 on language ID. |
+| **Art. 5(1)(g)** — biometric categorisation to deduce race, political opinions, trade-union membership, religion, sex life or sexual orientation | Not implemented. StelnetTTS infers no protected attribute. See §4.3 on language ID. |
 | **Art. 5(1)(h)** — real-time remote biometric identification in publicly accessible spaces for law enforcement | Not implemented, and structurally prevented: the named-voiceprint path refuses to run in streaming/live mode at all. See [`diarization-speakers.md`](diarization-speakers.md). |
 | Art. 5(1)(a)–(e) — subliminal manipulation, exploitation of vulnerability, social scoring, crime prediction, untargeted facial scraping | Out of scope for a speech runtime. |
 
@@ -81,13 +81,13 @@ obligation attaches to placing a high-risk system on the market at all.
 
 SenseVoice-Small is upstream a multi-task model: its CTC head emits an
 `<|HAPPY|>` / `<|ANGRY|>` / `<|SAD|>` / `<|FEARFUL|>` / … marker alongside the
-transcript. Surfacing that value would make CrispASR an **emotion recognition
+transcript. Surfacing that value would make StelnetTTS an **emotion recognition
 system** under Art. 3(39) — "an AI system for the purpose of identifying or
 inferring emotions or intentions of natural persons on the basis of their
 biometric data."
 
 That is prohibited outright in workplace and education settings, and high-risk
-(Annex III(1)(c)) everywhere else. CrispASR's headline use cases include meeting
+(Annex III(1)(c)) everywhere else. StelnetTTS's headline use cases include meeting
 transcription with speaker diarization — which is *precisely* the workplace
 context Art. 5(1)(f) names.
 
@@ -106,9 +106,9 @@ of 54, that trade is not close.
 **What was removed** (audit of 2026-08-01):
 
 - `emotion` field dropped from `sensevoice_result` (`src/sensevoice.h`) and from
-  `crispasr_segment` (`examples/cli/crispasr_backend.h`).
+  `stelnettts_segment` (`examples/cli/stelnettts_backend.h`).
 - `"emotion"` key dropped from both JSON writers (`cli.cpp`,
-  `crispasr_output.cpp`).
+  `stelnettts_output.cpp`).
 - `sensevoice_transcribe()` now **strips the annotation prefix**. It previously
   returned it verbatim, so every session-ABI consumer — Python, Rust, Go, Dart,
   Java, C#, JS, WASM — received transcripts that literally began
@@ -118,7 +118,7 @@ of 54, that trade is not close.
 The marker is still *parsed*, because that is what keeps it out of the
 transcript text — the classified value is then discarded. `sensevoice_result.raw`
 still holds the unfiltered model output for byte-exact diff-harness parity
-against the FunASR reference; nothing in CrispASR surfaces it and nothing should.
+against the FunASR reference; nothing in StelnetTTS surfaces it and nothing should.
 
 Guarded by `tests/test-no-emotion-recognition.cpp` (unit tier — no model
 needed). SenseVoice keeps its ASR, its 50+ language coverage and its native
@@ -148,12 +148,12 @@ Stated explicitly so the next reader doesn't have to re-derive it:
   system, and §4.1's analysis becomes yours.
 - **`sensevoice_result.raw`.** Holds the unfiltered model output, marker
   included, for byte-exact diff-harness parity against the FunASR reference.
-  Nothing in CrispASR reads it and nothing should; it is a parity-testing field,
+  Nothing in StelnetTTS reads it and nothing should; it is a parity-testing field,
   not a workaround.
 
 ### 4.3 Why language identification is not biometric categorisation
 
-CrispASR infers the *language being spoken*, not a property of the speaker.
+StelnetTTS infers the *language being spoken*, not a property of the speaker.
 Art. 5(1)(g) bites on categorisation that *deduces* race, ethnic origin or
 another protected attribute. A language label is an attribute of the audio
 signal, and the mapping from language to any protected attribute is neither
@@ -165,7 +165,7 @@ problem. Don't.
 
 ---
 
-## 5. High-risk (Annex III) — CrispASR is designed to stay outside it
+## 5. High-risk (Annex III) — StelnetTTS is designed to stay outside it
 
 | Annex III point | Status |
 |---|---|
@@ -213,7 +213,7 @@ substantially altered audio marks it, by default, on every surface:
 | CLI (`--tts-output`, `--tts-stream`) | audio watermark + C2PA manifest |
 | HTTP server (`/v1/audio/speech`) | audio watermark + C2PA manifest |
 | Wyoming server (`--wyoming-port`) | audio watermark, always forced (raw PCM ⇒ no manifest possible) |
-| C ABI (`crispasr_session_synthesize`, `_streaming`, `_speech_to_speech`) | audio watermark |
+| C ABI (`stelnettts_session_synthesize`, `_streaming`, `_speech_to_speech`) | audio watermark |
 | WASM / JS (`ttsSynthesize`, `ttsSpeechToSpeech`) | audio watermark; `c2paSign()` available |
 | All language bindings | inherit the C ABI — they cannot reach an unmarked path by accident |
 
@@ -243,9 +243,9 @@ is forced back on.
 
 | Surface | Enforcement |
 |---|---|
-| CLI | `crispasr_enforce_cli_watermark_floor()` — per process, keyed on the output file extension. `--no-watermark` on a `.opus` output is overridden, with a printed notice. |
-| Server | `crispasr_marking::container_marking_for_format()` — per *response*, since `response_format` is chosen per request. `pcm` / `f32` / `aac` / `opus` and the raw streaming path force the watermark on. |
-| Wyoming | `crispasr_marking::decide_raw_surface()` — unconditional. The protocol emits raw PCM inside `audio-chunk` events, so no manifest is ever possible and no opt-out reaches it. |
+| CLI | `stelnettts_enforce_cli_watermark_floor()` — per process, keyed on the output file extension. `--no-watermark` on a `.opus` output is overridden, with a printed notice. |
+| Server | `stelnettts_marking::container_marking_for_format()` — per *response*, since `response_format` is chosen per request. `pcm` / `f32` / `aac` / `opus` and the raw streaming path force the watermark on. |
+| Wyoming | `stelnettts_marking::decide_raw_surface()` — unconditional. The protocol emits raw PCM inside `audio-chunk` events, so no manifest is ever possible and no opt-out reaches it. |
 
 The server's floor is per-response rather than per-process deliberately:
 mutating the process-global flag would race across `--server-workers` threads.
@@ -265,11 +265,11 @@ Any opt-out
 recording that the operator took the disclosure duty on themselves. The server
 refuses to *start* with an opt-out flag and no attestation.
 
-On the ABI, `crispasr_session_synthesize_raw()` returns unmarked PCM — for
+On the ABI, `stelnettts_session_synthesize_raw()` returns unmarked PCM — for
 callers that must resample, mix or concatenate *before* marking — and is
 hard-refused (returns `nullptr`) until
-`crispasr_session_accept_marking_responsibility()` has been called. Such callers
-must then mark the result themselves via `crispasr_watermark_embed()`.
+`stelnettts_session_accept_marking_responsibility()` has been called. Such callers
+must then mark the result themselves via `stelnettts_watermark_embed()`.
 
 **Not marked, and why.** Art. 50(2) exempts systems performing "an assistive
 function for standard editing" or not substantially altering the input data or
@@ -295,7 +295,7 @@ exposure at the latest**. The Commission's guidance is explicit that this needs 
 *visible or audible* label — a machine-readable watermark alone does not satisfy
 Art. 50(4).
 
-CrispASR gives you the audible label: voice-cloned output gets a **spoken
+StelnetTTS gives you the audible label: voice-cloned output gets a **spoken
 AI-disclosure prefix**, synthesized in a neutral voice, prepended to the clip.
 It is on by default and skipping it requires an attestation
 (`--no-spoken-disclaimer` + `--accept-marking-responsibility` at the CLI;
@@ -309,17 +309,17 @@ Wyoming carries the audible disclosure. For the same reason the *consent* gate
 there falls back to the operator's launch-time `--i-have-rights`: a clone
 requested from a server started without it is refused rather than served
 ungated, matching the HTTP surface's hard refusal when `consent_attestation` is
-missing. The rule is `crispasr_marking::decide_raw_surface()`, unit-tested in
+missing. The rule is `stelnettts_marking::decide_raw_surface()`, unit-tested in
 `tests/test-marking-policy.cpp`.
 
 **What counts as a clone.** Both this gate and the speaker-consent gate
 (`--i-have-rights` / `consent_attestation`) hang off one predicate, in
-`examples/cli/crispasr_voice_clone_policy.h`. A voice is a clone when:
+`examples/cli/stelnettts_voice_clone_policy.h`. A voice is a clone when:
 
 1. it is a **`.wav` reference** handed straight to a cloning backend;
 2. this run **baked it from a recording** — the TADA one-command flow bakes
    `ref.wav` into a temp `.gguf` and rewrites `--voice` to it; or
-3. the **pack declares** it (`crispasr.voice.cloned_from_recording`), which the
+3. the **pack declares** it (`stelnettts.voice.cloned_from_recording`), which the
    bakers stamp into any pack they derive from a real recording.
 
 That predicate used to be spelled *"the path ends in `.wav`"*, inline, in two
@@ -334,15 +334,15 @@ someone's recording is exactly as much a deepfake as the recording. The suffix
 is an implementation detail.
 
 4. its **`general.architecture`** names a producer that only ever bakes from a
-   recording (`chatterbox-voice`, `qwen3tts.voicepack`, `cosyvoice3-voices`) —
+   recording (`chatterbox-voice`, `cielvox2tts.voicepack`, `cosyvoice3-voices`) —
    the legacy fallback for packs made before the stamp existed, which cannot be
    retro-stamped once published; or
 5. it is an **entry in a multi-voice bank** that says so —
-   `crispasr.voice.<name>.cloned_from_recording`.
+   `stelnettts.voice.<name>.cloned_from_recording`.
 
 **Case 5 is the one a file-shaped predicate cannot see.** cosyvoice3 keeps every
 voice inside one `voices.gguf`, discovered as a sibling of the model (or
-`CRISPASR_COSYVOICE3_VOICES_PATH`), and `--voice` selects an entry *by name*. So
+`STELNETTTS_COSYVOICE3_VOICES_PATH`), and `--voice` selects an entry *by name*. So
 `--voice fleurs-en` named no file, `resolve_voice_path()` had nothing to
 resolve, no metadata was read, and a zero-shot voice clone scored as a preset —
 on the CLI, the server, Wyoming and the ABI at once. `--voice victim.wav` on the
@@ -357,13 +357,13 @@ undisclosed. cosyvoice3 is the only one today (`rg '_n_voices\(|init_voices'`).
 A bank is not all-or-nothing, hence the per-entry key: the default manifest
 bakes upstream's `asset/zero_shot_prompt.wav` and a user's manifest adds their
 own recordings, into the same file. A bank-wide flag would have to gate both or
-free both. The `crispasr.voice.bank_stamped` sentinel is what lets an *absent*
+free both. The `stelnettts.voice.bank_stamped` sentinel is what lets an *absent*
 per-voice key mean "preset" instead of "baked before the stamp existed" — only
 bundles without it fall back to the producer architecture.
 
 Note the deliberate difference from the tada-ref case: cosyvoice3 bundles gate
 by architecture even though the built-in manifest is upstream's asset, because
-CrispASR ships no cosyvoice3 bank and auto-downloads none. There is no shipped
+StelnetTTS ships no cosyvoice3 bank and auto-downloads none. There is no shipped
 preset to break — the operator bakes the bundle themselves, which is the moment
 to ask for the attestation.
 
@@ -376,7 +376,7 @@ every documented example. So an unrecognised architecture stays a preset.
 sentence above is a true statement about *this project's conversion step* and
 says nothing about whose voice the upstream voicepack was built from.
 
-`crispasr.reference` (TADA) is deliberately **not** on the list: the shipped
+`stelnettts.reference` (TADA) is deliberately **not** on the list: the shipped
 `tada-ref-<lang>` packs and user `--make-ref` output share it, and gating the
 shipped ones would break `-l de` auto-download. Those are covered by the stamp
 going forward, so **a TADA reference baked before the stamp reads as a
@@ -384,7 +384,7 @@ preset** — re-bake it to gate it. Cases (1) and (2) never depend on the stamp.
 
 Every producer that consumes a recording now gates and stamps at bake time:
 `--make-ref`, `models/bake-chatterbox-voice-from-wav.py`,
-`models/bake-qwen3-tts-voice-pack.py`,
+`models/bake-cielvox2-tts-voice-pack.py`,
 `models/convert-tada-ref-to-gguf.py`,
 `models/convert-cosyvoice3-voices-to-gguf.py` and
 `models/convert-kugelaudio-voice-to-gguf.py` all require `--i-have-rights`.
@@ -437,15 +437,15 @@ The ABI gives you the pieces instead:
 
 | Call | Use |
 |---|---|
-| `crispasr_session_disclaimer_text()` | The canonical string, identical to the one the CLI speaks. Render it as a **visible** label — Art. 50(5) requires disclosures to meet accessibility requirements, and audio-only is not accessible to a deaf user. |
-| `crispasr_session_get_disclaimer_pcm()` | The disclosure synthesized in the neutral voice, for you to prepend. **Must be called before `set_voice()`** installs a clone; it returns `NULL` afterwards rather than risk the cloned-voice failure above. |
+| `stelnettts_session_disclaimer_text()` | The canonical string, identical to the one the CLI speaks. Render it as a **visible** label — Art. 50(5) requires disclosures to meet accessibility requirements, and audio-only is not accessible to a deaf user. |
+| `stelnettts_session_get_disclaimer_pcm()` | The disclosure synthesized in the neutral voice, for you to prepend. **Must be called before `set_voice()`** installs a clone; it returns `NULL` afterwards rather than risk the cloned-voice failure above. |
 
 Supported order: open session → `get_disclaimer_pcm()` → `set_voice()` →
 `synthesize()` → prepend.
 
 Synthesizing with a clone voice and no attestation logs a one-time `[MARKING]`
 line naming the duty. It does not refuse —
-`crispasr_session_accept_marking_responsibility()` silences it.
+`stelnettts_session_accept_marking_responsibility()` silences it.
 
 **Cloning consent is not gated on the ABI.** The CLI (`--i-have-rights`) and the
 server (`consent_attestation`) both hard-refuse without it; the ABI logs a
@@ -494,8 +494,8 @@ disease. So `unknown` warns once per model, names what to do about it, and does
 not force a disclosure — a question handed to the deployer, not a verdict.
 
 Resolution is most-specific-first: `--speaker-identity` /
-`"speaker_identity"` / `crispasr_session_set_speaker_identity()`, then the
-pack's or bank entry's `crispasr.voice.speaker_identity`, then the backend's
+`"speaker_identity"` / `stelnettts_session_set_speaker_identity()`, then the
+pack's or bank entry's `stelnettts.voice.speaker_identity`, then the backend's
 `declared_speaker_identity()`, then `unknown`. The override moves the answer in
 **both** directions on purpose — someone who knows a `synthetic` label is wrong
 has to be able to say so, or the flag is only usable for adding duties and gets
@@ -504,10 +504,10 @@ ignored for the other half.
 **The verdicts so far.** The sibling project CrispTTS ran the model-card
 exercise over its own 27 entries (13 `real_person` / 7 `synthetic` /
 7 `unknown`). Its findings were ported here, model by model, in
-`examples/cli/crispasr_speaker_identity_models.h` — one reviewable table with
+`examples/cli/stelnettts_speaker_identity_models.h` — one reviewable table with
 the evidence beside each answer, rather than 50 adapter overrides:
 
-Every TTS backend CrispASR ships has now been checked against its provider's own
+Every TTS backend StelnetTTS ships has now been checked against its provider's own
 documentation. **The backlog is empty**; what remains at `unknown` is unknown
 from evidence of absence, not from not having looked.
 
@@ -546,8 +546,8 @@ the pack rather than the run.
 
 **Two of CrispTTS's verdicts still do not port**, because they are different
 weights reached through a different handler — checking that was the point.
-`fastpitch` (CrispASR ships NVIDIA's English LJSpeech model, not the German NeMo
-one) and `speecht5` (CrispASR ships the base model, whose speaker the operator
+`fastpitch` (StelnetTTS ships NVIDIA's English LJSpeech model, not the German NeMo
+one) and `speecht5` (StelnetTTS ships the base model, whose speaker the operator
 supplies) were each re-researched from scratch. FastPitch landed on
 `real_person` anyway, by a different route.
 
@@ -555,7 +555,7 @@ Worth noting for anyone tempted to shortcut this: of every model whose
 provenance has now been resolved across both projects, **the ones that resolved
 away from `unknown` went overwhelmingly to `real_person`.** Two donors — Linda
 Johnson (LJSpeech) and Thorsten Müller — each turn up in *two* different
-CrispASR backends by independent routes. Guessing "synthetic" would have been
+StelnetTTS backends by independent routes. Guessing "synthetic" would have been
 wrong nearly every time.
 
 One near-miss worth recording: a web summary described Bark's presets as "fully
@@ -565,9 +565,9 @@ direction where being wrong removes a disclosure.
 
 **Two sources, and how they combine.**
 
-1. **The stamp** — `crispasr.voice.speaker_identity` in the checkpoint's or
+1. **The stamp** — `stelnettts.voice.speaker_identity` in the checkpoint's or
    pack's own GGUF metadata, read by
-   `crispasr_voice::read_model_speaker_identity()` /
+   `stelnettts_voice::read_model_speaker_identity()` /
    `read_pack_provenance()`. A stamped file answers for itself and survives
    being renamed, re-quantised or moved. Written either at conversion time
    (`models/convert-*.py --speaker-identity`) or, for anything already
@@ -593,12 +593,12 @@ direction where being wrong removes a disclosure.
    ./models/stamp-published-voices.sh /path/to/gguf-dir
    ```
 
-   It asks `crispasr --print-speaker-identity` for each file — the same
+   It asks `stelnettts --print-speaker-identity` for each file — the same
    resolution the disclosure gate runs — and **skips anything that resolves to
    `unknown`** rather than guessing. It never touches the network; re-uploading
    is a separate, deliberate step.
 
-   `crispasr --print-speaker-identity FILE` is also the answer to "will this
+   `stelnettts --print-speaker-identity FILE` is also the answer to "will this
    disclose?": it prints `real_person` / `synthetic` / `unknown` and exits 3 on
    unknown.
 
@@ -607,7 +607,7 @@ direction where being wrong removes a disclosure.
    `convert-bananamind-tts`, `convert-parler`, `convert-csm`). They share one
    definition of the flag and the key — `models/_speaker_identity_arg.py` —
    because seven hand-written copies would be seven chances for one to drift
-   from `crispasr_voice::speaker_identity_key()`, and a drift **fails open**:
+   from `stelnettts_voice::speaker_identity_key()`, and a drift **fails open**:
    the stamp is simply never found and nothing errors.
 2. **The table** — the legacy fallback for everything published before the
    stamp existed, matching on the checkpoint file name.
@@ -640,8 +640,8 @@ silent and it is wrong in the direction that removes a disclosure. Note that of
 CrispTTS's 13 resolved-away-from-unknown models, *all* went to `real_person` —
 the convenient guess would have been wrong every time.
 
-Enforcement: `examples/cli/crispasr_speaker_identity.h` (mechanism) +
-`crispasr_speaker_identity_models.h` (verdicts) +
+Enforcement: `examples/cli/stelnettts_speaker_identity.h` (mechanism) +
+`stelnettts_speaker_identity_models.h` (verdicts) +
 `tests/test-speaker-identity.cpp`, which pins each verdict so flipping one is a
 failing test somebody has to justify; wiring guarded by
 `tests/test-compliance-wiring.cpp`.
@@ -650,12 +650,12 @@ failing test somebody has to justify; wiring guarded by
 
 **Deployer duty.** If your system interacts directly with natural persons, tell
 them they're talking to an AI, unless it's obvious to a reasonably well-informed
-person. A CLI transcription tool is obvious. A voice agent built on CrispASR's
+person. A CLI transcription tool is obvious. A voice agent built on StelnetTTS's
 S2S backends is not — that one is on you.
 
 ### 6.4 Art. 50(3) — emotion recognition / biometric categorisation
 
-Not applicable: CrispASR implements neither (§4.1, §4.3). Had the emotion field
+Not applicable: StelnetTTS implements neither (§4.1, §4.3). Had the emotion field
 been kept, every deployer would have inherited a duty to inform exposed persons
 of its operation, on every recording.
 
@@ -666,7 +666,7 @@ distinguishable, and conform to applicable accessibility requirements. The spoke
 disclaimer is audible; if your product has a visual surface, mirror it there —
 audio-only disclosure is not accessible to a deaf user.
 
-### 6.6 Synthetic *text* — the one Art. 50(2) surface CrispASR does not mark
+### 6.6 Synthetic *text* — the one Art. 50(2) surface StelnetTTS does not mark
 
 Art. 50(2) covers systems generating synthetic "audio, image, video **or text**".
 Everything above is about audio, because that is what this project is for. Two
@@ -687,8 +687,8 @@ summary of the previous audit:
 | Surface | Art. 50(2) marking | Art. 50(1) disclosure |
 |---|---|---|
 | `POST /v1/chat/completions` (`--chat-model`) | `X-Crispasr-Ai-Generated: true` + `X-Crispasr-Ai-Disclosure` response headers, on both the buffered and SSE branches | header carries the text; showing it is the client's job |
-| `crispasr-chat` (installed binary, interactive REPL + one-shot) | not marked — plain text on stdout | prints the disclosure to stderr at startup, both modes |
-| `crispasr_chat_*` C ABI (`include/crispasr_chat.h`) | **yours** | `crispasr_chat_ai_disclosure_text()` |
+| `stelnettts-chat` (installed binary, interactive REPL + one-shot) | not marked — plain text on stdout | prints the disclosure to stderr at startup, both modes |
+| `stelnettts_chat_*` C ABI (`include/stelnettts_chat.h`) | **yours** | `stelnettts_chat_ai_disclosure_text()` |
 | `CrispasrChatSession` (Flutter, `chat.dart`) | **yours** | `CrispasrChatSession.aiDisclosureText()` |
 
 The chat capability is opt-in everywhere — the endpoint exists only with
@@ -712,7 +712,7 @@ meet accessibility requirements.
 The Flutter binding is why Art. 50(1) is not theoretical here. §6.3's answer —
 "a CLI transcription tool is obvious to a reasonably well-informed person" —
 does not carry to a chat bubble in a mobile app, and it is exactly there that
-nothing was said. `crispasr-chat` discloses anyway, despite a terminal launched
+nothing was said. `stelnettts-chat` discloses anyway, despite a terminal launched
 with `-m model.gguf` being about as obvious as it gets: it ships as the
 reference for downstream wrappers, and a reference that omits the disclosure
 teaches every wrapper to omit it.
@@ -748,8 +748,8 @@ is what joins them. On the server a per-request `req` id does the same job acros
 concurrent requests, and is returned to the client as `X-Crispasr-Request-Id`.
 So a disputed clip can be walked back to the attestation that authorised it.
 
-**It is the operator's artefact, not ours.** CrispASR is a tool; the operator is
-the controller. `--consent-log <path>` (or `CRISPASR_CONSENT_LOG`) appends every
+**It is the operator's artefact, not ours.** StelnetTTS is a tool; the operator is
+the controller. `--consent-log <path>` (or `STELNETTTS_CONSENT_LOG`) appends every
 record as JSON Lines in addition to stderr, and is **off by default** — turning
 on a persistent record of who attested what is the operator's decision, and it
 is theirs to retain and erase.
@@ -764,7 +764,7 @@ and any file it writes — no in-process mechanism defends against the party it 
 recording. Real tamper-resistance is a storage decision: append-only
 permissions, object-lock/WORM, or shipping the sink off-box to something the
 operator cannot rewrite. The sibling projects hash-chain their consent logs;
-CrispASR deliberately does not, because chaining protects the *sequence* of
+StelnetTTS deliberately does not, because chaining protects the *sequence* of
 records and the first thing to fix was that each record was unbound to any
 audio. Chaining unbound assertions yields a perfectly verifiable log that proves
 nothing. See `PLAN.md` for the full reasoning.
@@ -846,7 +846,7 @@ on directly-measured tonal signals here, neither setting false-positives at all,
 though the term does widen the margin (a three-tone reads 0.38 -> 0.28 against a
 0.65 bar) and marked tones still verify at 0.97-0.9995.
 
-`CRISPASR_WATERMARK_DETECT=sign` restores the old statistic for A/B and for
+`STELNETTTS_WATERMARK_DETECT=sign` restores the old statistic for A/B and for
 re-reading a score the way an older release reported it. The p-value is printed
 only on that path — the per-frame score is a calibrated confidence with no bin
 count, so quoting a binomial tail over it would invent an `n` that was never
@@ -854,8 +854,8 @@ scored.
 
 #### What is still true
 
-* **The embed is unchanged.** Audio marked by any earlier CrispASR release —
-  and by CrispTTS and Susurrus, which share the comb — still verifies. Changing
+* **The embed is unchanged.** Audio marked by any earlier StelnetTTS release —
+  and by CrispTTS and StelnetVox, which share the comb — still verifies. Changing
   the embed to suit a detector would break that, and it is a release-blocking
   property.
 * **A negative result is not evidence the audio is human-made.** It is evidence
@@ -878,7 +878,7 @@ scored.
 ## 7. General-purpose AI models (Ch. V)
 
 This project publishes quantized GGUF conversions of third-party models to
-Hugging Face (`cstr/*-GGUF`). That does **not** make it a GPAI provider:
+Hugging Face (`Xenna/*-GGUF`). That does **not** make it a GPAI provider:
 
 - Most of the models are narrow speech models — ASR, TTS, diarization — and do
   not display the "significant generality" Art. 3(63) requires.
@@ -908,11 +908,11 @@ original providers, not with a downstream requantizer. Model cards in
 | **Preset voice that is a real person** | **Art. 50(2) + 50(4)** — a deep fake without being a clone | `speaker_identity=real_person` → spoken disclaimer, **no** consent gate; `test-speaker-identity` (§6.2a) |
 | Preset voice, provenance unresearched | Art. 50(2) | `unknown` — warns once per model, names the fix; **not** treated as synthetic |
 | Multi-voice **banks** (cosyvoice3 `voices.gguf`) | Every entry is a baked clone | `voice_bank_path()` on all 4 surfaces; per-entry stamp; `test-compliance-wiring` |
-| Voice-pack baking (`--make-ref` + all 5 Python bakers) | The cloning step itself | `--i-have-rights`; stamps `crispasr.voice.cloned_from_recording` |
+| Voice-pack baking (`--make-ref` + all 5 Python bakers) | The cloning step itself | `--i-have-rights`; stamps `stelnettts.voice.cloned_from_recording` |
 | Voice upload (`POST /v1/voices`) | Enrollment = the cloning step | `consent_attestation`; `[CONSENT] scope=voice-upload` |
 | `--detect-watermark` | Diagnostic, **not** a gate | per-frame *t* + decoy specificity; "DETECTED" needs both bars, confidence > 0.65 (§6.7) |
 | Speech restoration / upscaling / S2S | **Art. 50(2)** — marked | watermark via S2S path, same per-response floor |
-| **LLM chat** (endpoint, `crispasr-chat`, C ABI, Flutter) | **Art. 50(2) synthetic text + 50(1) interaction** | response headers + `crispasr_chat_ai_disclosure_text()`; **text marking stays a weak, partly deployer duty (§6.6)** |
+| **LLM chat** (endpoint, `stelnettts-chat`, C ABI, Flutter) | **Art. 50(2) synthetic text + 50(1) interaction** | response headers + `stelnettts_chat_ai_disclosure_text()`; **text marking stays a weak, partly deployer duty (§6.6)** |
 | Session-scoped diarization | Not biometric identification | embeddings discarded, no names |
 | Named voiceprint profiles | Kept outside Annex III(1)(a) | `--speaker-db-consent`, closed roster, offline-only |
 | Voice-based emotion inference | Art. 5(1)(f) / Annex III(1)(c) | **removed**; `test-no-emotion-recognition` |
@@ -922,17 +922,17 @@ original providers, not with a downstream requantizer. Model cards in
 
 ## 9. Deployer checklist
 
-Things CrispASR cannot do for you:
+Things StelnetTTS cannot do for you:
 
-- [ ] **Art. 50(4)** — show or speak an AI-generated label for any synthetic voice you publish. Default-on at the CLI and server; **your job** on the C ABI, WASM and bindings, using `crispasr_session_disclaimer_text()` / `crispasr_session_get_disclaimer_pcm()` (§6.2).
-- [ ] **Art. 50(1)** — disclose AI interaction in conversational products. All four chat surfaces are ones (§6.6). Use `crispasr_chat_ai_disclosure_text()` / `CrispasrChatSession.aiDisclosureText()` and render it **visibly**; the ABI and Flutter cannot show it for you.
+- [ ] **Art. 50(4)** — show or speak an AI-generated label for any synthetic voice you publish. Default-on at the CLI and server; **your job** on the C ABI, WASM and bindings, using `stelnettts_session_disclaimer_text()` / `stelnettts_session_get_disclaimer_pcm()` (§6.2).
+- [ ] **Art. 50(1)** — disclose AI interaction in conversational products. All four chat surfaces are ones (§6.6). Use `stelnettts_chat_ai_disclosure_text()` / `CrispasrChatSession.aiDisclosureText()` and render it **visibly**; the ABI and Flutter cannot show it for you.
 - [ ] **Art. 50(2) for text** — the chat endpoint sends `X-Crispasr-Ai-Generated`, but a client that drops the header publishes unmarked text, and the C ABI and Flutter mark nothing. Marking what you publish is yours (§6.6).
-- [ ] **Re-bake cosyvoice3 voice banks** — a bundle baked before `crispasr.voice.bank_stamped` gates every entry by producer architecture, which is conservative but blunt. Re-bake with the current script for per-entry accuracy (§6.2).
+- [ ] **Re-bake cosyvoice3 voice banks** — a bundle baked before `stelnettts.voice.bank_stamped` gates every entry by producer architecture, which is conservative but blunt. Re-bake with the current script for per-entry accuracy (§6.2).
 - [ ] **`POST /v1/voices` now requires `consent_attestation`** — a breaking API change. Clients that enroll voices need the extra form field.
-- [ ] **Answer the `speaker_identity` question for the presets you ship** (§6.2a). `piper` and `kartoffel-orpheus-de-natural` now disclose by default; anything CrispASR has not researched warns once per model. If the preset voice you use is an identifiable person, pass `--speaker-identity real_person` (or `"speaker_identity"` / `crispasr_session_set_speaker_identity()`). Do not silence the warning with `synthetic` unless you have read the model card — every model CrispTTS resolved away from `unknown` turned out to be a real person.
+- [ ] **Answer the `speaker_identity` question for the presets you ship** (§6.2a). `piper` and `kartoffel-orpheus-de-natural` now disclose by default; anything StelnetTTS has not researched warns once per model. If the preset voice you use is an identifiable person, pass `--speaker-identity real_person` (or `"speaker_identity"` / `stelnettts_session_set_speaker_identity()`). Do not silence the warning with `synthetic` unless you have read the model card — every model CrispTTS resolved away from `unknown` turned out to be a real person.
 - [ ] **These now carry a spoken AI disclosure where they previously did not**: `piper` (all voices), `fastpitch`, `bananamind-tts`, `parler-tts`, `orpheus` + `kartoffel-orpheus-de-natural`, and the kokoro packs `df_eva` / `dm_bernd`. If you post-process or measure that audio, strip it with `--no-spoken-disclaimer --accept-marking-responsibility` rather than letting the prefix skew your results.
 - [ ] **Stamp anything you publish yourself** with `models/stamp-speaker-identity.py` (§6.2a) so the answer travels with the file instead of depending on its name.
-- [ ] **Re-bake old TADA references** — `chatterbox-voice` and `qwen3tts.voicepack` legacy packs are caught by architecture, but a `crispasr.reference` pack baked before the stamp reads as a preset (§6.2).
+- [ ] **Re-bake old TADA references** — `chatterbox-voice` and `cielvox2tts.voicepack` legacy packs are caught by architecture, but a `stelnettts.reference` pack baked before the stamp reads as a preset (§6.2).
 - [ ] **Don't treat `--detect-watermark` as proof either way** — it is a weak diagnostic with a stated error rate, not evidence of provenance (§6.7).
 - [ ] **Art. 4** — ensure the people operating the system have adequate AI literacy.
 - [ ] **GDPR** — voice is personal data, and biometric data when used to identify. The named-voiceprint path is Art. 9 special-category: explicit consent, retention and deletion policy, transparency. Applies independently of the AI Act.
@@ -951,26 +951,26 @@ rots:
 
 | Concern | File |
 |---|---|
-| Spoken-disclaimer opt-out policy | `examples/cli/crispasr_marking_policy.h` (+ `tests/test-marking-policy.cpp`) |
-| **What counts as a voice clone** | `examples/cli/crispasr_voice_clone_policy.h` (pure) + `crispasr_voice_provenance.h` (resolve + read the stamp) (+ `tests/test-voice-clone-policy.cpp`) |
-| **Whose voice a PRESET voice is** | `examples/cli/crispasr_speaker_identity.h` (mechanism, pure) (+ `tests/test-speaker-identity.cpp`) |
-| **Which model is whose voice** | `examples/cli/crispasr_speaker_identity_models.h` — the researched verdicts, with evidence and an OPEN QUESTIONS backlog. Pinned by `test-speaker-identity.cpp`, so flipping one is a failing test |
+| Spoken-disclaimer opt-out policy | `examples/cli/stelnettts_marking_policy.h` (+ `tests/test-marking-policy.cpp`) |
+| **What counts as a voice clone** | `examples/cli/stelnettts_voice_clone_policy.h` (pure) + `stelnettts_voice_provenance.h` (resolve + read the stamp) (+ `tests/test-voice-clone-policy.cpp`) |
+| **Whose voice a PRESET voice is** | `examples/cli/stelnettts_speaker_identity.h` (mechanism, pure) (+ `tests/test-speaker-identity.cpp`) |
+| **Which model is whose voice** | `examples/cli/stelnettts_speaker_identity_models.h` — the researched verdicts, with evidence and an OPEN QUESTIONS backlog. Pinned by `test-speaker-identity.cpp`, so flipping one is a failing test |
 | **Are the gates actually wired up?** | `tests/test-compliance-wiring.cpp` — source-level, guards the *joins*: every surface's `classify_voice` call, every baker's gate + stamp, the upload gate, binding watermark strength, the chat disclosures |
-| **Multi-voice banks** | `CrispasrBackend::voice_bank_path()` (`crispasr_backend.h`), overridden by `crispasr_backend_cosyvoice3.cpp`; read by `crispasr_voice::read_bank_provenance()`; `s->cosyvoice3_voices_path` on the ABI |
-| Chat / synthetic-text disclosure | `crispasr_chat_ai_disclosure_text()` in `src/chat.cpp`; call sites in `crispasr_chat_main.cpp`, `crispasr_server.cpp` (`X-Crispasr-Ai-*`), `flutter/crispasr/lib/src/chat.dart` |
-| Voice upload consent gate | `POST /v1/voices` in `crispasr_server.cpp` (`consent_attestation`, `[CONSENT] scope=voice-upload`) |
-| Which containers carry a manifest | `crispasr_marking::container_marking_for_format()` in `crispasr_marking_policy.h` |
-| Voice-pack clone provenance stamp | written by `tada_encoder_write_ref_gguf()` + all 3 `models/*` voice bakers; read by `crispasr_voice::read_pack_provenance()` |
-| Legacy pack classification by producer | `crispasr_voice::architecture_is_recording_derived()` |
-| Watermark score → p-value / verdict | `examples/cli/crispasr_watermark_stats.h` (+ `tests/test-voice-clone-policy.cpp`) |
-| Watermark embed / detect | `examples/cli/crispasr_watermark.h`, `crispasr_watermark_dispatch.h` |
-| Watertight CLI marking floor | `crispasr_enforce_cli_watermark_floor()` in `examples/cli/crispasr_run.cpp` |
-| **Container-less surfaces (Wyoming)** | `crispasr_marking::decide_raw_surface()` in `crispasr_marking_policy.h` (+ `tests/test-marking-policy.cpp`); call site in `examples/cli/wyoming.cpp` (+ `tests/test-wyoming-marking.py`) |
-| C2PA signing | `src/core/crispasr_c2pa.h`, `third_party/c2pa-audio` |
-| ABI marking attestation | `crispasr_session_accept_marking_responsibility()` in `src/crispasr_c_api.cpp` |
-| Voice-clone consent gate | `--i-have-rights` (`crispasr_run.cpp`); `consent_attestation` (`crispasr_server.cpp`); `[CONSENT]` audit line only on the ABI |
-| ABI clone disclosure | `crispasr_session_{disclaimer_text,get_disclaimer_pcm}()` (+ `tests/test-abi-clone-disclosure.cpp`) |
-| Speaker-DB consent gate | `src/speaker_db.cpp`, `crispasr_speaker_db_open/enroll2` |
+| **Multi-voice banks** | `CrispasrBackend::voice_bank_path()` (`stelnettts_backend.h`), overridden by `stelnettts_backend_cosyvoice3.cpp`; read by `stelnettts_voice::read_bank_provenance()`; `s->cosyvoice3_voices_path` on the ABI |
+| Chat / synthetic-text disclosure | `stelnettts_chat_ai_disclosure_text()` in `src/chat.cpp`; call sites in `stelnettts_chat_main.cpp`, `stelnettts_server.cpp` (`X-Crispasr-Ai-*`), `flutter/stelnettts/lib/src/chat.dart` |
+| Voice upload consent gate | `POST /v1/voices` in `stelnettts_server.cpp` (`consent_attestation`, `[CONSENT] scope=voice-upload`) |
+| Which containers carry a manifest | `stelnettts_marking::container_marking_for_format()` in `stelnettts_marking_policy.h` |
+| Voice-pack clone provenance stamp | written by `tada_encoder_write_ref_gguf()` + all 3 `models/*` voice bakers; read by `stelnettts_voice::read_pack_provenance()` |
+| Legacy pack classification by producer | `stelnettts_voice::architecture_is_recording_derived()` |
+| Watermark score → p-value / verdict | `examples/cli/stelnettts_watermark_stats.h` (+ `tests/test-voice-clone-policy.cpp`) |
+| Watermark embed / detect | `examples/cli/stelnettts_watermark.h`, `stelnettts_watermark_dispatch.h` |
+| Watertight CLI marking floor | `stelnettts_enforce_cli_watermark_floor()` in `examples/cli/stelnettts_run.cpp` |
+| **Container-less surfaces (Wyoming)** | `stelnettts_marking::decide_raw_surface()` in `stelnettts_marking_policy.h` (+ `tests/test-marking-policy.cpp`); call site in `examples/cli/wyoming.cpp` (+ `tests/test-wyoming-marking.py`) |
+| C2PA signing | `src/core/stelnettts_c2pa.h`, `third_party/c2pa-audio` |
+| ABI marking attestation | `stelnettts_session_accept_marking_responsibility()` in `src/stelnettts_c_api.cpp` |
+| Voice-clone consent gate | `--i-have-rights` (`stelnettts_run.cpp`); `consent_attestation` (`stelnettts_server.cpp`); `[CONSENT]` audit line only on the ABI |
+| ABI clone disclosure | `stelnettts_session_{disclaimer_text,get_disclaimer_pcm}()` (+ `tests/test-abi-clone-disclosure.cpp`) |
+| Speaker-DB consent gate | `src/speaker_db.cpp`, `stelnettts_speaker_db_open/enroll2` |
 | Emotion-recognition exclusion | `tests/test-no-emotion-recognition.cpp` |
 
 Two more rules earned by the second audit of 2026-08-02, alongside the four
@@ -989,7 +989,7 @@ below:
    route by which a voice reaches a backend — an entry in a bundle, an env var,
    a config file — is invisible to it until it is plumbed in, and returns
    "preset" in the meantime. cosyvoice3's `voices.gguf` is the found case;
-   `CRISPASR_KOKORO_VOICE_GGUF` is the shape of the next one. When adding a
+   `STELNETTTS_KOKORO_VOICE_GGUF` is the shape of the next one. When adding a
    backend, ask how a voice gets in, not just what `--voice` looks like.
 
 A fourth rule earned by the first audit of 2026-08-02, alongside the three

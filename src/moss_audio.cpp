@@ -5,7 +5,7 @@
 // See moss_audio.h for the full architecture description.
 
 #include "moss_audio.h"
-#include "core/crispasr_env.h"
+#include "core/stelnettts_env.h"
 #include "core/win_compat.h"
 
 #include "core/beam_decode.h"
@@ -49,7 +49,7 @@
 static bool moss_audio_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_MOSS_AUDIO_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_MOSS_AUDIO_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -237,8 +237,8 @@ struct moss_audio_context {
     // the encoder falls back to the manual mul_mat + soft_max_ext + mul_mat path
     // (mathematically identical, same op sequence the LLM decode runs safely on
     // Vulkan). Baked into the §176s cached encoder graph at first build.
-    //   CRISPASR_MOSS_AUDIO_ENC_FLASH=1  → force flash_attn_ext everywhere
-    //   CRISPASR_MOSS_AUDIO_ENC_MANUAL=1 → force the manual path everywhere
+    //   STELNETTTS_MOSS_AUDIO_ENC_FLASH=1  → force flash_attn_ext everywhere
+    //   STELNETTTS_MOSS_AUDIO_ENC_MANUAL=1 → force the manual path everywhere
     bool enc_use_flash = true;
 };
 
@@ -494,7 +494,7 @@ static bool moss_audio_load_model(moss_audio_model& model, moss_audio_vocab& voc
 }
 
 // ===========================================================================
-// FFT (same as qwen3_asr — needed for Whisper-style mel)
+// FFT (same as cielvox2_asr — needed for Whisper-style mel)
 // ===========================================================================
 
 static void moss_audio_dft(const float* in, int N, float* out) {
@@ -1589,11 +1589,11 @@ static float* moss_audio_run_llm_prefill_with_deepstack(moss_audio_context* ctx,
 }
 
 // ===========================================================================
-// Tokenizer (GPT-2 byte-level BPE via core_bpe, same as qwen3_asr)
+// Tokenizer (GPT-2 byte-level BPE via core_bpe, same as cielvox2_asr)
 // ===========================================================================
 
 #include "core/bpe.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (#214)
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (#214)
 #include "core/ggml_cpu_backend.h"
 
 extern "C" int moss_audio_tokenize(struct moss_audio_context* ctx, const char* text, int32_t* out_tokens,
@@ -1679,10 +1679,10 @@ extern "C" float* moss_audio_embed_tokens(struct moss_audio_context* ctx, const 
     const int d = (int)ctx->model.hparams.llm_hidden;
 
     // Fast path: single-token lookup avoids graph build + sched overhead.
-    // Gated by CRISPASR_MOSS_AUDIO_EMBED_FAST (default ON).
+    // Gated by STELNETTTS_MOSS_AUDIO_EMBED_FAST (default ON).
     static int use_fast = -1;
     if (use_fast < 0) {
-        const char* e = std::getenv("CRISPASR_MOSS_AUDIO_EMBED_FAST");
+        const char* e = std::getenv("STELNETTTS_MOSS_AUDIO_EMBED_FAST");
         use_fast = (!e || *e != '0') ? 1 : 0;
     }
     if (n_tokens == 1 && use_fast && ctx->model.llm.embed_w) {
@@ -1897,7 +1897,7 @@ static char* moss_audio_process_impl(struct moss_audio_context* ctx, const float
     // 1. Mel spectrogram (or load from file for debugging)
     int n_mels = 0, T_mel = 0;
     float* mel = nullptr;
-    const char* mel_override = crispasr_env::get("CRISPASR_MOSS_AUDIO_MEL_FILE");
+    const char* mel_override = stelnettts_env::get("STELNETTTS_MOSS_AUDIO_MEL_FILE");
     if (mel_override) {
         // Load pre-computed mel from raw F32 file (n_mels × T row-major)
         FILE* mf = fopen(mel_override, "rb");
@@ -2268,7 +2268,7 @@ extern "C" struct moss_audio_context* moss_audio_init_from_file(const char* path
     ctx->model_path = path_model;
 
     // Backend selection
-    ctx->backend = params.use_gpu ? crispasr_init_gpu_backend() : core_cpu_backend::init();
+    ctx->backend = params.use_gpu ? stelnettts_init_gpu_backend() : core_cpu_backend::init();
     if (!ctx->backend)
         ctx->backend = core_cpu_backend::init();
     ctx->backend_cpu = core_cpu_backend::init();
@@ -2278,9 +2278,9 @@ extern "C" struct moss_audio_context* moss_audio_init_from_file(const char* path
     // #215 resolved: the native-Vulkan segfault was a use-after-free in the
     // encoder graph cached across invocations (see moss_audio_run_encoder);
     // the GPU is the default again on all Vulkan drivers.
-    // CRISPASR_MOSS_AUDIO_FORCE_CPU=1 remains as an escape hatch.
+    // STELNETTTS_MOSS_AUDIO_FORCE_CPU=1 remains as an escape hatch.
     {
-        const char* force_cpu = std::getenv("CRISPASR_MOSS_AUDIO_FORCE_CPU");
+        const char* force_cpu = std::getenv("STELNETTTS_MOSS_AUDIO_FORCE_CPU");
         if (force_cpu && force_cpu[0] == '1')
             ctx->backend = ctx->backend_cpu;
     }
@@ -2291,8 +2291,8 @@ extern "C" struct moss_audio_context* moss_audio_init_from_file(const char* path
     // soft_max_ext attention rather than flash_attn_ext (avoids the FA split-k /
     // mask-opt resource path).
     {
-        const char* force_flash = std::getenv("CRISPASR_MOSS_AUDIO_ENC_FLASH");
-        const char* force_manual = std::getenv("CRISPASR_MOSS_AUDIO_ENC_MANUAL");
+        const char* force_flash = std::getenv("STELNETTTS_MOSS_AUDIO_ENC_FLASH");
+        const char* force_manual = std::getenv("STELNETTTS_MOSS_AUDIO_ENC_MANUAL");
         if (force_flash && force_flash[0] == '1') {
             ctx->enc_use_flash = true;
         } else if (force_manual && force_manual[0] == '1') {
@@ -2303,7 +2303,7 @@ extern "C" struct moss_audio_context* moss_audio_init_from_file(const char* path
         if (!ctx->enc_use_flash && backend_is_vulkan(ctx->backend)) {
             fprintf(stderr, "moss_audio: Vulkan backend detected — encoder using manual "
                             "soft_max_ext attention (flash_attn_ext segfaults on Vulkan, issue #215; "
-                            "set CRISPASR_MOSS_AUDIO_ENC_FLASH=1 to override)\n");
+                            "set STELNETTTS_MOSS_AUDIO_ENC_FLASH=1 to override)\n");
         }
     }
 

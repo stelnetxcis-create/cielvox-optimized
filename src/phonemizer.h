@@ -16,7 +16,7 @@
 #include <vector>
 #include <functional>
 
-namespace crispasr {
+namespace stelnettts {
 
 // Phonemizer backend interface.
 // text  = UTF-8 input text (e.g. "Hello world")
@@ -34,8 +34,8 @@ bool phonemize_espeak_dlopen(const std::string& lang, const std::string& text, s
 bool phonemize_espeak_popen(const std::string& lang, const std::string& text, std::string& out);
 
 // Built-in English G2P: LTS rules (always available, zero deps) +
-// optional CMUdict (134K words, auto-loaded from ~/.cache/crispasr/cmudict.dict
-// or CRISPASR_CMUDICT_PATH env var) + optional neural G2P (GRU seq2seq).
+// optional CMUdict (134K words, auto-loaded from ~/.cache/stelnettts/cmudict.dict
+// or STELNETTTS_CMUDICT_PATH env var) + optional neural G2P (GRU seq2seq).
 // Produces IPA directly via ARPAbet→IPA conversion table.
 // For non-English, returns false and falls through.
 // Emits the ESPEAK-IPA dialect (`tʃ`, `oʊ`, `ɜː`, length marks) — see
@@ -61,8 +61,8 @@ bool phonemize_misaki_en(const std::string& lang, const std::string& text, std::
 bool misaki_lexicon_available();
 
 // Built-in German G2P: LTS rules (always available) + optional IPA
-// dictionary (787K words, auto-loaded from ~/.cache/crispasr/ipa_dict_de.txt
-// or CRISPASR_DE_DICT_PATH env var, CC-BY-SA from open-dict-data).
+// dictionary (787K words, auto-loaded from ~/.cache/stelnettts/ipa_dict_de.txt
+// or STELNETTTS_DE_DICT_PATH env var, CC-BY-SA from open-dict-data).
 // For non-German, returns false and falls through.
 // `tts_punctuation` keeps `,.;:!?` in the phoneme string. Kokoro's vocabulary
 // has them and they are how it pauses; piper's espeak inventory has never been
@@ -167,4 +167,4 @@ inline std::string filter_to_inventory(const std::string& ipa, const std::set<st
     return out;
 }
 
-} // namespace crispasr
+} // namespace stelnettts

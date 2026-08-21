@@ -26,7 +26,7 @@ void voxcpm2_vae_free(struct voxcpm2_vae_context* ctx);
 // Upscale 16 kHz mono float32 speech to 48 kHz mono float32 speech.
 // The returned buffer contains exactly 3 * n_samples values and must be
 // released with voxcpm2_vae_pcm_free(). Inputs longer than 960000 samples
-// are rejected by default; CRISPASR_VOXCPM2_VAE_MAX_SAMPLES overrides the
+// are rejected by default; STELNETTTS_VOXCPM2_VAE_MAX_SAMPLES overrides the
 // cap when the caller has sufficient memory.
 float* voxcpm2_vae_upscale(struct voxcpm2_vae_context* ctx, const float* samples, int n_samples, int* out_n_samples);
 void voxcpm2_vae_pcm_free(float* pcm);

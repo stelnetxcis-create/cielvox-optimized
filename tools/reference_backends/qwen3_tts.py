@@ -2,7 +2,7 @@
 
 Captures stage-by-stage activations from the official `qwen_tts` package
 (`pip install -U qwen-tts` + clone of QwenLM/Qwen3-TTS) so we can diff
-the CrispASR talker against the bit-true PyTorch path. The test prompt
+the StelnetTTS talker against the bit-true PyTorch path. The test prompt
 is fixed and embedded in the dump so both sides see exactly the same
 inputs.
 
@@ -14,7 +14,7 @@ Stages dumped (subset selectable via tools/dump_reference.py --stages):
                           ⇒ (T, hidden_size). Pure-text path that doesn't
                           depend on speaker_embed / codec splice, and
                           therefore the easiest first-line numerical
-                          check on the CrispASR side.
+                          check on the StelnetTTS side.
   talker_layer_0_out    — output of decoder layer 0 on the prefill mix
   talker_layer_27_out   — output of the last decoder layer
   talker_output_norm    — final RMSNorm output
@@ -27,7 +27,7 @@ The "audio" arg in tools/dump_reference.py is repurposed for TTS: pass
 a 16 kHz mono WAV that's BOTH the reference audio (for voice cloning)
 AND a placeholder so the existing dispatcher's audio-loading path
 doesn't break. The synth text and ref text are env-configurable
-(QWEN3_TTS_REF_TEXT / QWEN3_TTS_SYN_TEXT) with sensible defaults.
+(CIELVOX2_TTS_REF_TEXT / CIELVOX2_TTS_SYN_TEXT) with sensible defaults.
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ DEFAULT_STAGES = [
     # Per-step talker logits. `talker_logits` alone is the PREFILL only; these
     # are the AR steps, and they are the half that validates the decode loop
     # rather than the prompt. Only comparable against a runtime that REPLAYS
-    # `generated_codes` (crispasr: CRISPASR_QWEN3_TTS_REPLAY_CODES) — free
+    # `generated_codes` (stelnettts: STELNETTTS_CIELVOX2_TTS_REPLAY_CODES) — free
     # running, the two implementations diverge as soon as one picks a different
     # id and every later step measures that instead of the arithmetic.
     *[f"talker_logits_step{i}" for i in range(16)],
@@ -108,7 +108,7 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
 
     `audio` is the reference audio (16 kHz mono, float32). `model_dir`
     is the HF repo id or local snapshot path. The synth text and ref
-    text come from QWEN3_TTS_SYN_TEXT / QWEN3_TTS_REF_TEXT env vars,
+    text come from CIELVOX2_TTS_SYN_TEXT / CIELVOX2_TTS_REF_TEXT env vars,
     falling back to the official sample defaults.
     """
     import torch
@@ -120,10 +120,10 @@ def dump(*, model_dir: Path, audio: np.ndarray, stages: Set[str],
             "qwen_tts package not found. Install with: pip install -U qwen-tts\n"
             f"(original import error: {e})")
 
-    syn_text = os.environ.get("QWEN3_TTS_SYN_TEXT", _DEFAULT_SYN_TEXT)
-    ref_text = os.environ.get("QWEN3_TTS_REF_TEXT", _DEFAULT_REF_TEXT)
-    language = os.environ.get("QWEN3_TTS_LANG", _DEFAULT_LANG)
-    ref_wav_override = os.environ.get("QWEN3_TTS_REF_WAV", "")
+    syn_text = os.environ.get("CIELVOX2_TTS_SYN_TEXT", _DEFAULT_SYN_TEXT)
+    ref_text = os.environ.get("CIELVOX2_TTS_REF_TEXT", _DEFAULT_REF_TEXT)
+    language = os.environ.get("CIELVOX2_TTS_LANG", _DEFAULT_LANG)
+    ref_wav_override = os.environ.get("CIELVOX2_TTS_REF_WAV", "")
 
     print(f"  loading Qwen3-TTS Base from {model_dir} (CPU, fp32, eager attn)")
     tts = Qwen3TTSModel.from_pretrained(

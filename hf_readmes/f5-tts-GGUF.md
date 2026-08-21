@@ -10,14 +10,14 @@ tags:
 language:
   - en
   - zh
-library_name: crispasr
+library_name: stelnettts
 pipeline_tag: text-to-speech
 base_model: SWivid/F5-TTS
 ---
 
 # F5-TTS v1 Base — GGUF
 
-Native C++ GGUF conversion of [SWivid/F5-TTS](https://github.com/SWivid/F5-TTS) (MIT license) for the [CrispASR](https://github.com/CrispStrobe/CrispASR) runtime.
+Native C++ GGUF conversion of [SWivid/F5-TTS](https://github.com/SWivid/F5-TTS) (MIT license) for the [StelnetTTS](https://github.com/Cyna/StelnetTTS) runtime.
 
 ## Model file
 
@@ -40,7 +40,7 @@ experimentation, but F16 is the only recommended format.
 - **DiT backbone**: 22-layer Diffusion Transformer with AdaLN-Zero (330M params)
 - **Text encoder**: Character-level ConvNeXtV2 (4 blocks, 512-d). English is
   tokenized per character; **Chinese** is converted to pinyin syllables (TONE3,
-  with tone-sandhi) by CrispASR's built-in g2p — a Chinese reference clip + an
+  with tone-sandhi) by StelnetTTS's built-in g2p — a Chinese reference clip + an
   accurate Chinese `--ref-text` give the best results.
 - **Vocoder**: Vocos (8× ConvNeXt + ISTFTHead, 13M params)
 - **ODE solver**: 32-step Euler with CFG (strength=2.0, sway=-1.0)
@@ -52,12 +52,12 @@ Single GGUF contains both DiT and Vocos — no separate codec model needed.
 ## Usage
 
 ```bash
-# Install / build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR && cd CrispASR
-cmake -B build && cmake --build build -j$(nproc) --target crispasr-cli
+# Install / build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS && cd StelnetTTS
+cmake -B build && cmake --build build -j$(nproc) --target stelnettts-cli
 
 # Synthesize with voice cloning
-./build/bin/crispasr --backend f5-tts -m auto \
+./build/bin/stelnettts --backend f5-tts -m auto \
     --voice reference.wav \
     --ref-text "Transcript of the reference audio" \
     --tts "Hello, how are you today?" \

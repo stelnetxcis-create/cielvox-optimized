@@ -13,13 +13,13 @@ tags:
 - styletts2
 - voice-pack
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 ---
 
 # Kokoro voices — GGUF bundle
 
-Per-speaker style packs for the Kokoro-82M family, converted to ggml's GGUF voice-pack format (arch=`kokoro-voice`, single F32 tensor `voice.pack[max_phon, 1, 256]`). For use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)** alongside [`cstr/kokoro-82m-GGUF`](https://huggingface.co/cstr/kokoro-82m-GGUF) or the German backbone [`cstr/kokoro-de-hui-base-GGUF`](https://huggingface.co/cstr/kokoro-de-hui-base-GGUF).
+Per-speaker style packs for the Kokoro-82M family, converted to ggml's GGUF voice-pack format (arch=`kokoro-voice`, single F32 tensor `voice.pack[max_phon, 1, 256]`). For use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)** alongside [`Xenna/kokoro-82m-GGUF`](https://huggingface.co/Xenna/kokoro-82m-GGUF) or the German backbone [`Xenna/kokoro-de-hui-base-GGUF`](https://huggingface.co/Xenna/kokoro-de-hui-base-GGUF).
 
 Each voicepack is ~510 KB. Loading is direct passthrough — no quantisation needed at this size.
 
@@ -39,13 +39,13 @@ The Tundragoon voicepacks are `[512, 1, 256]` F32 (max_phon=512); the official K
 
 ## German voice cascade
 
-When CrispASR is invoked with `-l de` (or any `de_*` / `de-*` locale) and no explicit `--voice`, it picks German voicepacks in this order:
+When StelnetTTS is invoked with `-l de` (or any `de_*` / `de-*` locale) and no explicit `--voice`, it picks German voicepacks in this order:
 
 1. `df_victoria` — kikiri-tts, in-distribution to the dida-80b German backbone (recommended)
 2. `df_eva`      — Tundragoon recovery, second-tier German speaker
 3. `ff_siwis`    — French baseline, last-resort non-silence fallback
 
-Languages without a native pack (ru, ko, ar, …) fall back to `ff_siwis`. See [`cstr/kokoro-de-hui-base-GGUF`](https://huggingface.co/cstr/kokoro-de-hui-base-GGUF) for the matching German backbone.
+Languages without a native pack (ru, ko, ar, …) fall back to `ff_siwis`. See [`Xenna/kokoro-de-hui-base-GGUF`](https://huggingface.co/Xenna/kokoro-de-hui-base-GGUF) for the matching German backbone.
 
 ## Quality (ASR roundtrip)
 
@@ -63,10 +63,10 @@ All four clear the energy gate (peak ≥ 8000, RMS ≥ 1000); two are word-perfe
 ## Quick start
 
 ```bash
-huggingface-cli download cstr/kokoro-voices-GGUF kokoro-voice-af_heart.gguf --local-dir .
-huggingface-cli download cstr/kokoro-82m-GGUF    kokoro-82m-q8_0.gguf       --local-dir .
+huggingface-cli download Xenna/kokoro-voices-GGUF kokoro-voice-af_heart.gguf --local-dir .
+huggingface-cli download Xenna/kokoro-82m-GGUF    kokoro-82m-q8_0.gguf       --local-dir .
 
-./crispasr --backend kokoro \
+./stelnettts --backend kokoro \
     -m kokoro-82m-q8_0.gguf \
     --voice kokoro-voice-af_heart.gguf \
     --tts "Hello world" --tts-output hello.wav
@@ -85,7 +85,7 @@ python models/convert-kokoro-voice-to-gguf.py \
 - Official voices (`af_heart`, `ef_dora`, `ff_siwis`): [`hexgrad/Kokoro-82M`](https://huggingface.co/hexgrad/Kokoro-82M), Apache-2.0.
 - Tundragoon recovery (`df_eva`, `dm_bernd`): the original `Tundragoon/Kokoro-German` HF repo was deleted; voices were recovered from [`r1di/kokoro-fastapi-german`](https://huggingface.co/r1di/kokoro-fastapi-german)'s Git LFS (`api/src/voices/v1_0/{df_eva,dm_bernd}.pt`), retaining the original Apache-2.0 license.
 - kikiri-tts (`df_victoria`, `dm_martin`): [`kikiri-tts/kikiri-german-victoria`](https://huggingface.co/kikiri-tts/kikiri-german-victoria) and [`kikiri-tts/kikiri-german-martin`](https://huggingface.co/kikiri-tts/kikiri-german-martin) by the dida-80b maintainer, Apache-2.0.
-- GGUF format + runtime: [`CrispStrobe/CrispASR`](https://github.com/CrispStrobe/CrispASR).
+- GGUF format + runtime: [`Cyna/StelnetTTS`](https://github.com/Cyna/StelnetTTS).
 
 ## Voice provenance (EU AI Act Art. 50(4))
 
@@ -111,7 +111,7 @@ a downstream operator cannot attest to.
 
 Override per run with `--speaker-identity`, or stamp a pack permanently with
 `models/stamp-speaker-identity.py`. See
-[`docs/eu-ai-act.md` §6.2a](https://github.com/CrispStrobe/CrispASR/blob/main/docs/eu-ai-act.md).
+[`docs/eu-ai-act.md` §6.2a](https://github.com/Cyna/StelnetTTS/blob/main/docs/eu-ai-act.md).
 
 ## License
 

@@ -2,7 +2,7 @@
 # CUDA cross-check for TRUE windowed (block sliding-chunks) FastConformer attention.
 #
 # Validates on a real GPU (P100/T4/…) that the windowed local-attention path
-# (default when --att-context is set; CRISPASR_FC_WINDOWED_ATTN=0 = legacy
+# (default when --att-context is set; STELNETTTS_FC_WINDOWED_ATTN=0 = legacy
 # masked-full) is:
 #   (1) CORRECT   — windowed transcript == masked-full transcript, and
 #   (2) LIGHTER   — lower peak GPU memory at large single-pass T (the O(T²)
@@ -15,7 +15,7 @@
 #
 # Kaggle setup: GPU accelerator ON, Internet ON. HF_TOKEN optional (model repo
 # is public). Run as a script kernel; watch tools/kaggle progress on
-# cstr/crispasr-kaggle-progress or the browser UI.
+# Xenna/stelnettts-kaggle-progress or the browser UI.
 
 import os
 import subprocess
@@ -23,18 +23,18 @@ import sys
 import threading
 import time
 
-REPO = "/kaggle/working/CrispASR"
+REPO = "/kaggle/working/StelnetTTS"
 BUILD = f"{REPO}/build"
-MODEL_REPO = "cstr/parakeet-tdt-0.6b-v3-GGUF"   # rel_pos_local_attn-capable (NeMo)
+MODEL_REPO = "Xenna/parakeet-tdt-0.6b-v3-GGUF"   # rel_pos_local_attn-capable (NeMo)
 MODEL_FILE = "parakeet-tdt-0.6b-v3-q4_k.gguf"
-BRANCH = os.environ.get("CRISPASR_BRANCH", "main")
+BRANCH = os.environ.get("STELNETTTS_BRANCH", "main")
 ATT = os.environ.get("ATT_CONTEXT", "64,64")    # local window (encoder frames)
 REPEAT = int(os.environ.get("CLIP_REPEAT", "60"))  # jfk.wav ~11s × 60 ≈ 660s → T≈8k
 
 # ── clone repo early so we can import the shared harness ────────────────────
 if not os.path.isdir(REPO):
     subprocess.check_call(
-        f"git clone --depth 1 -b {BRANCH} https://github.com/CrispStrobe/CrispASR {REPO}", shell=True)
+        f"git clone --depth 1 -b {BRANCH} https://github.com/Cyna/StelnetTTS {REPO}", shell=True)
 
 sys.path.insert(0, f"{REPO}/tools/kaggle")
 import kaggle_harness as kh  # noqa: E402
@@ -49,9 +49,9 @@ flags = kh.cuda_build_flags(arch) + kh.cache_and_link_flags()
 kh.step("build.configure", arch=arch)
 kh.sh_with_progress(
     f"cmake -G Ninja -B {BUILD} -S {REPO} -DCMAKE_BUILD_TYPE=Release " + " ".join(flags))
-with kh.build_heartbeat("build.crispasr"):
-    kh.sh_with_progress(f"cmake --build {BUILD} --target crispasr -j{kh.safe_build_jobs(gpu=True)}")
-CLI = f"{BUILD}/bin/crispasr"
+with kh.build_heartbeat("build.stelnettts"):
+    kh.sh_with_progress(f"cmake --build {BUILD} --target stelnettts -j{kh.safe_build_jobs(gpu=True)}")
+CLI = f"{BUILD}/bin/stelnettts"
 assert os.path.isfile(CLI), f"missing {CLI}"
 
 # ── model + long single-pass clip ──────────────────────────────────────────
@@ -103,8 +103,8 @@ class PeakPoller(threading.Thread):
 
 def run_cfg(label, extra_env, cli_args):
     env = dict(os.environ)
-    env["CRISPASR_PARAKEET_STREAM_THRESHOLD"] = "99999"  # force single-pass
-    env["CRISPASR_FC_MEM_DEBUG"] = "1"
+    env["STELNETTTS_PARAKEET_STREAM_THRESHOLD"] = "99999"  # force single-pass
+    env["STELNETTTS_FC_MEM_DEBUG"] = "1"
     env.update(extra_env)
     idle = gpu_used_mib() or 0
     poll = PeakPoller()
@@ -131,14 +131,14 @@ def run_cfg(label, extra_env, cli_args):
 
 # ── the three configs ──────────────────────────────────────────────────────
 cfgs = [
-    ("masked_full_local", {"CRISPASR_FC_WINDOWED_ATTN": "0"}, ["--att-context", ATT]),
-    ("windowed_local",     {"CRISPASR_FC_WINDOWED_ATTN": "1"}, ["--att-context", ATT]),
+    ("masked_full_local", {"STELNETTTS_FC_WINDOWED_ATTN": "0"}, ["--att-context", ATT]),
+    ("windowed_local",     {"STELNETTTS_FC_WINDOWED_ATTN": "1"}, ["--att-context", ATT]),
     ("full_attention",     {}, []),
     # CUDA uses the MANUAL attention path (fc_gpu_manual_attn default-on), which
     # materializes O(T²) scores+BD — the reporter's ~2 GiB. tiled_full computes the
     # bias one query-block at a time (O(T·block)); this is the config where the win
     # should appear on CUDA (it does NOT on Metal, where flash already avoids scores).
-    ("tiled_full",         {"CRISPASR_FC_TILED_ATTN": "1"}, []),
+    ("tiled_full",         {"STELNETTTS_FC_TILED_ATTN": "1"}, []),
 ]
 results = [run_cfg(*c) for c in cfgs]
 

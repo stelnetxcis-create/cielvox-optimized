@@ -1,6 +1,6 @@
 // MOSS-Transcribe-preview-2B integration test — ASR transcription.
 //
-// Requires CRISPASR_MODEL_MOSS_TRANSCRIBE env var pointing to the GGUF.
+// Requires STELNETTTS_MODEL_MOSS_TRANSCRIBE env var pointing to the GGUF.
 // SKIPs cleanly when not set.
 
 #include <catch2/catch_test_macros.hpp>
@@ -31,9 +31,9 @@ static std::vector<float> load_wav_16k(const char* path) {
 }
 
 TEST_CASE("moss-transcribe transcribe JFK", "[integration][moss-transcribe]") {
-    const char* model_path = std::getenv("CRISPASR_MODEL_MOSS_TRANSCRIBE");
+    const char* model_path = std::getenv("STELNETTTS_MODEL_MOSS_TRANSCRIBE");
     if (!model_path || !*model_path) {
-        SKIP("CRISPASR_MODEL_MOSS_TRANSCRIBE not set");
+        SKIP("STELNETTTS_MODEL_MOSS_TRANSCRIBE not set");
     }
 
     auto params = moss_transcribe_context_default_params();

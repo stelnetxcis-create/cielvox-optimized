@@ -10,18 +10,18 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-// Include the backend header for crispasr_segment / crispasr_word
-#include "crispasr_backend.h"
-#include "crispasr_diarize_cli.h"
+// Include the backend header for stelnettts_segment / stelnettts_word
+#include "stelnettts_backend.h"
+#include "stelnettts_diarize_cli.h"
 
 #include <string>
 #include <vector>
 
 // ── Helpers: build synthetic segments and sherpa caches ──────────────
 
-static crispasr_segment make_seg(int64_t t0, int64_t t1, const std::string& text,
+static stelnettts_segment make_seg(int64_t t0, int64_t t1, const std::string& text,
                                  const std::vector<std::pair<int64_t, int64_t>>& word_times = {}) {
-    crispasr_segment s;
+    stelnettts_segment s;
     s.t0 = t0;
     s.t1 = t1;
     s.text = text;
@@ -42,7 +42,7 @@ static crispasr_segment make_seg(int64_t t0, int64_t t1, const std::string& text
             words_text.push_back(w);
     }
     for (size_t i = 0; i < words_text.size(); i++) {
-        crispasr_word w;
+        stelnettts_word w;
         w.text = words_text[i];
         if (i < word_times.size()) {
             w.t0 = word_times[i].first;
@@ -77,11 +77,11 @@ TEST_CASE("sherpa cache: populated is valid", "[diarize][unit]") {
 
 TEST_CASE("global diarize: single speaker assigns all segments", "[diarize][unit]") {
     auto cache = make_sherpa_cache({{0.0, 30.0, 0}});
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     segs.push_back(make_seg(0, 500, "hello world"));
     segs.push_back(make_seg(500, 1500, "foo bar"));
 
-    // Simulate what crispasr_apply_diarize does with the cache:
+    // Simulate what stelnettts_apply_diarize does with the cache:
     // We can't call the internal function directly (anonymous namespace),
     // but we can test through the public API by constructing the right params.
     // For unit testing, let's verify the cache structure directly.
@@ -168,7 +168,7 @@ TEST_CASE("global diarize: empty segments", "[diarize][unit]") {
     auto cache = make_sherpa_cache({{0.0, 10.0, 0}});
     REQUIRE(cache.valid());
     // No segments to assign — should be a no-op
-    std::vector<crispasr_segment> segs;
+    std::vector<stelnettts_segment> segs;
     REQUIRE(segs.empty());
 }
 
@@ -176,7 +176,7 @@ TEST_CASE("global diarize: empty segments", "[diarize][unit]") {
 
 TEST_CASE("global diarize: segment without words gets single label", "[diarize][unit]") {
     auto cache = make_sherpa_cache({{0.0, 10.0, 0}});
-    crispasr_segment seg;
+    stelnettts_segment seg;
     seg.t0 = 0;
     seg.t1 = 500;
     seg.text = "no words attached";
@@ -307,4 +307,4 @@ TEST_CASE("global diarize: split text reconstruction", "[diarize][unit]") {
 }
 
 // Issue #267 tests live in test_diarize_align_order.cpp — they need
-// whisper_params.h which requires linking crispasr-lib.
+// whisper_params.h which requires linking stelnettts-lib.

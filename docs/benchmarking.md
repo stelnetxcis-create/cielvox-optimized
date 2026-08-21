@@ -1,11 +1,11 @@
-# Benchmarking CrispASR
+# Benchmarking StelnetTTS
 
-How to measure CrispASR's speed fairly — whether you're tuning it, comparing it
+How to measure StelnetTTS's speed fairly — whether you're tuning it, comparing it
 against another engine, or publishing numbers.
 
-**The one rule: measure transcribe time, not cold start.** CrispASR ships as a
+**The one rule: measure transcribe time, not cold start.** StelnetTTS ships as a
 single binary that loads a multi-GB GGUF and uploads weights to the GPU on every
-process start. Timing `crispasr -m model.gguf -f clip.wav` end-to-end with a
+process start. Timing `stelnettts -m model.gguf -f clip.wav` end-to-end with a
 stopwatch measures *process start + model load + GPU upload + audio decode +
 transcription*. Most engines you'd compare against are benchmarked in-process
 with the model loaded once and the first (cold) rep discarded — so an
@@ -21,12 +21,12 @@ Every method below isolates the transcription.
 Both the CLI and the server already print a load-excluded transcription time:
 
 ```
-crispasr: transcribed 11.0s audio in 0.42s (26.2x realtime)
+stelnettts: transcribed 11.0s audio in 0.42s (26.2x realtime)
 ```
 
 The timer starts **after** model init, audio decode, and VAD/slicing
-(`crispasr_run.cpp`), so this line is transcription only. The server prints the
-same shape (`crispasr-server: transcribed ... (Nx realtime)`) from its own
+(`stelnettts_run.cpp`), so this line is transcription only. The server prints the
+same shape (`stelnettts-server: transcribed ... (Nx realtime)`) from its own
 `elapsed_s`, measured around the transcribe call.
 
 If you script around the CLI, parse this line — don't wrap the process in
@@ -39,7 +39,7 @@ Best match for how a service actually runs, and for engines benchmarked in
 
 ```bash
 # Start once; the model stays resident.
-crispasr --server --backend parakeet -m parakeet-ctc-0.6b-q8_0.gguf \
+stelnettts --server --backend parakeet -m parakeet-ctc-0.6b-q8_0.gguf \
     --host 127.0.0.1 --port 8080
 
 # Then send N requests. Discard the first (warms JIT/pipeline caches).
@@ -53,9 +53,9 @@ The server's stderr timing line per request is the transcribe time. See
 ## Method 2 — in-process (the apples-to-apples path)
 
 Load the library once, transcribe many times. Use the Python `Session` API
-(`python/crispasr`) or `ctypes` against `libcrispasr.{dylib,so,dll}`.
+(`python/stelnettts`) or `ctypes` against `libstelnettts.{dylib,so,dll}`.
 
-This is what `tools/benchmark_asr_engines.py --crispasr-call ctypes` does, and
+This is what `tools/benchmark_asr_engines.py --stelnettts-call ctypes` does, and
 it's the path to prefer for cross-engine comparisons — the engine is loaded once
 and reused across runs, matching how the other side is usually measured.
 
@@ -92,7 +92,7 @@ back-to-back run reversed.
 
 - Check `sysctl vm.loadavg` (macOS) / `uptime` before every timing run.
 - Run both arms back-to-back, alternating order.
-- Run each config as a **separate process** — a second `crispasr` spawned
+- Run each config as a **separate process** — a second `stelnettts` spawned
   immediately after the first in the same shell can exit at 0 s on a
   GPU/resource-release race.
 - For a verdict you'll publish, prefer a quiet dedicated box.
@@ -113,10 +113,10 @@ Per-backend stage timers are env-gated:
 
 | Env | Effect |
 |---|---|
-| `CRISPASR_VERBOSE=1` (or `--verbose`) | Turns on every backend's debug/bench vars at once |
-| `CRISPASR_<BACKEND>_BENCH=1` | Per-backend stage timings (e.g. `CRISPASR_CANARY_BENCH=1`) |
-| `CRISPASR_METAL_PROFILE=1` | Metal host-encode vs GPU split |
-| `CRISPASR_FC_PROFILE=1` | Per-node profile for the FastConformer family (parakeet/canary/…) |
+| `STELNETTTS_VERBOSE=1` (or `--verbose`) | Turns on every backend's debug/bench vars at once |
+| `STELNETTTS_<BACKEND>_BENCH=1` | Per-backend stage timings (e.g. `STELNETTTS_CANARY_BENCH=1`) |
+| `STELNETTTS_METAL_PROFILE=1` | Metal host-encode vs GPU split |
+| `STELNETTTS_FC_PROFILE=1` | Per-node profile for the FastConformer family (parakeet/canary/…) |
 
 Existing harnesses:
 

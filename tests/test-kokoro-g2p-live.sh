@@ -4,7 +4,7 @@
 #
 # The unit tests cover the G2P in isolation; only a real synthesis proves the
 # reported bug is gone, because the defect was invisible to every tensor-level
-# check (crispasr-diff for kokoro is phoneme-IN, so it starts downstream of the
+# check (stelnettts-diff for kokoro is phoneme-IN, so it starts downstream of the
 # G2P entirely).
 #
 # Needs: a kokoro GGUF + voice pack, an ASR model for the round-trip, network
@@ -13,15 +13,15 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 CRISPASR=""
-for c in build/bin/crispasr build-ninja-compile/bin/crispasr ./bin/crispasr; do
+for c in build/bin/stelnettts build-ninja-compile/bin/stelnettts ./bin/stelnettts; do
     [ -x "$c" ] && { CRISPASR="$c"; break; }
 done
-[ -z "$CRISPASR" ] && { echo "SKIP: crispasr binary not found"; exit 0; }
+[ -z "$CRISPASR" ] && { echo "SKIP: stelnettts binary not found"; exit 0; }
 
-MODELS="${CRISPASR_MODELS_DIR:-${CRISPASR_MODELS:-$HOME/.cache/crispasr}}"
-KOKORO="${CRISPASR_KOKORO_MODEL:-$MODELS/kokoro-82m-q8_0.gguf}"
-VOICE="${CRISPASR_KOKORO_VOICE:-$MODELS/kokoro-voice-af_heart.gguf}"
-ASR="${CRISPASR_MODEL_WHISPER:-$MODELS/ggml-tiny.bin}"
+MODELS="${STELNETTTS_MODELS_DIR:-${STELNETTTS_MODELS:-$HOME/.cache/stelnettts}}"
+KOKORO="${STELNETTTS_KOKORO_MODEL:-$MODELS/kokoro-82m-q8_0.gguf}"
+VOICE="${STELNETTTS_KOKORO_VOICE:-$MODELS/kokoro-voice-af_heart.gguf}"
+ASR="${STELNETTTS_MODEL_WHISPER:-$MODELS/ggml-tiny.bin}"
 for f in "$KOKORO" "$VOICE" "$ASR"; do
     [ -f "$f" ] || { echo "SKIP: missing $f"; exit 0; }
 done
@@ -73,8 +73,8 @@ fi
 
 # ── 3. an unsupported backend must refuse, not fall back ─────────────────────
 echo "=== --tts-phonemes is refused where it cannot work ==="
-# Checked before any model load, so this needs no qwen3-tts weights.
-OUT=$("$CRISPASR" --tts "x" --tts-phonemes "abc" --backend qwen3-tts -m /nonexistent.gguf 2>&1)
+# Checked before any model load, so this needs no cielvox2-tts weights.
+OUT=$("$CRISPASR" --tts "x" --tts-phonemes "abc" --backend cielvox2-tts -m /nonexistent.gguf 2>&1)
 if echo "$OUT" | grep -q "tts-phonemes is not supported"; then
     ok "refused with a message naming the flag"
 else

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure CrispASR's English G2P against misaki, Kokoro's own G2P (#316).
+"""Measure StelnetTTS's English G2P against misaki, Kokoro's own G2P (#316).
 
 Kokoro-82M was trained on misaki's output, so misaki IS the reference: any
 phoneme string we hand the model that misaki would not have produced is a token
@@ -276,7 +276,7 @@ def main() -> int:
         return 1
 
     data_dir = args.lexicon_dir or misaki_data_dir()
-    with tempfile.TemporaryDirectory(prefix="crispasr-g2p-") as td:
+    with tempfile.TemporaryDirectory(prefix="stelnettts-g2p-") as td:
         binary = build_dumper(Path(td))
         ref = run_misaki(lines)
         print(f"{len(lines)} sentences, misaki lexicon at {data_dir}\n")

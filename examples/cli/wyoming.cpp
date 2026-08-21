@@ -1,7 +1,7 @@
 // wyoming.cpp — Wyoming protocol TCP server (issue #172).
 //
 // Implements the Wyoming peer-to-peer JSONL protocol over raw TCP so that
-// one crispasr-server instance can serve as both a wyoming-faster-whisper
+// one stelnettts-server instance can serve as both a wyoming-faster-whisper
 // replacement (STT) and a wyoming-piper replacement (TTS) for Home Assistant.
 //
 // Architecture: mirrors ws_stream.cpp — a single listener thread accepts
@@ -47,11 +47,11 @@
 #include "wyoming.h"
 
 #include "../json.hpp"
-#include "crispasr_consent_record.h"
-#include "crispasr_marking_policy.h"
-#include "crispasr_tts_disclaimer.h"
-#include "crispasr_voice_provenance.h"
-#include "crispasr_watermark_dispatch.h"
+#include "stelnettts_consent_record.h"
+#include "stelnettts_marking_policy.h"
+#include "stelnettts_tts_disclaimer.h"
+#include "stelnettts_voice_provenance.h"
+#include "stelnettts_watermark_dispatch.h"
 
 #include <algorithm>
 #include <atomic>
@@ -100,7 +100,7 @@ namespace {
 // log. The Wyoming `voice.name` is fully attacker-controlled and lands in a
 // [CONSENT] line; without this a newline in it forges audit records — and the
 // whole point of that line is to be evidence. Mirrors log_sanitize() in
-// crispasr_server.cpp, which is static to that TU.
+// stelnettts_server.cpp, which is static to that TU.
 static std::string wyoming_log_sanitize(const std::string& s, size_t cap = 256) {
     std::string o;
     o.reserve(s.size() < cap ? s.size() : cap);
@@ -118,8 +118,8 @@ static std::string wyoming_log_sanitize(const std::string& s, size_t cap = 256) 
 // --voice against --voice-dir exactly as the other surfaces do, so the hash has
 // to be taken of the RESOLVED path or a bare name would record nothing.
 static std::string ref_sha_or_none(const whisper_params& rp) {
-    const std::string resolved = crispasr_voice::resolve_voice_path(rp.tts_voice, rp.tts_voice_dir);
-    const std::string h = crispasr_consent::file_sha256(resolved);
+    const std::string resolved = stelnettts_voice::resolve_voice_path(rp.tts_voice, rp.tts_voice_dir);
+    const std::string h = stelnettts_consent::file_sha256(resolved);
     return h.empty() ? std::string("none") : h;
 }
 
@@ -334,15 +334,15 @@ static void wyoming_handle_connection(socket_t fd) {
 
             json asr_model;
             asr_model["name"] = g_backend->name();
-            asr_model["description"] = std::string("CrispASR ") + g_backend->name() + " backend";
-            asr_model["attribution"] = {{"name", "CrispASR"}, {"url", "https://github.com/CrispStrobe/CrispASR"}};
+            asr_model["description"] = std::string("StelnetTTS ") + g_backend->name() + " backend";
+            asr_model["attribution"] = {{"name", "StelnetTTS"}, {"url", "https://github.com/Cyna/StelnetTTS"}};
             asr_model["installed"] = true;
             asr_model["languages"] = langs;
 
             json asr_service;
-            asr_service["name"] = "crispasr";
-            asr_service["description"] = "CrispASR multi-backend speech recognition";
-            asr_service["attribution"] = {{"name", "CrispASR"}, {"url", "https://github.com/CrispStrobe/CrispASR"}};
+            asr_service["name"] = "stelnettts";
+            asr_service["description"] = "StelnetTTS multi-backend speech recognition";
+            asr_service["attribution"] = {{"name", "StelnetTTS"}, {"url", "https://github.com/Cyna/StelnetTTS"}};
             asr_service["installed"] = true;
             asr_service["languages"] = langs;
             asr_service["models"] = json::array({asr_model});
@@ -354,14 +354,14 @@ static void wyoming_handle_connection(socket_t fd) {
                 json voice;
                 voice["name"] = g_params.tts_voice.empty() ? "default" : g_params.tts_voice;
                 voice["description"] = "";
-                voice["attribution"] = {{"name", "CrispASR"}, {"url", "https://github.com/CrispStrobe/CrispASR"}};
+                voice["attribution"] = {{"name", "StelnetTTS"}, {"url", "https://github.com/Cyna/StelnetTTS"}};
                 voice["installed"] = true;
                 voice["languages"] = langs;
 
                 json tts_service;
-                tts_service["name"] = "crispasr-tts";
-                tts_service["description"] = std::string("CrispASR ") + g_backend->name() + " TTS";
-                tts_service["attribution"] = {{"name", "CrispASR"}, {"url", "https://github.com/CrispStrobe/CrispASR"}};
+                tts_service["name"] = "stelnettts-tts";
+                tts_service["description"] = std::string("StelnetTTS ") + g_backend->name() + " TTS";
+                tts_service["attribution"] = {{"name", "StelnetTTS"}, {"url", "https://github.com/Cyna/StelnetTTS"}};
                 tts_service["installed"] = true;
                 tts_service["voices"] = json::array({voice});
 
@@ -496,8 +496,8 @@ static void wyoming_handle_connection(socket_t fd) {
             // Reject a control character in the caller's voice name before it
             // reaches a log or a file open. Downstream loggers (the GGUF
             // loader, the kokoro adapter, ggml) echo the name raw, so a newline
-            // in it forges records. See crispasr_voice_clone_policy.h.
-            if (crispasr_voice::voice_name_has_control_chars(voice_name)) {
+            // in it forges records. See stelnettts_voice_clone_policy.h.
+            if (stelnettts_voice::voice_name_has_control_chars(voice_name)) {
                 fprintf(stderr, "wyoming: rejected a voice name containing control characters\n");
                 json astart;
                 astart["rate"] = g_backend->tts_sample_rate();
@@ -516,8 +516,8 @@ static void wyoming_handle_connection(socket_t fd) {
             // string the client sent — a bare name resolves against --voice-dir
             // to the same file a path would, and a .gguf baked from someone's
             // recording is as much a deepfake as the recording. Same predicate
-            // as the CLI and the HTTP surface (crispasr_voice_clone_policy.h).
-            const crispasr_voice::CloneDecision clone_decision = crispasr_voice::classify_voice(
+            // as the CLI and the HTTP surface (stelnettts_voice_clone_policy.h).
+            const stelnettts_voice::CloneDecision clone_decision = stelnettts_voice::classify_voice(
                 rp.tts_voice, rp.tts_voice_dir, /*baked_from_wav_this_run=*/false, g_backend->voice_bank_path());
 
             char ts[64];
@@ -531,28 +531,28 @@ static void wyoming_handle_connection(socket_t fd) {
             // the backend, with the operator's launch-time --speaker-identity as
             // the only override available — the same shape as the consent gate
             // below. A real-person PRESET is disclosed but not refused.
-            const crispasr_voice::SpeakerIdentity speaker_identity = crispasr_voice::resolve_speaker_identity(
-                crispasr_voice::parse_speaker_identity(rp.tts_speaker_identity), clone_decision.pack_identity,
+            const stelnettts_voice::SpeakerIdentity speaker_identity = stelnettts_voice::resolve_speaker_identity(
+                stelnettts_voice::parse_speaker_identity(rp.tts_speaker_identity), clone_decision.pack_identity,
                 g_backend->declared_speaker_identity(g_params.model),
-                crispasr_voice::read_model_speaker_identity(g_params.model));
+                stelnettts_voice::read_model_speaker_identity(g_params.model));
             const bool needs_spoken_disclosure =
-                crispasr_voice::requires_spoken_disclosure(clone_decision.is_clone, speaker_identity);
-            if (crispasr_voice::should_warn_unknown_identity(clone_decision.is_clone, speaker_identity) &&
-                crispasr_voice::claim_unknown_identity_warning(g_backend->name())) {
-                fprintf(stderr, "%s\n", crispasr_voice::unknown_identity_warning(g_backend->name()).c_str());
+                stelnettts_voice::requires_spoken_disclosure(clone_decision.is_clone, speaker_identity);
+            if (stelnettts_voice::should_warn_unknown_identity(clone_decision.is_clone, speaker_identity) &&
+                stelnettts_voice::claim_unknown_identity_warning(g_backend->name())) {
+                fprintf(stderr, "%s\n", stelnettts_voice::unknown_identity_warning(g_backend->name()).c_str());
             }
 
             // What this container-less surface must do about it. Named and
-            // unit-tested in crispasr_marking_policy.h rather than spelled out
+            // unit-tested in stelnettts_marking_policy.h rather than spelled out
             // here, so the rule can go red in CI without a model or a socket.
-            const crispasr_marking::RawSurfaceDecision marking = crispasr_marking::decide_raw_surface(
+            const stelnettts_marking::RawSurfaceDecision marking = stelnettts_marking::decide_raw_surface(
                 clone_decision.is_clone, rp.tts_voice_clone_consent, needs_spoken_disclosure);
 
             // Consent gate. The protocol carries no per-request attestation, so
             // the operator's launch-time --i-have-rights is the only one there
             // is; without it a clone is refused rather than served ungated.
             if (marking.refuse) {
-                crispasr_consent::emit(
+                stelnettts_consent::emit(
                     "CONSENT", ts,
                     {{"surface", "wyoming"},
                      {"voice", wyoming_log_sanitize(rp.tts_voice)},
@@ -581,9 +581,9 @@ static void wyoming_handle_connection(socket_t fd) {
                 // Art. 50(4): audible AI disclosure, prepended in the NEUTRAL
                 // voice. Not opt-out-able here — see the file header.
                 if (marking.apply_spoken_disclaimer && !pcmf32.empty()) {
-                    crispasr_tts_prepend_disclaimer(pcmf32, g_backend, rp);
+                    stelnettts_tts_prepend_disclaimer(pcmf32, g_backend, rp);
                     if (clone_decision.is_clone) {
-                        crispasr_consent::emit(
+                        stelnettts_consent::emit(
                             "CONSENT", ts,
                             {{"surface", "wyoming"},
                              {"voice", wyoming_log_sanitize(rp.tts_voice)},
@@ -606,7 +606,7 @@ static void wyoming_handle_connection(socket_t fd) {
                 // this surface can produce — --no-watermark must not strip it.
                 // Embedded AFTER the disclaimer so the whole clip is marked.
                 if (!pcmf32.empty())
-                    crispasr_wm_dispatch::embed(pcmf32.data(), (int)pcmf32.size(), tts_rate, marking.force_watermark);
+                    stelnettts_wm_dispatch::embed(pcmf32.data(), (int)pcmf32.size(), tts_rate, marking.force_watermark);
             }
 
             // Stream PCM back as Wyoming audio events

@@ -20,14 +20,14 @@ tags:
 - multilingual
 - encoder-decoder
 - gguf
-- crispasr
+- stelnettts
 library_name: ggml
 arxiv: "2108.03265"
 ---
 
 # WMT21 Dense 24-Wide (EN→X) — GGUF (ggml)
 
-GGUF / ggml conversion of [`facebook/wmt21-dense-24-wide-en-x`](https://huggingface.co/facebook/wmt21-dense-24-wide-en-x) for use with **[CrispStrobe/CrispASR](https://github.com/CrispStrobe/CrispASR)**.
+GGUF / ggml conversion of [`facebook/wmt21-dense-24-wide-en-x`](https://huggingface.co/facebook/wmt21-dense-24-wide-en-x) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
 
 This is the **English-to-many** WMT21 competition model — a 4.7B-parameter dense encoder-decoder transformer trained for high-quality translation from English into 7 target languages. It won the WMT21 shared task for multiple language pairs. Architecture: 24 encoder + 24 decoder layers (d=2048, 32 heads, FFN=16384, ReLU, pre-norm, sinusoidal positions). Distributed under **MIT license**.
 
@@ -56,22 +56,22 @@ Source is always English (`en`).
 ## Quick start
 
 ```bash
-# 1. Build CrispASR
-git clone https://github.com/CrispStrobe/CrispASR
-cd CrispASR
+# 1. Build StelnetTTS
+git clone https://github.com/Cyna/StelnetTTS
+cd StelnetTTS
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 cmake --build build -j
 
 # 2. Pull model
-huggingface-cli download cstr/wmt21-dense-24-wide-en-x-GGUF wmt21-dense-24-wide-en-x-q8_0.gguf --local-dir .
+huggingface-cli download Xenna/wmt21-dense-24-wide-en-x-GGUF wmt21-dense-24-wide-en-x-q8_0.gguf --local-dir .
 
 # 3. Translate
-./build/bin/crispasr --backend m2m100 -m wmt21-dense-24-wide-en-x-q8_0.gguf \
+./build/bin/stelnettts --backend m2m100 -m wmt21-dense-24-wide-en-x-q8_0.gguf \
     --text "Machine learning is changing the world." \
     -sl en -tl de
 
 # English → Japanese
-./build/bin/crispasr --backend m2m100 -m wmt21-dense-24-wide-en-x-q8_0.gguf \
+./build/bin/stelnettts --backend m2m100 -m wmt21-dense-24-wide-en-x-q8_0.gguf \
     --text "Hello, how are you today?" \
     -sl en -tl ja
 ```
@@ -107,6 +107,6 @@ python models/convert-m2m100-to-gguf.py \
 
 ## Related models
 
-- [`cstr/wmt21-dense-24-wide-x-en-GGUF`](https://huggingface.co/cstr/wmt21-dense-24-wide-x-en-GGUF) — many-to-English (reverse direction)
-- [`cstr/m2m100-418m-GGUF`](https://huggingface.co/cstr/m2m100-418m-GGUF) — smaller 100-language any-to-any model
+- [`Xenna/wmt21-dense-24-wide-x-en-GGUF`](https://huggingface.co/Xenna/wmt21-dense-24-wide-x-en-GGUF) — many-to-English (reverse direction)
+- [`Xenna/m2m100-418m-GGUF`](https://huggingface.co/Xenna/m2m100-418m-GGUF) — smaller 100-language any-to-any model
 - [`facebook/wmt21-dense-24-wide-en-x`](https://huggingface.co/facebook/wmt21-dense-24-wide-en-x) — original PyTorch model

@@ -18,11 +18,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "crispasr_chunk_context_gate.h"
+#include "stelnettts_chunk_context_gate.h"
 
-using crispasr_chunk_context::backend_allows_chunk_context;
-using crispasr_chunk_context::backend_self_chunks_on_explicit;
-using crispasr_chunk_context::should_use_chunk_context;
+using stelnettts_chunk_context::backend_allows_chunk_context;
+using stelnettts_chunk_context::backend_self_chunks_on_explicit;
+using stelnettts_chunk_context::should_use_chunk_context;
 
 TEST_CASE("issue #114: VAD-derived multi-slice run does NOT extend with context", "[unit][chunk-context][issue-114]") {
     constexpr int effective_chunk_seconds = 0;

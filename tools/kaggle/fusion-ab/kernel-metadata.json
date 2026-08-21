@@ -1,7 +1,7 @@
 {
-  "id": "chr1str/crispasr-fusion-a-b-norm-affine-siglu-on-t4",
-  "title": "CrispASR — fusion A/B (norm_affine + siglu) on T4",
-  "code_file": "crispasr-fusion-ab.py",
+  "id": "chr1str/stelnettts-fusion-a-b-norm-affine-siglu-on-t4",
+  "title": "StelnetTTS — fusion A/B (norm_affine + siglu) on T4",
+  "code_file": "stelnettts-fusion-ab.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",

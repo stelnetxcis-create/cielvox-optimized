@@ -1,5 +1,5 @@
 // test-stream-finalize.cpp — unit tests for the streaming
-// `final.text` stitcher in `examples/cli/crispasr_stream_finalize.h`.
+// `final.text` stitcher in `examples/cli/stelnettts_stream_finalize.h`.
 //
 // These cases lock the round-4 fix for issue #84
 // (CKwasd, 2026-05-11): when `--stream-final-mode redecode` skips its
@@ -8,13 +8,13 @@
 // emitting an empty `final.text`. That fallback must always produce a
 // non-empty string when at least one of the inputs is non-empty, and
 // must reproduce the same six cases the previous in-place implementation
-// handled (see commit history of crispasr_run.cpp::finalize_utterance).
+// handled (see commit history of stelnettts_run.cpp::finalize_utterance).
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "../examples/cli/crispasr_stream_finalize.h"
+#include "../examples/cli/stelnettts_stream_finalize.h"
 
-using crispasr::stitch_partial_accumulator;
+using stelnettts::stitch_partial_accumulator;
 
 TEST_CASE("stream-finalize: last_partial extends committed_prefix → last_partial wins", "[unit][stream-json]") {
     // The normal LCP-accumulator state on a clean rolling-window stream:
@@ -80,7 +80,7 @@ TEST_CASE("stream-finalize: kStreamRedecodeMinSamples is 2 s at 16 kHz", "[unit]
     // Threshold is structural — derived from moonshine/parakeet's
     // first conv kernel input requirement, not a tunable. Lock it so
     // a stray edit doesn't silently widen the empty-final window.
-    REQUIRE(crispasr::kStreamRedecodeMinSamples == 32000);
+    REQUIRE(stelnettts::kStreamRedecodeMinSamples == 32000);
 }
 
 TEST_CASE("stream-finalize: empty inputs produce empty output (utterance with no partials)", "[unit][stream-json]") {

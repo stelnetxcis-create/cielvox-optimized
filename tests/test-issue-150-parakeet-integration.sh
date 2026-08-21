@@ -23,12 +23,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CRISPASR="${CRISPASR_BIN:-./build/bin/crispasr}"
+CRISPASR="${STELNETTTS_BIN:-./build/bin/stelnettts}"
 if [ ! -x "$CRISPASR" ]; then
-    CRISPASR="./build-ninja-compile/bin/crispasr"
+    CRISPASR="./build-ninja-compile/bin/stelnettts"
 fi
 if [ ! -x "$CRISPASR" ]; then
-    echo "SKIP: crispasr binary not found" >&2
+    echo "SKIP: stelnettts binary not found" >&2
     exit 2
 fi
 
@@ -140,7 +140,7 @@ run_test() {
 }
 
 echo "=========================================="
-echo "CrispASR Issue #150 Integration Test Suite"
+echo "StelnetTTS Issue #150 Integration Test Suite"
 echo "=========================================="
 echo ""
 

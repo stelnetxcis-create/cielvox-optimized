@@ -1,9 +1,9 @@
 # ─────────────────────────── cell 0 (markdown) ───────────────────────────
-# # CrispASR — voxtral-tts PROPER per-stage crispasr-diff on F16
+# # StelnetTTS — voxtral-tts PROPER per-stage stelnettts-diff on F16
 #
 # The real HARD-RULE-#2 harness (not the codes-level mudler comparison):
 #   python tools/dump_reference.py --backend voxtral-tts --model-dir <m> --output ref.gguf
-#   build/bin/crispasr-diff voxtral-tts voxtral-4b-tts-f16.gguf ref.gguf <wav>
+#   build/bin/stelnettts-diff voxtral-tts voxtral-4b-tts-f16.gguf ref.gguf <wav>
 #
 # The Python dumper is a MANUAL PyTorch LLM forward (no vllm). At F16 the runtime
 # should match the BF16 reference per layer (cos>=0.99) — a clean green — vs the
@@ -11,9 +11,9 @@
 #
 # EVERY long phase (build / 16 GB download / dumper / diff) is wrapped in a
 # kh.build_heartbeat so the run is pollable mid-flight via the HF progress mirror
-# cstr/crispasr-kaggle-progress and RSS/free-GB are visible before any OOM/ENOSPC.
+# Xenna/stelnettts-kaggle-progress and RSS/free-GB are visible before any OOM/ENOSPC.
 #
-# Datasets: chr1str/crispasr-hf-token, chr1str/crispasr-ccache.
+# Datasets: chr1str/stelnettts-hf-token, chr1str/stelnettts-ccache.
 # GPU + Internet + ~18 GB disk (ref model 8 GB + F16 GGUF 8 GB → /tmp).
 
 # ─────────────────────────── cell 1 (code) ───────────────────────────
@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 WORK = Path("/kaggle/working")
-REPO = WORK / "CrispASR"
+REPO = WORK / "StelnetTTS"
 BUILD = WORK / "build"
 TMP = Path("/tmp/vtts-cd")
 REFMODEL = TMP / "refmodel"
@@ -32,7 +32,7 @@ MODELS = TMP / "models"
 for d in (REFMODEL, MODELS):
     d.mkdir(parents=True, exist_ok=True)
 
-CRISPASR_REF = os.environ.get("CRISPASR_REF", "main")
+STELNETTTS_REF = os.environ.get("STELNETTTS_REF", "main")
 TEXT = os.environ.get("VOXTRAL_TTS_TEXT", "Hello world.")
 VOICE = os.environ.get("VOXTRAL_TTS_VOICE", "neutral_female")
 
@@ -50,14 +50,14 @@ def sh(cmd, check=True, env=None, cwd=None, timeout=None):
 # ── clone + harness; enable the HF progress mirror BEFORE init_progress ──
 if REPO.exists():
     shutil.rmtree(REPO)
-sh(["git", "clone", "--depth", "1", "--branch", CRISPASR_REF, "--recursive",
-    "https://github.com/CrispStrobe/CrispASR.git", str(REPO)])
+sh(["git", "clone", "--depth", "1", "--branch", STELNETTTS_REF, "--recursive",
+    "https://github.com/Cyna/StelnetTTS.git", str(REPO)])
 sys.path.insert(0, os.path.join(str(REPO), "tools", "kaggle"))
 import kaggle_harness as kh  # noqa: E402
 
 TOKEN = kh.resolve_hf_token()
 if TOKEN:
-    os.environ["HF_TOKEN"] = TOKEN  # so init_progress() mirrors to cstr/crispasr-kaggle-progress
+    os.environ["HF_TOKEN"] = TOKEN  # so init_progress() mirrors to Xenna/stelnettts-kaggle-progress
 kh.init_progress()
 
 sha = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
@@ -65,15 +65,15 @@ kh.step("start", sha=sha)
 gpu = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True).strip()
 kh.step("gpu", gpu=gpu)
 
-# ── build crispasr-diff (heartbeat) ──
+# ── build stelnettts-diff (heartbeat) ──
 kh.install_build_toolchain()
 arch = kh.detect_cuda_arch()
 BUILD.mkdir(exist_ok=True)
 sh(["cmake", "-S", str(REPO), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON"]
    + kh.cuda_build_flags(arch) + kh.cache_and_link_flags())
 with kh.build_heartbeat("cmake.build"):
-    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target crispasr-diff -j{kh.safe_build_jobs(gpu=True)}")
-DIFF = next(c for c in BUILD.rglob("crispasr-diff") if c.is_file() and os.access(c, os.X_OK))
+    kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} --target stelnettts-diff -j{kh.safe_build_jobs(gpu=True)}")
+DIFF = next(c for c in BUILD.rglob("stelnettts-diff") if c.is_file() and os.access(c, os.X_OK))
 os.environ["LD_LIBRARY_PATH"] = f"{BUILD / 'src'}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 kh.step("built", diff=str(DIFF))
 
@@ -88,7 +88,7 @@ with kh.build_heartbeat("download.refmodel"):
                       allow_patterns=["consolidated.safetensors", "params.json", "tekken.json", "voice_embedding/*"])
 kh.step("dl_refmodel_done")
 with kh.build_heartbeat("download.f16"):
-    F16 = hf_hub_download("cstr/voxtral-4b-tts-GGUF", "voxtral-4b-tts-f16.gguf", local_dir=str(MODELS),
+    F16 = hf_hub_download("Xenna/voxtral-4b-tts-GGUF", "voxtral-4b-tts-f16.gguf", local_dir=str(MODELS),
                           token=TOKEN or None)
 kh.step("dl_f16_done", size_gb=round(os.path.getsize(F16) / 1e9, 2))
 
@@ -103,10 +103,10 @@ with kh.build_heartbeat("dump_reference"):
        env={"VOXTRAL_TTS_TEXT": TEXT, "VOXTRAL_TTS_VOICE": VOICE, "OMP_NUM_THREADS": "4"}, timeout=2400)
 kh.step("dump_reference_done", ref_mib=round(os.path.getsize(REFGGUF) / 1e6, 1))
 
-# ── 2) crispasr-diff voxtral-tts <F16> <ref.gguf> — the clean F16 per-layer green ──
-kh.step("crispasr_diff_start")
-print("\n===== crispasr-diff voxtral-tts (F16 vs BF16 reference) =====", flush=True)
-with kh.build_heartbeat("crispasr_diff"):
+# ── 2) stelnettts-diff voxtral-tts <F16> <ref.gguf> — the clean F16 per-layer green ──
+kh.step("stelnettts_diff_start")
+print("\n===== stelnettts-diff voxtral-tts (F16 vs BF16 reference) =====", flush=True)
+with kh.build_heartbeat("stelnettts_diff"):
     r = sh([str(DIFF), "voxtral-tts", F16, str(REFGGUF), AUDIO],
            env={"VOXTRAL_TTS_TEXT": TEXT, "VOXTRAL_TTS_VOICE": VOICE}, check=False, timeout=1200)
 verdict = "ALL PASS" if r.returncode == 0 else "divergence"

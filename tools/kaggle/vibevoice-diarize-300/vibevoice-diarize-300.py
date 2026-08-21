@@ -11,7 +11,7 @@ utterance, with the speaker in the structured field.
 
 The A/B runs on ONE binary, flipped by the env gate the fix ships with — so the
 two arms cannot differ by anything except the code path:
-    RAW  CRISPASR_VIBEVOICE_RAW_TRANSCRIPT=1  → pre-fix: one segment, raw blob
+    RAW  STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT=1  → pre-fix: one segment, raw blob
     NEW  (unset)                              → per-utterance segments + labels
 
 Proof-of-work rules (harness gotcha #24): every arm must exit 0 AND produce
@@ -30,7 +30,7 @@ import traceback
 from pathlib import Path
 
 TEMP = Path("/kaggle/temp"); OUT = Path("/kaggle/working")
-REPO = TEMP / "CrispASR"; MODELS = TEMP / "models"
+REPO = TEMP / "StelnetTTS"; MODELS = TEMP / "models"
 for d in (TEMP, OUT, MODELS):
     d.mkdir(parents=True, exist_ok=True)
 
@@ -63,7 +63,7 @@ print(json.dumps({"step": "start", "branch": BRANCH}), flush=True)
 if REPO.exists():
     shutil.rmtree(REPO)
 r = run(["git", "clone", "--depth", "5", "--branch", BRANCH,
-         "https://github.com/CrispStrobe/CrispASR.git", str(REPO)], capture_output=False)
+         "https://github.com/Cyna/StelnetTTS.git", str(REPO)], capture_output=False)
 if r.returncode:
     (OUT / "results.json").write_text(json.dumps({"error": f"clone of {BRANCH} failed"}))
     raise SystemExit(1)
@@ -78,8 +78,8 @@ kh.step("cloned", head=HEAD)
 
 # The gate has to EXIST in this checkout, else the "RAW" arm silently runs the
 # new path and the A/B compares a thing to itself.
-gate_src = (REPO / "examples/cli/crispasr_backend_vibevoice.cpp").read_text()
-if "CRISPASR_VIBEVOICE_RAW_TRANSCRIPT" not in gate_src:
+gate_src = (REPO / "examples/cli/stelnettts_backend_vibevoice.cpp").read_text()
+if "STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT" not in gate_src:
     (OUT / "results.json").write_text(json.dumps({"error": "env gate missing from checkout"}))
     kh.step("gate.MISSING")
     raise SystemExit(1)
@@ -114,14 +114,14 @@ if r.returncode:
     kh.step("cfg.FAIL")
     raise SystemExit(1)
 with kh.build_heartbeat("build"):
-    r = run(["cmake", "--build", str(BDIR), "--target", "crispasr-cli", "-j", JOBS],
+    r = run(["cmake", "--build", str(BDIR), "--target", "stelnettts-cli", "-j", JOBS],
             capture_output=False)
 if r.returncode:
     kh.step("build.FAIL")
     raise SystemExit(1)
-CLI = BDIR / "bin" / "crispasr"
+CLI = BDIR / "bin" / "stelnettts"
 if not CLI.exists():
-    c = [p for p in BDIR.rglob("crispasr") if p.is_file() and os.access(p, os.X_OK)]
+    c = [p for p in BDIR.rglob("stelnettts") if p.is_file() and os.access(p, os.X_OK)]
     if not c:
         kh.step("cli.MISSING")
         raise SystemExit(1)
@@ -153,7 +153,7 @@ kh.step("pcm.ready", bytes=PCM.stat().st_size)
 from huggingface_hub import hf_hub_download  # noqa: E402
 
 kh.step("dl.vibe.begin")
-VIBE = Path(hf_hub_download(repo_id="cstr/vibevoice-asr-GGUF",
+VIBE = Path(hf_hub_download(repo_id="Xenna/vibevoice-asr-GGUF",
                             filename="vibevoice-asr-q4_k.gguf", local_dir=str(MODELS)))
 kh.step("dl.vibe.done", gb=round(VIBE.stat().st_size / 1e9, 2))
 
@@ -161,9 +161,9 @@ kh.step("dl.vibe.done", gb=round(VIBE.stat().st_size / 1e9, 2))
 def _env(raw_gate):
     e = {**os.environ, "LD_LIBRARY_PATH": f"{BDIR}/src:" + os.environ.get("LD_LIBRARY_PATH", "")}
     if raw_gate:
-        e["CRISPASR_VIBEVOICE_RAW_TRANSCRIPT"] = "1"
+        e["STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT"] = "1"
     else:
-        e.pop("CRISPASR_VIBEVOICE_RAW_TRANSCRIPT", None)
+        e.pop("STELNETTTS_VIBEVOICE_RAW_TRANSCRIPT", None)
     return e
 
 

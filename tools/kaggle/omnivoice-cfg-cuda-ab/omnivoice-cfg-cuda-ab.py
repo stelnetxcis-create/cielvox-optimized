@@ -29,7 +29,7 @@ from pathlib import Path
 
 WORK = Path("/kaggle/working")
 TEMP = Path("/kaggle/temp") if Path("/kaggle/temp").is_dir() else Path("/tmp")
-REPO = TEMP / "CrispASR"  # clone OUT of /kaggle/working (#22: keeps output page-1 retrievable)
+REPO = TEMP / "StelnetTTS"  # clone OUT of /kaggle/working (#22: keeps output page-1 retrievable)
 BRANCH = "main"
 TXT = "The quick brown fox jumps over the lazy dog."
 STEPS = 24
@@ -60,7 +60,7 @@ def dump_results():
 prog("Phase 0: clone (to /kaggle/temp) + build ours")
 if not REPO.exists():
     subprocess.check_call(["git", "clone", "--depth", "1", "-b", BRANCH,
-                           "https://github.com/CrispStrobe/CrispASR", str(REPO)])
+                           "https://github.com/Cyna/StelnetTTS", str(REPO)])
 prog("clone done")
 if (REPO / "ggml").is_dir() and not (REPO / "ggml" / "CMakeLists.txt").exists():
     subprocess.check_call(["git", "submodule", "update", "--init", "ggml"], cwd=str(REPO))
@@ -70,7 +70,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 import kaggle_harness as kh  # noqa: E402
 
 prog("harness imported")
-kh.init_progress(hf_progress_repo="cstr/crispasr-kaggle-progress")
+kh.init_progress(hf_progress_repo="Xenna/stelnettts-kaggle-progress")
 step = kh.step
 step("script.start", branch=BRANCH)
 TOKEN = kh.resolve_hf_token("HF_TOKEN")
@@ -149,8 +149,8 @@ try:
     # (gotcha #5); cap at 2 to avoid an OOM hard-kill.
     jobs = min(2, int(kh.safe_build_jobs(has_cuda)) if str(kh.safe_build_jobs(has_cuda)).isdigit() else 2)
     with kh.build_heartbeat("cmake.build"):
-        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} -j {jobs} --target crispasr")
-    CLI = BUILD / "bin" / "crispasr"
+        kh.sh_with_progress(f"stdbuf -oL -eL cmake --build {BUILD} -j {jobs} --target stelnettts")
+    CLI = BUILD / "bin" / "stelnettts"
     assert CLI.is_file(), f"CLI not built at {CLI}"
     prog("build.done")
     RESULTS["stage"] = "build_done"
@@ -161,8 +161,8 @@ try:
     dump_results()
     MODELS = TEMP / "models"
     MODELS.mkdir(parents=True, exist_ok=True)
-    MODEL = hf_get("cstr/omnivoice-GGUF", "omnivoice-q8_0.gguf", MODELS)
-    TOK = hf_get("cstr/omnivoice-GGUF", "omnivoice-tokenizer-f16.gguf", MODELS)
+    MODEL = hf_get("Xenna/omnivoice-GGUF", "omnivoice-q8_0.gguf", MODELS)
+    TOK = hf_get("Xenna/omnivoice-GGUF", "omnivoice-tokenizer-f16.gguf", MODELS)
     prog("models downloaded")
     RESULTS["stage"] = "models_done"
     dump_results()

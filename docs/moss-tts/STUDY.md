@@ -7,9 +7,9 @@ hosts the Qwen3 backbone via **libllama**) + the HF `config.json` of
 
 **The single biggest adaptation:** openmoss hosts the Qwen3-8B backbone with libllama
 and feeds it `batch.embd` (precomputed input embeddings), reading back per-token hidden
-states via `llama_get_embeddings_ith`. CrispASR forbids libllama and reimplements Qwen3
+states via `llama_get_embeddings_ith`. StelnetTTS forbids libllama and reimplements Qwen3
 in-house (`src/moss_audio.cpp`). So we graft openmoss's **aux graphs (embed sum + 33
-heads), delay state machine, and transformer codec** onto CrispASR's own Qwen3 runtime.
+heads), delay state machine, and transformer codec** onto StelnetTTS's own Qwen3 runtime.
 Everything except the backbone hosting ports near-verbatim.
 
 ---
@@ -25,7 +25,7 @@ Everything except the backbone hosting ports near-verbatim.
   - rms_norm_eps **1e-6**, rope_theta **1_000_000**, max_position_embeddings 40960
   - vocab_size **155648**, all layers `full_attention` (no sliding window)
   - Qwen3 specifics to honor: **per-head QK-RMSNorm** (q_norm/k_norm), RoPE NEOX/neox-style.
-    Confirm against CrispASR's existing Qwen3 loader (moss_audio.cpp).
+    Confirm against StelnetTTS's existing Qwen3 loader (moss_audio.cpp).
   - eos = im_end = 151645, bos = pad = 151643.
 - **Audio side:** n_vq **32**, audio_vocab_size **1024**, audio_pad_code **1024**
   (so full audio vocab = 1025), sampling_rate **24000**, downsample_rate **1920**
@@ -45,11 +45,11 @@ HF source tensor names (safetensors of MOSS-TTS-v1.5):
 - Codec (separate repo `MOSS-Audio-Tokenizer`): prefixed `moss.codec.` after renames.
 
 openmoss GGUF split: **backbone.gguf** (vanilla Qwen3, libllama-loadable) +
-**backbone.extras.gguf** sidecar (`moss.*` tensors + `moss.*` KV). For CrispASR we don't
+**backbone.extras.gguf** sidecar (`moss.*` tensors + `moss.*` KV). For StelnetTTS we don't
 need libllama-loadability, so the converter (`models/convert-moss-tts-to-gguf.py`) should
-emit the backbone in **CrispASR's Qwen3 GGUF naming** (TBD from moss_audio converter —
+emit the backbone in **StelnetTTS's Qwen3 GGUF naming** (TBD from moss_audio converter —
 see §7) and carry the audio/codec tensors + KV in the same or a sidecar file, matching
-whatever CrispASR's loader expects.
+whatever StelnetTTS's loader expects.
 
 `moss.*` KV keys: moss.n_vq, moss.audio_vocab_size, moss.audio_pad_code,
 moss.sampling_rate, moss.downsample_rate, moss.frame_rate, moss.token.{audio_start,
@@ -61,7 +61,7 @@ Codec tensor-name shortening (fit 64-byte GGUF limit), applied in order:
 `encoder→enc`, `decoder→dec`, `self_attn→attn`, `in_projs→inp`, `out_projs→outp`,
 `quantizers→q`, `input_proj/in_proj→iproj`, `output_proj/out_proj→oproj`.
 
-## 3. Input embedding & heads (openmoss model.cpp) — port to CrispASR aux graphs
+## 3. Input embedding & heads (openmoss model.cpp) — port to StelnetTTS aux graphs
 
 - **compute_input_embeddings(grid (S,1+n_vq) int32) → (S, hidden) f32:**
   `text_emb = get_rows(text_embed, col0)` cast f32, then `+ Σ_{i<32} get_rows(audio_embed_i,
@@ -174,27 +174,27 @@ Loop until stop or max_new_tokens (default 4096): text_logits + hidden from back
 pos → compute_audio_logits(hidden) → DelayState.step → embed next (1,1+n_vq) row →
 backbone decode 1 token. Then extract_audio_codes → codec_decode → WAV @ 24 kHz mono.
 
-## 8. CrispASR seam — RESOLVED (survey 2026-07-12)
+## 8. StelnetTTS seam — RESOLVED (survey 2026-07-12)
 
-**Backbone runtime.** CrispASR's in-house Qwen3 accepts precomputed input embeddings
+**Backbone runtime.** StelnetTTS's in-house Qwen3 accepts precomputed input embeddings
 first-class: graph input tensor `"inputs_embeds"` (`moss_audio.cpp:1227`,
-`qwen3_asr.cpp:1172`). Persistent KV + single-token decode:
+`cielvox2_asr.cpp:1172`). Persistent KV + single-token decode:
 `moss_audio_run_llm_kv(ctx, const float* inputs_embeds, n_tokens, n_past, ...)`
-(`moss_audio.cpp:1602`) / `qwen3_asr_run_llm_kv` (`:1886`). QK-norm, GQA 4:1, RoPE all live
+(`moss_audio.cpp:1602`) / `cielvox2_asr_run_llm_kv` (`:1886`). QK-norm, GQA 4:1, RoPE all live
 inside `core_attn::kv_self_attn` (`core/attention.h:665`); FFN `core_ffn::swiglu`
 (`ffn.h:39`). **RoPE = GGML_ROPE_TYPE_NEOX** for the Qwen3 backbone, rope_theta 1e6
 (`moss_audio.cpp:1261`, `:1255`) — DISTINCT from the codec's NORMAL/adjacent-pair base 1e4.
 `moss_audio` is itself a 36-layer Qwen3 (same size as our backbone) → clone its graph.
 
 **Hidden-state readout.** ASR backbones expose only `"logits"`. I need BOTH text logits AND
-the per-token pre-lm-head hidden (for the 32 audio heads). `qwen3_tts.cpp` already does this:
+the per-token pre-lm-head hidden (for the 32 audio heads). `cielvox2_tts.cpp` already does this:
 names the final hidden `"hidden_last"` + `ggml_set_output` (`:1397`) and returns it via
 `run_talker_kv(..., float** out_hidden_d)` (`:1518`). Copy that pattern into moss_tts.
 
-**Template backend.** `src/qwen3_tts.cpp` is the closest analog (Qwen3 + RVQ + inline
-transformer codec). AR loop `qwen3_tts_generate_codes_ar` (`:6771`); transformer codec
+**Template backend.** `src/cielvox2_tts.cpp` is the closest analog (Qwen3 + RVQ + inline
+transformer codec). AR loop `cielvox2_tts_generate_codes_ar` (`:6771`); transformer codec
 `build_graph_codec_decode` (`:3952`), struct `g3t_codec` (`:613`), sliding-window layer
-`g3t_codec_xfmr_layer` (`:564`). Top entry `qwen3_tts_synthesize` (`:7229`).
+`g3t_codec_xfmr_layer` (`:564`). Top entry `cielvox2_tts_synthesize` (`:7229`).
 
 **GGUF naming — decision: Convention A (moss_audio style).** Backbone tensors
 `llm.blk.{N}.{attn.q,attn.k,attn.v,attn.o,attn.q_norm,attn.k_norm,attn_norm,ffn.gate,
@@ -202,22 +202,22 @@ ffn.up,ffn.down,ffn_norm}.weight` + `llm.embed.weight`, `llm.final_norm.weight`,
 `llm.lm_head.weight` (`moss_audio.cpp:422-442`). Converter `convert-moss-audio-to-gguf.py`
 `map_tensor_name` (`:59`) is the template. **GGUF arch string = `"moss-tts"`** (must match
 the detect branches). Audio/codec tensors keep the openmoss `moss.audio_embed.{i}` /
-`moss.audio_head.{i}` / `moss.codec.*` names + `moss.*` KV. Convention B (qwen3_asr,
-llama-canonical `blk.N.attn_q.weight`) is the alternative if I clone qwen3_asr instead.
+`moss.audio_head.{i}` / `moss.codec.*` names + `moss.*` KV. Convention B (cielvox2_asr,
+llama-canonical `blk.N.attn_q.weight`) is the alternative if I clone cielvox2_asr instead.
 
-**No transformer codec in `core/`** — port qwen3_tts's inline codec or openmoss `codec.cpp`.
+**No transformer codec in `core/`** — port cielvox2_tts's inline codec or openmoss `codec.cpp`.
 `core_rvq::encode_euclidean` (`core/rvq.h:44`) reusable for the voice-cloning encode side.
 
 **12-point wiring sites (all pinned):**
-- Detect: `crispasr_backend.cpp:489` — pass-1 filename substring (add
+- Detect: `stelnettts_backend.cpp:489` — pass-1 filename substring (add
   `contains_ci("moss")&&contains_ci("tts")` ~`:575`), pass-2 `general.architecture` tag
   (add `a=="moss-tts"` branch ~`:704`).
-- Session ABI inline synth: `crispasr_c_api.cpp` — `crispasr_session_synthesize_raw_impl`
+- Session ABI inline synth: `stelnettts_c_api.cpp` — `stelnettts_session_synthesize_raw_impl`
   (`:7119`), add a `#ifdef CA_HAVE_MOSS_TTS if (s->moss_tts_ctx){...}` block modeled on
-  qwen3-tts (`:7169-7197`); init site ~`:2466`; arch→name branch ~`:1331`.
-- Registry: `crispasr_model_registry.cpp:553` — entry with the codec GGUF as
+  cielvox2-tts (`:7169-7197`); init site ~`:2466`; arch→name branch ~`:1331`.
+- Registry: `stelnettts_model_registry.cpp:553` — entry with the codec GGUF as
   `companion_filename`.
-- Quantize: `crispasr-quantize/main.cpp:337` — add `is_moss_tts` keep-list: keep RVQ
+- Quantize: `stelnettts-quantize/main.cpp:337` — add `is_moss_tts` keep-list: keep RVQ
   codebooks, 32 audio embeds/heads, all `moss.codec.*` at F16; quantize only backbone
   `llm.blk.*`.
 

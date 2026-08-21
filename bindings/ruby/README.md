@@ -1,9 +1,9 @@
 whispercpp
 ==========
 
-![crispasr](https://user-images.githubusercontent.com/1991296/235238348-05d0f6a4-da44-4900-a1de-d0707e75b763.jpeg)
+![stelnettts](https://user-images.githubusercontent.com/1991296/235238348-05d0f6a4-da44-4900-a1de-d0707e75b763.jpeg)
 
-Ruby bindings for [crispasr][], an interface of automatic speech recognition model.
+Ruby bindings for [stelnettts][], an interface of automatic speech recognition model.
 
 Usage
 -----
@@ -90,7 +90,7 @@ See [models][] page for details.
 
 ### Preparing audio file ###
 
-Currently, crispasr accepts only 16-bit WAV files.
+Currently, stelnettts accepts only 16-bit WAV files.
 
 ### Voice Activity Detection (VAD) ###
 
@@ -125,7 +125,7 @@ Whisper::Params.new(
 )
 ```
 
-For details on VAD, see [CrispASR's README](https://github.com/CrispStrobe/CrispASR?tab=readme-ov-file#voice-activity-detection-vad).
+For details on VAD, see [StelnetTTS's README](https://github.com/Cyna/StelnetTTS?tab=readme-ov-file#voice-activity-detection-vad).
 
 ### Output ###
 
@@ -163,7 +163,7 @@ If bundler is not being used to manage dependencies, install the gem by executin
 
     $ gem install whispercpp
 
-You can pass build options for crispasr, for instance:
+You can pass build options for stelnettts, for instance:
 
     $ bundle config build.whispercpp --enable-ggml-cuda
 
@@ -171,7 +171,7 @@ or,
 
     $ gem install whispercpp -- --enable-ggml-cuda
 
-See CrispASR's [README](https://github.com/CrispStrobe/CrispASR/blob/main/README.md) for available options. You need convert options present in the README to Ruby-style options, for example:
+See StelnetTTS's [README](https://github.com/Cyna/StelnetTTS/blob/main/README.md) for available options. You need convert options present in the README to Ruby-style options, for example:
 
 Boolean options:
 
@@ -443,11 +443,11 @@ segments = vad.segments_from_samples(Whisper::VAD::Params.new, samples)
 Development
 -----------
 
-    % git clone https://github.com/CrispStrobe/CrispASR.git
-    % cd crispasr/bindings/ruby
+    % git clone https://github.com/Cyna/StelnetTTS.git
+    % cd stelnettts/bindings/ruby
     % rake test
 
-First call of `rake test` builds an extension and downloads a model for testing. After that, you add tests in `tests` directory and modify `ext/ruby_crispasr`.
+First call of `rake test` builds an extension and downloads a model for testing. After that, you add tests in `tests` directory and modify `ext/ruby_stelnettts`.
 
 If something seems wrong on build, running `rake clean` solves some cases.
 
@@ -459,7 +459,7 @@ If something seems wrong on build, running `rake clean` solves some cases.
 License
 -------
 
-The same to [crispasr][].
+The same to [stelnettts][].
 
-[crispasr]: https://github.com/CrispStrobe/CrispASR
-[models]: https://github.com/CrispStrobe/CrispASR/tree/main/models
+[stelnettts]: https://github.com/Cyna/StelnetTTS
+[models]: https://github.com/Cyna/StelnetTTS/tree/main/models

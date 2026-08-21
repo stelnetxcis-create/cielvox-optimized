@@ -24,8 +24,8 @@ python scripts/sync-version.py
 # Stage VERSION plus exactly the files sync-version.py just touched.
 #
 # COMPUTED, not hardcoded. The old hardcoded list drifted silently: when
-# python/crispasr/__init__.py was added to sync-version.py it was not added here,
-# so v0.8.24 was first tagged on a tree whose crispasr.__version__ still read
+# python/stelnettts/__init__.py was added to sync-version.py it was not added here,
+# so v0.8.24 was first tagged on a tree whose stelnettts.__version__ still read
 # 0.8.23 while the wheel metadata claimed 0.8.24 — the kind of mismatch nobody
 # notices until a user reports it. Diffing the working tree keeps the two scripts
 # in step by construction.

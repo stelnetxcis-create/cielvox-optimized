@@ -12,8 +12,8 @@
 #include "core/lfr.h"
 #include "core/sanm.h"
 #include "core/gguf_loader.h"
-#include "core/gpu_backend_pref.h" // crispasr_init_gpu_backend (§232 paraformer GPU path)
-#include "core/crispasr_env.h"
+#include "core/gpu_backend_pref.h" // stelnettts_init_gpu_backend (§232 paraformer GPU path)
+#include "core/stelnettts_env.h"
 #if defined(GGML_USE_METAL)
 #include "ggml-metal.h" // core_cpu_backend::is_metal(§232 CUDA/Vulkan-default gate)
 #endif
@@ -39,7 +39,7 @@
 static bool paraformer_bench_enabled() {
     static int v = -1;
     if (v < 0) {
-        const char* e = crispasr_env::get("CRISPASR_PARAFORMER_BENCH");
+        const char* e = stelnettts_env::get("STELNETTTS_PARAFORMER_BENCH");
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v != 0;
@@ -951,17 +951,17 @@ paraformer_context* paraformer_init_from_file(const char* path, paraformer_conte
     }
     // Backend selection (§232). Weights already load onto ctx->backend via
     // core_gguf::load_weights, so pointing that at a GPU backend is the whole fix.
-    //   * CRISPASR_PARAFORMER_GPU=1 forces GPU on ANY backend; =0 forces CPU.
+    //   * STELNETTTS_PARAFORMER_GPU=1 forces GPU on ANY backend; =0 forces CPU.
     //   * default: GPU on CUDA/Vulkan, CPU on Metal. Kaggle P100 A/B: identical
     //     transcript, 2.15x wall (slow OpenBLAS baseline). On M1 (Accelerate) it
     //     is neutral — small model / short audio, launch-bound (LEARNING 34) — so
     //     Metal stays CPU unless forced. Mirrors LEARNING 34's is_metal gate.
-    const char* gpu_env = std::getenv("CRISPASR_PARAFORMER_GPU");
+    const char* gpu_env = std::getenv("STELNETTTS_PARAFORMER_GPU");
     const bool force_gpu = gpu_env && std::atoi(gpu_env) != 0;
     const bool force_cpu = gpu_env && std::atoi(gpu_env) == 0;
     ctx->backend = ctx->backend_cpu;
     if (!force_cpu && (force_gpu || params.use_gpu)) {
-        ggml_backend_t gpu = crispasr_init_gpu_backend();
+        ggml_backend_t gpu = stelnettts_init_gpu_backend();
         if (gpu) {
             bool is_metal = false;
 #if defined(GGML_USE_METAL)
@@ -975,7 +975,7 @@ paraformer_context* paraformer_init_from_file(const char* path, paraformer_conte
                 ggml_backend_free(gpu);
                 if (ctx->verbosity >= 1)
                     fprintf(stderr, "paraformer: GPU default limited to CUDA/Vulkan (Metal neutral); set "
-                                    "CRISPASR_PARAFORMER_GPU=1 to force\n");
+                                    "STELNETTTS_PARAFORMER_GPU=1 to force\n");
             }
         }
     }

@@ -1,11 +1,11 @@
-# Learnings — CrispASR vs transcribe.cpp Evaluation
+# Learnings — StelnetTTS vs transcribe.cpp Evaluation
 
 Lessons from the systematic head-to-head benchmark against
 [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) (July 2026).
 
 ## Build & Infrastructure
 
-1. **GGML_CUDA_NO_VMM=ON is essential on Kaggle**: Both CrispASR and transcribe.cpp
+1. **GGML_CUDA_NO_VMM=ON is essential on Kaggle**: Both StelnetTTS and transcribe.cpp
    use ggml's CUDA backend. Without this flag, cmake's `FindCUDAToolkit` fails to
    create the `CUDA::cuda_driver` imported target because `libcuda.so` only exists
    in `/usr/local/cuda/lib64/stubs/` on Kaggle. The flag gates the
@@ -16,17 +16,17 @@ Lessons from the systematic head-to-head benchmark against
 2. **ccache must come from the same environment**: A ccache snapshot from the VPS
    (different g++ version) gives 100% cache miss on Kaggle (g++ 11.4.0).
    ccache keys on preprocessed source + compiler path + flags. Always refresh the
-   `crispasr-ccache` dataset from a successful Kaggle build, never from the VPS.
+   `stelnettts-ccache` dataset from a successful Kaggle build, never from the VPS.
    Warm cache cuts builds from ~25 min to ~3 min.
 
 3. **git submodules need explicit init after --depth 1**: `git clone --depth 1`
-   does not fetch submodules. CrispASR's ggml is a submodule since 2026-07-07;
+   does not fetch submodules. StelnetTTS's ggml is a submodule since 2026-07-07;
    cmake fails at `add_subdirectory(ggml)` without
    `git submodule update --init --recursive --depth 1`.
 
 ## CLI & API
 
-4. **CrispASR uses --backend, not -b**: There is no short form. Using `-b whisper`
+4. **StelnetTTS uses --backend, not -b**: There is no short form. Using `-b whisper`
    causes "unknown argument" → usage text → exit(0). Exit code 0 (not nonzero)
    makes it look like success with empty output. Always check stderr even when
    exit code is 0.
@@ -44,19 +44,19 @@ Lessons from the systematic head-to-head benchmark against
 ## Performance
 
 7. **GPU-vs-GPU is competitive, not a blowout**: With both engines on CUDA (P100),
-   CrispASR wins 3/9 (SenseVoice, Qwen3, Canary, FunASR), transcribe.cpp wins
+   StelnetTTS wins 3/9 (SenseVoice, Qwen3, Canary, FunASR), transcribe.cpp wins
    4/9 (Parakeet, Moonshine, Moonshine-Streaming, Nemotron), near-parity on
-   Whisper. The earlier "CrispASR 7-10x faster" result was comparing CUDA vs
+   Whisper. The earlier "StelnetTTS 7-10x faster" result was comparing CUDA vs
    CPU-fallback — transcribe.cpp's CUDA build was broken until we fixed it with
    `-DGGML_CUDA_NO_VMM=ON`.
 
-8. **CPU overhead is CrispASR's main disadvantage**: 1.3-3x slower than
-   transcribe.cpp on CPU. CrispASR's unified backend path includes VAD slicing,
+8. **CPU overhead is StelnetTTS's main disadvantage**: 1.3-3x slower than
+   transcribe.cpp on CPU. StelnetTTS's unified backend path includes VAD slicing,
    segment merging, post-processing (punctuation, truecasing), and LID detection
    that transcribe.cpp doesn't do. This overhead is amortised on GPU but
    dominates on CPU.
 
-9. **Quantisation affects transcription**: Moonshine Tiny Q4_K (CrispASR) produces
+9. **Quantisation affects transcription**: Moonshine Tiny Q4_K (StelnetTTS) produces
    "american asked" while Q8_0 (transcribe.cpp) produces "americans ask" — a real
    accuracy difference from lossy quantisation, not a code bug.
 
@@ -97,7 +97,7 @@ Lessons from the systematic head-to-head benchmark against
     switching to full attention for offline would likely break output. The 8.4x
     gap is architectural — streaming models pay streaming overhead even offline.
 
-19. **RTF timing decomposition is critical for diagnosis**: CrispASR's stderr
+19. **RTF timing decomposition is critical for diagnosis**: StelnetTTS's stderr
     RTF excludes model load and LID but includes VAD + inference + post-proc.
     transcribe.cpp's `--batch-jsonl` gives mel/encode/decode separately. On the
     Kaggle benchmark, the subprocess wall-clock (`ca_infer_s`) includes
@@ -110,41 +110,41 @@ Lessons from the systematic head-to-head benchmark against
     (13%), Nemotron 385ms→345ms (10%). On CPU: SLOWER (sgemm overhead for small
     matrices exceeds N×sgemv). Gate batched path behind GPU detection or env var.
 
-21. **Transducer decoders are fundamentally CPU-bound in CrispASR**: The LSTM
+21. **Transducer decoders are fundamentally CPU-bound in StelnetTTS**: The LSTM
     predictor + joint network use host-side `cblas_sgemv` with sequential state
     updates. Even with batched blank-scanning, the LSTM step between token
     emissions runs on CPU. The path to matching transcribe.cpp's 29ms Parakeet
     decode is porting LSTM+joint to a ggml graph on GPU. Small matrices (640×640)
     make this challenging — GPU kernel launch latency may dominate.
 
-22. **Moonshine encoder gap is im2col on raw audio**: CrispASR processes raw
+22. **Moonshine encoder gap is im2col on raw audio**: StelnetTTS processes raw
     176K audio samples through 3 Conv1d layers via `ggml_im2col + ggml_mul_mat`,
     creating 45.6 MB of F32 intermediates. transcribe.cpp likely uses `ggml_conv_1d`
     directly or a pre-computed mel spectrogram, avoiding the large intermediate.
     The encoder produces 2737 frames (not 550 — moonshine-streaming subsamples
     more aggressively). This accounts for the 5.8x GPU gap.
 
-23. **Cohere works and CrispASR wins**: Fixed URL (repo is `cstr/cohere-transcribe-
-    03-2026-GGUF`, not `cstr/cohere-transcribe-GGUF`). CA 0.046 vs TC 0.070 =
-    CrispASR 1.5x faster on GPU. Cohere's encoder-decoder architecture benefits
-    from CrispASR's GPU-accelerated cross-attention path.
+23. **Cohere works and StelnetTTS wins**: Fixed URL (repo is `Xenna/cohere-transcribe-
+    03-2026-GGUF`, not `Xenna/cohere-transcribe-GGUF`). CA 0.046 vs TC 0.070 =
+    StelnetTTS 1.5x faster on GPU. Cohere's encoder-decoder architecture benefits
+    from StelnetTTS's GPU-accelerated cross-attention path.
 
 ## Model Coverage
 
-10. **CrispASR coverage gaps**: GigaAM v3 family (Russian+EN ASR, 4 variants) and
+10. **StelnetTTS coverage gaps**: GigaAM v3 family (Russian+EN ASR, 4 variants) and
     MedASR (gated medical) exist only in transcribe.cpp.
 
 11. **transcribe.cpp coverage gaps**: No TTS, no diarization, no LID, no forced
-    alignment, no translation (m2m100, madlad), no S2S. CrispASR covers all of
+    alignment, no translation (m2m100, madlad), no S2S. StelnetTTS covers all of
     these plus many unique ASR backends (cohere, granite, voxtral, glm, mimo,
     vibevoice, lfm2-audio, etc.).
 
 ## Benchmark Methodology
 
-12. **RTF measurement differs**: CrispASR reports wall-clock including audio I/O,
+12. **RTF measurement differs**: StelnetTTS reports wall-clock including audio I/O,
     VAD, and post-processing. transcribe.cpp's `--batch-jsonl` reports
     mel+encode+decode only. For fair CPU comparison, use wall-clock on both sides.
-    For GPU comparison, CrispASR's stderr RTF is the authoritative number.
+    For GPU comparison, StelnetTTS's stderr RTF is the authoritative number.
 
 13. **Normalisation matters for WER**: SenseVoice emits `<|TAG|>` tokens, Nemotron
     emits inline `en-us` language codes. Strip both before WER computation.
@@ -152,7 +152,7 @@ Lessons from the systematic head-to-head benchmark against
 
 24. **Batched blank-scan makes GPU WORSE, not better**: v14 showed Parakeet
     decode 0.095→0.833 (8.8x slower) and Nemotron 0.345→1.667 (4.8x slower)
-    with CRISPASR_TDT_BATCH=1. Root cause: the "batch" runs a CPU sgemm
+    with STELNETTTS_TDT_BATCH=1. Root cause: the "batch" runs a CPU sgemm
     (32×8198 logits) while the GPU sits idle. The sequential path runs 1×8198
     sgemv per step and terminates at the first blank — much cheaper because
     most frames ARE blank. Batching only helps when the sgemm itself runs on
@@ -344,7 +344,7 @@ Lessons from the systematic head-to-head benchmark against
     CUDA. Ties back to the GPU-portability gotchas in the dev guide.
 
 36. **A benchmark RTF is meaningless until you prove it did the work — a
-    crash/no-op mints a fake "win."** The issue-#81 fleet bench reported CrispASR
+    crash/no-op mints a fake "win."** The issue-#81 fleet bench reported StelnetTTS
     parakeet-ctc at "102.4× / 127.7× RT" and moonshine at "103×" — all bogus. Root
     cause: the harness timed a CLI subprocess and computed `rtf = audio_dur /
     walltime` with **no return-code or transcript check**, and the parakeet-CTC
@@ -360,22 +360,22 @@ Lessons from the systematic head-to-head benchmark against
     the same onnx run first showed "174× / 2.3×" (short fast, long "collapsed"),
     which was a cold-CUDA-JIT artifact on the un-warmed 55 s shape, not an O(T²)
     blowup. Also: quote absolute time next to RTF — a 0.06 s denominator magnifies
-    noise. And keep the comparison honest about asymmetry: CrispASR was timed as a
+    noise. And keep the comparison honest about asymmetry: StelnetTTS was timed as a
     fresh subprocess **including model load per call** while onnx loaded once, so
     short-clip RTF favours onnx; the load-amortised long column is the fair one.
     Net #81 truth (real varied audio, load-excluded): onnx-asr on the **GPU** beats
-    CrispASR on parakeet (ctc 207× / tdt 112× vs CrispASR 25× / 35×), while CrispASR
+    StelnetTTS on parakeet (ctc 207× / tdt 112× vs StelnetTTS 25× / 35×), while StelnetTTS
     beats onnx on **CPU** (25-35× vs 4.6-4.8×). (d) **Never loop one short clip to
     fake "long" audio** — a 55 s clip made of jfk×5 lets the model/CUDA caches reuse
     work across the identical repeats and inflates the RTF (onnx-CUDA 220×→**207×**
     on real varied 134 s LibriSpeech). Use genuinely varied speech (concatenate
     DISTINCT utterances). (e) Report the engine's **load-excluded** RTF when
-    comparing a subprocess-per-call engine against an in-process one — CrispASR's
+    comparing a subprocess-per-call engine against an in-process one — StelnetTTS's
     own CLI RTF (excludes load, #19) was 25× vs 18-20× from subprocess wall.
 
 37. **`kaggle kernels output` is page-capped at 500 files and does NOT
     auto-continue — anything that sorts late is unreachable.** Refreshing the
-    `crispasr-ccache` dataset requires pulling the kernel's `ccache.tar` back out,
+    `stelnettts-ccache` dataset requires pulling the kernel's `ccache.tar` back out,
     but the kernel `git clone`s the whole repo into `/kaggle/working` AND ccache
     wrote a loose `.ccache/` tree there — thousands of files that sort before
     `ccache.tar`, filling page 1 forever, so `ccache.tar` never downloaded and
@@ -393,7 +393,7 @@ Lessons from the systematic head-to-head benchmark against
 ## Multi-surface dispatch & long audio (issue #257 + improvements program)
 
 38. **A fix to a backend must land in THREE places, not one — the CLI adapter,
-    the HTTP server, AND the session C-ABI (`crispasr_c_api.cpp`).** The session
+    the HTTP server, AND the session C-ABI (`stelnettts_c_api.cpp`).** The session
     reimplements each backend's transcribe inline; it does NOT call the CLI
     `CrispasrBackend` adapter (dev-guide HARD RULE #6). Issue #257's segmentation
     fix had to be applied in all three; the JA-by-vocab-size misdetection was
@@ -405,7 +405,7 @@ Lessons from the systematic head-to-head benchmark against
     (`parakeet_orchestrate.{h,cpp}`) so every surface calls one implementation —
     the CLI adapter dropped 310 LOC becoming a thin wrapper. Before hoisting a
     backend speculatively, AUDIT first: `tests/test-surface-parity.sh`
-    (`CRISPASR_PARITY_BACKEND=<be>`) proved only parakeet actually diverged
+    (`STELNETTTS_PARITY_BACKEND=<be>`) proved only parakeet actually diverged
     CLI-vs-session; qwen3/moonshine/nemotron already agreed, so their ~200-line
     inline blocks did NOT need the (risky) refactor.
 
@@ -421,12 +421,12 @@ Lessons from the systematic head-to-head benchmark against
     surfaces raw; for other rates resample ONCE to a shared 16 kHz WAV or the two
     resamplers produce different mel and the comparison is meaningless.
 
-40. **The session `crispasr_session_transcribe` is a LOW-LEVEL "transcribe this
+40. **The session `stelnettts_session_transcribe` is a LOW-LEVEL "transcribe this
     buffer" primitive — it does NOT auto-chunk long audio (parakeet is the lone
     exception, with bespoke inline chunking).** So short-segment models (moonshine,
     whisper) degrade and HANG on one long pass, while the CLI/server add
     dispatcher chunking on top. Fix (`transcribe_autochunk`, gated
-    `CRISPASR_SESSION_AUTOCHUNK`, default on): slice long audio at energy minima,
+    `STELNETTTS_SESSION_AUTOCHUNK`, default on): slice long audio at energy minima,
     transcribe each piece, shift timestamps to absolute. Verified moonshine/60 s:
     1 seg / hung → 3 segs / completes. Gate off backends that self-chunk
     (parakeet/reazonspeech), the `return_logits` path (per-slice CTC grids can't
@@ -445,13 +445,13 @@ Lessons from the systematic head-to-head benchmark against
     reported real allocation.** parakeet's single-pass rel-pos bias
     (`parakeet_est_singlepass_peak_mb`, coeff 8.0) estimated **1931 MiB** at
     T≈2812 / 8 heads — matching the reporter's measured **1911.98 MiB** cudaMalloc
-    almost exactly. So a proactive `CRISPASR_PARAKEET_VRAM_BUDGET_MB` policy can
+    almost exactly. So a proactive `STELNETTTS_PARAKEET_VRAM_BUDGET_MB` policy can
     pick streamed BEFORE allocating the bias it can't afford, layered over the
     reactive OOM fallback. (CUDA no-OOM proof and the server worker-pool GPU
     concurrency proof can't run on M1 — they ship as Kaggle kernels under
     `tools/kaggle/{parakeet-mem-policy-cuda,server-workers-cuda}/`.)
 
-43. **Server request concurrency (`CRISPASR_SERVER_WORKERS=N`) is workload-bound,
+43. **Server request concurrency (`STELNETTTS_SERVER_WORKERS=N`) is workload-bound,
     not a free win — and unsafe unless the SHARED state is pooled too.** `model_mutex`
     guards not just the backend but the non-re-entrant post-processing contexts
     (punctuation, truecaser, LID model, aligner), so a pool must route only
@@ -481,7 +481,7 @@ Lessons from the systematic head-to-head benchmark against
     shipping an unverified path AS DEFAULT — it does not mean delete it. A one-clip
     regression is evidence to gate-OFF, not to erase; the path may win on other
     clips/models and flipping the default is then a one-liner. Shipped opt-in
-    (`CRISPASR_SESSION_PERBACKEND_CHUNK=1`, default flat 30 s). Codified as
+    (`STELNETTTS_SESSION_PERBACKEND_CHUNK=1`, default flat 30 s). Codified as
     dev-guide A/B rule 3a. Implement the decision pure with the gate as a PARAMETER
     (`session_default_chunk_seconds(backend, perbackend_enabled)`) so both modes
     unit-test without env.
@@ -494,7 +494,7 @@ Lessons from the systematic head-to-head benchmark against
     garbage tail reaches the output — a speed AND quality bug. Wired
     `core_repeat::tail_is_repetition` into the `beam_size==1` branch ONLY (beam=3,
     the default, self-terminated at 59 tokens → not wired, Phase 1b), gated
-    `CRISPASR_FIRERED_NO_REPEAT_BREAK` default on. A/B on the SAME binary (token
+    `STELNETTTS_FIRERED_NO_REPEAT_BREAK` default on. A/B on the SAME binary (token
     count is the load-invariant proof, not wall-clock on a contended box): break
     OFF → 150 tokens/`OOH ×35`, break ON → 59 tokens/`OOH ×4`, coherent content
     byte-identical. Audit discipline held: the OTHER guard-less greedy backends
