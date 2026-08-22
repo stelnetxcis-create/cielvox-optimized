@@ -14,6 +14,9 @@ library_name: ggml
 base_model: FireRedTeam/FireRedVAD
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # FireRedVAD -- GGUF
 
 GGUF conversions of [`FireRedTeam/FireRedVAD`](https://huggingface.co/FireRedTeam/FireRedVAD) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

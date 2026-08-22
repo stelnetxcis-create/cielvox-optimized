@@ -13,6 +13,9 @@ tags:
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # stt-en-fastconformer-ctc-large-GGUF
 
 GGUF quantisations of [nvidia/stt_en_fastconformer_ctc_large](https://huggingface.co/nvidia/stt_en_fastconformer_ctc_large) for [StelnetTTS](https://github.com/Cyna/StelnetTTS).

@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-base-ja
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Base (Japanese) -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-ja`](https://huggingface.co/UsefulSensors/moonshine-base-ja) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

@@ -18,6 +18,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # lahgtna-chatterbox-v1 — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`oddadmix/lahgtna-chatterbox-v1`](https://huggingface.co/oddadmix/lahgtna-chatterbox-v1) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

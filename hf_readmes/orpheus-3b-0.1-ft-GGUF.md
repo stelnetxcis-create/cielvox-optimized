@@ -18,6 +18,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Orpheus 3B 0.1 ft — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`canopylabs/orpheus-3b-0.1-ft`](https://huggingface.co/canopylabs/orpheus-3b-0.1-ft) (sourced via the non-gated [`unsloth/orpheus-3b-0.1-ft`](https://huggingface.co/unsloth/orpheus-3b-0.1-ft) mirror) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

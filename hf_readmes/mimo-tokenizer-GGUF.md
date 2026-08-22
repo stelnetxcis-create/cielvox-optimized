@@ -11,6 +11,9 @@ library_name: ggml
 base_model: XiaomiMiMo/MiMo-Audio-Tokenizer
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # MiMo Audio Tokenizer (encoder only) -- GGUF
 
 GGUF conversion of the **encoder** from [`XiaomiMiMo/MiMo-Audio-Tokenizer`](https://huggingface.co/XiaomiMiMo/MiMo-Audio-Tokenizer) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

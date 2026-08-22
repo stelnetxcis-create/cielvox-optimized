@@ -18,6 +18,9 @@ library_name: ggml
 base_model: ai-sage/GigaAM-v3
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # GigaAM-v3 — GGUF (ggml conversions)
 
 GGUF conversions of [`ai-sage/GigaAM-v3`](https://huggingface.co/ai-sage/GigaAM-v3)

@@ -43,6 +43,9 @@ library_name: ggml
 base_model: nvidia/canary-1b-v2
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Canary-1B-v2 CTC aligner — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of the **auxiliary CTC alignment model** that ships *inside* [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2)'s `.nemo` tarball, repackaged as a standalone forced-aligner for use with the `nfa-align` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.

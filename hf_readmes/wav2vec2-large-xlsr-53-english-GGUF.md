@@ -13,6 +13,9 @@ language:
   - en
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Wav2Vec2 Large XLSR-53 English — GGUF
 
 GGUF conversion of [jonatasgrosman/wav2vec2-large-xlsr-53-english](https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-english) for English speech recognition.

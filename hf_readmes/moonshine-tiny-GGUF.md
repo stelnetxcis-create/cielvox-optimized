@@ -14,6 +14,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-tiny
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Tiny -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny`](https://huggingface.co/UsefulSensors/moonshine-tiny) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

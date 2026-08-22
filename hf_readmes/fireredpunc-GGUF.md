@@ -14,6 +14,9 @@ base_model: FireRedTeam/FireRedPunc
 pipeline_tag: token-classification
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # FireRedPunc (GGUF)
 
 GGUF conversion of [FireRedTeam/FireRedPunc](https://huggingface.co/FireRedTeam/FireRedPunc) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

@@ -16,6 +16,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Kokoro-82M — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`hexgrad/Kokoro-82M`](https://huggingface.co/hexgrad/Kokoro-82M) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

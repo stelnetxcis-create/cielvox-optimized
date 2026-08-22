@@ -41,6 +41,9 @@ library_name: ggml
 base_model: nvidia/parakeet-tdt-0.6b-v3
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Parakeet TDT 0.6B v3 — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of [`nvidia/parakeet-tdt-0.6b-v3`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) for use with the `parakeet-main` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.

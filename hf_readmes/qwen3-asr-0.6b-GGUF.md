@@ -45,6 +45,9 @@ library_name: ggml
 base_model: Qwen/Qwen3-ASR-0.6B
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Qwen3-ASR 0.6B — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) for use with the `cielvox2-asr-main` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

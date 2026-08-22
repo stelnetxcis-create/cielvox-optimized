@@ -16,6 +16,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # CSM-1B — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`sesame/csm-1b`](https://huggingface.co/sesame/csm-1b) (Conversational Speech Model) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

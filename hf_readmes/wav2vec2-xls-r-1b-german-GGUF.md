@@ -14,6 +14,9 @@ library_name: ggml
 base_model: jonatasgrosman/wav2vec2-xls-r-1b-german
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Wav2Vec2 XLS-R 1B German -- GGUF
 
 GGUF conversions and quantisations of [`jonatasgrosman/wav2vec2-xls-r-1b-german`](https://huggingface.co/jonatasgrosman/wav2vec2-xls-r-1b-german) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

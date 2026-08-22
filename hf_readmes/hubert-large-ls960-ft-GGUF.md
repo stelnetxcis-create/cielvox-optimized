@@ -14,6 +14,9 @@ base_model: facebook/hubert-large-ls960-ft
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # HuBERT Large (GGUF)
 
 GGUF conversion of [facebook/hubert-large-ls960-ft](https://huggingface.co/facebook/hubert-large-ls960-ft) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

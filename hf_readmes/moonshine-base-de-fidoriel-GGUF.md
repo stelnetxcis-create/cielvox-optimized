@@ -15,6 +15,9 @@ library_name: ggml
 base_model: fidoriel/moonshine-base-de
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Base (German, fidoriel) -- GGUF
 
 GGUF conversions and quantisations of [`fidoriel/moonshine-base-de`](https://huggingface.co/fidoriel/moonshine-base-de) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

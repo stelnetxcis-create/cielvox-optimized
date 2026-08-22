@@ -14,6 +14,9 @@ base_model: distil-whisper/distil-large-v3
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Distil Whisper Large v3 (ggml)
 
 ggml conversion of [distil-whisper/distil-large-v3](https://huggingface.co/distil-whisper/distil-large-v3) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS) and the upstream [whisper.cpp](https://github.com/ggml-org/whisper.cpp) lineage it builds on.

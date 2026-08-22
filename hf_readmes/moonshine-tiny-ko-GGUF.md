@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-tiny-ko
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Tiny (Korean) -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny-ko`](https://huggingface.co/UsefulSensors/moonshine-tiny-ko) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

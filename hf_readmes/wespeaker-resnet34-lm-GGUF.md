@@ -15,6 +15,9 @@ library_name: ggml
 base_model: Wespeaker/wespeaker-voxceleb-resnet34-LM
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # WeSpeaker ResNet34-LM — GGUF (ggml conversion)
 
 GGUF conversion of

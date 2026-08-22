@@ -13,6 +13,9 @@ pipeline_tag: automatic-speech-recognition
 base_model: facebook/omniASR-LLM-300M
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # OmniASR LLM-300M — GGUF
 
 GGUF conversion of [`facebook/omniASR-LLM-300M`](https://huggingface.co/facebook/omniASR-LLM-300M) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

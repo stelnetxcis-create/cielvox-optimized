@@ -17,6 +17,9 @@ tags:
 - qformer
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Granite Speech 4.0-1B — GGUF
 
 GGUF quantizations of [ibm-granite/granite-4.0-1b-speech](https://huggingface.co/ibm-granite/granite-4.0-1b-speech), a **1B-parameter speech-to-text model** combining a Conformer encoder, BLIP-2 Q-Former projector, and Granite LLM with μP (maximal update parameterization).

@@ -24,6 +24,9 @@ tags:
 - voxtral
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Voxtral-Mini-4B-Realtime — GGUF
 
 GGUF quantizations of [mistralai/Voxtral-Mini-4B-Realtime-2602](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602), a **4.4B-parameter realtime streaming speech-to-text model** with a causal audio encoder and configurable transcription delay.

@@ -12,6 +12,9 @@ library_name: ggml
 pipeline_tag: text-classification
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # CLD3 (Compact Language Detector v3) — GGUF
 
 GGUF conversion of [Google CLD3](https://github.com/google/cld3),

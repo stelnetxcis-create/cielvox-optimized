@@ -17,6 +17,9 @@ library_name: ggml
 base_model: zai-org/GLM-ASR-Nano-2512
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # GLM-ASR-Nano-2512 — GGUF
 
 GGUF conversions and quantisations of [`zai-org/GLM-ASR-Nano-2512`](https://huggingface.co/zai-org/GLM-ASR-Nano-2512) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

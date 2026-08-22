@@ -16,6 +16,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Dia-1.6B — GGUF (ggml)
 
 GGUF / ggml conversion of [`nari-labs/Dia-1.6B`](https://huggingface.co/nari-labs/Dia-1.6B) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

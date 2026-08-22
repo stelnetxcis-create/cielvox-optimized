@@ -15,6 +15,9 @@ library_name: ggml
 base_model: dattazigzag/moonshine-tiny-de
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Tiny (German, dattazigzag) -- GGUF
 
 GGUF conversions and quantisations of [`dattazigzag/moonshine-tiny-de`](https://huggingface.co/dattazigzag/moonshine-tiny-de) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

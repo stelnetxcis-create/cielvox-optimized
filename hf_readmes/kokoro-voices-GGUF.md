@@ -17,6 +17,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Kokoro voices — GGUF bundle
 
 Per-speaker style packs for the Kokoro-82M family, converted to ggml's GGUF voice-pack format (arch=`kokoro-voice`, single F32 tensor `voice.pack[max_phon, 1, 256]`). For use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)** alongside [`Xenna/kokoro-82m-GGUF`](https://huggingface.co/Xenna/kokoro-82m-GGUF) or the German backbone [`Xenna/kokoro-de-hui-base-GGUF`](https://huggingface.co/Xenna/kokoro-de-hui-base-GGUF).

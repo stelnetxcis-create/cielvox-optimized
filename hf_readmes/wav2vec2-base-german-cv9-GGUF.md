@@ -14,6 +14,9 @@ library_name: ggml
 base_model: oliverguhr/wav2vec2-base-german-cv9
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Wav2Vec2 Base German (CV9) -- GGUF
 
 GGUF conversions and quantisations of [`oliverguhr/wav2vec2-base-german-cv9`](https://huggingface.co/oliverguhr/wav2vec2-base-german-cv9) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

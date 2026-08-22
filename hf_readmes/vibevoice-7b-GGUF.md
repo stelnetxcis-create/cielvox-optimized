@@ -73,6 +73,9 @@ base_model: microsoft/VibeVoice-7B
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # VibeVoice-7B — GGUF
 
 GGUF conversions of [`microsoft/VibeVoice-7B`](https://huggingface.co/microsoft/VibeVoice-7B) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

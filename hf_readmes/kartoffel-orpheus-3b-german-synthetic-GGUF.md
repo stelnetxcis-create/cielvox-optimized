@@ -22,6 +22,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Kartoffel-Orpheus 3B (German, synthetic + emotions) — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`SebastianBodza/Kartoffel_Orpheus-3B_german_synthetic-v0.1`](https://huggingface.co/SebastianBodza/Kartoffel_Orpheus-3B_german_synthetic-v0.1) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

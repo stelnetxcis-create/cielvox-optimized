@@ -14,6 +14,9 @@ tags:
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # granite-speech-3.3-8b-GGUF
 
 GGUF quantisations of [ibm-granite/granite-speech-3.3-8b](https://huggingface.co/ibm-granite/granite-speech-3.3-8b) for [StelnetTTS](https://github.com/Cyna/StelnetTTS).

@@ -25,6 +25,9 @@ library_name: ggml
 arxiv: "2108.03265"
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # WMT21 Dense 24-Wide (EN→X) — GGUF (ggml)
 
 GGUF / ggml conversion of [`facebook/wmt21-dense-24-wide-en-x`](https://huggingface.co/facebook/wmt21-dense-24-wide-en-x) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

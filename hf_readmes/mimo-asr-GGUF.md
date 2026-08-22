@@ -14,6 +14,9 @@ library_name: ggml
 base_model: XiaomiMiMo/MiMo-V2.5-ASR
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # MiMo-V2.5-ASR — GGUF
 
 GGUF conversion of [`XiaomiMiMo/MiMo-V2.5-ASR`](https://huggingface.co/XiaomiMiMo/MiMo-V2.5-ASR) for **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**. Pure C++ inference — no Python, no Transformers, runs on Apple Silicon (Metal), CPU, and CUDA.

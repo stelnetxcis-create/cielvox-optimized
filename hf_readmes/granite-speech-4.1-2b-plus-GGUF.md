@@ -1,6 +1,9 @@
 ---
 license: apache-2.0
 language:
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 - en
 - fr
 - de

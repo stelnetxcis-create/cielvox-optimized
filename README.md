@@ -47,10 +47,10 @@ export STELNETTTS_CIELVOX2_TTS_CP_BACKEND=cpu
 ./build/bin/stelnettts \
   --backend cielvox2-tts \
   -m models/TTS/cielvox2-tts-0.6b-base-q8_0.gguf \
-  --codec-model models/TTS/cielvox-tokenizer-12hz.gguf \
-  --voice-dir data/TTS/columbina \
-  --voice columbina \
-  --ref-text "$(cat data/TTS/columbina/columbina.txt)" \
+  --codec-model models/TTS/cielvox2-tokenizer-12hz.gguf \
+  --voice-dir <voice_dir> \
+  --voice <voice_name> \
+  --ref-text "<reference_transcript>" \
   --tts "Hello." \
   --tts-output /tmp/out.wav \
   --i-have-rights \
@@ -64,10 +64,10 @@ export STELNETTTS_CIELVOX2_TTS_CP_BACKEND=cpu
 ./build/bin/stelnettts \
   --backend cielvox2-tts-1.7b-base \
   -m models/TTS/cielvox2-tts-12hz-1.7b-base-q8_0.gguf \
-  --codec-model models/TTS/cielvox-tokenizer-12hz.gguf \
-  --voice-dir data/TTS/columbina \
-  --voice columbina \
-  --ref-text "$(cat data/TTS/columbina/columbina.txt)" \
+  --codec-model models/TTS/cielvox2-tokenizer-12hz.gguf \
+  --voice-dir <voice_dir> \
+  --voice <voice_name> \
+  --ref-text "<reference_transcript>" \
   --tts "Hello." \
   --tts-output /tmp/out.wav \
   --i-have-rights \
@@ -75,13 +75,15 @@ export STELNETTTS_CIELVOX2_TTS_CP_BACKEND=cpu
   --speaker-identity synthetic
 ```
 
-### CustomVoice (0.6b / 1.7b) — built-in presets ----BROKEN ATM! STILL FIXING DONT USE THIS----
+### CustomVoice (0.6b / 1.7b) — style-controlled synthesis
+
+*Note: CustomVoice mode is under active development. Parameters may change.* 
 
 ```bash
 ./build/bin/stelnettts \
   --backend cielvox2-tts-customvoice \
   -m models/TTS/cielvox2-tts-1.7b-customvoice-q8_0.gguf \
-  --codec-model models/TTS/cielvox-tokenizer-12hz.gguf \
+  --codec-model models/TTS/cielvox2-tokenizer-12hz.gguf \
   --voice <preset_name> \
   --tts "Hello." \
   --tts-output /tmp/out.wav \
@@ -95,7 +97,7 @@ export STELNETTTS_CIELVOX2_TTS_CP_BACKEND=cpu
 ./build/bin/stelnettts \
   --backend cielvox2-tts-1.7b-voicedesign \
   -m models/TTS/cielvox2-tts-1.7b-voicedesign-q8_0.gguf \
-  --codec-model models/TTS/cielvox-tokenizer-12hz.gguf \
+  --codec-model models/TTS/cielvox2-tokenizer-12hz.gguf \
   --instruct "A young female voice with a slight British accent, energetic, slightly fast paced" \
   --tts "Hello." \
   --tts-output /tmp/out.wav \
@@ -115,8 +117,8 @@ LD_LIBRARY_PATH=/path/to/cielvox2/build/src:/path/to/cielvox2/build/ggml/src:$LD
   --backend chatterbox \
   -m models/TTS/chatterbox/chatterbox-v3-t3-q8_0.gguf \
   --codec-model models/TTS/chatterbox/chatterbox-v3-s3gen-q8_0.gguf \
-  --voice data/TTS/columbina/columbina.wav \
-  --ref-text "$(cat data/TTS/columbina/columbina.txt)" \
+  --voice data/TTS/<voice>/<voice>.wav \
+  --ref-text "<reference_transcript>" \
   --tts "Hello." \
   --tts-output /tmp/out.wav \
   --i-have-rights \
@@ -167,3 +169,30 @@ Achieves ~8.3x realtime on AMD Radeon 780M.
 ## License
 
 MIT
+
+## ASR (Automatic Speech Recognition)
+
+```bash
+LD_LIBRARY_PATH=/path/to/cielvox2/build/src:/path/to/cielvox2/build/ggml/src \
+./build/bin/stelnettts \
+  --backend cielvox2-asr \
+  -m models/ASR/cielvox-asr-0.6b-q8_0.gguf \
+  -f <audio_file.wav> \
+  --output-file /tmp/transcript \
+  -l en \
+  -t $(nproc) \
+  --i-have-rights
+```
+
+Tested at 8.3x realtime on AMD R7 8700G with Radeon 780M iGPU.
+
+## Voice Cloning Disclaimer
+
+Voice cloning requires explicit consent. Use `--speaker-identity synthetic` for synthetic voices, `real_person` for real speakers (adds AI disclosure), or `unknown` when unsure. Always include `--accept-marking-responsibility` when disabling watermarks.
+
+## Notes
+
+- Build target: use `--target stelnettts-cli` for the main binary, or no target for all
+- HuggingFace model READMEs: see `hf_readmes/` directory for individual model documentation
+- Chatterbox models: `chatterbox-v3-t3-q8_0.gguf` (T3 model) + `chatterbox-v3-s3gen-q8_0.gguf` (S3Gen codec)
+- ASR backend: `cielvox2-asr` (Whisper-family, 0.6b default, 1.7b available)

@@ -25,6 +25,9 @@ library_name: ggml
 base_model: FunAudioLLM/SenseVoiceSmall
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # SenseVoiceSmall — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`FunAudioLLM/SenseVoiceSmall`](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) for use with the `sensevoice` backend in **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

@@ -18,6 +18,9 @@ library_name: ggml
 base_model: johannhartmann/parakeet_de_med
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Parakeet-DE-Med — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of [`johannhartmann/parakeet_de_med`](https://huggingface.co/johannhartmann/parakeet_de_med) for use with the `parakeet-main` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.

@@ -25,6 +25,9 @@ library_name: ggml
 base_model: mistralai/Voxtral-4B-TTS-2603
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Voxtral-4B-TTS-2603 — GGUF
 
 GGUF / ggml conversions of [`mistralai/Voxtral-4B-TTS-2603`](https://huggingface.co/mistralai/Voxtral-4B-TTS-2603) for use with the `voxtral-tts` backend of **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)** — one C++ binary, no Python.

@@ -23,22 +23,25 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # CielVox 1.7B Base — GGUF
 
 Local-first multilingual voice-cloning TTS model for the `cielvox2-tts-1.7b-base` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
 
 - 10 supported languages: `zh en ja ko de fr ru pt es it`
 - discrete multi-codebook LM architecture with a separate 12 Hz tokenizer / codec
-- runtime voice cloning from `(ref_audio, ref_text)` or pre-baked voice-pack GGUFs
+- runtime voice cloning from `(ref_audio, ref_text)` or pre-baked voice profiles
 - Apache-2.0 licence
 
-This repo contains the **talker / code-predictor / speaker-encoder** model. It must be used together with the separate tokenizer / codec GGUF from [`Xenna/cielvox2-tokenizer-12hz`](https://huggingface.co/Xenna/cielvox2-tokenizer-12hz).
+This repo contains the **model / speaker-encoder** model. It must be used together with the separate tokenizer / codec GGUF from [`Xenna/cielvox2-tokenizer-12hz`](https://huggingface.co/Xenna/cielvox2-tokenizer-12hz).
 
 ## Files
 
 File | Size | Notes
 --- | --- | ---
-`cielvox2-tts-12hz-1.7b-base-q8_0.gguf` | 2.0 GB | Q8_0, recommended quantised talker
+`cielvox2-tts-12hz-1.7b-base-q8_0.gguf` | 2.0 GB | Q8_0, recommended quantised model
 
 ## Quick Start
 
@@ -104,7 +107,7 @@ When `--voice` points to a `.wav`, `--ref-text` is required. When `--voice` poin
 
 ## Implementation
 
-The C++ runtime is implemented in [`src/cielvox2_tts.cpp`](https://github.com/stelnetxcis-create/cielvox2/blob/main/src/cielvox2_tts.cpp) using ggml graphs for the talker / code-predictor path and the companion tokenizer GGUF for codec encode/decode.
+The C++ runtime is implemented in [`src/cielvox2_tts.cpp`](https://github.com/stelnetxcis-create/cielvox2/blob/main/src/cielvox2_tts.cpp) using ggml graphs for the model path and the companion tokenizer GGUF for codec encode/decode.
 
 ## Related
 

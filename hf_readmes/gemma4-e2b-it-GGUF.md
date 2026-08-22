@@ -14,6 +14,9 @@ library_name: ggml
 base_model: google/gemma-4-E2B-it
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Gemma-4-E2B-it — GGUF
 
 GGUF conversion of [`google/gemma-4-E2B-it`](https://huggingface.co/google/gemma-4-E2B-it) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

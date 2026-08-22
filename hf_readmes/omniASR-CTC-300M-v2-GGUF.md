@@ -13,6 +13,9 @@ pipeline_tag: automatic-speech-recognition
 base_model: aadel4/omniASR-CTC-300M-v2
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # OmniASR CTC-300M-v2 — GGUF
 
 GGUF conversion of [`aadel4/omniASR-CTC-300M-v2`](https://huggingface.co/aadel4/omniASR-CTC-300M-v2) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

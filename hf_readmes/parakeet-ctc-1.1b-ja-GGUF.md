@@ -17,6 +17,9 @@ library_name: ggml
 base_model: grider-transwithai/parakeet-ctc-1.1b-ja
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Parakeet CTC 1.1B (Japanese) — GGUF
 
 GGUF / ggml conversions of [`grider-transwithai/parakeet-ctc-1.1b-ja`](https://huggingface.co/grider-transwithai/parakeet-ctc-1.1b-ja) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

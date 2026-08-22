@@ -17,6 +17,9 @@ library_name: ggml
 base_model: kyutai/stt-1b-en_fr
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Kyutai STT 1B (en/fr) -- GGUF
 
 GGUF conversions and quantisations of [`kyutai/stt-1b-en_fr`](https://huggingface.co/kyutai/stt-1b-en_fr) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

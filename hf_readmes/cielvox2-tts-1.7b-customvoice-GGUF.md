@@ -20,6 +20,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # CielVox 1.7B CustomVoice — GGUF
 
 Local-first fixed-speaker TTS model for the `cielvox2-tts-1.7b-customvoice` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.
@@ -104,7 +107,7 @@ Both roundtrips are exact-match on a long prompt.
 
 ## Implementation
 
-The C++ runtime is implemented in [`src/cielvox2_tts.cpp`](https://github.com/stelnetxcis-create/cielvox2/blob/main/src/cielvox2_tts.cpp) using ggml graphs for the talker / code-predictor path and the companion tokenizer GGUF for codec encode/decode.
+The C++ runtime is implemented in [`src/cielvox2_tts.cpp`](https://github.com/stelnetxcis-create/cielvox2/blob/main/src/cielvox2_tts.cpp) using ggml graphs for the model path and the companion tokenizer GGUF for codec encode/decode.
 
 ## Attribution
 

@@ -41,6 +41,9 @@ base_model: openbmb/VoxCPM2
 pipeline_tag: text-to-speech
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # VoxCPM2 GGUF
 
 GGUF conversion of [openbmb/VoxCPM2](https://huggingface.co/openbmb/VoxCPM2) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

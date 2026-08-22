@@ -16,6 +16,9 @@ library_name: ggml
 base_model: primeline/whisper-large-v3-turbo-german
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # whisper-large-v3-turbo-german — GGUF
 
 GGML conversions and quantisations of [`primeline/whisper-large-v3-turbo-german`](https://huggingface.co/primeline/whisper-large-v3-turbo-german) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)** or any stelnettts-compatible tool.

@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-base-uk
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Base (Ukrainian) -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-uk`](https://huggingface.co/UsefulSensors/moonshine-base-uk) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

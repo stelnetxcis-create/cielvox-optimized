@@ -48,6 +48,9 @@ base_model:
 - zhifeixie/Mega-ASR
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Mega-ASR 1.7B — GGUF
 
 GGUF / ggml conversions of [`zhifeixie/Mega-ASR`](https://huggingface.co/zhifeixie/Mega-ASR) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

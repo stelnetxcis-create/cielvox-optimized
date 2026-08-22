@@ -14,6 +14,9 @@ base_model: facebook/data2vec-audio-base-960h
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Data2Vec Audio (GGUF)
 
 GGUF conversion of [facebook/data2vec-audio-base-960h](https://huggingface.co/facebook/data2vec-audio-base-960h) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

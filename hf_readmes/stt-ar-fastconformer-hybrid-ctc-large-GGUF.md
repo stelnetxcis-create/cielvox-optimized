@@ -14,6 +14,9 @@ tags:
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # stt-ar-fastconformer-hybrid-ctc-large-GGUF
 
 GGUF conversions of the **CTC branch** of [nvidia/stt_ar_fastconformer_hybrid_large_pc_v1.0](https://huggingface.co/nvidia/stt_ar_fastconformer_hybrid_large_pc_v1.0) for [StelnetTTS](https://github.com/Cyna/StelnetTTS). The upstream model is a hybrid transducer+CTC Arabic ASR release; the shared FastConformer encoder plus the auxiliary CTC head are extracted here as a standalone CTC model (the RNNT prediction network and joint are dropped), giving a compact Arabic ASR **and forced-alignment** model with punctuation + capitalisation.

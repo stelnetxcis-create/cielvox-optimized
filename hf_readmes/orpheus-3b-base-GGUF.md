@@ -18,6 +18,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # [DEPRECATED] Orpheus 3B — GGUF (ggml-quantised)
 
 > **This repo is deprecated.** Use [`Xenna/orpheus-3b-0.1-ft-GGUF`](https://huggingface.co/Xenna/orpheus-3b-0.1-ft-GGUF) instead — it has F16 + Q8_0 + Q4_K quants plus the diff-harness reference file. StelnetTTS's model registry and auto-download now point there.

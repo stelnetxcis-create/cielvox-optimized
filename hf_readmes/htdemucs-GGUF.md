@@ -11,6 +11,9 @@ base_model: facebook/htdemucs
 pipeline_tag: audio-to-audio
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # HTDemucs — GGUF
 
 GGUF conversions of [Meta's HTDemucs](https://github.com/facebookresearch/demucs) (Hybrid Transformer Demucs) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

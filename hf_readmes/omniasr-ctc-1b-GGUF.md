@@ -27,6 +27,9 @@ base_model: facebook/omniASR-CTC-1B
 pipeline_tag: automatic-speech-recognition
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # OmniASR-CTC-1B (GGUF)
 
 GGUF conversion of Facebook's [omniASR-CTC-1B](https://github.com/facebookresearch/omnilingual-asr) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

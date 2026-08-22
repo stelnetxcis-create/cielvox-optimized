@@ -24,6 +24,9 @@ pipeline_tag: text-to-speech
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # VibeVoice-Realtime-0.5B — GGUF
 
 GGUF conversion of [microsoft/VibeVoice-Realtime-0.5B](https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-base-ar
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Base (Arabic) -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-ar`](https://huggingface.co/UsefulSensors/moonshine-base-ar) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

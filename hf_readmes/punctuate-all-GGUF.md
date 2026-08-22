@@ -24,6 +24,9 @@ base_model: kredor/punctuate-all
 pipeline_tag: token-classification
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Punctuate-All (GGUF)
 
 GGUF conversion of [kredor/punctuate-all](https://huggingface.co/kredor/punctuate-all) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

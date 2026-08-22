@@ -14,6 +14,9 @@ library_name: ggml
 base_model: jonatasgrosman/wav2vec2-large-xlsr-53-german
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Wav2Vec2 Large XLSR-53 German -- GGUF
 
 GGUF conversions and quantisations of [`jonatasgrosman/wav2vec2-large-xlsr-53-german`](https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-german) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

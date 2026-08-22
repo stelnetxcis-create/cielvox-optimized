@@ -17,6 +17,9 @@ library_name: ggml
 base_model: OpenMOSS-Team/MOSS-Transcribe-preview-2B
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # MOSS-Transcribe-preview-2B — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of [`OpenMOSS-Team/MOSS-Transcribe-preview-2B`](https://huggingface.co/OpenMOSS-Team/MOSS-Transcribe-preview-2B) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

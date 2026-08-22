@@ -14,6 +14,9 @@ tags:
 base_model: CohereLabs/cohere-transcribe-arabic-07-2026
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # cohere-transcribe-arabic-07-2026 — GGUF
 
 GGUF weights for **[CohereLabs/cohere-transcribe-arabic-07-2026](https://huggingface.co/CohereLabs/cohere-transcribe-arabic-07-2026)** — Cohere Labs' 2B-parameter Arabic ASR model (a FastConformer encoder + Transformer decoder), released July 2026 (~11% WER on FLEURS Arabic per the source card).

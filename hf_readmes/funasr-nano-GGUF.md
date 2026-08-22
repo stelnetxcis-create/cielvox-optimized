@@ -23,6 +23,9 @@ library_name: ggml
 base_model: FunAudioLLM/Fun-ASR-Nano-2512
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Fun-ASR-Nano-2512 — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`FunAudioLLM/Fun-ASR-Nano-2512`](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512) for use with the `funasr` backend in **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

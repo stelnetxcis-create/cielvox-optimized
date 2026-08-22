@@ -14,6 +14,9 @@ library_name: ggml
 base_model: oliverguhr/wav2vec2-large-xlsr-53-german-cv13
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Wav2Vec2 Large XLSR-53 German (CV13) -- GGUF
 
 GGUF conversions and quantisations of [`oliverguhr/wav2vec2-large-xlsr-53-german-cv13`](https://huggingface.co/oliverguhr/wav2vec2-large-xlsr-53-german-cv13) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

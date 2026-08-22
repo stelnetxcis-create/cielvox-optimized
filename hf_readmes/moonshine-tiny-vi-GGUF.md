@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-tiny-vi
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Tiny (Vietnamese) -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-tiny-vi`](https://huggingface.co/UsefulSensors/moonshine-tiny-vi) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

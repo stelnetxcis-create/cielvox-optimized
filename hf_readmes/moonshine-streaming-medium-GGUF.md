@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-streaming-medium
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Streaming Medium -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-streaming-medium`](https://huggingface.co/UsefulSensors/moonshine-streaming-medium) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

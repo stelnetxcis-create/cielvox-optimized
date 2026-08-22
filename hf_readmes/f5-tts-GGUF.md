@@ -15,6 +15,9 @@ pipeline_tag: text-to-speech
 base_model: SWivid/F5-TTS
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # F5-TTS v1 Base — GGUF
 
 Native C++ GGUF conversion of [SWivid/F5-TTS](https://github.com/SWivid/F5-TTS) (MIT license) for the [StelnetTTS](https://github.com/Cyna/StelnetTTS) runtime.

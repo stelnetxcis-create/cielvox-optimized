@@ -14,6 +14,9 @@ library_name: ggml
 base_model: fxtentacle/wav2vec2-xls-r-1b-tevr
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Wav2Vec2 XLS-R 1B TEVR -- GGUF
 
 GGUF conversions and quantisations of [`fxtentacle/wav2vec2-xls-r-1b-tevr`](https://huggingface.co/fxtentacle/wav2vec2-xls-r-1b-tevr) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

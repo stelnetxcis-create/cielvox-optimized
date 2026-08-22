@@ -50,6 +50,9 @@ library_name: ggml
 base_model: FunAudioLLM/Fun-ASR-MLT-Nano-2512
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Fun-ASR-MLT-Nano-2512 — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`FunAudioLLM/Fun-ASR-MLT-Nano-2512`](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512) for use with the `funasr` backend in **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**. Multilingual variant — same architecture as `funasr-nano-GGUF`, broader language coverage (~31 languages including Korean, Vietnamese, Indonesian, Thai, Malay, Filipino, Arabic, Hindi, Bulgarian, German, French, Spanish, Italian, Portuguese, Dutch, Polish, Czech, Romanian, Greek, Finnish, Swedish, Turkish, Persian, Danish, Hungarian, Macedonian, Russian).

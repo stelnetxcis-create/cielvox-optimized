@@ -12,6 +12,9 @@ tags:
 pipeline_tag: token-classification
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Truecaser Models
 
 Truecasing models for restoring proper capitalization in lowercase ASR output. Used by [StelnetTTS](https://github.com/Cyna/StelnetTTS) via `--truecase-model`.

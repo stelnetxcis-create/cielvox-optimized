@@ -15,6 +15,9 @@ tags:
 base_model: dots/dots.tts-soar
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # dots.tts-soar — GGUF (StelnetTTS)
 
 GGUF conversions of [**dots.tts-soar**](https://huggingface.co/dots/dots.tts-soar),

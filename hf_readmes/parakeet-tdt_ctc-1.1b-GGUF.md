@@ -19,6 +19,9 @@ library_name: ggml
 base_model: nvidia/parakeet-tdt_ctc-1.1b
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Parakeet TDT+CTC 1.1B — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-1.1b`](https://huggingface.co/nvidia/parakeet-tdt_ctc-1.1b) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

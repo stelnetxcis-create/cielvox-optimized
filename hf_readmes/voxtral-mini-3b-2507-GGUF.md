@@ -25,6 +25,9 @@ library_name: ggml
 base_model: mistralai/Voxtral-Mini-3B-2507
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Voxtral-Mini-3B-2507 — GGUF
 
 GGUF / ggml conversions of [`mistralai/Voxtral-Mini-3B-2507`](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507) for use with the `voxtral-main` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

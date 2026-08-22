@@ -14,6 +14,9 @@ base_model: microsoft/VibeVoice-1.5B
 pipeline_tag: text-to-speech
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # VibeVoice-1.5B GGUF
 
 GGUF conversion of [microsoft/VibeVoice-1.5B](https://huggingface.co/microsoft/VibeVoice-1.5B) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

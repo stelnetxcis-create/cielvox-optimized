@@ -26,6 +26,9 @@ tags:
 base_model: CohereLabs/cohere-transcribe-03-2026
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # cohere-transcribe-03-2026 — GGUF
 
 GGUF weights for **[CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)** — Cohere's open-source 2B-parameter ASR model, #1 on the [Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard) (avg WER 5.42, as of March 2026).

@@ -17,6 +17,9 @@ base_model: oliverguhr/fullstop-punctuation-multilang-large
 pipeline_tag: token-classification
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Fullstop Punctuation Multilingual (GGUF)
 
 GGUF conversion of [oliverguhr/fullstop-punctuation-multilang-large](https://huggingface.co/oliverguhr/fullstop-punctuation-multilang-large) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

@@ -18,6 +18,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Kokoro German — HUI Multispeaker Base — GGUF
 
 GGUF / ggml conversion of [`dida-80b/kokoro-german-hui-multispeaker-base`](https://huggingface.co/dida-80b/kokoro-german-hui-multispeaker-base) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

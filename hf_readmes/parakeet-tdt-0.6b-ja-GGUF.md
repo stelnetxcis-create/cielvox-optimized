@@ -17,6 +17,9 @@ library_name: ggml
 base_model: nvidia/parakeet-tdt_ctc-0.6b-ja
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Parakeet TDT-CTC 0.6B (Japanese) — GGUF
 
 GGUF / ggml conversions of [`nvidia/parakeet-tdt_ctc-0.6b-ja`](https://huggingface.co/nvidia/parakeet-tdt_ctc-0.6b-ja) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

@@ -17,6 +17,9 @@ library_name: ggml
 base_model: TransWithAI/Whisper-Vad-EncDec-ASMR-onnx
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Whisper-VAD-EncDec-ASMR -- GGUF
 
 GGUF conversion of [`TransWithAI/Whisper-Vad-EncDec-ASMR-onnx`](https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

@@ -6,6 +6,9 @@ pipeline_tag: feature-extraction
 base_model: BidirLM/BidirLM-Omni-2.5B-Embedding
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # bidirlm-omni-2.5b GGUF
 
 GGUF format of [BidirLM/BidirLM-Omni-2.5B-Embedding](https://huggingface.co/BidirLM/BidirLM-Omni-2.5B-Embedding) for use with [StelnetEmbed](https://github.com/Cyna/StelnetEmbed).

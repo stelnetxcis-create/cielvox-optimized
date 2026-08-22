@@ -15,6 +15,9 @@ library_name: ggml
 base_model: UsefulSensors/moonshine-base-ko
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Moonshine Base (Korean) -- GGUF
 
 GGUF conversions and quantisations of [`UsefulSensors/moonshine-base-ko`](https://huggingface.co/UsefulSensors/moonshine-base-ko) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

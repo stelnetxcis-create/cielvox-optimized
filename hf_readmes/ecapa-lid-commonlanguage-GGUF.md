@@ -13,6 +13,9 @@ base_model: speechbrain/lang-id-commonlanguage_ecapa
 pipeline_tag: audio-classification
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # ECAPA-TDNN CommonLanguage LID (GGUF)
 
 GGUF conversion of [speechbrain/lang-id-commonlanguage_ecapa](https://huggingface.co/speechbrain/lang-id-commonlanguage_ecapa) for use with [StelnetTTS](https://github.com/Cyna/StelnetTTS).

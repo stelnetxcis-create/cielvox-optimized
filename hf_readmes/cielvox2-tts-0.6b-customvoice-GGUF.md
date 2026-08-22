@@ -20,6 +20,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # CielVox 0.6B CustomVoice — GGUF
 
 Local-first fixed-speaker TTS model for the `cielvox2-tts-customvoice` backend in **[stelnetxcis-create/cielvox2](https://github.com/stelnetxcis-create/cielvox2)**.

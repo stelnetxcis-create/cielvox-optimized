@@ -18,6 +18,9 @@ library_name: ggml
 base_model: FireRedTeam/FireRedASR2-AED
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # FireRedASR2-AED -- GGUF
 
 GGUF conversions and quantisations of [`FireRedTeam/FireRedASR2-AED`](https://huggingface.co/FireRedTeam/FireRedASR2-AED) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

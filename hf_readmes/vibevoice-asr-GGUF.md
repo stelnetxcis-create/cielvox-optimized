@@ -69,6 +69,9 @@ library_name: ggml
 base_model: microsoft/VibeVoice-ASR
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # VibeVoice-ASR — GGUF
 
 GGUF / ggml conversions of [`microsoft/VibeVoice-ASR`](https://huggingface.co/microsoft/VibeVoice-ASR) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

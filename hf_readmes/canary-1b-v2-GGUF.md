@@ -42,6 +42,9 @@ library_name: ggml
 base_model: nvidia/canary-1b-v2
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Canary 1B v2 — GGUF (ggml-quantised)
 
 GGUF / ggml conversions of [`nvidia/canary-1b-v2`](https://huggingface.co/nvidia/canary-1b-v2) for use with the `canary-main` CLI from **[Cyna/StelnetTTS@parakeet](https://github.com/Cyna/StelnetTTS/tree/parakeet)**.

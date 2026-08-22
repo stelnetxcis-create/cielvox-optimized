@@ -18,6 +18,9 @@ library_name: ggml
 base_model: reazon-research/reazonspeech-nemo-v2
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # ReazonSpeech NeMo v2 (Japanese) — GGUF
 
 GGUF / ggml conversions of [`reazon-research/reazonspeech-nemo-v2`](https://huggingface.co/reazon-research/reazonspeech-nemo-v2) for use with the `stelnettts` CLI from **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

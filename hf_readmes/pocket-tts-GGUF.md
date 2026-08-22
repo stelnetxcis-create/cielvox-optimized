@@ -17,6 +17,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # Pocket TTS — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`kyutai/pocket-tts`](https://huggingface.co/kyutai/pocket-tts) for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.

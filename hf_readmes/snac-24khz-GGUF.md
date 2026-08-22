@@ -15,6 +15,9 @@ tags:
 library_name: ggml
 ---
 
+
+*Note: Documentation under construction. Parameters and file names may change.*
+
 # SNAC 24 kHz Codec — GGUF (ggml-quantised)
 
 GGUF / ggml conversion of [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz) — the 24 kHz Multi-Scale Neural Audio Codec used by Orpheus-TTS — for use with **[Cyna/StelnetTTS](https://github.com/Cyna/StelnetTTS)**.
