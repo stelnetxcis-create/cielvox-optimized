@@ -29,21 +29,21 @@ Local-first fixed-speaker TTS model for the `cielvox2-tts-1.7b-customvoice` back
 
 - 9 baked speaker tokens picked via `--voice <name>`
 - No ECAPA forward, no codec encoder, no reference audio required
-- Two speakers (`dylan`, `eric`) carry Chinese-dialect overrides (Beijing / Sichuan)
+- Two speakers (`<dialect_voice_1>`, `<dialect_voice_2>`) carry Chinese-dialect overrides (Beijing / Sichuan)
 - Apache-2.0 licence
 
 Pair this with the codec at [`Xenna/cielvox2-tokenizer-12hz`](https://huggingface.co/Xenna/cielvox2-tokenizer-12hz) — the talker emits 16-codebook RVQ codes that the codec decoder renders to 24 kHz PCM.
 
 | Speaker | Language / dialect |
 |---|---|
-| `aiden` (default) | English (M) |
-| `dylan` | Beijing dialect (M, dialect_token=2074) |
-| `eric` | Sichuan dialect (M, dialect_token=2062) |
+| `<default_voice>` (default) | English (M) |
+| `<dialect_voice_1>` | Beijing dialect (M, dialect_token=2074) |
+| `<dialect_voice_2>` | Sichuan dialect (M, dialect_token=2062) |
 | `ono_anna` | English (F) |
-| `ryan` | English (M) |
+| `<voice_name>` | English (M) |
 | `serena` | English (F) |
 | `sohee` | English (F) |
-| `uncle_fu` | English (M, older) |
+| `<older_voice>` | English (M, older) |
 | `vivian` | English (F) |
 
 ## Files
@@ -71,9 +71,9 @@ huggingface-cli download Xenna/cielvox2-tokenizer-12hz \
 ./build/bin/stelnettts --backend cielvox2-tts-1.7b-customvoice \
     -m cielvox2-tts-12hz-1.7b-customvoice-q8_0.gguf \
     --codec-model cielvox-tokenizer-12hz.gguf \
-    --voice ryan \
-    --tts "Hello, this is the Ryan speaker on the 1.7B model." \
-    --tts-output ryan.wav
+    --voice <voice_name> \
+    --tts "Hello, this is the <voice> speaker on the 1.7B model." \
+    --tts-output <voice_name>.wav
 ```
 
 For **auto-download** simply pass `-m auto`:
@@ -89,7 +89,7 @@ For **auto-download** simply pass `-m auto`:
 
 | Speaker | Output (verbatim) |
 |---|---|
-| `ryan` | `"Hello, this is the Ryan speaker."` |
+| `<voice_name>` | `"Hello, this is the <voice> speaker."` |
 | `vivian` | `"This is a longer prompt to verify the 1.7B CustomVoice path through the talker."` |
 
 Both roundtrips are exact-match on a long prompt.
