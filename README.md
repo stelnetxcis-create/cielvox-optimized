@@ -23,13 +23,13 @@ Stelnet & Cyna
 ## Build
 
 ```bash
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-ninja -C build
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON
+cmake --build build -j$(nproc)
 ```
 
 ## Usage
 
-Set the required environment variables:
+Required environment variables:
 
 ```bash
 export LD_LIBRARY_PATH=/path/to/cielvox2/build/src:/path/to/cielvox2/build/ggml/src:$LD_LIBRARY_PATH
@@ -103,6 +103,44 @@ export STELNETTTS_CIELVOX2_TTS_CP_BACKEND=cpu
   --tts-trim-silence \
   --speaker-identity synthetic
 ```
+
+### Chatterbox (v3) — s3gen + t3 codec
+
+```bash
+STELNETTTS_CHATTERBOX_T3_GPU=1 \
+STELNETTTS_CHATTERBOX_S3GEN_CPU=0 \
+GGML_VULKAN=1 \
+LD_LIBRARY_PATH=/path/to/cielvox2/build/src:/path/to/cielvox2/build/ggml/src:$LD_LIBRARY_PATH \
+./build/bin/stelnettts \
+  --backend chatterbox \
+  -m models/TTS/chatterbox/chatterbox-v3-t3-q8_0.gguf \
+  --codec-model models/TTS/chatterbox/chatterbox-v3-s3gen-q8_0.gguf \
+  --voice data/TTS/columbina/columbina.wav \
+  --ref-text "$(cat data/TTS/columbina/columbina.txt)" \
+  --tts "Hello." \
+  --tts-output /tmp/out.wav \
+  --i-have-rights \
+  --tts-trim-silence \
+  --speaker-identity synthetic \
+  --no-spoken-disclaimer \
+  --accept-marking-responsibility
+```
+
+### ASR (0.6b) — local speech recognition
+
+```bash
+LD_LIBRARY_PATH=/path/to/cielvox2/build/src:/path/to/cielvox2/build/ggml/src \
+./build/bin/stelnettts \
+  --backend cielvox2-asr \
+  -m models/ASR/cielvox-asr-0.6b-q8_0.gguf \
+  -f input.wav \
+  --output-file /tmp/transcript \
+  -l en \
+  -t $(nproc) \
+  --i-have-rights
+```
+
+Achieves ~8.3x realtime on AMD Radeon 780M.
 
 ## Flags explained
 
