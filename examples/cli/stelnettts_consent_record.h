@@ -66,7 +66,7 @@ inline std::string file_sha256(const std::string& path) {
     FILE* f = std::fopen(path.c_str(), "rb");
     if (!f)
         return {};
-    Sha256 h;
+    crispasr::sha::Sha256 h;
     h.init();
     std::vector<uint8_t> buf(64 * 1024);
     size_t n;
