@@ -29,7 +29,6 @@ Local-first fixed-speaker TTS model for the `cielvox2-tts-customvoice` backend i
 
 - 9 baked speaker tokens picked via `--voice <name>`
 - No ECAPA forward, no codec encoder, no reference audio required
-- Two speakers (`<dialect_voice_1>`, `<dialect_voice_2>`) carry Chinese-dialect overrides (Beijing / Sichuan)
 - Apache-2.0 licence
 
 Pair this with the codec at [`Xenna/cielvox2-tokenizer-12hz`](https://huggingface.co/Xenna/cielvox2-tokenizer-12hz) — the talker emits 16-codebook RVQ codes that the codec decoder renders to 24 kHz PCM.
@@ -37,14 +36,7 @@ Pair this with the codec at [`Xenna/cielvox2-tokenizer-12hz`](https://huggingfac
 | Speaker | Language / dialect |
 |---|---|
 | `<default_voice>` (default) | English (M) |
-| `<dialect_voice_1>` | Beijing dialect (M, dialect_token=2074) |
-| `<dialect_voice_2>` | Sichuan dialect (M, dialect_token=2062) |
-| `ono_anna` | English (F) |
 | `<voice_name>` | English (M) |
-| `serena` | English (F) |
-| `sohee` | English (F) |
-| `<older_voice>` | English (M, older) |
-| `vivian` | English (F) |
 
 ## Files
 
@@ -80,7 +72,6 @@ For **auto-download** simply pass `-m auto`:
 
 ```bash
 ./build/bin/stelnettts --backend cielvox2-tts-customvoice -m auto \
-    --voice serena \
     --tts "Auto-download fetches both files." \
     --tts-output out.wav
 ```

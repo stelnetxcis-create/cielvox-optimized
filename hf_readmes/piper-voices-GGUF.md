@@ -77,7 +77,7 @@ notice when redistributing.
 
 Deliberately **not** converted/hosted here:
 - `en_US-lessac` — Blizzard 2013 (CSTR Edinburgh), research/non-commercial.
-- `en_US-ryan`, `en_US-hfc_female/male`, `de_DE-pavoque` — CC BY-**NC**-SA
+- `en_US-*`, `en_US-hfc_female/male`, `de_DE-pavoque` — CC BY-**NC**-SA
   (non-commercial).
 
 ## Licensing
