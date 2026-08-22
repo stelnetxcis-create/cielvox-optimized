@@ -66,7 +66,7 @@ inline std::string file_sha256(const std::string& path) {
     FILE* f = std::fopen(path.c_str(), "rb");
     if (!f)
         return {};
-    stelnettts::sha::Sha256 h;
+    Sha256 h;
     h.init();
     std::vector<uint8_t> buf(64 * 1024);
     size_t n;
@@ -90,7 +90,7 @@ inline std::string file_sha256(const std::string& path) {
 inline std::string bytes_sha256(const void* data, size_t len) {
     if (!data || len == 0)
         return {};
-    auto d = stelnettts::sha::sha256((const uint8_t*)data, len);
+    auto d = sha256((const uint8_t*)data, len);
     static const char* kHex = "0123456789abcdef";
     std::string hex;
     hex.reserve(64);
@@ -119,7 +119,7 @@ inline const std::string& run_id() {
         uint8_t bytes[8];
         for (int i = 0; i < 8; i++)
             bytes[i] = (uint8_t)(seed >> (8 * i));
-        auto d = stelnettts::sha::sha256(bytes, sizeof(bytes));
+        auto d = sha256(bytes, sizeof(bytes));
         static const char* kHex = "0123456789abcdef";
         std::string hex;
         for (int i = 0; i < 8; i++) { // 64 bits is plenty to correlate a run
@@ -152,7 +152,7 @@ inline const std::string& new_request_id() {
         bytes[i] = (uint8_t)(t >> (8 * i));
         bytes[8 + i] = (uint8_t)(n >> (8 * i));
     }
-    auto d = stelnettts::sha::sha256(bytes, sizeof(bytes));
+    auto d = sha256(bytes, sizeof(bytes));
     static const char* kHex = "0123456789abcdef";
     std::string hex;
     for (int i = 0; i < 8; i++) {

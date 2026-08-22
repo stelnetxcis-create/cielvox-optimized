@@ -168,16 +168,16 @@ inline bool stelnettts_c2pa_sign_pem(std::string& data, const char* format, cons
     // c2pa.hash.bmff.v3), and FLAC (ID3v2 GEOB prepend) are ALL native — c2pa-rs
     // is no longer needed for any audio container StelnetTTS emits.
     {
-        stelnettts::c2pa_native::Bytes in(data.begin(), data.end());
-        stelnettts::c2pa_native::Bytes out;
+        crispasr::c2pa_native::Bytes in(data.begin(), data.end());
+        crispasr::c2pa_native::Bytes out;
         if (std::strcmp(format, "audio/wav") == 0)
-            out = stelnettts::c2pa_native::sign_wav(in, cert_pem, key_pem);
+            out = crispasr::c2pa_native::sign_wav(in, cert_pem, key_pem);
         else if (std::strcmp(format, "audio/mpeg") == 0)
-            out = stelnettts::c2pa_native::sign_mp3(in, cert_pem, key_pem);
+            out = crispasr::c2pa_native::sign_mp3(in, cert_pem, key_pem);
         else if (std::strcmp(format, "audio/mp4") == 0)
-            out = stelnettts::c2pa_native::sign_m4a(in, cert_pem, key_pem);
+            out = crispasr::c2pa_native::sign_m4a(in, cert_pem, key_pem);
         else if (std::strcmp(format, "audio/flac") == 0)
-            out = stelnettts::c2pa_native::sign_flac(in, cert_pem, key_pem);
+            out = crispasr::c2pa_native::sign_flac(in, cert_pem, key_pem);
         if (!out.empty()) {
             data.assign(reinterpret_cast<const char*>(out.data()), out.size());
             return true;
