@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-using stelnettts::c2pa_native::Bytes;
+using crispasr::c2pa_native::Bytes;
 
 namespace {
 
@@ -122,7 +122,7 @@ std::string bundled_key() {
 
 TEST_CASE("C2PA native: signed WAV is well-formed RIFF with a C2PA chunk", "[unit][c2pa]") {
     Bytes wav = make_wav();
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(wav, bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(wav, bundled_cert(), bundled_key());
     REQUIRE(signed_.size() > wav.size());
     REQUIRE(std::memcmp(&signed_[8], "WAVE", 4) == 0);
     // RIFF size field = total - 8
@@ -138,7 +138,7 @@ TEST_CASE("C2PA native: signed WAV is well-formed RIFF with a C2PA chunk", "[uni
 }
 
 TEST_CASE("C2PA native: JUMBF tree has the expected boxes and type UUIDs", "[unit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
     Chunk c2pa;
     REQUIRE(find_chunk(signed_, "C2PA", c2pa));
     std::vector<std::pair<std::string, Bytes>> boxes;
@@ -160,7 +160,7 @@ TEST_CASE("C2PA native: JUMBF tree has the expected boxes and type UUIDs", "[uni
 }
 
 TEST_CASE("C2PA native: assertion hash is sha256(box without 8-byte header)", "[unit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
     Chunk c2pa;
     REQUIRE(find_chunk(signed_, "C2PA", c2pa));
     std::vector<std::pair<std::string, Bytes>> boxes;
@@ -177,14 +177,14 @@ TEST_CASE("C2PA native: assertion hash is sha256(box without 8-byte header)", "[
 
 TEST_CASE("C2PA native: layout is size-deterministic across signings", "[unit][c2pa]") {
     Bytes wav = make_wav();
-    Bytes a = stelnettts::c2pa_native::sign_wav(wav, bundled_cert(), bundled_key());
-    Bytes b = stelnettts::c2pa_native::sign_wav(wav, bundled_cert(), bundled_key());
+    Bytes a = crispasr::c2pa_native::sign_wav(wav, bundled_cert(), bundled_key());
+    Bytes b = crispasr::c2pa_native::sign_wav(wav, bundled_cert(), bundled_key());
     // random manifest URN / instanceID differ, but total size is fixed
     REQUIRE(a.size() == b.size());
 }
 
 TEST_CASE("C2PA native: hard binding is over the audio (tamper changes file hash)", "[unit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
     Chunk c2pa;
     REQUIRE(find_chunk(signed_, "C2PA", c2pa));
     size_t clen = 8 + c2pa.size + (c2pa.size & 1);
@@ -202,14 +202,14 @@ TEST_CASE("C2PA native: hard binding is over the audio (tamper changes file hash
 
 TEST_CASE("C2PA native: bad PEM input yields empty (no crash)", "[unit][c2pa]") {
     Bytes wav = make_wav();
-    REQUIRE(stelnettts::c2pa_native::sign_wav(wav, "not a cert", "not a key").empty());
-    REQUIRE(stelnettts::c2pa_native::sign_wav(Bytes{}, bundled_cert(), bundled_key()).empty());
+    REQUIRE(crispasr::c2pa_native::sign_wav(wav, "not a cert", "not a key").empty());
+    REQUIRE(crispasr::c2pa_native::sign_wav(Bytes{}, bundled_cert(), bundled_key()).empty());
 }
 
 // ---------------------------------------------------------------- verifier
 TEST_CASE("C2PA native verify: round-trip (sign then verify) is valid", "[unit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
-    auto r = stelnettts::c2pa_native::verify_wav(signed_);
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    auto r = crispasr::c2pa_native::verify_wav(signed_);
     INFO(std::string("err: ") + (r.errors.empty() ? std::string("ok") : r.errors[0]));
     REQUIRE(r.signature_valid);
     REQUIRE(r.data_hash_valid);
@@ -219,22 +219,22 @@ TEST_CASE("C2PA native verify: round-trip (sign then verify) is valid", "[unit][
 }
 
 TEST_CASE("C2PA native verify: audio tamper fails the hard binding", "[unit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
     signed_[46] ^= 0xff; // flip a byte in the audio payload
-    auto r = stelnettts::c2pa_native::verify_wav(signed_);
+    auto r = crispasr::c2pa_native::verify_wav(signed_);
     REQUIRE_FALSE(r.data_hash_valid);
     REQUIRE_FALSE(r.valid);
 }
 
 TEST_CASE("C2PA native verify: signature tamper fails", "[unit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
     signed_[signed_.size() - 20] ^= 0xff; // flip a byte in the trailing signature region
-    auto r = stelnettts::c2pa_native::verify_wav(signed_);
+    auto r = crispasr::c2pa_native::verify_wav(signed_);
     REQUIRE_FALSE(r.valid);
 }
 
 TEST_CASE("C2PA native verify: non-C2PA WAV reports no manifest", "[unit][c2pa]") {
-    auto r = stelnettts::c2pa_native::verify_wav(make_wav());
+    auto r = crispasr::c2pa_native::verify_wav(make_wav());
     REQUIRE_FALSE(r.valid);
     REQUIRE_FALSE(r.errors.empty());
 }
@@ -249,7 +249,7 @@ TEST_CASE("C2PA native verify: c2pa-rs reference vector validates", "[unit][c2pa
         return;
     }
     Bytes wav((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-    auto r = stelnettts::c2pa_native::verify_wav(wav);
+    auto r = crispasr::c2pa_native::verify_wav(wav);
     INFO(std::string("err: ") + (r.errors.empty() ? std::string("ok") : r.errors[0]));
     REQUIRE(r.signature_valid);
     REQUIRE(r.data_hash_valid);
@@ -261,7 +261,7 @@ TEST_CASE("C2PA native verify: c2pa-rs reference vector validates", "[unit][c2pa
 
 // Emit a signed WAV for the live parity ctest (validates in c2pa-rs reader).
 TEST_CASE("C2PA native: emit signed WAV for parity", "[emit][c2pa]") {
-    Bytes signed_ = stelnettts::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
+    Bytes signed_ = crispasr::c2pa_native::sign_wav(make_wav(), bundled_cert(), bundled_key());
     REQUIRE_FALSE(signed_.empty());
     const char* path = std::getenv("STELNETTTS_C2PA_EMIT");
     std::string out = path ? path : "c2pa_native_signed.wav";
